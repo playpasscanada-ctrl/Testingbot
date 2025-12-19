@@ -46,52 +46,29 @@ app = Flask(__name__)
 def ping():
     return "pong"
 
-from datetime import datetime
-
-@app.route("/check/<user_id>")
-def check_access(user_id):
-    now = datetime.utcnow()
-
-    # 🛠 Maintenance
-    m = supabase.table("bot_settings").select("value").eq("key", "maintenance").execute()
+@app.route("/check/<uid>")
+def check(uid):
+    # maintenance
+    m = supabase.table("bot_settings").select("value").eq("key","maintenance").execute()
     if m.data and m.data[0]["value"] == "true":
         return jsonify({"allowed": False, "reason": "MAINTENANCE"})
 
-    # 🔐 Access system
-    a = supabase.table("bot_settings").select("value").eq("key", "access_enabled").execute()
-    if a.data and a.data[0]["value"] == "true":
-        r = supabase.table("access_users").select("user_id").eq("user_id", user_id).execute()
-        if not r.data:
-            return jsonify({"allowed": False, "reason": "NO ACCESS"})
+    # temp ban
+    if supabase.table("temp_bans").select("*").eq("user_id",uid).execute().data:
+        return jsonify({"allowed": False, "reason": "TEMPBAN"})
 
-    # 🔨 Ban check
-    ban = supabase.table("banned_users").select("*").eq("user_id", user_id).execute()
+    # perm ban
+    if supabase.table("banned_users").select("*").eq("user_id",uid).execute().data:
+        return jsonify({"allowed": False, "reason": "BAN"})
 
-    if ban.data:
-        b = ban.data[0]
+    # access toggle
+    a = supabase.table("bot_settings").select("value").eq("key","access_enabled").execute()
+    if a.data and a.data[0]["value"] == "false":
+        return jsonify({"allowed": True})
 
-        # ⏱ TEMP BAN
-        if b.get("is_temp") and b.get("expires_at"):
-            expires = datetime.fromisoformat(b["expires_at"].replace("Z", ""))
-
-            if now < expires:
-                mins = int((expires - now).total_seconds() / 60)
-                return jsonify({
-                    "allowed": False,
-                    "reason": f"⏱ TEMP BAN ({mins} min left)\n{b['reason']}"
-                })
-
-            # ✅ TIME OVER → AUTO UNBAN
-            supabase.table("banned_users").delete().eq("user_id", user_id).execute()
-            return jsonify({"allowed": True})
-
-        # 🔴 PERM BAN
-        return jsonify({
-            "allowed": False,
-            "reason": f"🔨 PERMANENT BAN\n{b['reason']}"
-        })
-
-    return jsonify({"allowed": True})
+    # access list
+    ok = supabase.table("access_users").select("user_id").eq("user_id",uid).execute().data
+    return jsonify({"allowed": bool(ok)})
 
 def run_flask():
     app.run(host="0.0.0.0", port=10000)
@@ -218,7 +195,7 @@ async def tempban(i:discord.Interaction, user_id:str, time:str, reason:str):
     }).execute()
     await i.response.send_message(embed=embed("TEMPBAN",f"{d}\nUnban <t:{int(unban.timestamp())}:F>",0xffaa00))
 
-@bot.tree.command(name="unban", description="Remove permanent or temp ban")
+    @bot.tree.command(name="unban", description="Unban a player")
 @app_commands.describe(user_id="Roblox User ID")
 async def unban(interaction: discord.Interaction, user_id: str):
     if not is_owner(interaction.user.id):
@@ -227,23 +204,12 @@ async def unban(interaction: discord.Interaction, user_id: str):
             ephemeral=False
         )
 
-    result = supabase.table("banned_users").delete().eq("user_id", user_id).execute()
-
-    if not result.data:
-        return await interaction.response.send_message(
-            embed=discord.Embed(
-                title="⚠️ NOT BANNED",
-                description=f"Player `{user_id}` is not banned",
-                color=0xffaa00,
-                timestamp=datetime.utcnow()
-            ),
-            ephemeral=False
-        )
+    supabase.table("banned_users").delete().eq("user_id", user_id).execute()
 
     await interaction.response.send_message(
         embed=discord.Embed(
             title="✅ UNBANNED",
-            description=f"Player `{user_id}` has been fully unbanned",
+            description=f"Player `{user_id}` has been unbanned",
             color=0x00ff00,
             timestamp=datetime.utcnow()
         ),
