@@ -195,7 +195,7 @@ async def tempban(i:discord.Interaction, user_id:str, time:str, reason:str):
     }).execute()
     await i.response.send_message(embed=embed("TEMPBAN",f"{d}\nUnban <t:{int(unban.timestamp())}:F>",0xffaa00))
 
-    @bot.tree.command(name="unban", description="Unban a player")
+@bot.tree.command(name="unban", description="Unban a player")
 @app_commands.describe(user_id="Roblox User ID")
 async def unban(interaction: discord.Interaction, user_id: str):
     if not is_owner(interaction.user.id):
