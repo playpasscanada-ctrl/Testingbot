@@ -241,22 +241,7 @@ async def tempban(interaction: discord.Interaction, user_id: str, time: str, rea
         0xff9900)
     )
 
-@bot.tree.command(name="kick")
-async def kick(interaction: discord.Interaction, user_id: str, reason: str):
-    if not is_owner(interaction.user.id):
-        return await interaction.response.send_message(embed=embed("❌ ERROR", "Owner only", 0xff0000))
-
-    username, display = roblox_user(user_id)
-    supabase.table("kick_logs").insert({
-        "user_id": user_id,
-        "username": username,
-        "display_name": display,
-        "reason": reason
-    }).execute()
-
-    await interaction.response.send_message(embed=embed("👢 KICKED", f"{display}\n{reason}", 0xff8800))
-
-    @bot.tree.command(name="list")
+@bot.tree.command(name="list")
 async def list_banned(interaction: discord.Interaction):
     if not is_owner(interaction.user.id):
         return await interaction.response.send_message(embed=embed("❌ ERROR", "Owner only", 0xff0000))
@@ -277,6 +262,21 @@ async def list_banned(interaction: discord.Interaction):
         msg += f"- `{u['user_id']}` | {u['username']} ({u['display_name']}) | {u['reason']} | Unban: {unban_time}\n"
 
     await interaction.response.send_message(embed=embed("BANNED USERS", msg))
+
+@bot.tree.command(name="kick")
+async def kick(interaction: discord.Interaction, user_id: str, reason: str):
+    if not is_owner(interaction.user.id):
+        return await interaction.response.send_message(embed=embed("❌ ERROR", "Owner only", 0xff0000))
+
+    username, display = roblox_user(user_id)
+    supabase.table("kick_logs").insert({
+        "user_id": user_id,
+        "username": username,
+        "display_name": display,
+        "reason": reason
+    }).execute()
+
+    await interaction.response.send_message(embed=embed("👢 KICKED", f"{display}\n{reason}", 0xff8800))
 
 # =======================
 # START
