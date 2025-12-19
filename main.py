@@ -85,7 +85,7 @@ async def kick(i: discord.Interaction, user_id: str, reason: str = "No reason"):
     ))
 
 @tree.command(name="access")
-async def access(i: discord.Interaction, action: str, user_id:жаў=None):
+async def access(i: discord.Interaction, action: str, user_id: str = None):
     if not owner(i): return await i.response.send_message("No permission", ephemeral=True)
     await i.response.defer()
 
