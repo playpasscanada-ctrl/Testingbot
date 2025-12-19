@@ -155,6 +155,53 @@ async def access(i:discord.Interaction, mode:app_commands.Choice[str], user_id:s
         txt="\n".join(f"{x['username']} ({x['display_name']})" for x in data) or "None"
         return await i.response.send_message(embed=emb("🔐 ACCESS LIST",txt))
 
+@bot.tree.command(name="kick", description="Kick a Roblox player")
+@app_commands.describe(
+    user_id="Roblox User ID",
+    reason="Kick reason"
+)
+async def kick(interaction: discord.Interaction, user_id: str, reason: str):
+    if not is_owner(interaction.user.id):
+        return await interaction.response.send_message(
+            embed=make_embed("❌ NO PERMISSION", "Owner only command", 0xff0000)
+        )
+
+    # ---- Fetch Roblox username & display name ----
+    try:
+        r = requests.post(
+            "https://users.roblox.com/v1/users",
+            json={"userIds": [int(user_id)]},
+            timeout=10
+        )
+        data = r.json()["data"][0]
+        username = data["name"]
+        display_name = data["displayName"]
+    except Exception:
+        username = "Unknown"
+        display_name = "Unknown"
+
+    # ---- Save kick log in Supabase ----
+    supabase.table("kick_logs").insert({
+        "user_id": user_id,
+        "username": username,
+        "display_name": display_name,
+        "reason": reason,
+        "timestamp": datetime.utcnow().isoformat()
+    }).execute()
+
+    # ---- Embed response ----
+    embed = discord.Embed(
+        title="👢 PLAYER KICKED",
+        color=0xffa500,
+        timestamp=datetime.utcnow()
+    )
+    embed.add_field(name="User ID", value=f"`{user_id}`", inline=False)
+    embed.add_field(name="Username", value=username, inline=True)
+    embed.add_field(name="Display Name", value=display_name, inline=True)
+    embed.add_field(name="Reason", value=reason, inline=False)
+
+    await interaction.response.send_message(embed=embed)
+
 # ================== MAINTENANCE ==================
 @bot.tree.command(name="maintenance")
 @app_commands.choices(mode=[
