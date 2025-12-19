@@ -27,23 +27,6 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 RENDER_URL = os.getenv("RENDER_URL")
 
-# ================= FILES =================
-MAINT_FILE = "maintenance.json"
-
-def load(f):
-    try:
-        with open(f,"r") as file:
-            return json.load(file)
-    except:
-        return {}
-
-def save(f,d):
-    with open(f,"w") as file:
-        json.dump(d,file)
-
-MAINT = load(MAINT_FILE) or {"enabled":False}
-WAITING = {}
-
 # =======================
 # SUPABASE
 # =======================
@@ -70,10 +53,6 @@ def home():
 @app.route("/ping")
 def ping():
     return jsonify({"status": "ok"})
-
-@app.route("/maintenance")
-def maintenance_check():
-    return "true" if MAINT.get("enabled") else "false"
 
 @app.route("/check/<user_id>")
 def check_access(user_id):
@@ -298,17 +277,6 @@ async def kick(interaction: discord.Interaction, user_id: str, reason: str):
     }).execute()
 
     await interaction.response.send_message(embed=embed("👢 KICKED", f"{display}\n{reason}", 0xff8800))
-
-@bot.tree.command(name="maintenance")
-async def maintenance(interaction: discord.Interaction, mode: str):
-    if not owner(interaction):
-        return await interaction.response.send_message("No permission")
-
-    MAINT["enabled"]=(mode=="on")
-    save(MAINT_FILE,MAINT)
-    await interaction.response.send_message(
-        embed=embed("🛠 MAINTENANCE",f"Status: `{mode.upper()}`",0xffaa00)
-    )
 
 # =======================
 # START
