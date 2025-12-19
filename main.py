@@ -183,6 +183,27 @@ async def ban(i:discord.Interaction, user_id:str, reason:str):
     }).execute()
     await i.response.send_message(embed=embed("BANNED",f"{d} (@{u})\n{reason}",0xff0000))
 
+@bot.tree.command(name="unban", description="Unban a player")
+@app_commands.describe(user_id="Roblox User ID")
+async def unban(interaction: discord.Interaction, user_id: str):
+    if not is_owner(interaction.user.id):
+        return await interaction.response.send_message(
+            "❌ Owner only",
+            ephemeral=False
+        )
+
+    supabase.table("banned_users").delete().eq("user_id", user_id).execute()
+
+    await interaction.response.send_message(
+        embed=discord.Embed(
+            title="✅ UNBANNED",
+            description=f"Player `{user_id}` has been unbanned",
+            color=0x00ff00,
+            timestamp=datetime.utcnow()
+        ),
+        ephemeral=False
+    )
+
 @bot.tree.command(name="tempban")
 async def tempban(i:discord.Interaction, user_id:str, time:str, reason:str):
     if not is_owner(i.user.id): return
