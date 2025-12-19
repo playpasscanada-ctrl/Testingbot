@@ -91,8 +91,13 @@ async def keep_alive():
 # ================= TEMP CLEAN =================
 @tasks.loop(minutes=1)
 async def clean_temp():
-    sb.table("temp_bans").delete().lte("expires_at", datetime.utcnow().isoformat()).execute()
+    now = datetime.utcnow().isoformat()
+    expired = sb.table("temp_bans").select("user_id, expires_at").execute().data
 
+    for row in expired:
+        if row["expires_at"] <= now:
+            sb.table("temp_bans").delete().eq("user_id", row["user_id"]).execute()
+            
 # ================= READY =================
 @bot.event
 async def on_ready():
@@ -158,35 +163,104 @@ bot.tree.add_command(maint)
 
 # ================= BAN =================
 @bot.tree.command(name="ban")
-async def ban(i:discord.Interaction, user_id:str, reason:str):
-    if not is_owner(i): return
-    u,d = roblox(user_id)
+async def ban(i: discord.Interaction, user_id: str, reason: str):
+    if not is_owner(i): 
+        await i.response.send_message("No permission", ephemeral=True)
+        return
+
+    await i.response.defer()
+
+    u, d = roblox(user_id)
+
     sb.table("banned_users").upsert({
-        "user_id":user_id,"username":u,"reason":reason
+        "user_id": user_id,
+        "username": u,
+        "display_name": d,
+        "reason": reason
     }).execute()
-    await reply(i, emb("BANNED",f"ID:`{user_id}`\nUsername:`{u}`\nDisplay:`{d}`\nReason:{reason}",0xff0000))
+
+    await i.followup.send(
+        embed=emb(
+            "BANNED",
+            f"ID: `{user_id}`\nUsername: `{u}`\nDisplay: `{d}`\nReason: {reason}",
+            0xff0000
+        )
+    )
 
 @bot.tree.command(name="tempban")
-async def tempban(i:discord.Interaction, user_id:str, minutes:int, reason:str):
-    if not is_owner(i): return
-    u,d = roblox(user_id)
-    exp = datetime.utcnow()+timedelta(minutes=minutes)
+async def tempban(i: discord.Interaction, user_id: str, minutes: int, reason: str):
+    if not is_owner(i):
+        await i.response.send_message("No permission", ephemeral=True)
+        return
+
+    await i.response.defer()
+
+    u, d = roblox(user_id)
+    expires = (datetime.utcnow() + timedelta(minutes=minutes)).isoformat()
+
     sb.table("temp_bans").upsert({
-        "user_id":user_id,"username":u,"reason":reason,"expires_at":exp.isoformat()
+        "user_id": user_id,
+        "username": u,
+        "display_name": d,
+        "reason": reason,
+        "expires_at": expires
     }).execute()
-    await reply(i, emb("TEMP BAN",f"ID:`{user_id}`\nUsername:`{u}`\nTime:{minutes}m",0xffa500))
+
+    await i.followup.send(
+        embed=emb(
+            "TEMP BAN",
+            f"ID: `{user_id}`\nUsername: `{u}`\nDisplay: `{d}`\nTime: {minutes} min",
+            0xffa500
+        )
+    )
 
 @bot.tree.command(name="unban")
-async def unban(i:discord.Interaction, user_id:str):
-    if not is_owner(i): return
-    sb.table("banned_users").delete().eq("user_id",user_id).execute()
-    sb.table("temp_bans").delete().eq("user_id",user_id).execute()
-    await reply(i, emb("UNBAN",f"ID:`{user_id}`"))
+async def unban(i: discord.Interaction, user_id: str):
+    if not is_owner(i):
+        await i.response.send_message("No permission", ephemeral=True)
+        return
+
+    await i.response.defer()
+
+    sb.table("banned_users").delete().eq("user_id", user_id).execute()
+    sb.table("temp_bans").delete().eq("user_id", user_id).execute()
+
+    await i.followup.send(
+        embed=emb(
+            "UNBANNED",
+            f"ID `{user_id}` removed from **BAN & TEMPBAN**",
+            0x00ff00
+        )
+    )
 
 @bot.tree.command(name="kick")
 async def kick(i:discord.Interaction, user_id:str, reason:str):
     if not is_owner(i): return
     await reply(i, emb("KICK",f"ID:`{user_id}`\nReason:{reason}",0xff5555))
+
+@bot.tree.command(name="list")
+async def list_banned(i: discord.Interaction):
+    await i.response.defer()
+
+    bans = sb.table("banned_users").select("*").execute().data
+    temp = sb.table("temp_bans").select("*").execute().data
+
+    msg = ""
+
+    if bans:
+        msg += "**🔴 PERMANENT BANS**\n"
+        for b in bans:
+            msg += f"`{b['user_id']}` | {b['username']} ({b['display_name']})\n"
+
+    if temp:
+        msg += "\n**🟠 TEMP BANS**\n"
+        for t in temp:
+            msg += f"`{t['user_id']}` | {t['username']} ⏳ {t['expires_at']}\n"
+
+    if not msg:
+        msg = "✅ No banned players"
+
+    await i.followup.send(embed=emb("BAN LIST", msg))
 
 # ================= START =================
 threading.Thread(target=run_flask,daemon=True).start()
