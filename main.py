@@ -54,6 +54,10 @@ def home():
 def ping():
     return jsonify({"status": "ok"})
 
+@app.route("/maintenance")
+def maintenance_check():
+    return "true" if MAINT.get("enabled") else "false"
+
 @app.route("/check/<user_id>")
 def check_access(user_id):
     # maintenance
@@ -279,39 +283,14 @@ async def kick(interaction: discord.Interaction, user_id: str, reason: str):
     await interaction.response.send_message(embed=embed("👢 KICKED", f"{display}\n{reason}", 0xff8800))
 
 @bot.tree.command(name="maintenance")
-async def maintenance(interaction: discord.Interaction, state: str):
-    if not is_owner(interaction.user.id):
-        return await interaction.response.send_message(
-            embed=make_embed("❌ ERROR", "Owner only", 0xff0000)
-        )
+async def maintenance(interaction: discord.Interaction, mode: str):
+    if not owner(interaction):
+        return await interaction.response.send_message("No permission")
 
-    value = "true" if state.lower() == "on" else "false"
-    supabase.table("bot_settings").update({"value": value}).eq("key", "maintenance").execute()
-
+    MAINT["enabled"]=(mode=="on")
+    save(MAINT_FILE,MAINT)
     await interaction.response.send_message(
-        embed=make_embed(
-            "🛠 MAINTENANCE",
-            f"Status: `{state.upper()}`",
-            0xffaa00
-        )
-    )
-
-@bot.tree.command(name="access_toggle")
-async def access_toggle(interaction: discord.Interaction, state: str):
-    if not is_owner(interaction.user.id):
-        return await interaction.response.send_message(
-            embed=make_embed("❌ ERROR", "Owner only", 0xff0000)
-        )
-
-    value = "true" if state.lower() == "on" else "false"
-    supabase.table("bot_settings").update({"value": value}).eq("key", "access_enabled").execute()
-
-    await interaction.response.send_message(
-        embed=make_embed(
-            "🔐 ACCESS SYSTEM",
-            f"Status: `{state.upper()}`",
-            0x00ff00
-        )
+        embed=embed("🛠 MAINTENANCE",f"Status: `{mode.upper()}`",0xffaa00)
     )
 
 # =======================
