@@ -15,7 +15,10 @@ from supabase import create_client, Client
 # =======================
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-OWNER_ID = int(os.getenv("OWNER_ID"))  # discord user id
+OWNER_ID_RAW = os.getenv("OWNER_ID")
+if not OWNER_ID_RAW:
+    raise Exception("OWNER_ID env variable missing")
+OWNER_ID = int(OWNER_ID_RAW)  # discord user id
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
