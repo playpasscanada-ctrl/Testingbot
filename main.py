@@ -1,10 +1,6 @@
-import os
-import time
-import asyncio
-import threading
+import os, time, asyncio, threading, requests
 from datetime import datetime, timedelta
 
-import requests
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -17,10 +13,10 @@ from supabase import create_client, Client
 # =======================
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+
 OWNER_ID_RAW = os.getenv("OWNER_ID")
 if not OWNER_ID_RAW:
     raise Exception("OWNER_ID missing")
-
 OWNER_ID = int(OWNER_ID_RAW)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -34,51 +30,45 @@ RENDER_URL = os.getenv("RENDER_URL")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # =======================
-# DISCORD BOT
+# DISCORD
 # =======================
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # =======================
-# FLASK (PING + ROBLOX API)
+# FLASK
 # =======================
 
 app = Flask(__name__)
 
-@app.route("/")
-def home():
-    return "Bot Alive"
-
 @app.route("/ping")
 def ping():
-    return jsonify({"status": "ok"})
+    return "pong"
 
-@app.route("/check/<user_id>")
-def check_access(user_id):
+@app.route("/check/<uid>")
+def check(uid):
     # maintenance
-    m = supabase.table("bot_settings").select("value").eq("key", "maintenance").execute()
+    m = supabase.table("bot_settings").select("value").eq("key","maintenance").execute()
     if m.data and m.data[0]["value"] == "true":
         return jsonify({"allowed": False, "reason": "MAINTENANCE"})
 
-    # tempban
-    tb = supabase.table("temp_bans").select("*").eq("user_id", user_id).execute()
-    if tb.data:
-        return jsonify({"allowed": False, "reason": "TEMP_BANNED"})
+    # temp ban
+    if supabase.table("temp_bans").select("*").eq("user_id",uid).execute().data:
+        return jsonify({"allowed": False, "reason": "TEMPBAN"})
 
     # perm ban
-    b = supabase.table("banned_users").select("*").eq("user_id", user_id).execute()
-    if b.data:
-        return jsonify({"allowed": False, "reason": "BANNED"})
+    if supabase.table("banned_users").select("*").eq("user_id",uid).execute().data:
+        return jsonify({"allowed": False, "reason": "BAN"})
 
     # access toggle
-    a = supabase.table("bot_settings").select("value").eq("key", "access_enabled").execute()
+    a = supabase.table("bot_settings").select("value").eq("key","access_enabled").execute()
     if a.data and a.data[0]["value"] == "false":
         return jsonify({"allowed": True})
 
     # access list
-    r = supabase.table("access_users").select("user_id").eq("user_id", user_id).execute()
-    return jsonify({"allowed": bool(r.data)})
+    ok = supabase.table("access_users").select("user_id").eq("user_id",uid).execute().data
+    return jsonify({"allowed": bool(ok)})
 
 def run_flask():
     app.run(host="0.0.0.0", port=10000)
@@ -87,61 +77,50 @@ def run_flask():
 # HELPERS
 # =======================
 
-def is_owner(uid: int):
+def is_owner(uid): 
     return uid == OWNER_ID
 
-def embed(title, desc, color=0x00ff00):
+def embed(title, desc, color=0x5865F2):
     e = discord.Embed(title=title, description=desc, color=color)
     e.timestamp = datetime.utcnow()
     return e
 
-def parse_time(t: str):
+def roblox(uid):
     try:
-        unit = t[-1]
-        val = int(t[:-1])
-        if unit == "m":
-            return timedelta(minutes=val)
-        if unit == "h":
-            return timedelta(hours=val)
-        if unit == "d":
-            return timedelta(days=val)
+        r = requests.get(f"https://users.roblox.com/v1/users/{uid}", timeout=5).json()
+        return r.get("name","Unknown"), r.get("displayName","Unknown")
     except:
-        return None
+        return "Unknown","Unknown"
 
-def roblox_user(user_id: str):
-    try:
-        r = requests.get(f"https://users.roblox.com/v1/users/{user_id}", timeout=10)
-        if r.status_code == 200:
-            j = r.json()
-            return j["name"], j["displayName"]
-    except:
-        pass
-    return "Unknown", "Unknown"
+def parse_time(t):
+    unit=t[-1]; val=int(t[:-1])
+    if unit=="m": return timedelta(minutes=val)
+    if unit=="h": return timedelta(hours=val)
+    if unit=="d": return timedelta(days=val)
 
 # =======================
-# AUTO UNBAN LOOP
+# AUTO UNBAN
 # =======================
 
 async def auto_unban():
     await bot.wait_until_ready()
     while True:
         now = datetime.utcnow().isoformat()
-        data = supabase.table("temp_bans").select("*").lte("unban_at", now).execute().data
+        data = supabase.table("temp_bans").select("*").lte("unban_at",now).execute().data
         for u in data:
-            supabase.table("temp_bans").delete().eq("user_id", u["user_id"]).execute()
+            supabase.table("temp_bans").delete().eq("user_id",u["user_id"]).execute()
         await asyncio.sleep(60)
 
 # =======================
-# SELF PING (RENDER)
+# SELF PING
 # =======================
 
 def self_ping():
     while True:
         try:
             if RENDER_URL:
-                requests.get(RENDER_URL, timeout=10)
-        except:
-            pass
+                requests.get(RENDER_URL,timeout=10)
+        except: pass
         time.sleep(300)
 
 # =======================
@@ -152,136 +131,104 @@ def self_ping():
 async def on_ready():
     await bot.tree.sync()
     bot.loop.create_task(auto_unban())
-    print("Bot Ready")
+    print("Bot Online")
 
 # =======================
 # ACCESS COMMANDS
 # =======================
 
+@bot.tree.command(name="access_on")
+async def access_on(i:discord.Interaction):
+    if not is_owner(i.user.id): return
+    supabase.table("bot_settings").update({"value":"true"}).eq("key","access_enabled").execute()
+    await i.response.send_message(embed=embed("🔐 ACCESS","ON"))
+
+@bot.tree.command(name="access_off")
+async def access_off(i:discord.Interaction):
+    if not is_owner(i.user.id): return
+    supabase.table("bot_settings").update({"value":"false"}).eq("key","access_enabled").execute()
+    await i.response.send_message(embed=embed("🔐 ACCESS","OFF"))
+
 @bot.tree.command(name="access_add")
-async def access_add(interaction: discord.Interaction, user_id: str):
-    if not is_owner(interaction.user.id):
-        return await interaction.response.send_message(embed=embed("❌ ERROR", "Owner only", 0xff0000))
-
-    username, display = roblox_user(user_id)
+async def access_add(i:discord.Interaction, user_id:str):
+    if not is_owner(i.user.id): return
+    u,d = roblox(user_id)
     supabase.table("access_users").upsert({
-        "user_id": user_id,
-        "username": username,
-        "display_name": display
+        "user_id":user_id,"username":u,"display_name":d
     }).execute()
-
-    await interaction.response.send_message(
-        embed=embed("🔐 ACCESS ADDED", f"{display} (@{username})\n`{user_id}`")
-    )
+    await i.response.send_message(embed=embed("ACCESS ADDED",f"{d} (@{u})\n`{user_id}`"))
 
 @bot.tree.command(name="access_remove")
-async def access_remove(interaction: discord.Interaction, user_id: str):
-    if not is_owner(interaction.user.id):
-        return await interaction.response.send_message(embed=embed("❌ ERROR", "Owner only", 0xff0000))
-
-    supabase.table("access_users").delete().eq("user_id", user_id).execute()
-    await interaction.response.send_message(embed=embed("🗑️ ACCESS REMOVED", f"`{user_id}`"))
+async def access_remove(i:discord.Interaction, user_id:str):
+    if not is_owner(i.user.id): return
+    supabase.table("access_users").delete().eq("user_id",user_id).execute()
+    await i.response.send_message(embed=embed("ACCESS REMOVED",f"`{user_id}`"))
 
 @bot.tree.command(name="access_list")
-async def access_list(interaction: discord.Interaction):
-    data = supabase.table("access_users").select("*").execute().data
-    if not data:
-        return await interaction.response.send_message(embed=embed("ACCESS", "Empty"))
-
-    msg = ""
-    for u in data:
-        msg += f"- `{u['user_id']}` | {u['username']} ({u['display_name']})\n"
-
-    await interaction.response.send_message(embed=embed("🔐 ACCESS LIST", msg))
+async def access_list(i:discord.Interaction):
+    data=supabase.table("access_users").select("*").execute().data
+    txt="\n".join(f"{u['display_name']} (@{u['username']}) `{u['user_id']}`" for u in data) or "Empty"
+    await i.response.send_message(embed=embed("ACCESS LIST",txt))
 
 # =======================
-# BAN / TEMPBAN / KICK
+# BAN / TEMPBAN / LIST
 # =======================
 
 @bot.tree.command(name="ban")
-async def ban(interaction: discord.Interaction, user_id: str, reason: str):
-    if not is_owner(interaction.user.id):
-        return await interaction.response.send_message(embed=embed("❌ ERROR", "Owner only", 0xff0000))
-
-    username, display = roblox_user(user_id)
+async def ban(i:discord.Interaction, user_id:str, reason:str):
+    if not is_owner(i.user.id): return
+    u,d=roblox(user_id)
     supabase.table("banned_users").upsert({
-        "user_id": user_id,
-        "username": username,
-        "display_name": display,
-        "reason": reason
+        "user_id":user_id,"username":u,"display_name":d,"reason":reason
     }).execute()
-
-    await interaction.response.send_message(embed=embed("🔨 BANNED", f"{display} (@{username})\n{reason}", 0xff0000))
+    await i.response.send_message(embed=embed("BANNED",f"{d} (@{u})\n{reason}",0xff0000))
 
 @bot.tree.command(name="tempban")
-async def tempban(interaction: discord.Interaction, user_id: str, time: str, reason: str):
-    if not is_owner(interaction.user.id):
-        return await interaction.response.send_message(embed=embed("❌ ERROR", "Owner only", 0xff0000))
-
-    delta = parse_time(time)
-    if not delta:
-        return await interaction.response.send_message(embed=embed("❌ ERROR", "Invalid time", 0xff0000))
-
-    username, display = roblox_user(user_id)
-    now = datetime.utcnow()
-    unban = now + delta
-
+async def tempban(i:discord.Interaction, user_id:str, time:str, reason:str):
+    if not is_owner(i.user.id): return
+    delta=parse_time(time)
+    u,d=roblox(user_id)
+    now=datetime.utcnow(); unban=now+delta
     supabase.table("temp_bans").upsert({
-        "user_id": user_id,
-        "username": username,
-        "display_name": display,
-        "reason": reason,
-        "banned_at": now.isoformat(),
-        "unban_at": unban.isoformat()
+        "user_id":user_id,"username":u,"display_name":d,
+        "reason":reason,"banned_at":now.isoformat(),"unban_at":unban.isoformat()
     }).execute()
-
-    await interaction.response.send_message(
-        embed=embed("⏱️ TEMPBAN",
-        f"{display} (@{username})\nReason: {reason}\nUnban: <t:{int(unban.timestamp())}:F>",
-        0xff9900)
-    )
+    await i.response.send_message(embed=embed("TEMPBAN",f"{d}\nUnban <t:{int(unban.timestamp())}:F>",0xffaa00))
 
 @bot.tree.command(name="list")
-async def list_banned(interaction: discord.Interaction):
-    if not is_owner(interaction.user.id):
-        return await interaction.response.send_message(embed=embed("❌ ERROR", "Owner only", 0xff0000))
+async def listban(i:discord.Interaction):
+    perm=supabase.table("banned_users").select("*").execute().data
+    temp=supabase.table("temp_bans").select("*").execute().data
+    txt="**PERM:**\n"
+    for u in perm:
+        txt+=f"{u['display_name']} `{u['user_id']}` {u['reason']}\n"
+    txt+="\n**TEMP:**\n"
+    for u in temp:
+        txt+=f"{u['display_name']} `{u['user_id']}` until {u['unban_at']}\n"
+    await i.response.send_message(embed=embed("BANNED LIST",txt or "None"))
 
-    data_perm = supabase.table("banned_users").select("*").execute().data
-    data_temp = supabase.table("temp_bans").select("*").execute().data
+# =======================
+# MAINTENANCE
+# =======================
 
-    if not data_perm and not data_temp:
-        return await interaction.response.send_message(embed=embed("BANNED LIST", "No banned users"))
-
-    msg = "**PERM BANNED USERS:**\n"
-    for u in data_perm:
-        msg += f"- `{u['user_id']}` | {u['username']} ({u['display_name']}) | {u['reason']}\n"
-
-    msg += "\n**TEMP BANNED USERS:**\n"
-    for u in data_temp:
-        unban_time = u["unban_at"]
-        msg += f"- `{u['user_id']}` | {u['username']} ({u['display_name']}) | {u['reason']} | Unban: {unban_time}\n"
-
-    await interaction.response.send_message(embed=embed("BANNED USERS", msg))
-
-@bot.tree.command(name="kick")
-async def kick(interaction: discord.Interaction, user_id: str, reason: str):
-    if not is_owner(interaction.user.id):
-        return await interaction.response.send_message(embed=embed("❌ ERROR", "Owner only", 0xff0000))
-
-    username, display = roblox_user(user_id)
-    supabase.table("kick_logs").insert({
-        "user_id": user_id,
-        "username": username,
-        "display_name": display,
-        "reason": reason
-    }).execute()
-
-    await interaction.response.send_message(embed=embed("👢 KICKED", f"{display}\n{reason}", 0xff8800))
+@bot.tree.command(name="maintenance")
+async def maintenance(i:discord.Interaction, mode:str):
+    if not is_owner(i.user.id): return
+    val="true" if mode=="on" else "false"
+    supabase.table("bot_settings").update({"value":val}).eq("key","maintenance").execute()
+    if mode=="on":
+        users=supabase.table("access_users").select("*").execute().data
+        for u in users:
+            supabase.table("kick_logs").insert({
+                "user_id":u["user_id"],"username":u["username"],
+                "display_name":u["display_name"],"reason":"Maintenance"
+            }).execute()
+    await i.response.send_message(embed=embed("MAINTENANCE",mode.upper()))
 
 # =======================
 # START
 # =======================
 
-threading.Thread(target=run_flask, daemon=True).start()
-threading.Thread(target=self_ping, daemon=True).start()
+threading.Thread(target=run_flask,daemon=True).start()
+threading.Thread(target=self_ping,daemon=True).start()
 bot.run(DISCORD_TOKEN)
