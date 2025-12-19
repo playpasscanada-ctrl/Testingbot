@@ -27,6 +27,23 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 RENDER_URL = os.getenv("RENDER_URL")
 
+# ================= FILES =================
+MAINT_FILE = "maintenance.json"
+
+def load(f):
+    try:
+        with open(f,"r") as file:
+            return json.load(file)
+    except:
+        return {}
+
+def save(f,d):
+    with open(f,"w") as file:
+        json.dump(d,file)
+
+MAINT = load(MAINT_FILE) or {"enabled":False}
+WAITING = {}
+
 # =======================
 # SUPABASE
 # =======================
