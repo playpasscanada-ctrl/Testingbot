@@ -274,6 +274,22 @@ def info(uid):
         "minutes": left
     })
 
+@app.route("/kickcheck/<uid>")
+def kickcheck(uid):
+    try:
+        r = supabase.table("kick_flags").select("*").eq("user_id", uid).execute().data
+        if not r:
+            return jsonify({"kick": False})
+
+        reason = r[0]["reason"]
+
+        # auto delete so only one-time kick
+        supabase.table("kick_flags").delete().eq("user_id", uid).execute()
+
+        return jsonify({"kick": True, "reason": reason})
+    except:
+        return jsonify({"kick": False})
+
 # ================== KEEP ALIVE ==================
 def keep_alive():
     while True:
