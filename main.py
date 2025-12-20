@@ -121,6 +121,15 @@ async def on_message(msg):
         except Exception as e:
             print("VERIFY LOG ERROR:", e)
 
+        # BLACKLIST CHECK
+    try:
+        blk = supabase.table("blacklist_users").select("user_id").eq("user_id", user_id).execute().data
+        if blk:
+            await msg.reply("🚫 You are blacklisted, verification denied.")
+            return
+    except:
+        pass
+
         # USER REPLY
         embed = discord.Embed(
             title="✅ Verified & Whitelisted",
@@ -440,6 +449,46 @@ async def verifycheck(i: discord.Interaction, discord_id: str):
         )
 
     await safe_send(i, emb("🔍 USER VERIFICATION HISTORY", txt[:4000], 0x9b59b6))
+
+@bot.tree.command(name="blacklist", description="Manage verify blacklist")
+@app_commands.choices(mode=[
+    app_commands.Choice(name="add", value="add"),
+    app_commands.Choice(name="remove", value="remove"),
+    app_commands.Choice(name="list", value="list"),
+])
+async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user_id: str = None):
+    if not owner(i):
+        return await safe_send(i, emb("❌ NO PERMISSION", "Owner only command"))
+
+    # ADD
+    if mode.value == "add" and user_id:
+        supabase.table("blacklist_users").upsert({
+            "user_id": user_id
+        }).execute()
+
+        return await safe_send(
+            i,
+            emb("🚫 BLACKLISTED", f"User `{user_id}` is now blacklisted", 0xff0000)
+        )
+
+    # REMOVE
+    if mode.value == "remove" and user_id:
+        supabase.table("blacklist_users").delete().eq("user_id", user_id).execute()
+
+        return await safe_send(
+            i,
+            emb("✅ REMOVED", f"User `{user_id}` removed from blacklist", 0x00ff00)
+        )
+
+    # LIST
+    if mode.value == "list":
+        data = supabase.table("blacklist_users").select("user_id").execute().data
+        txt = "\n".join(f"`{x['user_id']}`" for x in data) or "None"
+
+        return await safe_send(
+            i,
+            emb("📛 BLACKLISTED USERS", txt, 0xffaa00)
+        )
 
 
 # ================== KICK ==================
