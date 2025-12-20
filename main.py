@@ -46,8 +46,20 @@ intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 def owner(i):
-    return i.user.id == OWNER_ID
+    # MAIN OWNER
+    if i.user.id == OWNER_ID:
+        return True
 
+    # EXTRA OWNERS (Supabase)
+    try:
+        r = supabase.table("bot_admins") \
+            .select("user_id") \
+            .eq("user_id", str(i.user.id)) \
+            .execute()
+        return bool(r.data)
+    except:
+        return False
+        
 def emb(title, desc, color=0x5865F2):
     e = discord.Embed(title=title, description=desc, color=color)
     e.timestamp = datetime.utcnow()
@@ -337,6 +349,49 @@ async def stats(i: discord.Interaction):
         embed=emb("📊 SYSTEM STATS", desc, 0x2ecc71),
         ephemeral=False
                 )
+
+@bot.tree.command(name="owner", description="Manage bot owners")
+@app_commands.choices(action=[
+    app_commands.Choice(name="add", value="add"),
+    app_commands.Choice(name="remove", value="remove"),
+    app_commands.Choice(name="list", value="list"),
+])
+async def owner_cmd(
+    i: discord.Interaction,
+    action: app_commands.Choice[str],
+    user_id: str = None
+):
+    # ❗ Sirf MAIN OWNER
+    if i.user.id != OWNER_ID:
+        return await i.response.send_message(
+            embed=emb("❌ DENIED", "Only MAIN owner can manage owners"),
+            ephemeral=False
+        )
+
+    if action.value == "add" and user_id:
+        supabase.table("bot_admins").upsert({
+            "user_id": user_id
+        }).execute()
+        return await i.response.send_message(
+            embed=emb("👑 OWNER ADDED", f"User `{user_id}` is now owner", 0x00ff00)
+        )
+
+    if action.value == "remove" and user_id:
+        supabase.table("bot_admins") \
+            .delete() \
+            .eq("user_id", user_id) \
+            .execute()
+        return await i.response.send_message(
+            embed=emb("🗑 OWNER REMOVED", f"User `{user_id}` removed", 0xff0000)
+        )
+
+    if action.value == "list":
+        data = supabase.table("bot_admins").select("*").execute().data
+        txt = f"**MAIN OWNER:** `{OWNER_ID}`\n\n**EXTRA OWNERS:**\n"
+        txt += "\n".join(f"• `{x['user_id']}`" for x in data) or "None"
+        return await i.response.send_message(
+            embed=emb("👑 OWNER LIST", txt)
+        )
 
 # ================== FLASK ==================
 app = Flask(__name__)
