@@ -264,12 +264,27 @@ async def stats(i: discord.Interaction):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
 
+    # ===== BAN STATS =====
     data = supabase.table("bans").select("*").execute().data
     perm = sum(1 for x in data if x["perm"])
     temp = sum(1 for x in data if not x["perm"] and time.time() < float(x["expire"]))
 
+    # ===== ACCESS USERS =====
     access_count = len(supabase.table("access_users").select("user_id").execute().data)
 
+    # ===== ACCESS SYSTEM STATUS =====
+    a = supabase.table("bot_settings").select("value").eq("key","access_enabled").execute().data
+    access_status = "🟢 OFF (Everyone Allowed)"
+    if a and a[0]["value"] == "true":
+        access_status = "🔐 ON (Whitelist Enabled)"
+
+    # ===== MAINTENANCE STATUS =====
+    m = supabase.table("bot_settings").select("value").eq("key","maintenance").execute().data
+    maintenance_status = "🟢 OFF"
+    if m and m[0]["value"] == "true":
+        maintenance_status = "🛠 ON"
+
+    # ===== UPTIME =====
     uptime = int(time.time() - START_TIME)
     hrs = uptime // 3600
     mins = (uptime % 3600) // 60
@@ -278,11 +293,13 @@ async def stats(i: discord.Interaction):
         f"🚫 Permanent Bans: `{perm}`\n"
         f"⏱ Active TempBans: `{temp}`\n\n"
         f"🔐 Access Users: `{access_count}`\n"
-        f"🤖 Uptime: `{hrs}h {mins}m`"
+        f"Access System: {access_status}\n\n"
+        f"Maintenance: {maintenance_status}\n\n"
+        f"🤖 Bot Uptime: `{hrs}h {mins}m`"
     )
 
     await safe_send(i, emb("📊 SYSTEM STATS", desc, 0x2ecc71))
-
+    
 # ================== OWNER ==================
 @bot.tree.command(name="owner")
 @app_commands.choices(action=[
