@@ -466,34 +466,59 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION", "Owner only command"))
 
-    # ADD
+    # =============================
+    # ADD BLACKLIST + REMOVE ACCESS
+    # =============================
     if mode.value == "add" and user_id:
+        # Save in blacklist
         supabase.table("blacklist_users").upsert({
             "user_id": user_id
         }).execute()
 
+        # Remove from whitelist / access
+        try:
+            supabase.table("access_users").delete().eq("user_id", user_id).execute()
+        except:
+            pass
+
         return await safe_send(
             i,
-            emb("🚫 BLACKLISTED", f"User `{user_id}` is now blacklisted", 0xff0000)
+            emb(
+                "🚫 BLACKLISTED",
+                f"User `{user_id}` is now blacklisted and removed from whitelist",
+                0xff0000
+            )
         )
 
-    # REMOVE
+    # =============================
+    # REMOVE FROM BLACKLIST
+    # =============================
     if mode.value == "remove" and user_id:
         supabase.table("blacklist_users").delete().eq("user_id", user_id).execute()
 
         return await safe_send(
             i,
-            emb("✅ REMOVED", f"User `{user_id}` removed from blacklist", 0x00ff00)
+            emb(
+                "✅ REMOVED",
+                f"User `{user_id}` removed from blacklist",
+                0x00ff00
+            )
         )
 
-    # LIST
+    # =============================
+    # LIST BLACKLIST
+    # =============================
     if mode.value == "list":
         data = supabase.table("blacklist_users").select("user_id").execute().data
         txt = "\n".join(f"`{x['user_id']}`" for x in data) or "None"
 
         return await safe_send(
             i,
-            emb("📛 BLACKLISTED USERS", txt, 0xffaa00)
+            emb(
+                "📛 BLACKLISTED USERS",
+                txt,
+                0xffaa00
+            )
         )
 
 
