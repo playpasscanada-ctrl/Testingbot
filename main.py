@@ -251,6 +251,63 @@ async def access(i:discord.Interaction, mode:app_commands.Choice[str], user_id:s
         txt="\n".join(f"{x['username']} ({x['display_name']})" for x in data) or "None"
         return await safe_send(i, emb("🔐 ACCESS LIST",txt))
 
+from discord import ui
+
+@bot.tree.command(name="accessclear", description="Remove ALL whitelisted users with confirmation")
+async def accessclear(i: discord.Interaction):
+
+    if not owner(i):
+        return await safe_send(i, emb("❌ NO PERMISSION", "Only owners can do this"))
+
+    class Confirm(ui.View):
+        def __init__(self):
+            super().__init__(timeout=30)
+            self.value = None
+
+        @ui.button(label="YES - Clear All", style=discord.ButtonStyle.danger)
+        async def yes(self, interaction: discord.Interaction, button: ui.Button):
+            if interaction.user.id != i.user.id:
+                return await interaction.response.send_message(
+                    "❌ Ye confirmation tumhara nahi hai.", ephemeral=True
+                )
+
+            supabase.table("access_users").delete().neq("user_id", "").execute()
+
+            await interaction.response.edit_message(
+                embed=emb(
+                    "🔐 ACCESS RESET CONFIRMED",
+                    "All whitelisted users successfully removed!",
+                    0xff0000
+                ),
+                view=None
+            )
+            self.value = True
+            self.stop()
+
+        @ui.button(label="NO - Cancel", style=discord.ButtonStyle.success)
+        async def no(self, interaction: discord.Interaction, button: ui.Button):
+            if interaction.user.id != i.user.id:
+                return await interaction.response.send_message(
+                    "❌ Ye confirmation tumhara nahi hai.", ephemeral=True
+                )
+
+            await interaction.response.edit_message(
+                embed=emb("❎ CANCELLED", "Access reset cancelled.", 0x2ecc71),
+                view=None
+            )
+            self.value = False
+            self.stop()
+
+    view = Confirm()
+    await i.response.send_message(
+        embed=emb(
+            "⚠️ CONFIRMATION REQUIRED",
+            "Are you sure you want to **delete ALL access whitelist users?**\nThis cannot be undone.",
+            0xffaa00
+        ),
+        view=view
+    )
+
 
 # ================== KICK ==================
 @bot.tree.command(name="kick")
