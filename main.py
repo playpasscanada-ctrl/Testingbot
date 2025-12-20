@@ -18,6 +18,10 @@ RENDER_URL = os.getenv("RENDER_URL")
 # ================== SUPABASE ==================
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# ================== SETTINGS ==================
+VERIFY_CHANNEL_ID = 123456789012345678      # <-- apna verify channel
+LOG_CHANNEL_ID = 987654321098765432         # <-- apna logs channel
+
 # ================== ROBLOX ==================
 def roblox_info(uid):
     try:
@@ -28,6 +32,7 @@ def roblox_info(uid):
 
 # ================== DISCORD ==================
 intents = discord.Intents.default()
+intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 def owner(i):
@@ -62,6 +67,80 @@ async def safe_send(i, embed):
         except:
             pass
 
+
+# ================== VERIFY + AUTO WHITELIST + LOGS ==================
+@bot.event
+async def on_message(msg):
+
+    if msg.author.bot:
+        return
+
+    if msg.channel.id != 1451973498200133786:
+        return
+
+    user_id = msg.content.strip()
+
+    if not user_id.isdigit():
+        await msg.delete()
+        await msg.channel.send(
+            f"{msg.author.mention} ❌ Sirf Roblox User ID bhejo!",
+            delete_after=5
+        )
+        return
+
+    try:
+        data = requests.get(
+            f"https://users.roblox.com/v1/users/{user_id}",
+            timeout=5
+        ).json()
+
+        username = data.get("name","Unknown")
+        display = data.get("displayName","Unknown")
+
+        # AUTO ADD TO WHITELIST
+        try:
+            supabase.table("access_users").upsert({
+                "user_id": user_id,
+                "username": username,
+                "display_name": display
+            }).execute()
+        except:
+            pass
+
+        # USER REPLY
+        embed = discord.Embed(
+            title="✅ Verified & Whitelisted",
+            color=0x2ecc71
+        )
+        embed.add_field(name="Roblox ID", value=f"`{user_id}`", inline=False)
+        embed.add_field(name="Username", value=username, inline=True)
+        embed.add_field(name="Display Name", value=display, inline=True)
+        embed.set_footer(text="Access Granted")
+
+        await msg.reply(embed=embed)
+
+        # LOGS CHANNEL
+        try:
+            log_ch = bot.get_channel(1451973589342621791)
+            if log_ch:
+                log = discord.Embed(
+                    title="📥 New Verification Logged",
+                    color=0x3498db
+                )
+                log.add_field(name="Discord User", value=f"{msg.author.mention}", inline=False)
+                log.add_field(name="Roblox ID", value=f"`{user_id}`", inline=False)
+                log.add_field(name="Username", value=username, inline=True)
+                log.add_field(name="Display Name", value=display, inline=True)
+                log.timestamp = datetime.utcnow()
+
+                await log_ch.send(embed=log)
+        except:
+            pass
+
+    except:
+        await msg.reply("❌ Invalid Roblox ID ya Roblox API down hai")
+
+
 # ================== BAN ==================
 @bot.tree.command(name="ban")
 async def ban(i:discord.Interaction, user_id:str, reason:str):
@@ -81,6 +160,7 @@ async def ban(i:discord.Interaction, user_id:str, reason:str):
         0xff0000
     ))
 
+
 @bot.tree.command(name="tempban")
 async def tempban(i:discord.Interaction, user_id:str, minutes:int, reason:str):
     if not owner(i): return
@@ -99,6 +179,7 @@ async def tempban(i:discord.Interaction, user_id:str, minutes:int, reason:str):
         0xffa500
     ))
 
+
 @bot.tree.command(name="unban")
 async def unban(i:discord.Interaction, user_id:str):
     if not owner(i): return
@@ -110,6 +191,7 @@ async def unban(i:discord.Interaction, user_id:str):
         f"User `{user_id}` removed from ALL bans",
         0x00ff00
     ))
+
 
 @bot.tree.command(name="list")
 async def listb(i:discord.Interaction):
@@ -133,6 +215,7 @@ async def listb(i:discord.Interaction):
         txt += f"• `{x['user_id']}` | {u} ({n}) | {t}\n"
 
     await safe_send(i, emb("🚫 BANNED USERS", txt or "None"))
+
 
 # ================== ACCESS ==================
 @bot.tree.command(name="access")
@@ -168,6 +251,7 @@ async def access(i:discord.Interaction, mode:app_commands.Choice[str], user_id:s
         txt="\n".join(f"{x['username']} ({x['display_name']})" for x in data) or "None"
         return await safe_send(i, emb("🔐 ACCESS LIST",txt))
 
+
 # ================== KICK ==================
 @bot.tree.command(name="kick")
 async def kick(i: discord.Interaction, user_id: str, reason: str = "No reason provided"):
@@ -194,9 +278,10 @@ async def kick(i: discord.Interaction, user_id: str, reason: str = "No reason pr
 
     await safe_send(i, emb(
         "👢 PLAYER KICKED",
-        f"**ID:** `{user_id}`\n**Username:** `{username}`\n**Display Name:** `{display}`\n**Action:** KICK\n**Reason:** {reason}",
+        f"**ID:** `{user_id}`\n**Username:** `{username}`\n**Display Name:** `{display}`\n**Reason:** {reason}",
         0xff5555
     ))
+
 
 # ================== MAINTENANCE ==================
 @bot.tree.command(name="maintenance")
@@ -217,44 +302,45 @@ async def maintenance(i:discord.Interaction, mode:app_commands.Choice[str]):
         f"{mode.value.upper()}"
     ))
 
+
 # ================== WHOIS ==================
 @bot.tree.command(name="whois")
 async def whois(i: discord.Interaction, user_id: str):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
 
-    u,d = roblox_info(user_id)
+    await i.response.defer()
 
-    # ban check
-    ban = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
+    u, d = roblox_info(user_id)
+
+    data = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
     ban_status = "🟢 Not Banned"
-    ban_reason = "—"
-
-    if ban:
-        b = ban[0]
+    reason = "—"
+    if data:
+        b = data[0]
         if b["perm"]:
             ban_status = "🔴 Permanent Ban"
-            ban_reason = b["reason"]
+            reason = b["reason"]
         else:
             if time.time() < float(b["expire"]):
-                mins = int((float(b["expire"]) - time.time()) / 60)
-                ban_status = f"⏱ Tempban ({mins}m left)"
-                ban_reason = b["reason"]
+                mins = int((float(b["expire"]) - time.time())/60)
+                ban_status = f"⏱ Temp Ban ({mins}m left)"
+                reason = b["reason"]
 
-    # access
-    a = supabase.table("access_users").select("user_id").eq("user_id", user_id).execute().data
-    access = "✅ Has Access" if a else "❌ No Access"
+    ac = supabase.table("access_users").select("user_id").eq("user_id",user_id).execute().data
+    access = "✅ Whitelisted" if ac else "❌ Not Whitelisted"
 
     desc = (
         f"**Roblox ID:** `{user_id}`\n"
         f"**Username:** `{u}`\n"
         f"**Display Name:** `{d}`\n\n"
         f"**Ban Status:** {ban_status}\n"
-        f"**Reason:** {ban_reason}\n\n"
+        f"**Reason:** {reason}\n\n"
         f"**Access:** {access}"
     )
 
-    await safe_send(i, emb("🔍 WHOIS", desc, 0x3498db))
+    await i.followup.send(embed=emb("🔍 WHOIS RESULT", desc, 0x3498db))
+
 
 # ================== STATS ==================
 START_TIME = time.time()
@@ -264,94 +350,94 @@ async def stats(i: discord.Interaction):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
 
-    # ===== BAN STATS =====
     data = supabase.table("bans").select("*").execute().data
     perm = sum(1 for x in data if x["perm"])
     temp = sum(1 for x in data if not x["perm"] and time.time() < float(x["expire"]))
 
-    # ===== ACCESS USERS =====
-    access_count = len(supabase.table("access_users").select("user_id").execute().data)
+    access_users = len(supabase.table("access_users").select("user_id").execute().data)
 
-    # ===== ACCESS SYSTEM STATUS =====
     a = supabase.table("bot_settings").select("value").eq("key","access_enabled").execute().data
     access_status = "🟢 OFF (Everyone Allowed)"
-    if a and a[0]["value"] == "true":
+    if a and a[0]["value"]=="true":
         access_status = "🔐 ON (Whitelist Enabled)"
 
-    # ===== MAINTENANCE STATUS =====
     m = supabase.table("bot_settings").select("value").eq("key","maintenance").execute().data
     maintenance_status = "🟢 OFF"
-    if m and m[0]["value"] == "true":
+    if m and m[0]["value"]=="true":
         maintenance_status = "🛠 ON"
 
-    # ===== UPTIME =====
     uptime = int(time.time() - START_TIME)
     hrs = uptime // 3600
-    mins = (uptime % 3600) // 60
+    mins = (uptime % 3600)//60
 
     desc = (
         f"🚫 Permanent Bans: `{perm}`\n"
         f"⏱ Active TempBans: `{temp}`\n\n"
-        f"🔐 Access Users: `{access_count}`\n"
+        f"🔐 Access Users: `{access_users}`\n"
         f"Access System: {access_status}\n\n"
         f"Maintenance: {maintenance_status}\n\n"
         f"🤖 Bot Uptime: `{hrs}h {mins}m`"
     )
 
     await safe_send(i, emb("📊 SYSTEM STATS", desc, 0x2ecc71))
-    
+
+
 # ================== OWNER ==================
-@bot.tree.command(name="owner")
+@bot.tree.command(name="owner", description="Manage bot owners")
 @app_commands.choices(action=[
     app_commands.Choice(name="add", value="add"),
     app_commands.Choice(name="remove", value="remove"),
     app_commands.Choice(name="list", value="list"),
 ])
-async def owner_cmd(i: discord.Interaction, action: app_commands.Choice[str], user_id: str=None):
+async def owner_cmd(i: discord.Interaction, action: app_commands.Choice[str], user_id: str = None):
+
     if i.user.id != OWNER_ID:
-        return await safe_send(i, emb("❌ DENIED","Only MAIN owner"))
+        return await safe_send(i, emb("❌ DENIED", "Only MAIN owner can manage owners"))
 
-    if action.value=="add" and user_id:
-        supabase.table("bot_admins").upsert({"user_id":user_id}).execute()
-        return await safe_send(i, emb("👑 OWNER ADDED",f"`{user_id}` added",0x00ff00))
+    if action.value == "add" and user_id:
+        supabase.table("bot_admins").upsert({
+            "user_id": user_id
+        }).execute()
+        return await safe_send(i, emb("👑 OWNER ADDED", f"`{user_id}` is now owner", 0x00ff00))
 
-    if action.value=="remove" and user_id:
-        supabase.table("bot_admins").delete().eq("user_id",user_id).execute()
-        return await safe_send(i, emb("🗑 OWNER REMOVED",f"`{user_id}` removed",0xff0000))
+    if action.value == "remove" and user_id:
+        supabase.table("bot_admins").delete().eq("user_id", user_id).execute()
+        return await safe_send(i, emb("🗑 OWNER REMOVED", f"`{user_id}` removed", 0xff0000))
 
-    if action.value=="list":
-        data=supabase.table("bot_admins").select("*").execute().data
-        txt=f"**Main Owner:** `{OWNER_ID}`\n\n**Extra Owners:**\n"
-        txt+="\n".join(f"• `{x['user_id']}`" for x in data) or "None"
-        return await safe_send(i, emb("👑 OWNER LIST",txt))
+    if action.value == "list":
+        data = supabase.table("bot_admins").select("*").execute().data
+        txt = f"**MAIN OWNER:** `{OWNER_ID}`\n\n**EXTRA OWNERS:**\n"
+        txt += "\n".join(f"• `{x['user_id']}`" for x in data) or "None"
+        return await safe_send(i, emb("👑 OWNER LIST", txt))
+
 
 # ================== FLASK ==================
 app = Flask(__name__)
 
 @app.route("/ping")
-def ping(): 
+def ping():
     return "pong"
 
 @app.route("/maintenance")
 def mcheck():
-    r=supabase.table("bot_settings").select("value").eq("key","maintenance").execute()
+    r = supabase.table("bot_settings").select("value").eq("key","maintenance").execute()
     return "true" if r.data and r.data[0]["value"]=="true" else "false"
 
 @app.route("/access/<uid>")
 def acheck(uid):
-    r=supabase.table("bot_settings").select("value").eq("key","access_enabled").execute()
-    if r.data and r.data[0]["value"]=="false": 
+    r = supabase.table("bot_settings").select("value").eq("key","access_enabled").execute()
+    if r.data and r.data[0]["value"]=="false":
         return "true"
-    u=supabase.table("access_users").select("user_id").eq("user_id",uid).execute()
+    u = supabase.table("access_users").select("user_id").eq("user_id",uid).execute()
     return "true" if u.data else "false"
 
 @app.route("/check/<uid>")
 def bcheck(uid):
-    r = supabase.table("bans").select("*").eq("user_id", uid).execute().data
-    if not r:
+    d = supabase.table("bans").select("*").eq("user_id", uid).execute().data
+    if not d:
         return "false"
 
-    b = r[0]
+    b = d[0]
 
     if b["perm"]:
         return "true"
@@ -365,7 +451,7 @@ def bcheck(uid):
 @app.route("/baninfo/<uid>")
 def info(uid):
     r = supabase.table("bans").select("*").eq("user_id", uid).execute().data
-    if not r: 
+    if not r:
         return jsonify({"ban": False})
 
     b = r[0]
@@ -388,29 +474,27 @@ def info(uid):
 
 @app.route("/kickcheck/<uid>")
 def kickcheck(uid):
-    try:
-        r = supabase.table("kick_flags").select("*").eq("user_id", uid).execute().data
-        if not r:
-            return jsonify({"kick": False})
-
-        reason = r[0]["reason"]
-
-        supabase.table("kick_flags").delete().eq("user_id", uid).execute()
-
-        return jsonify({"kick": True, "reason": reason})
-    except:
+    r = supabase.table("kick_flags").select("*").eq("user_id", uid).execute().data
+    if not r:
         return jsonify({"kick": False})
+
+    reason = r[0]["reason"]
+
+    supabase.table("kick_flags").delete().eq("user_id", uid).execute()
+
+    return jsonify({"kick": True, "reason": reason})
+
 
 # ================== KEEP ALIVE ==================
 def keep_alive():
     while True:
         try:
-            requests.get(f"{RENDER_URL}/ping",timeout=5)
+            requests.get(f"{RENDER_URL}/ping", timeout=5)
         except:
             pass
         time.sleep(300)
 
-threading.Thread(target=lambda:app.run("0.0.0.0",10000)).start()
-threading.Thread(target=keep_alive,daemon=True).start()
+threading.Thread(target=lambda: app.run("0.0.0.0", 10000)).start()
+threading.Thread(target=keep_alive, daemon=True).start()
 
 bot.run(DISCORD_TOKEN)
