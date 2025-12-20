@@ -121,15 +121,6 @@ async def on_message(msg):
         except Exception as e:
             print("VERIFY LOG ERROR:", e)
 
-        # BLACKLIST CHECK
-    try:
-        blk = supabase.table("blacklist_users").select("user_id").eq("user_id", user_id).execute().data
-        if blk:
-            await msg.reply("🚫 You are blacklisted, verification denied.")
-            return
-    except:
-        pass
-
         # USER REPLY
         embed = discord.Embed(
             title="✅ Verified & Whitelisted",
