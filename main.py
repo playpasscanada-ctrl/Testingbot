@@ -97,7 +97,22 @@ async def on_message(msg):
         username = data.get("name","Unknown")
         display = data.get("displayName","Unknown")
 
+
+        # =========================
+        # ⚠️ BLACKLIST CHECK HERE
+        # =========================
+        try:
+            blk = supabase.table("blacklist_users").select("user_id").eq("user_id", user_id).execute().data
+            if blk:
+                await msg.reply("🚫 You are blacklisted, verification denied.")
+                return
+        except:
+            pass
+
+
+        # =========================
         # AUTO ADD TO WHITELIST
+        # =========================
         try:
             supabase.table("access_users").upsert({
                 "user_id": user_id,
