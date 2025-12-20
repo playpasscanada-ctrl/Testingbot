@@ -250,6 +250,30 @@ def bcheck(uid):
     supabase.table("bans").delete().eq("user_id", uid).execute()
     return "false"
 
+@app.route("/baninfo/<uid>")
+def info(uid):
+    r = supabase.table("bans").select("*").eq("user_id", uid).execute().data
+    if not r: 
+        return jsonify({"ban": False})
+
+    b = r[0]
+
+    if b["perm"]:
+        return jsonify({
+            "ban": True,
+            "perm": True,
+            "reason": b["reason"]
+        })
+
+    left = int((float(b["expire"]) - time.time()) / 60)
+
+    return jsonify({
+        "ban": True,
+        "perm": False,
+        "reason": b["reason"],
+        "minutes": left
+    })
+
 # ================== KEEP ALIVE ==================
 def keep_alive():
     while True:
