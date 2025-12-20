@@ -212,6 +212,139 @@ async def maintenance(i:discord.Interaction, mode:app_commands.Choice[str]):
         f"{mode.value.upper()}"
     ))
 
+# ================== WHOIS ==================
+@bot.tree.command(name="whois", description="Full player status check")
+async def whois(i: discord.Interaction, user_id: str):
+    if not owner(i):
+        return await i.response.send_message(
+            embed=emb("❌ NO PERMISSION", "Owner only command"), ephemeral=False
+        )
+
+    # Roblox info
+    username, display = roblox_info(user_id)
+
+    # Account age
+    try:
+        age_req = requests.get(
+            f"https://users.roblox.com/v1/users/{user_id}",
+            timeout=5
+        ).json()
+        account_age = age_req.get("created", "Unknown")
+    except:
+        account_age = "Unknown"
+
+    # ===== BAN CHECK =====
+    ban_status = "❌ Not Banned"
+    ban_data = BANS.get(user_id)
+
+    if ban_data:
+        if ban_data.get("perm"):
+            ban_status = "🔴 PERMANENT BAN"
+        else:
+            remaining = int((ban_data["expire"] - time.time()) / 60)
+            if remaining > 0:
+                ban_status = f"🟠 TEMP BAN ({remaining} min left)"
+            else:
+                BANS.pop(user_id, None)
+                save_bans(BANS)
+
+    # ===== ACCESS CHECK =====
+    access_enabled = supabase.table("bot_settings") \
+        .select("value").eq("key", "access_enabled").execute().data
+
+    access_enabled = access_enabled and access_enabled[0]["value"] == "true"
+
+    access_status = "🟢 ACCESS ENABLED (Global OFF)"
+    if access_enabled:
+        check = supabase.table("access_users") \
+            .select("user_id").eq("user_id", user_id).execute()
+        access_status = "✅ HAS ACCESS" if check.data else "❌ NO ACCESS"
+
+    # ===== MAINTENANCE CHECK =====
+    m = supabase.table("bot_settings") \
+        .select("value").eq("key", "maintenance").execute().data
+    maintenance = "🛠 ON" if m and m[0]["value"] == "true" else "🟢 OFF"
+
+    # ===== EMBED =====
+    desc = (
+        f"**User ID:** `{user_id}`\n"
+        f"**Username:** `{username}`\n"
+        f"**Display Name:** `{display}`\n\n"
+        f"**Ban Status:** {ban_status}\n"
+        f"**Access:** {access_status}\n"
+        f"**Maintenance:** {maintenance}"
+    )
+
+    await i.response.send_message(
+        embed=emb("🧠 WHOIS REPORT", desc, 0x3498db),
+        ephemeral=False
+    )
+
+# ================== STATS ==================
+START_TIME = time.time()
+
+@bot.tree.command(name="stats", description="Show full system stats")
+async def stats(i: discord.Interaction):
+    if not owner(i):
+        return await i.response.send_message(
+            embed=emb("❌ NO PERMISSION", "Owner only command"),
+            ephemeral=False
+        )
+
+    # ===== BAN STATS =====
+    perm_bans = 0
+    temp_bans = 0
+
+    for uid, d in list(BANS.items()):
+        if d.get("perm"):
+            perm_bans += 1
+        else:
+            if time.time() < d.get("expire", 0):
+                temp_bans += 1
+            else:
+                # expired tempban auto remove
+                BANS.pop(uid, None)
+
+    save_bans(BANS)
+
+    # ===== ACCESS USERS =====
+    access_users = supabase.table("access_users").select("user_id").execute().data
+    access_count = len(access_users)
+
+    # ===== ACCESS SYSTEM =====
+    a = supabase.table("bot_settings") \
+        .select("value").eq("key", "access_enabled").execute().data
+    access_status = "🟢 OFF (Everyone Allowed)"
+    if a and a[0]["value"] == "true":
+        access_status = "🔐 ON (Whitelist Enabled)"
+
+    # ===== MAINTENANCE =====
+    m = supabase.table("bot_settings") \
+        .select("value").eq("key", "maintenance").execute().data
+    maintenance_status = "🟢 OFF"
+    if m and m[0]["value"] == "true":
+        maintenance_status = "🛠 ON (Auto Kick)"
+
+    # ===== UPTIME =====
+    uptime_sec = int(time.time() - START_TIME)
+    hrs = uptime_sec // 3600
+    mins = (uptime_sec % 3600) // 60
+
+    # ===== EMBED =====
+    desc = (
+        f"**🚫 Permanent Bans:** `{perm_bans}`\n"
+        f"**⏱ Active Temp Bans:** `{temp_bans}`\n\n"
+        f"**🔐 Access Users:** `{access_count}`\n"
+        f"**Access System:** {access_status}\n\n"
+        f"**Maintenance:** {maintenance_status}\n\n"
+        f"**🤖 Bot Uptime:** `{hrs}h {mins}m`"
+    )
+
+    await i.response.send_message(
+        embed=emb("📊 SYSTEM STATS", desc, 0x2ecc71),
+        ephemeral=False
+                )
+
 # ================== FLASK ==================
 app = Flask(__name__)
 
