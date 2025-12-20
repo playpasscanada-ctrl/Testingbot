@@ -191,6 +191,62 @@ async def unban(i:discord.Interaction, user_id:str):
         f"User `{user_id}` removed from ALL bans",
         0x00ff00
     ))
+    
+
+from discord import ui
+
+@bot.tree.command(name="banclear", description="Remove ALL banned users with confirmation")
+async def banclear(i: discord.Interaction):
+
+    if not owner(i):
+        return await safe_send(i, emb("❌ NO PERMISSION", "Only owners can do this"))
+
+    class Confirm(ui.View):
+        def __init__(self):
+            super().__init__(timeout=30)
+
+        @ui.button(label="YES - Clear All Bans", style=discord.ButtonStyle.danger)
+        async def yes(self, interaction: discord.Interaction, button: ui.Button):
+            if interaction.user.id != i.user.id:
+                return await interaction.response.send_message(
+                    "❌ Ye confirmation tumhara nahi hai.", ephemeral=True
+                )
+
+            supabase.table("bans").delete().neq("user_id", "").execute()
+
+            await interaction.response.edit_message(
+                embed=emb(
+                    "🚫 BAN RESET CONFIRMED",
+                    "All bans successfully removed from system!",
+                    0xff0000
+                ),
+                view=None
+            )
+            self.stop()
+
+        @ui.button(label="NO - Cancel", style=discord.ButtonStyle.success)
+        async def no(self, interaction: discord.Interaction, button: ui.Button):
+            if interaction.user.id != i.user.id:
+                return await interaction.response.send_message(
+                    "❌ Ye confirmation tumhara nahi hai.", ephemeral=True
+                )
+
+            await interaction.response.edit_message(
+                embed=emb("❎ CANCELLED", "Ban reset cancelled.", 0x2ecc71),
+                view=None
+            )
+            self.stop()
+
+    view = Confirm()
+
+    await i.response.send_message(
+        embed=emb(
+            "⚠️ CONFIRMATION REQUIRED",
+            "Are you sure you want to **delete ALL banned users?**\nThis cannot be undone.",
+            0xffaa00
+        ),
+        view=view
+    )
 
 
 @bot.tree.command(name="list")
