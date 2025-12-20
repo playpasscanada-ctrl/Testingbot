@@ -213,71 +213,64 @@ async def maintenance(i:discord.Interaction, mode:app_commands.Choice[str]):
     ))
 
 # ================== WHOIS ==================
-@bot.tree.command(name="whois", description="Full player status check")
+@bot.tree.command(name="whois", description="Get full info about a Roblox user")
 async def whois(i: discord.Interaction, user_id: str):
     if not owner(i):
         return await i.response.send_message(
-            embed=emb("❌ NO PERMISSION", "Owner only command"), ephemeral=False
+            embed=emb("❌ NO PERMISSION", "Owner only command"),
+            ephemeral=False
         )
 
-    # Roblox info
-    username, display = roblox_info(user_id)
+    await i.response.defer()
 
-    # Account age
+    # ===== ROBLOX INFO =====
     try:
-        age_req = requests.get(
-            f"https://users.roblox.com/v1/users/{user_id}",
-            timeout=5
-        ).json()
-        account_age = age_req.get("created", "Unknown")
+        u, d = roblox_info(user_id)
     except:
-        account_age = "Unknown"
+        u, d = "Unknown", "Unknown"
 
-    # ===== BAN CHECK =====
-    ban_status = "❌ Not Banned"
-    ban_data = BANS.get(user_id)
+    # ===== BAN STATUS =====
+    ban_status = "🟢 Not Banned"
+    ban_reason = "—"
 
-    if ban_data:
-        if ban_data.get("perm"):
-            ban_status = "🔴 PERMANENT BAN"
+    data = BANS.get(user_id)
+    if data:
+        if data.get("perm"):
+            ban_status = "🔴 Permanent Ban"
+            ban_reason = data.get("reason", "No reason")
         else:
-            remaining = int((ban_data["expire"] - time.time()) / 60)
-            if remaining > 0:
-                ban_status = f"🟠 TEMP BAN ({remaining} min left)"
+            if time.time() < data.get("expire", 0):
+                mins = int((data["expire"] - time.time()) / 60)
+                ban_status = f"⏱ Temp Ban ({mins} min left)"
+                ban_reason = data.get("reason", "No reason")
             else:
                 BANS.pop(user_id, None)
                 save_bans(BANS)
 
-    # ===== ACCESS CHECK =====
-    access_enabled = supabase.table("bot_settings") \
-        .select("value").eq("key", "access_enabled").execute().data
-
-    access_enabled = access_enabled and access_enabled[0]["value"] == "true"
-
-    access_status = "🟢 ACCESS ENABLED (Global OFF)"
-    if access_enabled:
-        check = supabase.table("access_users") \
-            .select("user_id").eq("user_id", user_id).execute()
-        access_status = "✅ HAS ACCESS" if check.data else "❌ NO ACCESS"
-
-    # ===== MAINTENANCE CHECK =====
-    m = supabase.table("bot_settings") \
-        .select("value").eq("key", "maintenance").execute().data
-    maintenance = "🛠 ON" if m and m[0]["value"] == "true" else "🟢 OFF"
+    # ===== ACCESS STATUS =====
+    access_status = "❌ No Access"
+    try:
+        a = supabase.table("access_users") \
+            .select("user_id") \
+            .eq("user_id", user_id) \
+            .execute()
+        if a.data:
+            access_status = "✅ Has Access"
+    except:
+        access_status = "⚠️ Access Check Failed"
 
     # ===== EMBED =====
     desc = (
-        f"**User ID:** `{user_id}`\n"
-        f"**Username:** `{username}`\n"
-        f"**Display Name:** `{display}`\n\n"
+        f"**Roblox ID:** `{user_id}`\n"
+        f"**Username:** `{u}`\n"
+        f"**Display Name:** `{d}`\n\n"
         f"**Ban Status:** {ban_status}\n"
-        f"**Access:** {access_status}\n"
-        f"**Maintenance:** {maintenance}"
+        f"**Reason:** {ban_reason}\n\n"
+        f"**Access:** {access_status}"
     )
 
-    await i.response.send_message(
-        embed=emb("🧠 WHOIS REPORT", desc, 0x3498db),
-        ephemeral=False
+    await i.followup.send(
+        embed=emb("🔍 WHOIS RESULT", desc, 0x3498db)
     )
 
 # ================== STATS ==================
