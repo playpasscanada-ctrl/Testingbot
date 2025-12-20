@@ -107,6 +107,20 @@ async def on_message(msg):
         except:
             pass
 
+        # =========================
+        # SAVE VERIFY LOG TO SUPABASE
+        # =========================
+        try:
+            supabase.table("verify_logs").insert({
+                "discord_id": str(msg.author.id),
+                "roblox_id": user_id,
+                "username": username,
+                "display_name": display,
+                "timestamp": datetime.utcnow().isoformat()
+            }).execute()
+        except Exception as e:
+            print("VERIFY LOG ERROR:", e)
+
         # USER REPLY
         embed = discord.Embed(
             title="✅ Verified & Whitelisted",
