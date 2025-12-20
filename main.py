@@ -364,6 +364,69 @@ async def accessclear(i: discord.Interaction):
         view=view
     )
 
+@bot.tree.command(name="verifiedlist", description="Show all users who verified and their Roblox details")
+async def verifiedlist(i: discord.Interaction):
+    if not owner(i):
+        return await safe_send(i, emb("❌ NO PERMISSION", "Owners only"))
+
+    try:
+        data = supabase.table("verify_logs") \
+            .select("*") \
+            .order("timestamp", desc=True) \
+            .execute().data
+    except:
+        return await safe_send(i, emb("⚠️ ERROR", "Failed to fetch verification logs"))
+
+    if not data:
+        return await safe_send(i, emb("📭 EMPTY", "No one has verified yet"))
+
+    text = ""
+    for x in data:
+        text += (
+            f"👤 <@{x['discord_id']}>\n"
+            f"🆔 Roblox ID: `{x['roblox_id']}`\n"
+            f"🧑 Username: **{x['username']}**\n"
+            f"✨ Display: {x['display_name']}\n"
+            f"🕒 `{x['timestamp']}`\n"
+            f"----------------------\n"
+        )
+
+    await safe_send(i, emb("📜 VERIFIED USERS LIST", text[:4000], 0x3498db))
+
+@bot.tree.command(name="verifycheck", description="Check which Roblox IDs a Discord user verified")
+async def verifycheck(i: discord.Interaction, discord_id: str):
+
+    if not owner(i):
+        return await safe_send(i, emb("❌ NO PERMISSION", "Owners only"))
+
+    try:
+        data = supabase.table("verify_logs") \
+            .select("*") \
+            .eq("discord_id", discord_id) \
+            .order("timestamp", desc=True) \
+            .execute().data
+    except:
+        return await safe_send(i, emb("⚠️ ERROR", "Failed to fetch logs"))
+
+    if not data:
+        return await safe_send(
+            i,
+            emb("📭 NO DATA", f"No verification found for `{discord_id}`")
+        )
+
+    txt = f"👤 Discord User: <@{discord_id}>\n\n"
+
+    for x in data:
+        txt += (
+            f"🆔 Roblox ID: `{x['roblox_id']}`\n"
+            f"🧑 Username: **{x['username']}**\n"
+            f"✨ Display: {x['display_name']}\n"
+            f"🕒 `{x['timestamp']}`\n"
+            f"----------------------\n"
+        )
+
+    await safe_send(i, emb("🔍 USER VERIFICATION HISTORY", txt[:4000], 0x9b59b6))
+
 
 # ================== KICK ==================
 @bot.tree.command(name="kick")
