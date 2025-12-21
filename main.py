@@ -1091,6 +1091,101 @@ async def multiverify(i:discord.Interaction):
 
     await safe_send(i, emb("🔎 MULTI ACCOUNT VERIFIERS", result, 0xffa500))
 
+from discord import ui
+
+@bot.tree.command(name="logs", description="Advanced filtered admin logs with pagination")
+@app_commands.choices(filter=[
+    app_commands.Choice(name="All Logs", value="all"),
+    app_commands.Choice(name="Ban Logs", value="BAN"),
+    app_commands.Choice(name="Access Logs", value="ACCESS"),
+    app_commands.Choice(name="Blacklist Logs", value="BLACKLIST"),
+])
+async def logs(i: discord.Interaction, filter: app_commands.Choice[str]):
+    if not owner(i):
+        return await safe_send(i, emb("❌ NO PERMISSION","Owner Only"))
+
+    await i.response.defer()
+
+    try:
+        data = (
+            supabase.table("admin_logs")
+            .select("*")
+            .order("timestamp", desc=True)
+            .limit(150)
+            .execute()
+            .data
+        )
+    except Exception as e:
+        return await i.followup.send(embed=emb("❌ ERROR", str(e)))
+
+    # -------- FILTER ----------
+    if filter.value != "all":
+        data = [x for x in data if filter.value in x.get("action","").upper()]
+
+    if not data:
+        return await i.followup.send(embed=emb("📭 NO DATA","No logs found for this filter"))
+
+    # -------- PAGINATION SPLIT ----------
+    pages = [data[x:x+8] for x in range(0, len(data), 8)]
+
+    def build(page_index):
+        page = pages[page_index]
+        text = ""
+
+        for x in page:
+            ts = x.get("timestamp","Unknown").replace("T"," ").split(".")[0]
+            action = x.get("action","Unknown")
+            target = x.get("target_user_id","?")
+            executor = x.get("executor_discord_id","?")
+            details = x.get("details","No details")
+
+            # Roblox info
+            u, d = roblox_info(target)
+
+            text += (
+                f"🕒 `{ts}`\n"
+                f"⚙ Action: **{action}**\n"
+                f"👤 By: <@{executor}> (`{executor}`)\n\n"
+                f"🎯 Target Roblox:\n"
+                f"🆔 `{target}`\n"
+                f"👛 **{u}**\n"
+                f"🎭 {d}\n"
+                f"📝 Details: `{details}`\n"
+                f"────────────────────\n"
+            )
+
+        return emb(
+            f"📜 LOGS — {filter.name} (Page {page_index+1}/{len(pages)})",
+            text,
+            0x9b59b6
+        )
+
+    # -------- VIEW CLASS ----------
+    class View(ui.View):
+        def __init__(self):
+            super().__init__(timeout=90)
+            self.page = 0
+
+        async def refresh(self, interaction):
+            await interaction.response.edit_message(
+                embed=build(self.page),
+                view=self
+            )
+
+        @ui.button(label="⬅ Back")
+        async def back(self, interaction, button):
+            if self.page > 0:
+                self.page -= 1
+                await self.refresh(interaction)
+
+        @ui.button(label="Next ➡")
+        async def next(self, interaction, button):
+            if self.page < len(pages)-1:
+                self.page += 1
+                await self.refresh(interaction)
+
+    await i.followup.send(embed=build(0), view=View())
+
 
 # ================== OWNER ==================
 @bot.tree.command(name="owner", description="Manage bot owners")
