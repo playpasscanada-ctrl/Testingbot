@@ -778,43 +778,116 @@ async def stats(i: discord.Interaction):
     except Exception as e:
         await i.followup.send(embed=emb("❌ ERROR", f"Stats failed:\n`{str(e)}`", 0xff0000))
 
-@bot.tree.command(name="altcheck", description="Check alts verified using same Discord account")
-async def altcheck(i: discord.Interaction, user_id: str):
+@bot.tree.command(
+    name="altcheck",
+    description="Check if a user is using multiple Roblox accounts (Support: Discord + Roblox)"
+)
+@app_commands.describe(
+    discord_user="Discord user to check",
+    roblox_user_id="Roblox User ID to check"
+)
+async def altcheck(
+    i: discord.Interaction,
+    discord_user: discord.User = None,
+    roblox_user_id: str = None
+):
     if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION","Owner Only"))
+        return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
 
     await i.response.defer()
 
-    logs = supabase.table("verify_logs").select("*").eq("roblox_id", user_id).execute().data
-    if not logs:
-        return await i.followup.send(embed=emb("❌ NOT FOUND","Is ID ka koi verification record nahi mila"))
+    # =========================
+    # INVALID (Both Empty)
+    # =========================
+    if not discord_user and not roblox_user_id:
+        return await safe_send(
+            i,
+            emb("❌ ALT CHECK FAILED", 
+                "Please provide **Discord user OR Roblox User ID**",
+                0xff0000)
+        )
 
-    discord_id = logs[0]["discord_id"]
+    # =========================
+    # DISCORD USER MODE
+    # =========================
+    if discord_user:
+        logs = supabase.table("verify_logs").select("*").eq(
+            "discord_id", str(discord_user.id)
+        ).execute().data
 
-    others = supabase.table("verify_logs").select("*").eq("discord_id", discord_id).execute().data
-    alts = [x for x in others if x["roblox_id"] != user_id]
+        if not logs:
+            return await safe_send(
+                i,
+                emb("👤 ALT CHECK",
+                    f"{discord_user.mention} ne abhi tak **kuch bhi verify nahi kiya**",
+                    0xffff00
+                )
+            )
 
-    if not alts:
-        return await i.followup.send(embed=emb(
-            "😊 CLEAN USER",
-            f"`{user_id}` has **no alternate accounts** 😎",
-            0x2ecc71
-        ))
+        unique = {}
+        for x in logs:
+            unique[x["roblox_id"]] = x
 
-    txt = ""
-    for x in alts:
-        txt += f"• `{x['roblox_id']}` | {x['username']} ({x['display_name']})\n"
+        count = len(unique)
 
-    e = emb(
-        "🕵 ALT ACCOUNT REPORT",
-        f"**Main Account:** `{user_id}`\n"
-        f"**Alt Accounts Found:** `{len(alts)}`\n\n"
-        f"{txt}",
-        0xffaa00
-    )
-    e.set_footer(text=f"Discord User: {discord_id}")
+        txt = "\n".join(
+            f"• `{v['roblox_id']}` | **{v['username']}** ({v['display_name']})"
+            for v in unique.values()
+        )
 
-    await i.followup.send(embed=e)
+        status = "🟢 Clean — No ALT Found"
+        color = 0x2ecc71
+
+        if count >= 2:
+            status = f"🔴 ALT Detected — `{count}` Accounts Linked"
+            color = 0xff0000
+
+        desc = (
+            f"**Discord:** {discord_user.mention}\n"
+            f"**Linked Accounts:** `{count}`\n"
+            f"**Status:** {status}\n\n"
+            f"{txt}"
+        )
+
+        return await safe_send(i, emb("🕵 ALT ACCOUNT CHECK", desc, color))
+
+    # =========================
+    # ROBLOX USER MODE
+    # =========================
+    if roblox_user_id:
+
+        logs = supabase.table("verify_logs").select("*").eq(
+            "roblox_id", roblox_user_id
+        ).execute().data
+
+        if not logs:
+            return await safe_send(
+                i,
+                emb("👤 ALT CHECK",
+                    f"Roblox ID `{roblox_user_id}` ne abhi verify nahi kiya",
+                    0xffff00
+                )
+            )
+
+        user = logs[0]
+        discord_ids = list({x["discord_id"] for x in logs})
+
+        status = "🟢 Clean — No Suspicious Activity"
+        color = 0x2ecc71
+
+        if len(discord_ids) >= 2:
+            status = f"🔴 Suspicious — `{len(discord_ids)}` Discord Accounts linked"
+            color = 0xff0000
+
+        desc = (
+            f"**Roblox ID:** `{roblox_user_id}`\n"
+            f"**Username:** `{user['username']}`\n"
+            f"**Display Name:** `{user['display_name']}`\n\n"
+            f"**Linked Discord Accounts:** `{len(discord_ids)}`\n"
+            f"**Status:** {status}"
+        )
+
+        return await safe_send(i, emb("🕵 ALT ACCOUNT CHECK", desc, color))
 
 @bot.tree.command(name="verifyhistory", description="Show global verification logs")
 async def verifyhistory(i: discord.Interaction):
