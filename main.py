@@ -10,17 +10,27 @@ from flask import Flask, jsonify
 from supabase import create_client, Client
 
 def log_action(action, user_id, username, display, executor):
-    try:
-        supabase.table("admin_logs").insert({
-            "action": action,
-            "user_id": user_id,
-            "username": username,
-            "display": display,
-            "executor": str(executor),
-            "timestamp": datetime.utcnow().isoformat()
-        }).execute()
-    except Exception as e:
-        print("LOG ERROR:", e)
+    import time
+
+    for _ in range(3):   # 3 baar try karega
+        try:
+            supabase.table("admin_logs").insert({
+                "action": action,
+                "user_id": user_id,
+                "username": username,
+                "display": display,
+                "executor": str(executor),
+                "timestamp": datetime.utcnow().isoformat()
+            }).execute()
+
+            print("LOG SAVED:", action, user_id)
+            return
+        
+        except Exception as e:
+            print("LOG ERROR:", e)
+            time.sleep(0.8)   # Render ko thoda sa saans lene do 😭
+    
+    print("⚠️ Failed to save log after retries")
 
 # ================== ENV ==================
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
