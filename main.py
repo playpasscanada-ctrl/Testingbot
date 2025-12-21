@@ -540,12 +540,12 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
     # ADD BLACKLIST + REMOVE ACCESS
     # =============================
     if mode.value == "add" and user_id:
-        # Save in blacklist
+        u, d = roblox_info(user_id)
+
         supabase.table("blacklist_users").upsert({
             "user_id": user_id
         }).execute()
 
-        # Remove from whitelist / access
         try:
             supabase.table("access_users").delete().eq("user_id", user_id).execute()
         except:
@@ -555,7 +555,10 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
             i,
             emb(
                 "🚫 BLACKLISTED",
-                f"User `{user_id}` is now blacklisted and removed from whitelist",
+                f"**Roblox ID:** `{user_id}`\n"
+                f"**Username:** `{u}`\n"
+                f"**Display Name:** `{d}`\n\n"
+                f"User successfully **Blacklisted & Removed From Whitelist**",
                 0xff0000
             )
         )
@@ -564,13 +567,18 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
     # REMOVE FROM BLACKLIST
     # =============================
     if mode.value == "remove" and user_id:
+        u, d = roblox_info(user_id)
+
         supabase.table("blacklist_users").delete().eq("user_id", user_id).execute()
 
         return await safe_send(
             i,
             emb(
-                "✅ REMOVED",
-                f"User `{user_id}` removed from blacklist",
+                "✅ BLACKLIST REMOVED",
+                f"**Roblox ID:** `{user_id}`\n"
+                f"**Username:** `{u}`\n"
+                f"**Display Name:** `{d}`\n\n"
+                f"User removed from blacklist",
                 0x00ff00
             )
         )
@@ -580,7 +588,20 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
     # =============================
     if mode.value == "list":
         data = supabase.table("blacklist_users").select("user_id").execute().data
-        txt = "\n".join(f"`{x['user_id']}`" for x in data) or "None"
+
+        if not data:
+            return await safe_send(i, emb("📛 BLACKLISTED USERS", "None"))
+
+        txt = ""
+        for x in data:
+            uid = x["user_id"]
+            u, d = roblox_info(uid)
+
+            txt += (
+                f"• **Username:** {u}\n"
+                f"  Display: {d}\n"
+                f"  ID: `{uid}`\n\n"
+            )
 
         return await safe_send(
             i,
