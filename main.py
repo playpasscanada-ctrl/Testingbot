@@ -973,34 +973,63 @@ async def history(i: discord.Interaction, user_id: str):
 
     await i.response.defer()
 
-    u,d = roblox_info(user_id)
+    # Roblox Info
+    u, d = roblox_info(user_id)
 
-    logs = supabase.table("verify_logs").select("*").eq("roblox_id", user_id).execute().data
+    # ================= VERIFY LOGS =================
+    try:
+        logs = supabase.table("verify_logs").select("*").eq("roblox_id", user_id).execute().data
+    except:
+        logs = []
 
     verify = "❌ Never Verified"
     if logs:
         verify = ""
         for x in logs[-5:]:
-            t = x["timestamp"].split("T")[0]
-            verify += f"• `{t}` — <@{x['discord_id']}>\n"
+            ts = x.get("timestamp", "Unknown")
 
-    ban = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
+            try:
+                t = ts.split("T")[0]
+            except:
+                t = "Unknown"
+
+            verify += f"• `{t}` — <@{x.get('discord_id','Unknown')}>\n"
+
+
+    # ================= BAN CHECK =================
+    try:
+        ban = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
+    except:
+        ban = []
+
     if ban:
         b = ban[0]
         if b["perm"]:
             ban_text = f"🔴 Permanent — `{b['reason']}`"
         else:
-            mins = int((float(b['expire']) - time.time())/60)
-            ban_text = f"⏱ Temp ({mins}m left)\nReason: `{b['reason']}`"
+            left = int(max((float(b["expire"]) - time.time())/60 , 0))
+            ban_text = f"⏱ Temp Ban ({left}m left)\nReason: `{b['reason']}`"
     else:
         ban_text = "🟢 Not Banned"
 
-    ac = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
-    access = "✅ Whitelisted" if ac else "❌ Not Whitelisted"
 
-    blk = supabase.table("blacklist_users").select("*").eq("user_id", user_id).execute().data
-    blk_text = "🚫 Blacklisted" if blk else "🟢 Not Blacklisted"
+    # ================= ACCESS CHECK =================
+    try:
+        ac = supabase.table("access_users").select("user_id").eq("user_id", user_id).execute().data
+        access = "✅ Whitelisted" if ac else "❌ Not Whitelisted"
+    except:
+        access = "⚠️ Error Checking"
 
+
+    # ================= BLACKLIST CHECK =================
+    try:
+        blk = supabase.table("blacklist_users").select("user_id").eq("user_id", user_id).execute().data
+        blk_text = "🚫 Blacklisted" if blk else "🟢 Not Blacklisted"
+    except:
+        blk_text = "⚠️ Error Checking"
+
+
+    # ================= FINAL EMBED =================
     desc = (
         f"👤 **User Info**\n"
         f"🆔 `{user_id}`\n"
@@ -1012,8 +1041,7 @@ async def history(i: discord.Interaction, user_id: str):
         f"📜 **Recent Verifications**\n{verify}"
     )
 
-    e = emb("📂 USER HISTORY", desc, 0x9b59b6)
-    await i.followup.send(embed=e)
+    await i.followup.send(embed=emb("📂 USER HISTORY", desc, 0x9b59b6))
 
 @bot.tree.command(name="multiverify", description="Users who verified multiple DIFFERENT roblox accounts")
 async def multiverify(i:discord.Interaction):
