@@ -135,6 +135,17 @@ async def on_message(msg):
 
 
         # =========================
+        # ✅ ALREADY VERIFIED CHECK
+        # =========================
+        try:
+            exist = supabase.table("access_users").select("user_id").eq("user_id", user_id).execute().data
+            if exist:
+                return await msg.reply("✅ You are already verified & whitelisted.")
+        except:
+            pass
+
+
+        # =========================
         # AUTO ADD TO WHITELIST
         # =========================
         try:
@@ -145,6 +156,7 @@ async def on_message(msg):
             }).execute()
         except:
             pass
+
 
         # =========================
         # SAVE VERIFY LOG TO SUPABASE
@@ -160,6 +172,7 @@ async def on_message(msg):
         except Exception as e:
             print("VERIFY LOG ERROR:", e)
 
+
         # USER REPLY
         embed = discord.Embed(
             title="✅ Verified & Whitelisted",
@@ -171,6 +184,7 @@ async def on_message(msg):
         embed.set_footer(text="Access Granted")
 
         await msg.reply(embed=embed)
+
 
         # LOGS CHANNEL
         try:
@@ -554,18 +568,28 @@ async def verifiedlist(i: discord.Interaction):
         return await safe_send(i, emb("❌ NO PERMISSION", "Owners only"))
 
     try:
-        data = supabase.table("verify_logs") \
-            .select("*") \
-            .order("timestamp", desc=True) \
-            .execute().data
+        data = (
+            supabase.table("verify_logs")
+            .select("*")
+            .order("timestamp", desc=True)
+            .execute()
+            .data
+        )
     except:
         return await safe_send(i, emb("⚠️ ERROR", "Failed to fetch verification logs"))
 
     if not data:
         return await safe_send(i, emb("📭 EMPTY", "No one has verified yet"))
 
+    seen = set()
     text = ""
+
     for x in data:
+        rid = x["roblox_id"]
+        if rid in seen:
+            continue
+        seen.add(rid)
+
         text += (
             f"👤 <@{x['discord_id']}>\n"
             f"🆔 Roblox ID: `{x['roblox_id']}`\n"
@@ -576,7 +600,7 @@ async def verifiedlist(i: discord.Interaction):
         )
 
     await safe_send(i, emb("📜 VERIFIED USERS LIST", text[:4000], 0x3498db))
-
+    
 @bot.tree.command(name="verifycheck", description="Check which Roblox IDs a Discord user verified")
 async def verifycheck(i: discord.Interaction, discord_id: str):
 
@@ -584,11 +608,14 @@ async def verifycheck(i: discord.Interaction, discord_id: str):
         return await safe_send(i, emb("❌ NO PERMISSION", "Owners only"))
 
     try:
-        data = supabase.table("verify_logs") \
-            .select("*") \
-            .eq("discord_id", discord_id) \
-            .order("timestamp", desc=True) \
-            .execute().data
+        data = (
+            supabase.table("verify_logs")
+            .select("*")
+            .eq("discord_id", discord_id)
+            .order("timestamp", desc=True)
+            .execute()
+            .data
+        )
     except:
         return await safe_send(i, emb("⚠️ ERROR", "Failed to fetch logs"))
 
@@ -599,8 +626,14 @@ async def verifycheck(i: discord.Interaction, discord_id: str):
         )
 
     txt = f"👤 Discord User: <@{discord_id}>\n\n"
+    seen = set()
 
     for x in data:
+        rid = x["roblox_id"]
+        if rid in seen:
+            continue
+        seen.add(rid)
+
         txt += (
             f"🆔 Roblox ID: `{x['roblox_id']}`\n"
             f"🧑 Username: **{x['username']}**\n"
@@ -610,7 +643,7 @@ async def verifycheck(i: discord.Interaction, discord_id: str):
         )
 
     await safe_send(i, emb("🔍 USER VERIFICATION HISTORY", txt[:4000], 0x9b59b6))
-
+    
 @bot.tree.command(name="blacklist", description="Manage verify blacklist")
 @app_commands.choices(mode=[
     app_commands.Choice(name="add", value="add"),
