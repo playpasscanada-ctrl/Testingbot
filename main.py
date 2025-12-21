@@ -1186,101 +1186,99 @@ async def multiverify(i:discord.Interaction):
 
     await safe_send(i, emb("🔎 MULTI ACCOUNT VERIFIERS", result, 0xffa500))
 
-from discord import ui
-
-@bot.tree.command(name="logs", description="Advanced filtered admin logs with pagination")
+@bot.tree.command(name="logs", description="View admin logs with filters + pagination")
 @app_commands.choices(filter=[
-    app_commands.Choice(name="All Logs", value="all"),
-    app_commands.Choice(name="Ban Logs", value="BAN"),
-    app_commands.Choice(name="Access Logs", value="ACCESS"),
-    app_commands.Choice(name="Blacklist Logs", value="BLACKLIST"),
+    app_commands.Choice(name="All", value="all"),
+    app_commands.Choice(name="Ban", value="ban"),
+    app_commands.Choice(name="Tempban", value="tempban"),
+    app_commands.Choice(name="Unban", value="unban"),
+    app_commands.Choice(name="Access Add", value="access_add"),
+    app_commands.Choice(name="Access Remove", value="access_remove"),
+    app_commands.Choice(name="Blacklist Add", value="blacklist_add"),
+    app_commands.Choice(name="Blacklist Remove", value="blacklist_remove"),
 ])
 async def logs(i: discord.Interaction, filter: app_commands.Choice[str]):
     if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION","Owner Only"))
+        return await safe_send(i, emb("❌ NO PERMISSION", "Owner Only"))
 
-    await i.response.defer()
+    await i.response.defer(ephemeral=True)
 
     try:
-        data = (
-            supabase.table("admin_logs")
-            .select("*")
-            .order("timestamp", desc=True)
-            .limit(150)
-            .execute()
-            .data
-        )
+        if filter.value == "all":
+            data = supabase.table("admin_logs").select("*").order("timestamp", desc=True).limit(100).execute().data
+        else:
+            data = supabase.table("admin_logs").select("*").eq("action", filter.value).order("timestamp", desc=True).limit(100).execute().data
     except Exception as e:
-        return await i.followup.send(embed=emb("❌ ERROR", str(e)))
-
-    # -------- FILTER ----------
-    if filter.value != "all":
-        data = [x for x in data if filter.value in x.get("action","").upper()]
+        return await i.followup.send(embed=emb("❌ ERROR", f"Logs failed:\n`{e}`", 0xff0000))
 
     if not data:
-        return await i.followup.send(embed=emb("📭 NO DATA","No logs found for this filter"))
+        return await i.followup.send(embed=emb("📭 NO DATA", "No logs found for this filter", 0xffc107))
 
-    # -------- PAGINATION SPLIT ----------
-    pages = [data[x:x+8] for x in range(0, len(data), 8)]
+    pages = []
+    chunk = []
 
-    def build(page_index):
-        page = pages[page_index]
-        text = ""
+    for x in data:
+        t = x["timestamp"].split("T")[0]
 
-        for x in page:
-            ts = x.get("timestamp","Unknown").replace("T"," ").split(".")[0]
-            action = x.get("action","Unknown")
-            target = x.get("target_user_id","?")
-            executor = x.get("executor_discord_id","?")
-            details = x.get("details","No details")
-
-            # Roblox info
-            u, d = roblox_info(target)
-
-            text += (
-                f"🕒 `{ts}`\n"
-                f"⚙ Action: **{action}**\n"
-                f"👤 By: <@{executor}> (`{executor}`)\n\n"
-                f"🎯 Target Roblox:\n"
-                f"🆔 `{target}`\n"
-                f"👛 **{u}**\n"
-                f"🎭 {d}\n"
-                f"📝 Details: `{details}`\n"
-                f"────────────────────\n"
-            )
-
-        return emb(
-            f"📜 LOGS — {filter.name} (Page {page_index+1}/{len(pages)})",
-            text,
-            0x9b59b6
+        chunk.append(
+            f"**Action:** `{x['action']}`\n"
+            f"👤 **Executor:** <@{x['executor']}>\n"
+            f"🆔 `{x['user_id']}`\n"
+            f"👛 **Username:** `{x['username']}`\n"
+            f"🎭 **Display:** `{x['display']}`\n"
+            f"📅 `{t}`\n"
+            f"──────────────\n"
         )
 
-    # -------- VIEW CLASS ----------
-    class View(ui.View):
+        if len(chunk) == 5:
+            pages.append("".join(chunk))
+            chunk = []
+
+    if chunk:
+        pages.append("".join(chunk))
+
+
+    class LogPages(discord.ui.View):
         def __init__(self):
-            super().__init__(timeout=90)
+            super().__init__(timeout=120)
             self.page = 0
 
-        async def refresh(self, interaction):
-            await interaction.response.edit_message(
-                embed=build(self.page),
-                view=self
+        async def update(self, interaction):
+            e = emb(
+                f"🗂 LOGS — {filter.name.upper()} ({self.page+1}/{len(pages)})",
+                pages[self.page],
+                0x3498db
             )
+            await interaction.response.edit_message(embed=e, view=self)
 
-        @ui.button(label="⬅ Back")
-        async def back(self, interaction, button):
+        @discord.ui.button(label="⏮ Back", style=discord.ButtonStyle.gray)
+        async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
             if self.page > 0:
                 self.page -= 1
-                await self.refresh(interaction)
+            await self.update(interaction)
 
-        @ui.button(label="Next ➡")
-        async def next(self, interaction, button):
-            if self.page < len(pages)-1:
+        @discord.ui.button(label="Next ⏭", style=discord.ButtonStyle.gray)
+        async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if self.page < len(pages) - 1:
                 self.page += 1
-                await self.refresh(interaction)
+            await self.update(interaction)
 
-    await i.followup.send(embed=build(0), view=View())
+        async def on_timeout(self):
+            try:
+                for item in self.children:
+                    item.disabled = True
+            except:
+                pass
 
+
+    view = LogPages()
+    e = emb(
+        f"🗂 LOGS — {filter.name.upper()} (1/{len(pages)})",
+        pages[0],
+        0x3498db
+    )
+
+    await i.followup.send(embed=e, view=view, ephemeral=True)
 
 # ================== OWNER ==================
 @bot.tree.command(name="owner", description="Manage bot owners")
