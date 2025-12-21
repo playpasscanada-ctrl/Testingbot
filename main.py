@@ -9,6 +9,19 @@ from discord.ext import commands
 from flask import Flask, jsonify
 from supabase import create_client, Client
 
+def log_action(action, user_id, username, display, executor):
+    try:
+        supabase.table("admin_logs").insert({
+            "action": action,
+            "user_id": user_id,
+            "username": username,
+            "display": display,
+            "executor": str(executor),
+            "timestamp": datetime.utcnow().isoformat()
+        }).execute()
+    except Exception as e:
+        print("LOG ERROR:", e)
+
 # ================== ENV ==================
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
@@ -174,8 +187,10 @@ async def on_message(msg):
 # ================== BAN ==================
 @bot.tree.command(name="ban")
 async def ban(i:discord.Interaction, user_id:str, reason:str):
-    if not owner(i): return
-    u,d = roblox_info(user_id)
+    if not owner(i): 
+        return
+
+    u, d = roblox_info(user_id)
 
     supabase.table("bans").upsert({
         "user_id": user_id,
@@ -184,17 +199,27 @@ async def ban(i:discord.Interaction, user_id:str, reason:str):
         "expire": None
     }).execute()
 
-    await safe_send(i, emb(
-        "🔨 BANNED",
-        f"ID: `{user_id}`\nUsername: `{u}`\nDisplay: `{d}`\nReason: {reason}",
-        0xff0000
-    ))
+    # LOG ACTION HERE ✅
+    try:
+        log_action("ban", user_id, u, d, i.user.id)
+    except:
+        pass
 
+    await safe_send(
+        i,
+        emb(
+            "🔨 BANNED",
+            f"ID: `{user_id}`\nUsername: `{u}`\nDisplay: `{d}`\nReason: {reason}",
+            0xff0000
+        )
+    )
 
 @bot.tree.command(name="tempban")
 async def tempban(i:discord.Interaction, user_id:str, minutes:int, reason:str):
-    if not owner(i): return
-    u,d = roblox_info(user_id)
+    if not owner(i): 
+        return
+
+    u, d = roblox_info(user_id)
 
     supabase.table("bans").upsert({
         "user_id": user_id,
@@ -203,12 +228,20 @@ async def tempban(i:discord.Interaction, user_id:str, minutes:int, reason:str):
         "expire": time.time() + minutes * 60
     }).execute()
 
-    await safe_send(i, emb(
-        "⏱ TEMPBAN",
-        f"ID: `{user_id}`\nUsername: `{u}`\nDisplay: `{d}`\nTime: `{minutes} min`\nReason: {reason}",
-        0xffa500
-    ))
+    # LOG ACTION HERE ✅
+    try:
+        log_action("tempban", user_id, u, d, i.user.id)
+    except:
+        pass
 
+    await safe_send(
+        i,
+        emb(
+            "⏱ TEMPBAN",
+            f"ID: `{user_id}`\nUsername: `{u}`\nDisplay: `{d}`\nTime: `{minutes} min`\nReason: {reason}",
+            0xffa500
+        )
+    )
 
 @bot.tree.command(name="unban")
 async def unban(i:discord.Interaction, user_id:str):
@@ -220,6 +253,12 @@ async def unban(i:discord.Interaction, user_id:str):
 
     # Delete from bans
     supabase.table("bans").delete().eq("user_id", user_id).execute()
+
+    # LOG ACTION HERE ✅ (inside function)
+    try:
+        log_action("unban", user_id, username, display, i.user.id)
+    except:
+        pass
 
     # Response
     await safe_send(
@@ -341,6 +380,18 @@ async def access(i:discord.Interaction, mode:app_commands.Choice[str], user_id:s
             {"value":"true" if mode.value=="on" else "false"}
         ).eq("key","access_enabled").execute()
 
+        # LOG
+        try:
+            log_action(
+                f"access_{mode.value}",
+                "-",
+                "-",
+                "-",
+                i.user.id
+            )
+        except:
+            pass
+
         return await safe_send(
             i,
             emb("🔐 ACCESS", f"Access `{mode.value.upper()}`")
@@ -356,6 +407,18 @@ async def access(i:discord.Interaction, mode:app_commands.Choice[str], user_id:s
             "display_name": d
         }).execute()
 
+        # LOG
+        try:
+            log_action(
+                "access_add",
+                user_id,
+                u,
+                d,
+                i.user.id
+            )
+        except:
+            pass
+
         return await safe_send(
             i,
             emb(
@@ -370,10 +433,21 @@ async def access(i:discord.Interaction, mode:app_commands.Choice[str], user_id:s
 
     # ================== ACCESS REMOVE ==================
     if mode.value=="remove" and user_id:
-        # Fetch info before deleting
         u, d = roblox_info(user_id)
 
         supabase.table("access_users").delete().eq("user_id", user_id).execute()
+
+        # LOG
+        try:
+            log_action(
+                "access_remove",
+                user_id,
+                u,
+                d,
+                i.user.id
+            )
+        except:
+            pass
 
         return await safe_send(
             i,
@@ -552,6 +626,12 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
         except:
             pass
 
+        # 🔥 LOG ADDED HERE
+        try:
+            log_action("blacklist_add", user_id, u, d, i.user.id)
+        except:
+            pass
+
         return await safe_send(
             i,
             emb(
@@ -571,6 +651,12 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
         u, d = roblox_info(user_id)
 
         supabase.table("blacklist_users").delete().eq("user_id", user_id).execute()
+
+        # 🔥 LOG ADDED HERE
+        try:
+            log_action("blacklist_remove", user_id, u, d, i.user.id)
+        except:
+            pass
 
         return await safe_send(
             i,
@@ -612,7 +698,6 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
                 0xffaa00
             )
         )
-
 
 # ================== KICK ==================
 @bot.tree.command(name="kick")
