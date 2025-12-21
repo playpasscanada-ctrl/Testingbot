@@ -730,80 +730,69 @@ async def stats(i: discord.Interaction):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
 
-    # ===== BANS =====
-    bans = supabase.table("bans").select("*").execute().data
-    now = time.time()
+    # ⏳ Prevent Discord timeout
+    await i.response.defer()
 
-    perm = sum(1 for x in bans if x["perm"])
-    temp = sum(
-        1
-        for x in bans
-        if not x["perm"] and x.get("expire") and now < float(x["expire"])
-    )
-
-    # ===== ACCESS USERS =====
-    access_users = len(
-        supabase.table("access_users").select("user_id").execute().data
-    )
-
-    # ===== BLACKLIST =====
-    blacklist_count = len(
-        supabase.table("blacklist_users").select("user_id").execute().data
-    )
-
-    # ===== VERIFY LOGS =====
-    logs = supabase.table("verify_logs").select("discord_id").execute().data
-    verify_total = len(logs)
-    unique_users = len(set(x["discord_id"] for x in logs)) if logs else 0
-
-    # ===== KICK FLAG STATS =====
-    kicks = len(
-        supabase.table("kick_flags").select("user_id").execute().data
-    )
-
-    # ===== ACCESS STATUS =====
-    a = supabase.table("bot_settings").select("value").eq("key","access_enabled").execute().data
-    access_status = "🟢 OFF (Everyone Allowed)"
-    if a and a[0]["value"]=="true":
-        access_status = "🔐 ON (Whitelist Enabled)"
-
-    # ===== MAINTENANCE STATUS =====
-    m = supabase.table("bot_settings").select("value").eq("key","maintenance").execute().data
-    maintenance_status = "🟢 OFF"
-    if m and m[0]["value"]=="true":
-        maintenance_status = "🛠 ON"
-
-    # ===== UPTIME =====
-    uptime = int(time.time() - START_TIME)
-    hrs = uptime // 3600
-    mins = (uptime % 3600)//60
-
-    # ===== SYSTEM HEALTH =====
-    system_health = "🟢 Healthy"
     try:
-        supabase.table("bot_settings").select("key").limit(1).execute()
-    except:
-        system_health = "🔴 Supabase Error"
+        now = time.time()
 
-    desc = (
-        f"🚫 Permanent Bans: `{perm}`\n"
-        f"⏱ Active TempBans: `{temp}`\n"
-        f"📛 Blacklisted Users: `{blacklist_count}`\n\n"
+        # ===== BANS =====
+        bans = supabase.table("bans").select("*").execute().data
+        perm = sum(1 for x in bans if x["perm"])
+        temp = sum(
+            1 for x in bans
+            if not x["perm"] and x.get("expire") and now < float(x["expire"])
+        )
 
-        f"🔐 Whitelisted Users: `{access_users}`\n"
-        f"👤 Verified Logs: `{verify_total}`\n"
-        f"🧑‍🤝‍🧑 Unique Verifiers: `{unique_users}`\n"
-        f"👢 Kick Flags Pending: `{kicks}`\n\n"
+        # ===== ACCESS USERS =====
+        access_users = len(supabase.table("access_users").select("user_id").execute().data)
 
-        f"🔐 Access System: {access_status}\n"
-        f"🛠 Maintenance: {maintenance_status}\n\n"
+        # ===== BLACKLIST =====
+        blacklist_count = len(supabase.table("blacklist_users").select("user_id").execute().data)
 
-        f"🤖 Bot Uptime: `{hrs}h {mins}m`\n"
-        f"🩺 System: {system_health}"
-    )
+        # ===== VERIFY LOGS =====
+        logs = supabase.table("verify_logs").select("discord_id").execute().data
+        verify_total = len(logs)
+        unique_users = len(set(x["discord_id"] for x in logs)) if logs else 0
 
-    await safe_send(i, emb("📊 SYSTEM STATS", desc, 0x2ecc71))
+        # ===== KICK FLAGS =====
+        kicks = len(supabase.table("kick_flags").select("user_id").execute().data)
 
+        # ===== ACCESS STATUS =====
+        a = supabase.table("bot_settings").select("value").eq("key","access_enabled").execute().data
+        access_status = "🟢 OFF (Everyone Allowed)"
+        if a and a[0]["value"]=="true":
+            access_status = "🔐 ON (Whitelist Enabled)"
+
+        # ===== MAINTENANCE =====
+        m = supabase.table("bot_settings").select("value").eq("key","maintenance").execute().data
+        maintenance_status = "🟢 OFF"
+        if m and m[0]["value"]=="true":
+            maintenance_status = "🛠 ON"
+
+        # ===== UPTIME =====
+        uptime = int(time.time() - START_TIME)
+        hrs = uptime // 3600
+        mins = (uptime % 3600)//60
+
+        desc = (
+            f"🚫 Permanent Bans: `{perm}`\n"
+            f"⏱ Active TempBans: `{temp}`\n"
+            f"📛 Blacklisted Users: `{blacklist_count}`\n\n"
+            f"🔐 Whitelisted Users: `{access_users}`\n"
+            f"👤 Verified Logs: `{verify_total}`\n"
+            f"🧑‍🤝‍🧑 Unique Verifiers: `{unique_users}`\n"
+            f"👢 Kick Flags Pending: `{kicks}`\n\n"
+            f"🔐 Access System: {access_status}\n"
+            f"🛠 Maintenance: {maintenance_status}\n\n"
+            f"🤖 Bot Uptime: `{hrs}h {mins}m`\n"
+            f"🩺 System: 🟢 Healthy"
+        )
+
+        await i.followup.send(embed=emb("📊 SYSTEM STATS", desc, 0x2ecc71))
+
+    except Exception as e:
+        await i.followup.send(embed=emb("❌ ERROR", f"Stats failed:\n`{str(e)}`", 0xff0000))
 
 # ================== OWNER ==================
 @bot.tree.command(name="owner", description="Manage bot owners")
