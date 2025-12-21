@@ -726,52 +726,47 @@ async def whois(i: discord.Interaction, user_id: str):
 # ================== STATS ==================
 START_TIME = time.time()
 
+def safe_query(func):
+    for _ in range(3):
+        try:
+            return func()
+        except:
+            time.sleep(0.5)
+    return None
+
+
 @bot.tree.command(name="stats")
 async def stats(i: discord.Interaction):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
 
-    # Prevent "Application didn't respond"
     await i.response.defer()
 
     try:
-        # ===== BANS =====
-        bans = supabase.table("bans").select("*").execute().data
         now = time.time()
 
+        # ===== SINGLE SAFE CALLS =====
+        bans = safe_query(lambda: supabase.table("bans").select("*").execute().data) or []
+        access = safe_query(lambda: supabase.table("access_users").select("user_id").execute().data) or []
+        blacklist = safe_query(lambda: supabase.table("blacklist_users").select("user_id").execute().data) or []
+        logs = safe_query(lambda: supabase.table("verify_logs").select("*").execute().data) or []
+        kicks = safe_query(lambda: supabase.table("kick_flags").select("*").execute().data) or []
+
+        settings = safe_query(lambda: supabase.table("bot_settings").select("*").execute().data) or []
+
+        # ===== BANS COUNT =====
         perm = sum(1 for x in bans if x["perm"])
         temp = sum(1 for x in bans if not x["perm"] and x["expire"] and now < float(x["expire"]))
 
-        # ===== ACCESS USERS =====
-        access_users = len(
-            supabase.table("access_users").select("user_id").execute().data
-        )
-
-        # ===== BLACKLIST =====
-        blacklist = len(
-            supabase.table("blacklist_users").select("user_id").execute().data
-        )
-
-        # ===== VERIFY LOGS =====
-        logs = supabase.table("verify_logs").select("*").execute().data
-        verified_logs = len(logs)
-        unique_verifiers = len(set(x["discord_id"] for x in logs))
-
-        # ===== KICK FLAGS =====
-        kicks = len(
-            supabase.table("kick_flags").select("user_id").execute().data
-        )
-
-        # ===== STATUS FLAGS =====
-        a = supabase.table("bot_settings").select("value").eq("key","access_enabled").execute().data
+        # ===== SETTINGS =====
         access_status = "🟢 OFF (Everyone Allowed)"
-        if a and a[0]["value"]=="true":
-            access_status = "🔐 ON (Whitelist Enabled)"
-
-        m = supabase.table("bot_settings").select("value").eq("key","maintenance").execute().data
         maintenance_status = "🟢 OFF"
-        if m and m[0]["value"]=="true":
-            maintenance_status = "🛠 ON"
+
+        for s in settings:
+            if s["key"] == "access_enabled" and s["value"] == "true":
+                access_status = "🔐 ON (Whitelist Enabled)"
+            if s["key"] == "maintenance" and s["value"] == "true":
+                maintenance_status = "🛠 ON"
 
         # ===== UPTIME =====
         uptime = int(time.time() - START_TIME)
@@ -781,18 +776,18 @@ async def stats(i: discord.Interaction):
         desc = (
             f"🚫 Permanent Bans: `{perm}`\n"
             f"⏱ Active TempBans: `{temp}`\n"
-            f"⛔ Blacklisted Users: `{blacklist}`\n\n"
+            f"⛔ Blacklisted Users: `{len(blacklist)}`\n\n"
 
-            f"🔐 Whitelisted Users: `{access_users}`\n"
-            f"🧾 Verified Logs: `{verified_logs}`\n"
-            f"👨‍👩‍👧 Unique Verifiers: `{unique_verifiers}`\n"
-            f"🥾 Kick Flags Pending: `{kicks}`\n\n"
+            f"🔐 Whitelisted Users: `{len(access)}`\n"
+            f"🧾 Verified Logs: `{len(logs)}`\n"
+            f"👨‍👩‍👧 Unique Verifiers: `{len(set(x['discord_id'] for x in logs))}`\n"
+            f"🥾 Kick Flags Pending: `{len(kicks)}`\n\n"
 
             f"🔐 Access System: {access_status}\n"
             f"🛠 Maintenance: {maintenance_status}\n\n"
 
             f"🤖 Bot Uptime: `{hrs}h {mins}m`\n"
-            f"🔌 System: 🟢 Healthy"
+            f"🔌 System: 🟢 Stable & Optimized"
         )
 
         await i.followup.send(embed=emb("📊 SYSTEM STATS", desc, 0x2ecc71))
