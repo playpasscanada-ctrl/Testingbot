@@ -758,72 +758,103 @@ app = Flask(__name__)
 def ping():
     return "pong"
 
+
 @app.route("/maintenance")
 def mcheck():
-    r = supabase.table("bot_settings").select("value").eq("key","maintenance").execute()
-    return "true" if r.data and r.data[0]["value"]=="true" else "false"
+    try:
+        r = supabase.table("bot_settings").select("value").eq("key","maintenance").execute()
+        return "true" if r.data and r.data[0]["value"]=="true" else "false"
+    except Exception as e:
+        print("MAINT ERROR:", e)
+        return "false"   # fail safe = don't kick
+
 
 @app.route("/access/<uid>")
 def acheck(uid):
-    r = supabase.table("bot_settings").select("value").eq("key","access_enabled").execute()
-    if r.data and r.data[0]["value"]=="false":
-        return "true"
-    u = supabase.table("access_users").select("user_id").eq("user_id",uid).execute()
-    return "true" if u.data else "false"
+    try:
+        r = supabase.table("bot_settings").select("value").eq("key","access_enabled").execute()
+
+        # Access system OFF = allow everyone
+        if r.data and r.data[0]["value"]=="false":
+            return "true"
+
+        u = supabase.table("access_users").select("user_id").eq("user_id",uid).execute()
+        return "true" if u.data else "false"
+
+    except Exception as e:
+        print("ACCESS ERROR:", e)
+        return "true"   # fail safe whitelist if API down
+
 
 @app.route("/check/<uid>")
 def bcheck(uid):
-    d = supabase.table("bans").select("*").eq("user_id", uid).execute().data
-    if not d:
+    try:
+        d = supabase.table("bans").select("*").eq("user_id", uid).execute().data
+        if not d:
+            return "false"
+
+        b = d[0]
+
+        if b["perm"]:
+            return "true"
+
+        if b["expire"] and time.time() < float(b["expire"]):
+            return "true"
+
+        supabase.table("bans").delete().eq("user_id", uid).execute()
         return "false"
 
-    b = d[0]
+    except Exception as e:
+        print("BAN CHECK ERROR:", e)
+        return "false"   # fail safe = no ban if DB fails
 
-    if b["perm"]:
-        return "true"
-
-    if b["expire"] and time.time() < float(b["expire"]):
-        return "true"
-
-    supabase.table("bans").delete().eq("user_id", uid).execute()
-    return "false"
 
 @app.route("/baninfo/<uid>")
 def info(uid):
-    r = supabase.table("bans").select("*").eq("user_id", uid).execute().data
-    if not r:
-        return jsonify({"ban": False})
+    try:
+        r = supabase.table("bans").select("*").eq("user_id", uid).execute().data
+        if not r:
+            return jsonify({"ban": False})
 
-    b = r[0]
+        b = r[0]
 
-    if b["perm"]:
+        if b["perm"]:
+            return jsonify({
+                "ban": True,
+                "perm": True,
+                "reason": b.get("reason","No Reason")
+            })
+
+        left = int((float(b["expire"]) - time.time()) / 60)
+
         return jsonify({
             "ban": True,
-            "perm": True,
-            "reason": b["reason"]
+            "perm": False,
+            "reason": b.get("reason","No Reason"),
+            "minutes": left
         })
 
-    left = int((float(b["expire"]) - time.time()) / 60)
+    except Exception as e:
+        print("BANINFO ERROR:", e)
+        return jsonify({"ban": False})   # safe fallback
 
-    return jsonify({
-        "ban": True,
-        "perm": False,
-        "reason": b["reason"],
-        "minutes": left
-    })
 
 @app.route("/kickcheck/<uid>")
 def kickcheck(uid):
-    r = supabase.table("kick_flags").select("*").eq("user_id", uid).execute().data
-    if not r:
-        return jsonify({"kick": False})
+    try:
+        r = supabase.table("kick_flags").select("*").eq("user_id", uid).execute().data
+        if not r:
+            return jsonify({"kick": False})
 
-    reason = r[0]["reason"]
+        reason = r[0].get("reason","No Reason")
 
-    supabase.table("kick_flags").delete().eq("user_id", uid).execute()
+        supabase.table("kick_flags").delete().eq("user_id", uid).execute()
 
-    return jsonify({"kick": True, "reason": reason})
+        return jsonify({"kick": True, "reason": reason})
 
+    except Exception as e:
+        print("KICKCHECK ERROR:", e)
+        return jsonify({"kick": False})   # safe fallback
 
 # ================== KEEP ALIVE ==================
 def keep_alive():
