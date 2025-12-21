@@ -670,17 +670,15 @@ async def whois(i: discord.Interaction, user_id: str):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
 
-    await i.response.defer()
-
     try:
-        # Roblox Info
-        u, d = roblox_info(user_id)
-        if not u:
-            u = "Unknown"
-        if not d:
-            d = "Unknown"
+        await i.response.defer()
 
-        # ========== BAN ==========
+        # ROBLOX DATA
+        u, d = roblox_info(user_id)
+        if not u: u = "Unknown"
+        if not d: d = "Unknown"
+
+        # ===== BAN CHECK =====
         data = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
         ban_status = "🟢 Not Banned"
         reason = "—"
@@ -696,11 +694,11 @@ async def whois(i: discord.Interaction, user_id: str):
                     ban_status = f"⏱ Temp Ban ({mins}m left)"
                     reason = b.get("reason","No Reason")
 
-        # ========== ACCESS ==========
+        # ===== ACCESS CHECK =====
         ac = supabase.table("access_users").select("user_id").eq("user_id",user_id).execute().data
         access = "✅ Whitelisted" if ac else "❌ Not Whitelisted"
 
-        # ========== BLACKLIST ==========
+        # ===== BLACKLIST CHECK =====
         blk = supabase.table("blacklist_users").select("user_id").eq("user_id", user_id).execute().data
         blacklist_status = "🚫 Blacklisted" if blk else "🟢 Not Blacklisted"
 
@@ -718,7 +716,11 @@ async def whois(i: discord.Interaction, user_id: str):
 
     except Exception as e:
         print("WHOIS ERROR:", e)
-        await i.followup.send(embed=emb("❌ ERROR", "Whois run karte time error aaya", 0xff0000))
+        try:
+            await i.followup.send(embed=emb("❌ ERROR","Whois run karte time error aaya",0xff0000))
+        except:
+            pass
+
         
 # ================== STATS ==================
 START_TIME = time.time()
