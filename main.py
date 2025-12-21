@@ -3,6 +3,7 @@ from datetime import datetime
 
 import discord
 from discord import app_commands
+from discord import ui   # ⬅️ ye add karo
 from discord.ext import commands
 
 from flask import Flask, jsonify
@@ -730,47 +731,30 @@ async def stats(i: discord.Interaction):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
 
-    # ⏳ Prevent Discord timeout
     await i.response.defer()
 
     try:
         now = time.time()
 
-        # ===== BANS =====
         bans = supabase.table("bans").select("*").execute().data
         perm = sum(1 for x in bans if x["perm"])
-        temp = sum(
-            1 for x in bans
-            if not x["perm"] and x.get("expire") and now < float(x["expire"])
-        )
+        temp = sum(1 for x in bans if not x["perm"] and x.get("expire") and now < float(x["expire"]))
 
-        # ===== ACCESS USERS =====
         access_users = len(supabase.table("access_users").select("user_id").execute().data)
-
-        # ===== BLACKLIST =====
         blacklist_count = len(supabase.table("blacklist_users").select("user_id").execute().data)
 
-        # ===== VERIFY LOGS =====
         logs = supabase.table("verify_logs").select("discord_id").execute().data
         verify_total = len(logs)
         unique_users = len(set(x["discord_id"] for x in logs)) if logs else 0
 
-        # ===== KICK FLAGS =====
         kicks = len(supabase.table("kick_flags").select("user_id").execute().data)
 
-        # ===== ACCESS STATUS =====
         a = supabase.table("bot_settings").select("value").eq("key","access_enabled").execute().data
-        access_status = "🟢 OFF (Everyone Allowed)"
-        if a and a[0]["value"]=="true":
-            access_status = "🔐 ON (Whitelist Enabled)"
+        access_status = "🟢 OFF (Everyone Allowed)" if not a or a[0]["value"]!="true" else "🔐 ON (Whitelist Enabled)"
 
-        # ===== MAINTENANCE =====
         m = supabase.table("bot_settings").select("value").eq("key","maintenance").execute().data
-        maintenance_status = "🟢 OFF"
-        if m and m[0]["value"]=="true":
-            maintenance_status = "🛠 ON"
+        maintenance_status = "🟢 OFF" if not m or m[0]["value"]!="true" else "🛠 ON"
 
-        # ===== UPTIME =====
         uptime = int(time.time() - START_TIME)
         hrs = uptime // 3600
         mins = (uptime % 3600)//60
@@ -793,6 +777,153 @@ async def stats(i: discord.Interaction):
 
     except Exception as e:
         await i.followup.send(embed=emb("❌ ERROR", f"Stats failed:\n`{str(e)}`", 0xff0000))
+
+@bot.tree.command(name="altcheck", description="Check alts verified using same Discord account")
+async def altcheck(i: discord.Interaction, user_id: str):
+    if not owner(i):
+        return await safe_send(i, emb("❌ NO PERMISSION","Owner Only"))
+
+    await i.response.defer()
+
+    logs = supabase.table("verify_logs").select("*").eq("roblox_id", user_id).execute().data
+    if not logs:
+        return await i.followup.send(embed=emb("❌ NOT FOUND","Is ID ka koi verification record nahi mila"))
+
+    discord_id = logs[0]["discord_id"]
+
+    others = supabase.table("verify_logs").select("*").eq("discord_id", discord_id).execute().data
+    alts = [x for x in others if x["roblox_id"] != user_id]
+
+    if not alts:
+        return await i.followup.send(embed=emb(
+            "😊 CLEAN USER",
+            f"`{user_id}` has **no alternate accounts** 😎",
+            0x2ecc71
+        ))
+
+    txt = ""
+    for x in alts:
+        txt += f"• `{x['roblox_id']}` | {x['username']} ({x['display_name']})\n"
+
+    e = emb(
+        "🕵 ALT ACCOUNT REPORT",
+        f"**Main Account:** `{user_id}`\n"
+        f"**Alt Accounts Found:** `{len(alts)}`\n\n"
+        f"{txt}",
+        0xffaa00
+    )
+    e.set_footer(text=f"Discord User: {discord_id}")
+
+    await i.followup.send(embed=e)
+
+@bot.tree.command(name="verifyhistory", description="Show global verification logs")
+async def verifyhistory(i: discord.Interaction):
+    if not owner(i):
+        return await safe_send(i, emb("❌ NO PERMISSION","Owner Only"))
+
+    await i.response.defer()
+
+    logs = supabase.table("verify_logs").select("*").order("timestamp", desc=True).execute().data
+    
+    if not logs:
+        return await i.followup.send(embed=emb("📭 EMPTY","No one has verified yet"))
+
+    pages = []
+    page = []
+
+    for x in logs:
+        t = x.get("timestamp","").replace("T"," ").split(".")[0]
+        page.append(
+            f"📌 **{x['username']}** ({x['display_name']})\n"
+            f"🆔 `{x['roblox_id']}` — <@{x['discord_id']}> — `{t}`\n"
+        )
+
+        if len(page) == 10:
+            pages.append("\n".join(page))
+            page = []
+
+    if page:
+        pages.append("\n".join(page))
+
+    class Pager(ui.View):
+        def __init__(self):
+            super().__init__(timeout=60)
+            self.index = 0
+        
+        async def update(self, interaction):
+            embed = emb(
+                f"📜 VERIFICATION HISTORY ({self.index+1}/{len(pages)})",
+                pages[self.index],
+                0x3498db
+            )
+            await interaction.response.edit_message(embed=embed, view=self)
+
+        @ui.button(label="⬅️ Back", style=discord.ButtonStyle.secondary)
+        async def back(self, interaction, btn):
+            if self.index > 0:
+                self.index -= 1
+            await self.update(interaction)
+
+        @ui.button(label="➡️ Next", style=discord.ButtonStyle.primary)
+        async def next(self, interaction, btn):
+            if self.index < len(pages)-1:
+                self.index += 1
+            await self.update(interaction)
+
+    view = Pager()
+    await i.followup.send(
+        embed=emb(f"📜 VERIFICATION HISTORY (1/{len(pages)})", pages[0], 0x3498db),
+        view=view
+    )
+
+@bot.tree.command(name="history", description="Full history of a Roblox user")
+async def history(i: discord.Interaction, user_id: str):
+    if not owner(i):
+        return await safe_send(i, emb("❌ NO PERMISSION","Owner Only"))
+
+    await i.response.defer()
+
+    u,d = roblox_info(user_id)
+
+    logs = supabase.table("verify_logs").select("*").eq("roblox_id", user_id).execute().data
+
+    verify = "❌ Never Verified"
+    if logs:
+        verify = ""
+        for x in logs[-5:]:
+            t = x["timestamp"].split("T")[0]
+            verify += f"• `{t}` — <@{x['discord_id']}>\n"
+
+    ban = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
+    if ban:
+        b = ban[0]
+        if b["perm"]:
+            ban_text = f"🔴 Permanent — `{b['reason']}`"
+        else:
+            mins = int((float(b['expire']) - time.time())/60)
+            ban_text = f"⏱ Temp ({mins}m left)\nReason: `{b['reason']}`"
+    else:
+        ban_text = "🟢 Not Banned"
+
+    ac = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
+    access = "✅ Whitelisted" if ac else "❌ Not Whitelisted"
+
+    blk = supabase.table("blacklist_users").select("*").eq("user_id", user_id).execute().data
+    blk_text = "🚫 Blacklisted" if blk else "🟢 Not Blacklisted"
+
+    desc = (
+        f"👤 **User Info**\n"
+        f"🆔 `{user_id}`\n"
+        f"👛 Username: **{u}**\n"
+        f"🎭 Display: **{d}**\n\n"
+        f"🚫 **Ban Status:** {ban_text}\n"
+        f"🔐 **Access:** {access}\n"
+        f"📛 **Blacklist:** {blk_text}\n\n"
+        f"📜 **Recent Verifications**\n{verify}"
+    )
+
+    e = emb("📂 USER HISTORY", desc, 0x9b59b6)
+    await i.followup.send(embed=e)
 
 # ================== OWNER ==================
 @bot.tree.command(name="owner", description="Manage bot owners")
