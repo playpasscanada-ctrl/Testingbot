@@ -211,15 +211,27 @@ async def tempban(i:discord.Interaction, user_id:str, minutes:int, reason:str):
 
 @bot.tree.command(name="unban")
 async def unban(i:discord.Interaction, user_id:str):
-    if not owner(i): return
+    if not owner(i):
+        return
 
+    # Roblox Info
+    username, display = roblox_info(user_id)
+
+    # Delete from bans
     supabase.table("bans").delete().eq("user_id", user_id).execute()
 
-    await safe_send(i, emb(
-        "✅ UNBANNED",
-        f"User `{user_id}` removed from ALL bans",
-        0x00ff00
-    ))
+    # Response
+    await safe_send(
+        i,
+        emb(
+            "✅ USER UNBANNED",
+            f"**Roblox ID:** `{user_id}`\n"
+            f"**Username:** `{username}`\n"
+            f"**Display Name:** `{display}`\n\n"
+            f"🎉 Successfully **UNBANNED**",
+            0x00ff00
+        )
+    )
     
 
 from discord import ui
