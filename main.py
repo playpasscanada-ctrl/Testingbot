@@ -1201,7 +1201,8 @@ async def logs(i: discord.Interaction, filter: app_commands.Choice[str]):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION", "Owner Only"))
 
-    await i.response.defer(ephemeral=True)
+    # ❌ ephemeral hata diya
+    await i.response.defer()
 
     try:
         if filter.value == "all":
@@ -1278,7 +1279,8 @@ async def logs(i: discord.Interaction, filter: app_commands.Choice[str]):
         0x3498db
     )
 
-    await i.followup.send(embed=e, view=view, ephemeral=True)
+    # ❌ yaha bhi ephemeral hata diya
+    await i.followup.send(embed=e, view=view)
 
 # ================== OWNER ==================
 @bot.tree.command(name="owner", description="Manage bot owners")
