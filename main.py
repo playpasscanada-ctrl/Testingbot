@@ -331,29 +331,80 @@ async def listb(i:discord.Interaction):
     app_commands.Choice(name="list", value="list"),
 ])
 async def access(i:discord.Interaction, mode:app_commands.Choice[str], user_id:str=None):
-    if not owner(i): return
+    if not owner(i): 
+        return
 
+    # ================== ACCESS ON / OFF ==================
     if mode.value in ["on","off"]:
         supabase.table("bot_settings").update(
             {"value":"true" if mode.value=="on" else "false"}
         ).eq("key","access_enabled").execute()
-        return await safe_send(i, emb("🔐 ACCESS",f"Access `{mode.value.upper()}`"))
 
+        return await safe_send(
+            i,
+            emb("🔐 ACCESS", f"Access `{mode.value.upper()}`")
+        )
+
+    # ================== ACCESS ADD ==================
     if mode.value=="add" and user_id:
-        u,d=roblox_info(user_id)
+        u, d = roblox_info(user_id)
+
         supabase.table("access_users").upsert({
-            "user_id":user_id,"username":u,"display_name":d
+            "user_id": user_id,
+            "username": u,
+            "display_name": d
         }).execute()
-        return await safe_send(i, emb("🔐 ACCESS ADD",f"{u} ({d}) added"))
 
+        return await safe_send(
+            i,
+            emb(
+                "🔐 ACCESS GRANTED",
+                f"**Roblox ID:** `{user_id}`\n"
+                f"**Username:** `{u}`\n"
+                f"**Display Name:** `{d}`\n\n"
+                f"🎉 Successfully Added to Access List",
+                0x2ecc71
+            )
+        )
+
+    # ================== ACCESS REMOVE ==================
     if mode.value=="remove" and user_id:
-        supabase.table("access_users").delete().eq("user_id",user_id).execute()
-        return await safe_send(i, emb("🔐 ACCESS REMOVE",f"{user_id} removed"))
+        # Fetch info before deleting
+        u, d = roblox_info(user_id)
 
+        supabase.table("access_users").delete().eq("user_id", user_id).execute()
+
+        return await safe_send(
+            i,
+            emb(
+                "🔐 ACCESS REMOVED",
+                f"**Roblox ID:** `{user_id}`\n"
+                f"**Username:** `{u}`\n"
+                f"**Display Name:** `{d}`\n\n"
+                f"❌ Removed from Access List",
+                0xff0000
+            )
+        )
+
+    # ================== ACCESS LIST ==================
     if mode.value=="list":
-        data=supabase.table("access_users").select("*").execute().data
-        txt="\n".join(f"{x['username']} ({x['display_name']})" for x in data) or "None"
-        return await safe_send(i, emb("🔐 ACCESS LIST",txt))
+        data = supabase.table("access_users").select("*").execute().data
+
+        if not data:
+            return await safe_send(i, emb("🔐 ACCESS LIST", "None"))
+
+        txt = ""
+        for x in data:
+            txt += (
+                f"• **Username:** {x['username']}\n"
+                f"  Display: {x['display_name']}\n"
+                f"  ID: `{x['user_id']}`\n\n"
+            )
+
+        return await safe_send(
+            i,
+            emb("🔐 ACCESS LIST", txt)
+        )
 
 from discord import ui
 
