@@ -1015,54 +1015,54 @@ async def history(i: discord.Interaction, user_id: str):
     e = emb("📂 USER HISTORY", desc, 0x9b59b6)
     await i.followup.send(embed=e)
 
-@bot.tree.command(name="multiverify", description="Shows users who verified more than 1 Roblox ID")
-async def multiverify(i: discord.Interaction):
+@bot.tree.command(name="multiverify", description="Users who verified multiple DIFFERENT roblox accounts")
+async def multiverify(i:discord.Interaction):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
 
     await i.response.defer()
 
-    try:
-        logs = supabase.table("verify_logs").select(
-            "discord_id, roblox_id, username, display_name"
-        ).execute().data
+    logs = supabase.table("verify_logs").select("*").execute().data
+    if not logs:
+        return await safe_send(i, emb("ℹ️ INFO","No verification logs found"))
 
-        if not logs:
-            return await i.followup.send(embed=emb("📛 MULTI VERIFY CHECK", "No logs found 😶"))
+    users = {}
 
-        users = {}
+    for x in logs:
+        did = x["discord_id"]
+        rid = x["roblox_id"]
+        uname = x.get("username","Unknown")
+        dname = x.get("display_name","Unknown")
 
-        for x in logs:
-            uid = x["discord_id"]
-            if uid not in users:
-                users[uid] = []
-            users[uid].append(x)
+        if did not in users:
+            users[did] = {
+                "roblox_ids": set(),
+                "entries": []
+            }
 
-        result = ""
+        users[did]["roblox_ids"].add(rid)
+        users[did]["entries"].append((rid, uname, dname))
 
-        for discord_id, entries in users.items():
-            if len(entries) <= 1:
-                continue
+    result = ""
+    for did, data in users.items():
+        # only show users who verified DIFFERENT accounts
+        if len(data["roblox_ids"]) > 1:
 
-            user = entries[0]
-            result += f"👤 <@{discord_id}> — `{discord_id}`\n"
-            result += f"👉 **Total Verifies:** `{len(entries)}`\n"
+            user = await bot.fetch_user(int(did))
 
-            for e in entries:
-                result += (
-                    f"🆔 `{e['roblox_id']}` | "
-                    f"{e['username']} ({e['display_name']})\n"
-                )
+            result += f"👤 **{user.mention}** — `{did}`\n"
+            result += f"👉 **Different Accounts Verified:** `{len(data['roblox_ids'])}`\n"
+
+            for rid, uname, dname in data["entries"]:
+                result += f"🆔 `{rid}` | {uname} ({dname})\n"
 
             result += "────────────────────\n"
 
-        if not result:
-            result = "✨ Sab logon ne sirf ek hi account verify kiya hai!"
+    if not result:
+        result = "✅ No one verified multiple different accounts."
 
-        await i.followup.send(embed=emb("🔎 MULTI ACCOUNT VERIFIERS", result, 0xe67e22))
+    await safe_send(i, emb("🔎 MULTI ACCOUNT VERIFIERS", result, 0xffa500))
 
-    except Exception as e:
-        await i.followup.send(embed=emb("❌ ERROR", f"```{e}```", 0xff0000))
 
 # ================== OWNER ==================
 @bot.tree.command(name="owner", description="Manage bot owners")
