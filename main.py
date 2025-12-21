@@ -1015,6 +1015,55 @@ async def history(i: discord.Interaction, user_id: str):
     e = emb("📂 USER HISTORY", desc, 0x9b59b6)
     await i.followup.send(embed=e)
 
+@bot.tree.command(name="multiverify", description="Shows users who verified more than 1 Roblox ID")
+async def multiverify(i: discord.Interaction):
+    if not owner(i):
+        return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
+
+    await i.response.defer()
+
+    try:
+        logs = supabase.table("verify_logs").select(
+            "discord_id, roblox_id, username, display_name"
+        ).execute().data
+
+        if not logs:
+            return await i.followup.send(embed=emb("📛 MULTI VERIFY CHECK", "No logs found 😶"))
+
+        users = {}
+
+        for x in logs:
+            uid = x["discord_id"]
+            if uid not in users:
+                users[uid] = []
+            users[uid].append(x)
+
+        result = ""
+
+        for discord_id, entries in users.items():
+            if len(entries) <= 1:
+                continue
+
+            user = entries[0]
+            result += f"👤 <@{discord_id}> — `{discord_id}`\n"
+            result += f"👉 **Total Verifies:** `{len(entries)}`\n"
+
+            for e in entries:
+                result += (
+                    f"🆔 `{e['roblox_id']}` | "
+                    f"{e['username']} ({e['display_name']})\n"
+                )
+
+            result += "────────────────────\n"
+
+        if not result:
+            result = "✨ Sab logon ne sirf ek hi account verify kiya hai!"
+
+        await i.followup.send(embed=emb("🔎 MULTI ACCOUNT VERIFIERS", result, 0xe67e22))
+
+    except Exception as e:
+        await i.followup.send(embed=emb("❌ ERROR", f"```{e}```", 0xff0000))
+
 # ================== OWNER ==================
 @bot.tree.command(name="owner", description="Manage bot owners")
 @app_commands.choices(action=[
