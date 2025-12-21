@@ -562,10 +562,13 @@ async def accessclear(i: discord.Interaction):
         view=view
     )
 
-@bot.tree.command(name="verifiedlist", description="Show all users who verified and their Roblox details")
+@bot.tree.command(name="verifiedlist", description="Show all verified users with live status + pagination")
 async def verifiedlist(i: discord.Interaction):
+
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION", "Owners only"))
+
+    await i.response.defer(ephemeral=False)
 
     try:
         data = (
@@ -576,32 +579,95 @@ async def verifiedlist(i: discord.Interaction):
             .data
         )
     except:
-        return await safe_send(i, emb("⚠️ ERROR", "Failed to fetch verification logs"))
+        return await safe_send(i, emb("⚠️ ERROR", "Failed to fetch verification logs 😢"))
 
     if not data:
-        return await safe_send(i, emb("📭 EMPTY", "No one has verified yet"))
+        return await safe_send(i, emb("📭 EMPTY", "Abhi tak kisi ne verify nahi kiya"))
 
     seen = set()
-    text = ""
+    users = []
 
     for x in data:
         rid = x["roblox_id"]
         if rid in seen:
             continue
         seen.add(rid)
+        users.append(x)
 
-        text += (
+    pages = []
+
+    for x in users:
+        uid = x["roblox_id"]
+
+        # LIVE STATUS
+        access = supabase.table("access_users").select("*").eq("user_id", uid).execute().data
+        ban = supabase.table("bans").select("*").eq("user_id", uid).execute().data
+        blk = supabase.table("blacklist_users").select("*").eq("user_id", uid).execute().data
+
+        access_text = "✅ Currently Verified (Whitelisted)" if access else "❌ Not Verified"
+        blk_text = "🚫 Blacklisted" if blk else "🟢 Not Blacklisted"
+
+        if ban:
+            b = ban[0]
+            if b["perm"]:
+                ban_text = f"🔴 Permanent Ban\nReason: `{b['reason']}`"
+            else:
+                mins = int((float(b["expire"]) - time.time())/60)
+                ban_text = f"⏱ Temp Ban ({mins}m left)\nReason: `{b['reason']}`"
+        else:
+            ban_text = "🟢 Not Banned"
+
+        pages.append(
             f"👤 <@{x['discord_id']}>\n"
-            f"🆔 Roblox ID: `{x['roblox_id']}`\n"
+            f"🆔 Roblox ID: `{uid}`\n"
             f"🧑 Username: **{x['username']}**\n"
             f"✨ Display: {x['display_name']}\n"
-            f"🕒 `{x['timestamp']}`\n"
-            f"----------------------\n"
+            f"🕒 Verified On: `{x['timestamp']}`\n\n"
+            f"{access_text}\n"
+            f"{ban_text}\n"
+            f"{blk_text}\n"
         )
 
-    await safe_send(i, emb("📜 VERIFIED USERS LIST", text[:4000], 0x3498db))
+    if not pages:
+        return await safe_send(i, emb("📭 EMPTY", "No verified users found"))
+
+    class Page(discord.ui.View):
+        def __init__(self):
+            super().__init__(timeout=120)
+            self.page = 0
+
+        async def update(self, interaction):
+            e = emb(
+                f"📜 VERIFIED USERS LIST ({self.page+1}/{len(pages)})",
+                pages[self.page],
+                0x3498db
+            )
+            await interaction.response.edit_message(embed=e, view=self)
+
+        @discord.ui.button(label="⬅️ Back", style=discord.ButtonStyle.gray)
+        async def back(self, interaction, button):
+            if self.page > 0:
+                self.page -= 1
+            await self.update(interaction)
+
+        @discord.ui.button(label="Next ➡️", style=discord.ButtonStyle.gray)
+        async def next(self, interaction, button):
+            if self.page < len(pages) - 1:
+                self.page += 1
+            await self.update(interaction)
+
+    view = Page()
+
+    await i.followup.send(
+        embed=emb(
+            f"📜 VERIFIED USERS LIST (1/{len(pages)})",
+            pages[0],
+            0x3498db
+        ),
+        view=view
+    )
     
-@bot.tree.command(name="verifycheck", description="Check which Roblox IDs a Discord user verified")
+@bot.tree.command(name="verifycheck", description="Check all Roblox IDs verified by a Discord user")
 async def verifycheck(i: discord.Interaction, discord_id: str):
 
     if not owner(i):
@@ -617,16 +683,13 @@ async def verifycheck(i: discord.Interaction, discord_id: str):
             .data
         )
     except:
-        return await safe_send(i, emb("⚠️ ERROR", "Failed to fetch logs"))
+        return await safe_send(i, emb("⚠️ ERROR", "Logs fetch nahi ho paye"))
 
     if not data:
-        return await safe_send(
-            i,
-            emb("📭 NO DATA", f"No verification found for `{discord_id}`")
-        )
+        return await safe_send(i, emb("📭 NO DATA", f"This user never verified anything"))
 
-    txt = f"👤 Discord User: <@{discord_id}>\n\n"
     seen = set()
+    txt = f"👤 Discord User: <@{discord_id}>\n\n"
 
     for x in data:
         rid = x["roblox_id"]
@@ -634,11 +697,32 @@ async def verifycheck(i: discord.Interaction, discord_id: str):
             continue
         seen.add(rid)
 
+        # CHECK LIVE STATUS
+        access = supabase.table("access_users").select("*").eq("user_id", rid).execute().data
+        ban = supabase.table("bans").select("*").eq("user_id", rid).execute().data
+        blk = supabase.table("blacklist_users").select("*").eq("user_id", rid).execute().data
+
+        access_text = "✅ Currently Verified" if access else "❌ Not Verified"
+        blk_text = "🚫 Blacklisted" if blk else "🟢 Not Blacklisted"
+
+        if ban:
+            b = ban[0]
+            if b["perm"]:
+                ban_text = f"🔴 Permanent Ban — `{b['reason']}`"
+            else:
+                mins = int((float(b['expire']) - time.time())/60)
+                ban_text = f"⏱ Temp Ban ({mins}m left) — `{b['reason']}`"
+        else:
+            ban_text = "🟢 Not Banned"
+
         txt += (
-            f"🆔 Roblox ID: `{x['roblox_id']}`\n"
-            f"🧑 Username: **{x['username']}**\n"
-            f"✨ Display: {x['display_name']}\n"
+            f"🆔 Roblox ID: `{rid}`\n"
+            f"🧑 {x['username']}\n"
+            f"✨ {x['display_name']}\n"
             f"🕒 `{x['timestamp']}`\n"
+            f"{access_text}\n"
+            f"{ban_text}\n"
+            f"{blk_text}\n"
             f"----------------------\n"
         )
 
