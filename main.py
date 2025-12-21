@@ -672,54 +672,54 @@ async def whois(i: discord.Interaction, user_id: str):
 
     await i.response.defer()
 
-    # Roblox Info
-    u, d = roblox_info(user_id)
+    try:
+        # Roblox Info
+        u, d = roblox_info(user_id)
+        if not u:
+            u = "Unknown"
+        if not d:
+            d = "Unknown"
 
-    # ======================
-    # BAN STATUS
-    # ======================
-    data = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
-    ban_status = "🟢 Not Banned"
-    reason = "—"
+        # ========== BAN ==========
+        data = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
+        ban_status = "🟢 Not Banned"
+        reason = "—"
 
-    if data:
-        b = data[0]
-        if b["perm"]:
-            ban_status = "🔴 Permanent Ban"
-            reason = b.get("reason","No Reason")
-        else:
-            if time.time() < float(b["expire"]):
-                mins = int((float(b["expire"]) - time.time()) / 60)
-                ban_status = f"⏱ Temp Ban ({mins}m left)"
+        if data:
+            b = data[0]
+            if b.get("perm"):
+                ban_status = "🔴 Permanent Ban"
                 reason = b.get("reason","No Reason")
+            else:
+                if time.time() < float(b.get("expire",0)):
+                    mins = int((float(b["expire"]) - time.time())/60)
+                    ban_status = f"⏱ Temp Ban ({mins}m left)"
+                    reason = b.get("reason","No Reason")
 
-    # ======================
-    # ACCESS / WHITELIST
-    # ======================
-    ac = supabase.table("access_users").select("user_id").eq("user_id",user_id).execute().data
-    access = "✅ Whitelisted" if ac else "❌ Not Whitelisted"
+        # ========== ACCESS ==========
+        ac = supabase.table("access_users").select("user_id").eq("user_id",user_id).execute().data
+        access = "✅ Whitelisted" if ac else "❌ Not Whitelisted"
 
-    # ======================
-    # BLACKLIST CHECK
-    # ======================
-    blk = supabase.table("blacklist_users").select("user_id").eq("user_id", user_id).execute().data
-    blacklist_status = "🚫 Blacklisted" if blk else "🟢 Not Blacklisted"
+        # ========== BLACKLIST ==========
+        blk = supabase.table("blacklist_users").select("user_id").eq("user_id", user_id).execute().data
+        blacklist_status = "🚫 Blacklisted" if blk else "🟢 Not Blacklisted"
 
-    # ======================
-    # EMBED
-    # ======================
-    desc = (
-        f"**Roblox ID:** `{user_id}`\n"
-        f"**Username:** `{u}`\n"
-        f"**Display Name:** `{d}`\n\n"
-        f"**Ban Status:** {ban_status}\n"
-        f"**Reason:** {reason}\n\n"
-        f"**Access:** {access}\n"
-        f"**Blacklist:** {blacklist_status}"
-    )
+        desc = (
+            f"**Roblox ID:** `{user_id}`\n"
+            f"**Username:** `{u}`\n"
+            f"**Display Name:** `{d}`\n\n"
+            f"**Ban Status:** {ban_status}\n"
+            f"**Reason:** {reason}\n\n"
+            f"**Access:** {access}\n"
+            f"**Blacklist:** {blacklist_status}"
+        )
 
-    await i.followup.send(embed=emb("🔍 WHOIS RESULT", desc, 0x3498db))
+        await i.followup.send(embed=emb("🔍 WHOIS RESULT", desc, 0x3498db))
 
+    except Exception as e:
+        print("WHOIS ERROR:", e)
+        await i.followup.send(embed=emb("❌ ERROR", "Whois run karte time error aaya", 0xff0000))
+        
 # ================== STATS ==================
 START_TIME = time.time()
 
