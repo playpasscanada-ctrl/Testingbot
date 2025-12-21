@@ -762,7 +762,7 @@ def keep_alive():
             requests.get(f"{RENDER_URL}/ping", timeout=5)
         except:
             pass
-        time.sleep(300)
+        time.sleep(25)
 
 threading.Thread(target=lambda: app.run("0.0.0.0", 10000)).start()
 threading.Thread(target=keep_alive, daemon=True).start()
