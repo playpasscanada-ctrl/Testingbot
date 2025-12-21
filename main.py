@@ -280,24 +280,31 @@ async def banclear(i: discord.Interaction):
 
 @bot.tree.command(name="list")
 async def listb(i:discord.Interaction):
-    if not owner(i): return
+    if not owner(i): 
+        return
     
     data = supabase.table("bans").select("*").execute().data
     txt = ""
     now = time.time()
 
     for x in list(data):
-        if not x["perm"] and x["expire"] and now > float(x["expire"]):
+        # Auto remove expired temp bans
+        if not x["perm"] and x.get("expire") and now > float(x["expire"]):
             supabase.table("bans").delete().eq("user_id", x["user_id"]).execute()
             continue
         
-        u,n = roblox_info(x["user_id"])
+        u, n = roblox_info(x["user_id"])
+
+        # Ban Type & Time
         if x["perm"]:
             t = "PERM"
         else:
-            t = f"{int((float(x['expire'])-now)/60)}m"
+            t = f"{int((float(x['expire']) - now) / 60)}m"
 
-        txt += f"• `{x['user_id']}` | {u} ({n}) | {t}\n"
+        # Reason
+        reason = x.get("reason", "No Reason")
+
+        txt += f"• `{x['user_id']}` | {u} ({n}) | {t}\n   ➤ Reason: **{reason}**\n\n"
 
     await safe_send(i, emb("🚫 BANNED USERS", txt or "None"))
 
