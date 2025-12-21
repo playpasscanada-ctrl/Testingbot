@@ -724,7 +724,12 @@ async def whois(i: discord.Interaction, user_id: str):
 
         
 # ================== STATS ==================
-START_TIME = time.time()
+def safe_supabase(query_fn):
+    try:
+        return query_fn()
+    except Exception as e:
+        print("SUPABASE ERROR:", e)
+        return None
 
 @bot.tree.command(name="stats")
 async def stats(i: discord.Interaction):
@@ -734,26 +739,22 @@ async def stats(i: discord.Interaction):
     await i.response.defer()
 
     try:
+        bans = safe_supabase(lambda: supabase.table("bans").select("*").execute().data) or []
+        access = safe_supabase(lambda: supabase.table("access_users").select("user_id").execute().data) or []
+        blacklist = safe_supabase(lambda: supabase.table("blacklist_users").select("user_id").execute().data) or []
+        logs = safe_supabase(lambda: supabase.table("verify_logs").select("*").execute().data) or []
+        kicks = safe_supabase(lambda: supabase.table("kick_flags").select("user_id").execute().data) or []
+
         now = time.time()
 
-        bans = supabase.table("bans").select("*").execute().data
         perm = sum(1 for x in bans if x["perm"])
-        temp = sum(1 for x in bans if not x["perm"] and x.get("expire") and now < float(x["expire"]))
+        temp = sum(1 for x in bans if not x["perm"] and x["expire"] and now < float(x["expire"]))
+        bl = len(blacklist)
 
-        access_users = len(supabase.table("access_users").select("user_id").execute().data)
-        blacklist_count = len(supabase.table("blacklist_users").select("user_id").execute().data)
-
-        logs = supabase.table("verify_logs").select("discord_id").execute().data
-        verify_total = len(logs)
+        access_users = len(access)
+        verified_logs = len(logs)
         unique_users = len(set(x["discord_id"] for x in logs)) if logs else 0
-
-        kicks = len(supabase.table("kick_flags").select("user_id").execute().data)
-
-        a = supabase.table("bot_settings").select("value").eq("key","access_enabled").execute().data
-        access_status = "🟢 OFF (Everyone Allowed)" if not a or a[0]["value"]!="true" else "🔐 ON (Whitelist Enabled)"
-
-        m = supabase.table("bot_settings").select("value").eq("key","maintenance").execute().data
-        maintenance_status = "🟢 OFF" if not m or m[0]["value"]!="true" else "🛠 ON"
+        kick_pending = len(kicks)
 
         uptime = int(time.time() - START_TIME)
         hrs = uptime // 3600
@@ -762,22 +763,24 @@ async def stats(i: discord.Interaction):
         desc = (
             f"🚫 Permanent Bans: `{perm}`\n"
             f"⏱ Active TempBans: `{temp}`\n"
-            f"📛 Blacklisted Users: `{blacklist_count}`\n\n"
+            f"⛔ Blacklisted Users: `{bl}`\n\n"
             f"🔐 Whitelisted Users: `{access_users}`\n"
-            f"👤 Verified Logs: `{verify_total}`\n"
-            f"🧑‍🤝‍🧑 Unique Verifiers: `{unique_users}`\n"
-            f"👢 Kick Flags Pending: `{kicks}`\n\n"
-            f"🔐 Access System: {access_status}\n"
-            f"🛠 Maintenance: {maintenance_status}\n\n"
+            f"🧾 Verified Logs: `{verified_logs}`\n"
+            f"👥 Unique Verifiers: `{unique_users}`\n"
+            f"👢 Kick Flags Pending: `{kick_pending}`\n\n"
             f"🤖 Bot Uptime: `{hrs}h {mins}m`\n"
-            f"🩺 System: 🟢 Healthy"
+            f"🩺 System: 🟢 Stable"
         )
 
         await i.followup.send(embed=emb("📊 SYSTEM STATS", desc, 0x2ecc71))
 
     except Exception as e:
-        await i.followup.send(embed=emb("❌ ERROR", f"Stats failed:\n`{str(e)}`", 0xff0000))
-
+        return await safe_send(i, emb(
+            "❌ ERROR",
+            f"Stats failed:\n`{e}`",
+            0xff0000
+        ))
+        
 @bot.tree.command(
     name="altcheck",
     description="Check if a user is using multiple Roblox accounts (Support: Discord + Roblox)"
