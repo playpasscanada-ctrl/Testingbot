@@ -564,11 +564,14 @@ async def accessclear(i: discord.Interaction):
 
 @bot.tree.command(name="verifiedlist", description="Show all verified users with live status + pagination")
 async def verifiedlist(i: discord.Interaction):
-
+    
     if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION", "Owners only"))
+        return await i.response.send_message(
+            embed=emb("❌ NO PERMISSION", "Owners only"), 
+            ephemeral=True
+        )
 
-    await i.response.defer(ephemeral=False)
+    await i.response.defer()   # <-- MOST IMPORTANT FIX
 
     try:
         data = (
@@ -578,11 +581,11 @@ async def verifiedlist(i: discord.Interaction):
             .execute()
             .data
         )
-    except:
-        return await safe_send(i, emb("⚠️ ERROR", "Failed to fetch verification logs 😢"))
+    except Exception as e:
+        return await i.followup.send(embed=emb("⚠️ ERROR", f"DB Failed\n`{e}`"))
 
     if not data:
-        return await safe_send(i, emb("📭 EMPTY", "Abhi tak kisi ne verify nahi kiya"))
+        return await i.followup.send(embed=emb("📭 EMPTY", "No one verified yet"))
 
     seen = set()
     users = []
@@ -594,51 +597,48 @@ async def verifiedlist(i: discord.Interaction):
         seen.add(rid)
         users.append(x)
 
+    if not users:
+        return await i.followup.send(embed=emb("📭 EMPTY", "No verified users"))
+
     pages = []
 
     for x in users:
         uid = x["roblox_id"]
 
-        # LIVE STATUS
         access = supabase.table("access_users").select("*").eq("user_id", uid).execute().data
         ban = supabase.table("bans").select("*").eq("user_id", uid).execute().data
         blk = supabase.table("blacklist_users").select("*").eq("user_id", uid).execute().data
 
-        access_text = "✅ Currently Verified (Whitelisted)" if access else "❌ Not Verified"
+        access_text = "✅ Currently Verified" if access else "❌ Not Verified"
         blk_text = "🚫 Blacklisted" if blk else "🟢 Not Blacklisted"
 
         if ban:
             b = ban[0]
             if b["perm"]:
-                ban_text = f"🔴 Permanent Ban\nReason: `{b['reason']}`"
+                ban_text = f"🔴 Permanent Ban — `{b['reason']}`"
             else:
                 mins = int((float(b["expire"]) - time.time())/60)
-                ban_text = f"⏱ Temp Ban ({mins}m left)\nReason: `{b['reason']}`"
+                ban_text = f"⏱ Temp Ban ({mins}m left) — `{b['reason']}`"
         else:
             ban_text = "🟢 Not Banned"
 
         pages.append(
             f"👤 <@{x['discord_id']}>\n"
-            f"🆔 Roblox ID: `{uid}`\n"
-            f"🧑 Username: **{x['username']}**\n"
-            f"✨ Display: {x['display_name']}\n"
-            f"🕒 Verified On: `{x['timestamp']}`\n\n"
-            f"{access_text}\n"
-            f"{ban_text}\n"
-            f"{blk_text}\n"
+            f"🆔 `{uid}`\n"
+            f"🧑 **{x['username']}**\n"
+            f"✨ {x['display_name']}\n"
+            f"⏰ `{x['timestamp']}`\n\n"
+            f"{access_text}\n{ban_text}\n{blk_text}"
         )
 
-    if not pages:
-        return await safe_send(i, emb("📭 EMPTY", "No verified users found"))
-
-    class Page(discord.ui.View):
+    class P(discord.ui.View):
         def __init__(self):
             super().__init__(timeout=120)
             self.page = 0
 
         async def update(self, interaction):
             e = emb(
-                f"📜 VERIFIED USERS LIST ({self.page+1}/{len(pages)})",
+                f"📜 VERIFIED ({self.page+1}/{len(pages)})",
                 pages[self.page],
                 0x3498db
             )
@@ -656,22 +656,21 @@ async def verifiedlist(i: discord.Interaction):
                 self.page += 1
             await self.update(interaction)
 
-    view = Page()
+    view = P()
 
-    await i.followup.send(
-        embed=emb(
-            f"📜 VERIFIED USERS LIST (1/{len(pages)})",
-            pages[0],
-            0x3498db
-        ),
-        view=view
-    )
+    first = emb(f"📜 VERIFIED (1/{len(pages)})", pages[0], 0x3498db)
+    await i.followup.send(embed=first, view=view)
     
 @bot.tree.command(name="verifycheck", description="Check all Roblox IDs verified by a Discord user")
 async def verifycheck(i: discord.Interaction, discord_id: str):
 
     if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION", "Owners only"))
+        return await i.response.send_message(
+            embed=emb("❌ NO PERMISSION", "Owners only"), 
+            ephemeral=True
+        )
+
+    await i.response.defer()
 
     try:
         data = (
@@ -683,13 +682,13 @@ async def verifycheck(i: discord.Interaction, discord_id: str):
             .data
         )
     except:
-        return await safe_send(i, emb("⚠️ ERROR", "Logs fetch nahi ho paye"))
+        return await i.followup.send(embed=emb("⚠️ ERROR", "DB Failed"))
 
     if not data:
-        return await safe_send(i, emb("📭 NO DATA", f"This user never verified anything"))
+        return await i.followup.send(embed=emb("📭 NO DATA", "No verify history"))
 
     seen = set()
-    txt = f"👤 Discord User: <@{discord_id}>\n\n"
+    txt = f"👤 <@{discord_id}>\n\n"
 
     for x in data:
         rid = x["roblox_id"]
@@ -697,36 +696,33 @@ async def verifycheck(i: discord.Interaction, discord_id: str):
             continue
         seen.add(rid)
 
-        # CHECK LIVE STATUS
         access = supabase.table("access_users").select("*").eq("user_id", rid).execute().data
         ban = supabase.table("bans").select("*").eq("user_id", rid).execute().data
         blk = supabase.table("blacklist_users").select("*").eq("user_id", rid).execute().data
 
-        access_text = "✅ Currently Verified" if access else "❌ Not Verified"
+        access_text = "✅ Verified" if access else "❌ Not Verified"
         blk_text = "🚫 Blacklisted" if blk else "🟢 Not Blacklisted"
 
         if ban:
             b = ban[0]
             if b["perm"]:
-                ban_text = f"🔴 Permanent Ban — `{b['reason']}`"
+                ban_text = f"🔴 Perm Ban — `{b['reason']}`"
             else:
                 mins = int((float(b['expire']) - time.time())/60)
-                ban_text = f"⏱ Temp Ban ({mins}m left) — `{b['reason']}`"
+                ban_text = f"⏱ Temp Ban ({mins}m left)"
         else:
             ban_text = "🟢 Not Banned"
 
         txt += (
-            f"🆔 Roblox ID: `{rid}`\n"
+            f"🆔 `{rid}`\n"
             f"🧑 {x['username']}\n"
             f"✨ {x['display_name']}\n"
-            f"🕒 `{x['timestamp']}`\n"
-            f"{access_text}\n"
-            f"{ban_text}\n"
-            f"{blk_text}\n"
+            f"⏰ `{x['timestamp']}`\n"
+            f"{access_text}\n{ban_text}\n{blk_text}\n"
             f"----------------------\n"
         )
 
-    await safe_send(i, emb("🔍 USER VERIFICATION HISTORY", txt[:4000], 0x9b59b6))
+    await i.followup.send(embed=emb("🔍 USER VERIFY HISTORY", txt[:4000], 0x9b59b6))
     
 @bot.tree.command(name="blacklist", description="Manage verify blacklist")
 @app_commands.choices(mode=[
