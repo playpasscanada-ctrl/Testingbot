@@ -1199,25 +1199,85 @@ async def multiverify(i:discord.Interaction):
         users[did]["roblox_ids"].add(rid)
         users[did]["entries"].append((rid, uname, dname))
 
-    result = ""
+    result_blocks = []
+
     for did, data in users.items():
-        # only show users who verified DIFFERENT accounts
         if len(data["roblox_ids"]) > 1:
 
-            user = await bot.fetch_user(int(did))
+            try:
+                user = await bot.fetch_user(int(did))
+                name = user.mention
+            except:
+                name = f"`{did}`"
 
-            result += f"👤 **{user.mention}** — `{did}`\n"
-            result += f"👉 **Different Accounts Verified:** `{len(data['roblox_ids'])}`\n"
+            block = (
+                f"👤 **{name}** — `{did}`\n"
+                f"👉 **Different Accounts Verified:** `{len(data['roblox_ids'])}`\n"
+            )
 
             for rid, uname, dname in data["entries"]:
-                result += f"🆔 `{rid}` | {uname} ({dname})\n"
+                block += f"🆔 `{rid}` | {uname} ({dname})\n"
 
-            result += "────────────────────\n"
+            block += "────────────────────\n"
+            result_blocks.append(block)
 
-    if not result:
-        result = "✅ No one verified multiple different accounts."
+    if not result_blocks:
+        return await safe_send(i, emb("✅ CLEAN", "No one verified multiple different accounts."))
 
-    await safe_send(i, emb("🔎 MULTI ACCOUNT VERIFIERS", result, 0xffa500))
+    PAGES = []
+    temp = []
+
+    for b in result_blocks:
+        temp.append(b)
+        if len(temp) == 3:
+            PAGES.append("".join(temp))
+            temp = []
+
+    if temp:
+        PAGES.append("".join(temp))
+
+
+    class MVPages(discord.ui.View):
+        def __init__(self):
+            super().__init__(timeout=120)
+            self.page = 0
+
+        async def update(self, interaction):
+            e = emb(
+                f"🔎 MULTI ACCOUNT VERIFIERS ({self.page+1}/{len(PAGES)})",
+                PAGES[self.page],
+                0xffa500
+            )
+            await interaction.response.edit_message(embed=e, view=self)
+
+        @discord.ui.button(label="⬅ Back", style=discord.ButtonStyle.gray)
+        async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if self.page > 0:
+                self.page -= 1
+            await self.update(interaction)
+
+        @discord.ui.button(label="Next ➡", style=discord.ButtonStyle.gray)
+        async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if self.page < len(PAGES) - 1:
+                self.page += 1
+            await self.update(interaction)
+
+        async def on_timeout(self):
+            try:
+                for c in self.children:
+                    c.disabled = True
+            except:
+                pass
+
+
+    view = MVPages()
+    first = emb(
+        f"🔎 MULTI ACCOUNT VERIFIERS (1/{len(PAGES)})",
+        PAGES[0],
+        0xffa500
+    )
+
+    await i.followup.send(embed=first, view=view)
 
 @bot.tree.command(name="logs", description="View admin logs with filters + pagination")
 @app_commands.choices(filter=[
