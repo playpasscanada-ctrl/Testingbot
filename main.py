@@ -1404,123 +1404,110 @@ async def owner_cmd(i: discord.Interaction, action: app_commands.Choice[str], us
         return await safe_send(i, emb("👑 OWNER LIST", txt))
 
 
-# ================== FLASK OPTIMIZED BACKEND ==================
-from flask import Flask, jsonify
-import time
-from datetime import datetime
-
+# ================== FLASK ==================
 app = Flask(__name__)
-
-# ================== PER USER CACHE ==================
-CACHE_TTL = 20
-cache = {}   # <-- FIX: per user cache
-
-
-def safe_query(table, **filters):
-    try:
-        q = supabase.table(table).select("*")
-        for k,v in filters.items():
-            q = q.eq(k,v)
-        return q.execute().data
-    except Exception as e:
-        print("DB ERROR:",e)
-        return None
-
-
-def build_status(user_id):
-    global cache
-    now = time.time()
-
-    # ================== PER USER CACHE CHECK ==================
-    if user_id in cache:
-        if now - cache[user_id]["time"] < CACHE_TTL:
-            return cache[user_id]["data"]
-
-    try:
-        banned = False
-        temp = False
-        reason = "None"
-        minutes_left = 0
-
-        # ===== BAN CHECK =====
-        bans = safe_query("bans", user_id=user_id)
-        if bans:
-            b = bans[0]
-            if b["perm"]:
-                banned = True
-                reason = b["reason"]
-            else:
-                if float(b["expire"]) > time.time():
-                    banned = True
-                    temp = True
-                    reason = b["reason"]
-                    minutes_left = int((float(b["expire"]) - time.time()) / 60)
-
-        # ===== ACCESS =====
-        access = safe_query("access_users", user_id=user_id)
-        whitelisted = True if access else False
-
-        # ===== BLACKLIST =====
-        blk = safe_query("blacklist_users", user_id=user_id)
-        blacklisted = True if blk else False
-
-        # ===== KICK =====
-        kick = safe_query("kick_flags", user_id=user_id)
-        kick_now = True if kick else False
-        kick_reason = kick[0]["reason"] if kick else "None"
-
-        # ===== MAINTENANCE =====
-        m = safe_query("bot_settings", key="maintenance")
-        maintenance = m and m[0]["value"]=="true"
-
-        data = {
-            "user_id": user_id,
-            "access": whitelisted,
-            "banned": banned,
-            "tempban": temp,
-            "ban_reason": reason,
-            "minutes_left": minutes_left,
-            "blacklisted": blacklisted,
-            "kick": kick_now,
-            "kick_reason": kick_reason,
-            "maintenance": maintenance,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-
-        # ================== CACHE STORE ==================
-        cache[user_id] = {
-            "data": data,
-            "time": now
-        }
-
-        return data
-
-    except Exception as e:
-        print("STATUS ERROR:",e)
-        return {"error":"backend busy"}
-
-
-
-# ================== ROUTES ==================
-@app.route("/status/<uid>")
-def status(uid):
-    return jsonify(build_status(uid))
-
-
-@app.route("/")
-def home():
-    return jsonify({"status":"OK","uptime":datetime.utcnow().isoformat()})
-
 
 @app.route("/ping")
 def ping():
     return "pong"
 
 
-# disable render spam logs
-import logging
-log = logging.getLogger('werkzeug')
-log.disabled = True
+@app.route("/maintenance")
+def mcheck():
+    try:
+        r = supabase.table("bot_settings").select("value").eq("key","maintenance").execute()
+        return "true" if r.data and r.data[0]["value"]=="true" else "false"
+    except Exception as e:
+        print("MAINT ERROR:", e)
+        return "false"   # fail safe = don't kick
+
+
+@app.route("/access/<uid>")
+def acheck(uid):
+    try:
+        r = supabase.table("bot_settings").select("value").eq("key","access_enabled").execute()
+
+        # Access system OFF = allow everyone
+        if r.data and r.data[0]["value"]=="false":
+            return "true"
+
+        u = supabase.table("access_users").select("user_id").eq("user_id",uid).execute()
+        return "true" if u.data else "false"
+
+    except Exception as e:
+        print("ACCESS ERROR:", e)
+        return "true"   # fail safe whitelist if API down
+
+
+@app.route("/check/<uid>")
+def bcheck(uid):
+    try:
+        d = supabase.table("bans").select("*").eq("user_id", uid).execute().data
+        if not d:
+            return "false"
+
+        b = d[0]
+
+        if b["perm"]:
+            return "true"
+
+        if b["expire"] and time.time() < float(b["expire"]):
+            return "true"
+
+        supabase.table("bans").delete().eq("user_id", uid).execute()
+        return "false"
+
+    except Exception as e:
+        print("BAN CHECK ERROR:", e)
+        return "false"   # fail safe = no ban if DB fails
+
+
+@app.route("/baninfo/<uid>")
+def info(uid):
+    try:
+        r = supabase.table("bans").select("*").eq("user_id", uid).execute().data
+        if not r:
+            return jsonify({"ban": False})
+
+        b = r[0]
+
+        if b["perm"]:
+            return jsonify({
+                "ban": True,
+                "perm": True,
+                "reason": b.get("reason","No Reason")
+            })
+
+        left = int((float(b["expire"]) - time.time()) / 60)
+
+        return jsonify({
+            "ban": True,
+            "perm": False,
+            "reason": b.get("reason","No Reason"),
+            "minutes": left
+        })
+
+    except Exception as e:
+        print("BANINFO ERROR:", e)
+        return jsonify({"ban": False})   # safe fallback
+
+
+@app.route("/kickcheck/<uid>")
+def kickcheck(uid):
+    try:
+        r = supabase.table("kick_flags").select("*").eq("user_id", uid).execute().data
+        if not r:
+            return jsonify({"kick": False})
+
+        reason = r[0].get("reason","No Reason")
+
+        supabase.table("kick_flags").delete().eq("user_id", uid).execute()
+
+        return jsonify({"kick": True, "reason": reason})
+
+    except Exception as e:
+        print("KICKCHECK ERROR:", e)
+        return jsonify({"kick": False})   # safe fallback
 
 # ================== KEEP ALIVE ==================
 def keep_alive():
