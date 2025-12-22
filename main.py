@@ -140,7 +140,7 @@ async def on_message(msg):
         try:
             exist = supabase.table("access_users").select("user_id").eq("user_id", user_id).execute().data
             if exist:
-                return await msg.reply("✅ You are already verified & whitelisted.")
+                return await msg.reply("✅ You are already verified & whitelisted.Abe bhosidiwale dobara kyu kr rha hai you motherfucker")
         except:
             pass
 
