@@ -1411,11 +1411,10 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-CACHE_TTL = 20   # Recommended for free Render
-cache = {
-    "data": None,
-    "time": 0
-}
+# ================== PER USER CACHE ==================
+CACHE_TTL = 20
+cache = {}   # <-- FIX: per user cache
+
 
 def safe_query(table, **filters):
     try:
@@ -1430,10 +1429,12 @@ def safe_query(table, **filters):
 
 def build_status(user_id):
     global cache
+    now = time.time()
 
-    # return cache if fresh
-    if cache["data"] and (time.time() - cache["time"] < CACHE_TTL):
-        return cache["data"]
+    # ================== PER USER CACHE CHECK ==================
+    if user_id in cache:
+        if now - cache[user_id]["time"] < CACHE_TTL:
+            return cache[user_id]["data"]
 
     try:
         banned = False
@@ -1441,6 +1442,7 @@ def build_status(user_id):
         reason = "None"
         minutes_left = 0
 
+        # ===== BAN CHECK =====
         bans = safe_query("bans", user_id=user_id)
         if bans:
             b = bans[0]
@@ -1454,18 +1456,22 @@ def build_status(user_id):
                     reason = b["reason"]
                     minutes_left = int((float(b["expire"]) - time.time()) / 60)
 
+        # ===== ACCESS =====
         access = safe_query("access_users", user_id=user_id)
         whitelisted = True if access else False
 
+        # ===== BLACKLIST =====
         blk = safe_query("blacklist_users", user_id=user_id)
         blacklisted = True if blk else False
 
+        # ===== KICK =====
         kick = safe_query("kick_flags", user_id=user_id)
         kick_now = True if kick else False
         kick_reason = kick[0]["reason"] if kick else "None"
 
+        # ===== MAINTENANCE =====
         m = safe_query("bot_settings", key="maintenance")
-        maintenance = (m and m[0]["value"]=="true")
+        maintenance = m and m[0]["value"]=="true"
 
         data = {
             "user_id": user_id,
@@ -1481,17 +1487,21 @@ def build_status(user_id):
             "timestamp": datetime.utcnow().isoformat()
         }
 
-        # cache
-        cache["data"] = data
-        cache["time"] = time.time()
+        # ================== CACHE STORE ==================
+        cache[user_id] = {
+            "data": data,
+            "time": now
+        }
 
         return data
 
     except Exception as e:
         print("STATUS ERROR:",e)
-        return cache["data"] if cache["data"] else {"error":"backend busy"}
+        return {"error":"backend busy"}
 
 
+
+# ================== ROUTES ==================
 @app.route("/status/<uid>")
 def status(uid):
     return jsonify(build_status(uid))
@@ -1502,13 +1512,12 @@ def home():
     return jsonify({"status":"OK","uptime":datetime.utcnow().isoformat()})
 
 
-# ====== PING ROUTE FOR KEEP ALIVE ======
 @app.route("/ping")
 def ping():
     return "pong"
 
 
-# disable spammy logging
+# disable render spam logs
 import logging
 log = logging.getLogger('werkzeug')
 log.disabled = True
