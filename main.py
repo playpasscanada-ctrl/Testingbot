@@ -564,13 +564,13 @@ async def accessclear(i: discord.Interaction):
 
 @bot.tree.command(
     name="verifiedlist",
-    description="Show paginated verified Roblox users (Only whitelisted users)"
+    description="Show paginated verified Roblox users"
 )
 async def verifiedlist(i: discord.Interaction):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION", "Owners only"))
 
-    await i.response.defer()   # 🔥 NO EPHEMERAL
+    await i.response.defer()   # NO EPHEMERAL + SAFE
 
     try:
         logs = (
@@ -580,6 +580,10 @@ async def verifiedlist(i: discord.Interaction):
             .execute()
             .data
         )
+
+        access = supabase.table("access_users").select("user_id").execute().data
+        access_ids = {x["user_id"] for x in access}
+
     except Exception as e:
         return await i.followup.send(
             embed=emb("⚠️ ERROR", f"Failed to fetch logs\n`{e}`")
@@ -590,34 +594,22 @@ async def verifiedlist(i: discord.Interaction):
             embed=emb("📭 EMPTY", "No verified users found")
         )
 
-    unique = {}
+    seen = set()
+    entries = []
 
     for x in logs:
         rid = x["roblox_id"]
-        if rid in unique:
+
+        # ignore duplicates
+        if rid in seen:
             continue
 
-        acc = (
-            supabase.table("access_users")
-            .select("user_id")
-            .eq("user_id", rid)
-            .execute()
-            .data
-        )
-
-        if not acc:
+        # only users who STILL HAVE ACCESS
+        if rid not in access_ids:
             continue
 
-        unique[rid] = x
+        seen.add(rid)
 
-    if not unique:
-        return await i.followup.send(
-            embed=emb("📛 CLEAN", "No currently verified / whitelisted users found")
-        )
-
-    entries = []
-
-    for x in unique.values():
         entries.append(
             f"👤 <@{x['discord_id']}>\n"
             f"🆔 Roblox ID: `{x['roblox_id']}`\n"
@@ -627,6 +619,12 @@ async def verifiedlist(i: discord.Interaction):
             f"────────────────────\n"
         )
 
+    if not entries:
+        return await i.followup.send(
+            embed=emb("📛 CLEAN", "No currently whitelisted verified users")
+        )
+
+    # ================= PAGINATION =================
     PAGES = []
     chunk = []
 
@@ -674,6 +672,7 @@ async def verifiedlist(i: discord.Interaction):
 
 
     view = VerifyPages()
+
     first = emb(
         f"📜 VERIFIED USERS LIST (1/{len(PAGES)})",
         PAGES[0],
