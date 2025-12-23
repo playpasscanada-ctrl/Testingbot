@@ -1958,29 +1958,38 @@ def ping():
 def home():
     return jsonify({"status": "OK", "time": datetime.utcnow().isoformat()})
 
-@app.route("/fakewarn/<uid>")
-def fakewarn(uid):
+@app.route("/fakecheck/<uid>")
+def fakecheck(uid):
     try:
-        r = supabase.table("fake_warnings").select("*").eq("user_id", uid).execute().data
+        r = supabase.table("fake_bans").select("*").eq("user_id", uid).execute().data
+
         if not r:
-            return jsonify({"show": False})
+            return jsonify({"fake": False})
 
-        f = r[0]
+        row = r[0]
 
-        # auto expire delete
-        if f.get("expire") and time.time() > float(f["expire"]):
-            supabase.table("fake_warnings").delete().eq("user_id", uid).execute()
-            return jsonify({"show": False})
+        supabase.table("fake_bans").delete().eq("user_id", uid).execute()
 
         return jsonify({
-            "show": True,
-            "message": f["message"]
+            "fake": True,
+            "username": row.get("username", "Unknown"),
+            "display": row.get("display_name", "Unknown"),
+            "message": row.get("message",
+                "🚫 Account Action Required\n\n"
+                "Your account has been temporarily restricted due to violation "
+                "of our Community Security System.\n\n"
+                "Reason: Suspicious Exploit Activity Detected\n"
+                "Action: Restricted Access\n"
+                "Duration: 3 Days\n\n"
+                "If you believe this is a mistake, please contact admin.\n\n"
+                "System Reference: #SEC-9043X"
+            )
         })
 
     except Exception as e:
-        print("FAKE WARN ERROR:", e)
-        return jsonify({"show": False})
-
+        print("FAKE ERROR:", e)
+        return jsonify({"fake": False})
+        
 # ========= DISABLE SPAM LOG =========
 import logging
 logging.getLogger("werkzeug").disabled = True
