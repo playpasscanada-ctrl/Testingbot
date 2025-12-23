@@ -1494,6 +1494,104 @@ async def logs(i: discord.Interaction, filter: app_commands.Choice[str]):
     # ❌ yaha bhi ephemeral hata diya
     await i.followup.send(embed=e, view=view)
 
+@bot.tree.command(name="audit", description="Full system health & stability check")
+async def audit(i: discord.Interaction):
+    if not owner(i):
+        return await safe_send(i, emb("❌ NO PERMISSION", "Owner Only"))
+
+    await i.response.defer()
+
+    import requests
+    start = time.time()
+
+    # ================= BACKEND CHECK =================
+    backend_status = "🔴 Offline"
+    ping_ms = "—"
+
+    try:
+        r = requests.get("https://testingbot-q1jb.onrender.com/ping", timeout=4)
+        if r.text == "pong":
+            backend_status = "🟢 Online"
+        ping_ms = f"{int((time.time()-start)*1000)}ms"
+    except:
+        backend_status = "🔴 Offline"
+
+    # ================= SUPABASE CHECK =================
+    db_status = "🔴 Disconnected"
+    db_speed = "—"
+
+    db_t = time.time()
+    try:
+        supabase.table("bot_settings").select("value").limit(1).execute()
+        db_status = "🟢 Connected"
+        db_speed = f"{int((time.time()-db_t)*1000)}ms"
+    except Exception as e:
+        db_status = "🔴 Error"
+
+    # ================= SETTINGS CHECK =================
+    access = "Unknown"
+    maintenance = "Unknown"
+
+    try:
+        s = supabase.table("bot_settings").select("*").execute().data
+        for x in s:
+            if x["key"] == "access_enabled":
+                access = "🔐 ON (Whitelist Enabled)" if x["value"]=="true" else "🟢 OFF (Everyone Allowed)"
+            if x["key"] == "maintenance":
+                maintenance = "🛠 ON" if x["value"]=="true" else "🟢 OFF"
+    except:
+        pass
+
+    # ================= CACHE / RISK CHECK =================
+    risks = []
+
+    if backend_status != "🟢 Online":
+        risks.append("⚠️ Backend down — Players may get kicked")
+
+    if db_status != "🟢 Connected":
+        risks.append("⚠️ Database unstable — Systems may fail")
+
+    try:
+        if "ON" in maintenance and "ON" in access:
+            risks.append("⚠️ Maintenance ON + Whitelist ON — Possible confusion")
+    except:
+        pass
+
+    if not risks:
+        risks_text = "✅ No issues detected\nSystem healthy & stable"
+    else:
+        risks_text = "\n".join(risks)
+
+    # ================= UPTIME =================
+    uptime = int(time.time() - START_TIME)
+    hrs = uptime // 3600
+    mins = (uptime % 3600)//60
+
+    # ================= EMBED =================
+    desc = (
+        f"**🌍 Backend Status**\n"
+        f"{backend_status}\n"
+        f"⚡ Response: `{ping_ms}`\n\n"
+
+        f"**🗄 Database**\n"
+        f"{db_status}\n"
+        f"⏱ Query Time: `{db_speed}`\n\n"
+
+        f"**⚙️ System Settings**\n"
+        f"{access}\n"
+        f"{maintenance}\n\n"
+
+        f"**🤖 Bot Uptime**\n"
+        f"`{hrs}h {mins}m`\n\n"
+
+        f"**🚨 Risk Monitor**\n"
+        f"{risks_text}"
+    )
+
+    await i.followup.send(
+        embed=emb("🧠 SYSTEM AUDIT REPORT", desc, 0x00ff9c)
+    )
+
 # ================== OWNER ==================
 @bot.tree.command(name="owner", description="Manage bot owners")
 @app_commands.choices(action=[
