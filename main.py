@@ -934,14 +934,14 @@ async def whois(i: discord.Interaction, user_id: str):
 # ================== STATS ==================
 START_TIME = time.time()
 
-def safe_query(func):
+def safe_fetch(table):
     for _ in range(3):
         try:
-            return func()
+            x = supabase.table(table).select("*").execute()
+            return x.data or []
         except:
-            time.sleep(0.5)
-    return None
-
+            time.sleep(0.3)
+    return []
 
 @bot.tree.command(name="stats")
 async def stats(i: discord.Interaction):
@@ -953,20 +953,23 @@ async def stats(i: discord.Interaction):
     try:
         now = time.time()
 
-        # ===== SINGLE SAFE CALLS =====
-        bans = safe_query(lambda: supabase.table("bans").select("*").execute().data) or []
-        access = safe_query(lambda: supabase.table("access_users").select("user_id").execute().data) or []
-        blacklist = safe_query(lambda: supabase.table("blacklist_users").select("user_id").execute().data) or []
-        logs = safe_query(lambda: supabase.table("verify_logs").select("*").execute().data) or []
-        kicks = safe_query(lambda: supabase.table("kick_flags").select("*").execute().data) or []
+        bans       = safe_fetch("bans")
+        access     = safe_fetch("access_users")
+        blacklist  = safe_fetch("blacklist_users")
+        logs       = safe_fetch("verify_logs")
+        kicks      = safe_fetch("kick_flags")
+        settings   = supabase.table("bot_settings").select("*").execute().data or []
 
-        settings = safe_query(lambda: supabase.table("bot_settings").select("*").execute().data) or []
+        perm = 0
+        temp = 0
 
-        # ===== BANS COUNT =====
-        perm = sum(1 for x in bans if x["perm"])
-        temp = sum(1 for x in bans if not x["perm"] and x["expire"] and now < float(x["expire"]))
+        for b in bans:
+            if b.get("perm"):
+                perm += 1
+            else:
+                if b.get("expire") and now < float(b["expire"]):
+                    temp += 1
 
-        # ===== SETTINGS =====
         access_status = "🟢 OFF (Everyone Allowed)"
         maintenance_status = "🟢 OFF"
 
@@ -976,32 +979,64 @@ async def stats(i: discord.Interaction):
             if s["key"] == "maintenance" and s["value"] == "true":
                 maintenance_status = "🛠 ON"
 
-        # ===== UPTIME =====
         uptime = int(time.time() - START_TIME)
         hrs = uptime // 3600
-        mins = (uptime % 3600)//60
+        mins = (uptime % 3600) // 60
 
-        desc = (
-            f"🚫 Permanent Bans: `{perm}`\n"
-            f"⏱ Active TempBans: `{temp}`\n"
-            f"⛔ Blacklisted Users: `{len(blacklist)}`\n\n"
-
-            f"🔐 Whitelisted Users: `{len(access)}`\n"
-            f"🧾 Verified Logs: `{len(logs)}`\n"
-            f"👨‍👩‍👧 Unique Verifiers: `{len(set(x['discord_id'] for x in logs))}`\n"
-            f"🥾 Kick Flags Pending: `{len(kicks)}`\n\n"
-
-            f"🔐 Access System: {access_status}\n"
-            f"🛠 Maintenance: {maintenance_status}\n\n"
-
-            f"🤖 Bot Uptime: `{hrs}h {mins}m`\n"
-            f"🔌 System: 🟢 Stable & Optimized"
+        embed = discord.Embed(
+            title="⚙️ SYSTEM CONTROL PANEL",
+            description="Premium Secure Control Dashboard",
+            color=0x2ecc71
         )
 
-        await i.followup.send(embed=emb("📊 SYSTEM STATS", desc, 0x2ecc71))
+        embed.add_field(
+            name="🚫 Ban System",
+            value=(
+                f"**Permanent Bans:** `{perm}`\n"
+                f"**Active TempBans:** `{temp}`\n"
+                f"**Blacklisted Users:** `{len(blacklist)}`"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="👥 User Access",
+            value=(
+                f"**Whitelisted Users:** `{len(access)}`\n"
+                f"**Verification Logs:** `{len(logs)}`\n"
+                f"**Unique Verifiers:** `{len(set(x['discord_id'] for x in logs))}`\n"
+                f"**Kick Flags Pending:** `{len(kicks)}`"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="🛠 System Status",
+            value=(
+                f"**Access System:** {access_status}\n"
+                f"**Maintenance:** {maintenance_status}"
+            ),
+            inline=False
+        )
+
+        embed.add_field(
+            name="🤖 Bot Status",
+            value=(
+                f"**Uptime:** `{hrs}h {mins}m`\n"
+                f"**Health:** 🟢 Stable & Optimized"
+            ),
+            inline=False
+        )
+
+        embed.set_footer(text="RoboPal • Secure Moderation Engine")
+        embed.timestamp = datetime.utcnow()
+
+        await i.followup.send(embed=embed)
 
     except Exception as e:
-        await i.followup.send(embed=emb("❌ ERROR", f"Stats failed:\n```{e}```", 0xff0000))
+        await i.followup.send(
+            embed=emb("❌ ERROR", f"Stats failed:\n```{e}```", 0xff0000)
+        )
         
 @bot.tree.command(
     name="altcheck",
