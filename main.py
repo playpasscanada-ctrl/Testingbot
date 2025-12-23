@@ -1407,7 +1407,7 @@ async def fakeban(i: discord.Interaction, action: str, roblox_id: str = None):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION", "Owners only"))
 
-    await i.response.defer(ephemeral=True)
+    await interaction.response.send_message(embed=emb)
 
     try:
 
@@ -1425,7 +1425,7 @@ async def fakeban(i: discord.Interaction, action: str, roblox_id: str = None):
             if not rows:
                 return await i.followup.send(
                     embed=emb("📜 FAKEBAN LIST", "Currently **no pending fake bans**.", 0x3498db),
-                    ephemeral=True
+                    ephemeral=False
                 )
 
             msg = ""
@@ -1439,7 +1439,7 @@ async def fakeban(i: discord.Interaction, action: str, roblox_id: str = None):
 
             return await i.followup.send(
                 embed=emb("📜 PENDING FAKE BANS", msg[:4000], 0x2ecc71),
-                ephemeral=True
+                ephemeral=False
             )
 
         # --------------------------------
@@ -1450,7 +1450,7 @@ async def fakeban(i: discord.Interaction, action: str, roblox_id: str = None):
             if not roblox_id:
                 return await i.followup.send(
                     embed=emb("⚠️ Missing ID", "Provide Roblox ID to add fakeban."), 
-                    ephemeral=True
+                    ephemeral=False
                 )
 
             already = (
@@ -1467,7 +1467,7 @@ async def fakeban(i: discord.Interaction, action: str, roblox_id: str = None):
                         "ℹ️ Already Pending",
                         f"User `{roblox_id}` already has a pending fake warning."
                     ),
-                    ephemeral=True
+                    ephemeral=False
                 )
 
             # insert
@@ -1488,7 +1488,7 @@ async def fakeban(i: discord.Interaction, action: str, roblox_id: str = None):
             return await i.followup.send(
                 embed=emb("✅ FAKEBAN ADDED",
                     f"Fake ban prepared for user:\n`{roblox_id}`"),
-                ephemeral=True
+                ephemeral=False
             )
 
         # --------------------------------
@@ -1498,7 +1498,7 @@ async def fakeban(i: discord.Interaction, action: str, roblox_id: str = None):
             if not roblox_id:
                 return await i.followup.send(
                     embed=emb("⚠️ Missing ID","Provide Roblox ID to remove."),
-                    ephemeral=True
+                    ephemeral=False
                 )
 
             supabase.table("fake_warnings").delete().eq("user_id", roblox_id).execute()
@@ -1506,7 +1506,7 @@ async def fakeban(i: discord.Interaction, action: str, roblox_id: str = None):
             return await i.followup.send(
                 embed=emb("🗑 REMOVED",
                     f"Removed fake warning (if existed) for `{roblox_id}`"),
-                ephemeral=True
+                ephemeral=False
             )
 
         # --------------------------------
@@ -1520,13 +1520,13 @@ async def fakeban(i: discord.Interaction, action: str, roblox_id: str = None):
                 "`/fakeban remove <roblox_id>`\n"
                 "`/fakeban list`"
             ),
-            ephemeral=True
+            ephemeral=False
         )
 
     except Exception as e:
         return await i.followup.send(
             embed=emb("❌ ERROR", f"```{e}```", 0xff0000),
-            ephemeral=True
+            ephemeral=False
         )
 
 @bot.tree.command(name="logs", description="View admin logs with filters + pagination")
