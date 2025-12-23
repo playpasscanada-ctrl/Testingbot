@@ -1494,103 +1494,143 @@ async def logs(i: discord.Interaction, filter: app_commands.Choice[str]):
     # ❌ yaha bhi ephemeral hata diya
     await i.followup.send(embed=e, view=view)
 
-@bot.tree.command(name="audit", description="Full system health & stability check")
+import time, requests, statistics
+from datetime import datetime, timedelta
+
+AUDIT_LOG = []
+
+def track_audit(success: bool):
+    AUDIT_LOG.append((time.time(), success))
+    # keep only last 1 hour
+    one_hour_ago = time.time() - 3600
+    global AUDIT_LOG
+    AUDIT_LOG = [x for x in AUDIT_LOG if x[0] > one_hour_ago]
+
+
+@bot.tree.command(name="audit", description="Deep system health audit (PRO)")
 async def audit(i: discord.Interaction):
     if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION", "Owner Only"))
+        return await safe_send(i, emb("❌ NO PERMISSION", "Owner only"))
 
     await i.response.defer()
 
-    import requests
-    start = time.time()
+    ping_url = BASE_URL + "/ping"
+    status_url = BASE_URL + "/status/1"
 
-    # ================= BACKEND CHECK =================
     backend_status = "🔴 Offline"
-    ping_ms = "—"
-
-    try:
-        r = requests.get("https://testingbot-q1jb.onrender.com/ping", timeout=4)
-        if r.text == "pong":
-            backend_status = "🟢 Online"
-        ping_ms = f"{int((time.time()-start)*1000)}ms"
-    except:
-        backend_status = "🔴 Offline"
-
-    # ================= SUPABASE CHECK =================
+    backend_latency = "N/A"
     db_status = "🔴 Disconnected"
-    db_speed = "—"
+    db_latency = "N/A"
+    access_status = "Unknown"
+    maintenance_status = "Unknown"
+    risk_text = ""
+    risk_emoji = "🟥"
+    risk_percent = 100
 
-    db_t = time.time()
     try:
-        supabase.table("bot_settings").select("value").limit(1).execute()
+        # measure backend
+        t1 = time.time()
+        r = requests.get(ping_url, timeout=4)
+        t2 = time.time()
+
+        if r.status_code == 200:
+            backend_status = "🟢 Online"
+            backend_latency = f"{int((t2-t1)*1000)}ms"
+            track_audit(True)
+        else:
+            track_audit(False)
+
+    except:
+        track_audit(False)
+
+    # ===== DB + System Fetch =====
+    try:
+        t1 = time.time()
+        data = supabase.table("bot_settings").select("*").execute().data
+        t2 = time.time()
         db_status = "🟢 Connected"
-        db_speed = f"{int((time.time()-db_t)*1000)}ms"
-    except Exception as e:
-        db_status = "🔴 Error"
+        db_latency = f"{int((t2-t1)*1000)}ms"
 
-    # ================= SETTINGS CHECK =================
-    access = "Unknown"
-    maintenance = "Unknown"
+        access_enabled = False
+        maintenance = False
 
-    try:
-        s = supabase.table("bot_settings").select("*").execute().data
-        for x in s:
-            if x["key"] == "access_enabled":
-                access = "🔐 ON (Whitelist Enabled)" if x["value"]=="true" else "🟢 OFF (Everyone Allowed)"
-            if x["key"] == "maintenance":
-                maintenance = "🛠 ON" if x["value"]=="true" else "🟢 OFF"
+        for x in data:
+            if x["key"] == "access_enabled" and x["value"] == "true":
+                access_enabled = True
+            if x["key"] == "maintenance" and x["value"] == "true":
+                maintenance = True
+
+        access_status = "🔐 ON (Whitelist Enabled)" if access_enabled else "🟢 OFF (Everyone Allowed)"
+        maintenance_status = "🛠 ON" if maintenance else "🟢 OFF"
+
     except:
-        pass
+        db_status = "🔴 Failed"
+        db_latency = "N/A"
 
-    # ================= CACHE / RISK CHECK =================
-    risks = []
-
-    if backend_status != "🟢 Online":
-        risks.append("⚠️ Backend down — Players may get kicked")
-
-    if db_status != "🟢 Connected":
-        risks.append("⚠️ Database unstable — Systems may fail")
-
-    try:
-        if "ON" in maintenance and "ON" in access:
-            risks.append("⚠️ Maintenance ON + Whitelist ON — Possible confusion")
-    except:
-        pass
-
-    if not risks:
-        risks_text = "✅ No issues detected\nSystem healthy & stable"
-    else:
-        risks_text = "\n".join(risks)
-
-    # ================= UPTIME =================
+    # ===== UPTIME =====
     uptime = int(time.time() - START_TIME)
     hrs = uptime // 3600
     mins = (uptime % 3600)//60
 
-    # ================= EMBED =================
+    # ===== FAILURE MONITOR =====
+    fails = len([x for x in AUDIT_LOG if not x[1]])
+    total = len(AUDIT_LOG)
+    fail_rate = (fails / total * 100) if total > 0 else 0
+
+    # ===== RISK SCORE =====
+    risk_score = 0
+
+    if backend_status != "🟢 Online":
+        risk_score += 40
+
+    if db_status != "🟢 Connected":
+        risk_score += 40
+
+    if fail_rate > 20:
+        risk_score += 30
+
+    if maintenance_status == "🛠 ON":
+        risk_score += 10
+
+    risk_score = min(100, risk_score)
+
+    if risk_score <= 20:
+        risk_emoji = "🟢"
+        risk_text = "System healthy & stable"
+    elif risk_score <= 50:
+        risk_emoji = "🟡"
+        risk_text = "Minor issues detected"
+    else:
+        risk_emoji = "🔴"
+        risk_text = "High Risk! Monitor immediately"
+
     desc = (
-        f"**🌍 Backend Status**\n"
+        "🌐 **Backend Status**\n"
         f"{backend_status}\n"
-        f"⚡ Response: `{ping_ms}`\n\n"
+        f"⚡ Response: `{backend_latency}`\n\n"
 
-        f"**🗄 Database**\n"
+        "🗄 **Database**\n"
         f"{db_status}\n"
-        f"⏱ Query Time: `{db_speed}`\n\n"
+        f"⏱ Query Time: `{db_latency}`\n\n"
 
-        f"**⚙️ System Settings**\n"
-        f"{access}\n"
-        f"{maintenance}\n\n"
+        "⚙️ **System Settings**\n"
+        f"🔐 {access_status}\n"
+        f"{maintenance_status}\n\n"
 
-        f"**🤖 Bot Uptime**\n"
+        "🤖 **Bot Uptime**\n"
         f"`{hrs}h {mins}m`\n\n"
 
-        f"**🚨 Risk Monitor**\n"
-        f"{risks_text}"
+        "🧯 **Risk Monitor**\n"
+        f"{risk_emoji} `{risk_score}% Risk`\n"
+        f"{risk_text}\n\n"
+
+        "📊 **Failure Monitor (Last 1 Hour)**\n"
+        f"Total Checks: `{total}`\n"
+        f"Failures: `{fails}`\n"
+        f"Rate: `{int(fail_rate)}%`"
     )
 
-    await i.followup.send(
-        embed=emb("🧠 SYSTEM AUDIT REPORT", desc, 0x00ff9c)
-    )
+    await i.followup.send(embed=emb("🧠 SYSTEM AUDIT REPORT", desc, 0x2ecc71))
 
 # ================== OWNER ==================
 @bot.tree.command(name="owner", description="Manage bot owners")
