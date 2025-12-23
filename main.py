@@ -1398,136 +1398,75 @@ async def multiverify(i:discord.Interaction):
 
     await i.followup.send(embed=first, view=view)
 
-@bot.tree.command(name="fakeban", description="Manage Fake Ban Messages")
+@bot.tree.command(name="fakeban", description="Fake ban control panel")
 @app_commands.describe(
     action="add / remove / list",
-    roblox_id="Roblox User ID (for add/remove)"
+    userid="Roblox User ID",
+    message="Custom message (optional)"
 )
-async def fakeban(i: discord.Interaction, action: str, roblox_id: str = None):
-    if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION", "Owners only"))
+async def fakeban(i: discord.Interaction, action: str, userid: str=None, message: str=None):
 
-    await interaction.response.send_message(embed=emb)
+    if not owner(i):
+        return await i.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=False)
+
+    await i.response.defer()
 
     try:
-
-        # --------------------------------
-        # LIST
-        # --------------------------------
-        if action.lower() == "list":
-            rows = (
-                supabase.table("fake_warnings")
-                .select("*")
-                .execute()
-                .data
-            )
-
-            if not rows:
-                return await i.followup.send(
-                    embed=emb("📜 FAKEBAN LIST", "Currently **no pending fake bans**.", 0x3498db),
-                    ephemeral=False
-                )
-
-            msg = ""
-            for x in rows:
-                msg += (
-                    f"👤 **{x.get('username','Unknown')}**\n"
-                    f"✨ {x.get('display_name','Unknown')}\n"
-                    f"🆔 `{x['user_id']}`\n"
-                    f"----------------------\n"
-                )
-
-            return await i.followup.send(
-                embed=emb("📜 PENDING FAKE BANS", msg[:4000], 0x2ecc71),
-                ephemeral=False
-            )
-
-        # --------------------------------
-        # ADD
-        # --------------------------------
         if action.lower() == "add":
+            if not userid:
+                return await i.followup.send(embed=emb("❌ ERROR","User ID required"))
 
-            if not roblox_id:
-                return await i.followup.send(
-                    embed=emb("⚠️ Missing ID", "Provide Roblox ID to add fakeban."), 
-                    ephemeral=False
-                )
+            # Already exists?
+            chk = supabase.table("fake_warnings").select("user_id").eq("user_id", userid).execute().data
+            if chk:
+                return await i.followup.send(embed=emb("⚠️ ALREADY PENDING","This player already has a fake warning pending"))
 
-            already = (
-                supabase.table("fake_warnings")
-                .select("user_id")
-                .eq("user_id", roblox_id)
-                .execute()
-                .data
-            )
+            # Get username + display automatically
+            info = get_roblox_info(userid)   # <-- Tumhara function already hoga
+            uname = info["username"]
+            dname = info["display"]
 
-            if already:
-                return await i.followup.send(
-                    embed=emb(
-                        "ℹ️ Already Pending",
-                        f"User `{roblox_id}` already has a pending fake warning."
-                    ),
-                    ephemeral=False
-                )
-
-            # insert
             supabase.table("fake_warnings").insert({
-                "user_id": roblox_id,
-                "username": "Fetching...",
-                "display_name": "Fetching...",
-                "message": "🚫 Account Action Required\n\n"
-                           "Your account has been temporarily restricted due to violation of our "
-                           "Community Security System.\n\n"
-                           "Reason: Suspicious Exploit Activity Detected\n"
-                           "Action: Restricted Access\n"
-                           "Duration: 3 Days\n\n"
-                           "If you believe this is a mistake, please contact the server administrator.\n\n"
-                           "System Reference: #SEC-9043X"
+                "user_id": userid,
+                "username": uname,
+                "display_name": dname,
+                "message": message or "🚫 Account Action Required\n\nYour account has been temporarily restricted...\nDuration: 3 Days\nReference: #SEC-9043X"
             }).execute()
 
-            return await i.followup.send(
-                embed=emb("✅ FAKEBAN ADDED",
-                    f"Fake ban prepared for user:\n`{roblox_id}`"),
-                ephemeral=False
-            )
+            return await i.followup.send(embed=emb(
+                "🚨 FAKE BAN ADDED",
+                f"👤 **{dname}** (`{uname}`)\n🆔 `{userid}`\n\nFake ban queued successfully",
+                0xff0000
+            ))
 
-        # --------------------------------
-        # REMOVE
-        # --------------------------------
-        if action.lower() == "remove":
-            if not roblox_id:
-                return await i.followup.send(
-                    embed=emb("⚠️ Missing ID","Provide Roblox ID to remove."),
-                    ephemeral=False
-                )
+        # ================= REMOVE =================
+        elif action.lower() == "remove":
+            supabase.table("fake_warnings").delete().eq("user_id", userid).execute()
 
-            supabase.table("fake_warnings").delete().eq("user_id", roblox_id).execute()
+            return await i.followup.send(embed=emb(
+                "🧹 REMOVED",
+                f"User `{userid}` removed from fake queue",
+                0x2ecc71
+            ))
 
-            return await i.followup.send(
-                embed=emb("🗑 REMOVED",
-                    f"Removed fake warning (if existed) for `{roblox_id}`"),
-                ephemeral=False
-            )
+        # ================= LIST =================
+        elif action.lower() == "list":
+            data = supabase.table("fake_warnings").select("*").execute().data
 
-        # --------------------------------
-        # INVALID
-        # --------------------------------
-        return await i.followup.send(
-            embed=emb(
-                "❓ INVALID USAGE",
-                "**Use:**\n"
-                "`/fakeban add <roblox_id>`\n"
-                "`/fakeban remove <roblox_id>`\n"
-                "`/fakeban list`"
-            ),
-            ephemeral=False
-        )
+            if not data:
+                return await i.followup.send(embed=emb("📭 EMPTY","No pending fake bans"))
+
+            text = ""
+            for x in data:
+                text += f"👤 **{x['display_name']}** (`{x['username']}`)\n🆔 `{x['user_id']}`\n-------------------\n"
+
+            return await i.followup.send(embed=emb("📜 PENDING FAKE BANS", text[:4000], 0x3498db))
+
+        else:
+            return await i.followup.send(embed=emb("❌ Invalid Action","Use `add / remove / list`"))
 
     except Exception as e:
-        return await i.followup.send(
-            embed=emb("❌ ERROR", f"```{e}```", 0xff0000),
-            ephemeral=False
-        )
+        return await i.followup.send(embed=emb("❌ ERROR", f"```{e}```"))
 
 @bot.tree.command(name="logs", description="View admin logs with filters + pagination")
 @app_commands.choices(filter=[
