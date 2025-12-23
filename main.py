@@ -570,7 +570,7 @@ async def verifiedlist(i: discord.Interaction):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION", "Owners only"))
 
-    await i.response.defer(ephemeral=True)
+    await i.response.defer()   # 🔥 NO EPHEMERAL
 
     try:
         logs = (
@@ -581,25 +581,22 @@ async def verifiedlist(i: discord.Interaction):
             .data
         )
     except Exception as e:
-        return await safe_send(i, emb("⚠️ ERROR", f"Failed to fetch logs\n`{e}`"))
+        return await i.followup.send(
+            embed=emb("⚠️ ERROR", f"Failed to fetch logs\n`{e}`")
+        )
 
     if not logs:
-        return await safe_send(i, emb("📭 EMPTY", "No verified users found"))
+        return await i.followup.send(
+            embed=emb("📭 EMPTY", "No verified users found")
+        )
 
     unique = {}
-    
-    # ===============================
-    # Remove duplicates + keep latest
-    # Also include ONLY access users
-    # ===============================
+
     for x in logs:
         rid = x["roblox_id"]
-
-        # ignore already processed
         if rid in unique:
             continue
-        
-        # check if user still has access
+
         acc = (
             supabase.table("access_users")
             .select("user_id")
@@ -609,19 +606,17 @@ async def verifiedlist(i: discord.Interaction):
         )
 
         if not acc:
-            # No access anymore → skip
             continue
 
         unique[rid] = x
 
     if not unique:
-        return await safe_send(
-            i,
-            emb("📛 CLEAN", "No currently verified / whitelisted users found")
+        return await i.followup.send(
+            embed=emb("📛 CLEAN", "No currently verified / whitelisted users found")
         )
 
     entries = []
-    
+
     for x in unique.values():
         entries.append(
             f"👤 <@{x['discord_id']}>\n"
@@ -632,20 +627,18 @@ async def verifiedlist(i: discord.Interaction):
             f"────────────────────\n"
         )
 
-    # ===============================
-    # PAGINATION
-    # ===============================
     PAGES = []
     chunk = []
 
     for e in entries:
         chunk.append(e)
-        if len(chunk) == 5:              # 5 users per page
+        if len(chunk) == 5:
             PAGES.append("".join(chunk))
             chunk = []
 
     if chunk:
         PAGES.append("".join(chunk))
+
 
     class VerifyPages(discord.ui.View):
         def __init__(self):
@@ -679,15 +672,15 @@ async def verifiedlist(i: discord.Interaction):
             except:
                 pass
 
-    view = VerifyPages()
 
+    view = VerifyPages()
     first = emb(
         f"📜 VERIFIED USERS LIST (1/{len(PAGES)})",
         PAGES[0],
         0x3498db
     )
 
-    await i.followup.send(embed=first, view=view, ephemeral=True)
+    await i.followup.send(embed=first, view=view)
     
 @bot.tree.command(name="verifycheck", description="Check which Roblox IDs a Discord user verified")
 async def verifycheck(i: discord.Interaction, discord_id: str):
