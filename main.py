@@ -1193,11 +1193,13 @@ async def multiverify(i:discord.Interaction):
         if did not in users:
             users[did] = {
                 "roblox_ids": set(),
-                "entries": []
+                "entries": {}   # <-- CHANGED from list to dict
             }
 
         users[did]["roblox_ids"].add(rid)
-        users[did]["entries"].append((rid, uname, dname))
+
+        # store only 1 per roblox id
+        users[did]["entries"][rid] = (uname, dname)
 
     result_blocks = []
 
@@ -1215,7 +1217,9 @@ async def multiverify(i:discord.Interaction):
                 f"👉 **Different Accounts Verified:** `{len(data['roblox_ids'])}`\n"
             )
 
-            for rid, uname, dname in data["entries"]:
+            # now only unique IDs shown
+            for rid, info in data["entries"].items():
+                uname, dname = info
                 block += f"🆔 `{rid}` | {uname} ({dname})\n"
 
             block += "────────────────────\n"
