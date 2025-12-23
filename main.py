@@ -1495,43 +1495,40 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# ========= CACHE SETTINGS =========
-USER_CACHE_TTL = 25      # each player cache time
-SETTINGS_CACHE_TTL = 20  # maintenance / access cache
+# ========= CACHE =========
+USER_CACHE_TTL = 25
+SETTINGS_CACHE_TTL = 20
 
 user_cache = {}
-settings_cache = {
-    "data": None,
-    "time": 0
-}
+settings_cache = {"data": None, "time": 0}
 
+
+# ========= SAFE QUERY =========
 def safe_query(table, **filters):
     try:
         q = supabase.table(table).select("*")
-        for k,v in filters.items():
-            q = q.eq(k,v)
+        for k, v in filters.items():
+            q = q.eq(k, v)
         return q.execute().data
     except Exception as e:
         print("DB ERROR:", e)
-        return None
+        return None   # IMPORTANT
 
 
 # ========= SETTINGS CACHE =========
 def get_settings():
     global settings_cache
+    now = time.time()
 
-    if (
-        settings_cache["data"] and 
-        time.time() - settings_cache["time"] < SETTINGS_CACHE_TTL
-    ):
+    if settings_cache["data"] and now - settings_cache["time"] < SETTINGS_CACHE_TTL:
         return settings_cache["data"]
 
     maintenance = False
     access_enabled = True
 
     try:
-        s = supabase.table("bot_settings").select("*").execute().data
-        for x in s:
+        rows = supabase.table("bot_settings").select("*").execute().data
+        for x in rows:
             if x["key"] == "maintenance":
                 maintenance = (x["value"] == "true")
             if x["key"] == "access_enabled":
@@ -1543,20 +1540,16 @@ def get_settings():
         "maintenance": maintenance,
         "access_enabled": access_enabled
     }
-    settings_cache["time"] = time.time()
-
+    settings_cache["time"] = now
     return settings_cache["data"]
 
 
-# ========= USER STATUS BUILDER =========
+# ========= USER STATUS =========
 def build_status(user_id):
     now = time.time()
 
-    # ---- USER CACHE ----
-    if (
-        user_id in user_cache and 
-        now - user_cache[user_id]["time"] < USER_CACHE_TTL
-    ):
+    # -------- USE CACHE IF FRESH --------
+    if user_id in user_cache and now - user_cache[user_id]["time"] < USER_CACHE_TTL:
         return user_cache[user_id]["data"]
 
     try:
@@ -1566,11 +1559,12 @@ def build_status(user_id):
         whitelisted = True
         if settings["access_enabled"]:
             a = safe_query("access_users", user_id=user_id)
-            whitelisted = True if a else False
 
-        # ===== BLACKLIST =====
-        blk = safe_query("blacklist_users", user_id=user_id)
-        blacklisted = True if blk else False
+            # SUPABASE FAIL → SAFE MODE (Don't kick)
+            if a is None:
+                whitelisted = True
+            else:
+                whitelisted = True if a else False
 
         # ===== BAN CHECK =====
         banned = False
@@ -1579,35 +1573,37 @@ def build_status(user_id):
         left = 0
 
         bans = safe_query("bans", user_id=user_id)
-        if bans:
-            b = bans[0]
-            if b["perm"]:
-                banned = True
-                reason = b["reason"]
-            else:
-                if float(b["expire"]) > now:
-                    banned = True
-                    temp = True
-                    reason = b["reason"]
-                    left = int((float(b["expire"]) - now)/60)
-                else:
-                    supabase.table("bans").delete().eq("user_id", user_id).execute()
 
-        # ===== KICK =====
+        # Fail safe ban system
+        if bans is not None:
+            if bans:
+                b = bans[0]
+                if b["perm"]:
+                    banned = True
+                    reason = b["reason"]
+                else:
+                    if float(b["expire"]) > now:
+                        banned = True
+                        temp = True
+                        reason = b["reason"]
+                        left = int((float(b["expire"]) - now) / 60)
+                    else:
+                        supabase.table("bans").delete().eq("user_id", user_id).execute()
+
+        # ===== KICK CHECK =====
         kick_now = False
         kick_reason = "None"
 
-        k = safe_query("kick_flags", user_id=user_id)
-        if k:
+        kick = safe_query("kick_flags", user_id=user_id)
+        if kick is not None and kick:
             kick_now = True
-            kick_reason = k[0].get("reason","No Reason")
+            kick_reason = kick[0].get("reason", "No Reason")
             supabase.table("kick_flags").delete().eq("user_id", user_id).execute()
 
         data = {
             "user_id": user_id,
             "maintenance": settings["maintenance"],
             "access": whitelisted,
-            "blacklisted": blacklisted,
             "banned": banned,
             "tempban": temp,
             "ban_reason": reason,
@@ -1617,17 +1613,23 @@ def build_status(user_id):
             "timestamp": datetime.utcnow().isoformat()
         }
 
-        # SAVE CACHE
-        user_cache[user_id] = {
-            "data": data,
-            "time": now
-        }
-
+        user_cache[user_id] = {"data": data, "time": now}
         return data
 
     except Exception as e:
         print("STATUS FAIL:", e)
-        return {"error":"backend busy"}
+
+        # FAIL SAFE MODE → NEVER KICK VERIFIED
+        if user_id in user_cache:
+            return user_cache[user_id]["data"]
+
+        return {
+            "user_id": user_id,
+            "maintenance": False,
+            "access": True,
+            "banned": False,
+            "kick": False
+        }
 
 
 # ========= ROUTES =========
@@ -1643,8 +1645,7 @@ def ping():
 
 @app.route("/")
 def home():
-    return jsonify({"status":"OK","time":datetime.utcnow().isoformat()})
-
+    return jsonify({"status": "OK", "time": datetime.utcnow().isoformat()})
 
 # ========= DISABLE SPAM LOG =========
 import logging
