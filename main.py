@@ -9,6 +9,25 @@ from discord.ext import commands
 from flask import Flask, jsonify
 from supabase import create_client, Client
 
+def get_roblox_info(user_id):
+    try:
+        user = requests.get(
+            f"https://users.roblox.com/v1/users/{user_id}",
+            timeout=5
+        ).json()
+
+        return {
+            "username": user.get("name", "Unknown"),
+            "display": user.get("displayName", "Unknown")
+        }
+
+    except Exception as e:
+        print("ROBLOX LOOKUP ERROR:", e)
+        return {
+            "username": "Unknown",
+            "display": "Unknown"
+        }
+
 def log_action(action, user_id, username, display, executor):
     import time
 
