@@ -1968,19 +1968,41 @@ def fakecheck(uid):
 
         row = r[0]
 
-        # Auto delete after showing once
+        username = row.get("username")
+        display = row.get("display_name")
+
+        # ===== AUTO FETCH USERNAME IF EMPTY =====
+        if not username or not display:
+
+            # 1️⃣ Try Access Users
+            acc = supabase.table("access_users").select("*").eq("user_id", uid).execute().data
+            if acc:
+                username = acc[0].get("username") or username
+                display = acc[0].get("display_name") or display
+
+            # 2️⃣ Otherwise Try Verify Logs
+            if not username or not display:
+                v = supabase.table("verify_logs").select("*").eq("roblox_id", uid).execute().data
+                if v:
+                    username = v[0].get("username") or username
+                    display  = v[0].get("display_name") or display
+
+        # ===== DELETE AFTER SHOWING (ONE-TIME) =====
         supabase.table("fake_warnings").delete().eq("user_id", uid).execute()
 
         return jsonify({
             "fake": True,
-            "username": row.get("username","Unknown"),
-            "display": row.get("display_name","Unknown"),
-            "message": row.get("message",
+            "user_id": uid,
+            "username": username or "Unknown",
+            "display": display or "Unknown",
+            "message": row.get(
+                "message",
                 "🚫 Account Action Required\n\n"
                 "Your account has been temporarily restricted.\n\n"
                 "Reason: Suspicious Exploit Activity Detected\n"
                 "Duration: 3 Days\n\n"
-                "System Ref: #SEC-9043X"
+                "If you believe this is a mistake, contact admin.\n\n"
+                "System Reference: #SEC-9043X"
             )
         })
 
