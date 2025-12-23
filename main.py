@@ -1961,28 +1961,26 @@ def home():
 @app.route("/fakecheck/<uid>")
 def fakecheck(uid):
     try:
-        r = supabase.table("fake_bans").select("*").eq("user_id", uid).execute().data
+        r = supabase.table("fake_warnings").select("*").eq("user_id", uid).execute().data
 
         if not r:
             return jsonify({"fake": False})
 
         row = r[0]
 
-        supabase.table("fake_bans").delete().eq("user_id", uid).execute()
+        # Auto delete after showing once
+        supabase.table("fake_warnings").delete().eq("user_id", uid).execute()
 
         return jsonify({
             "fake": True,
-            "username": row.get("username", "Unknown"),
-            "display": row.get("display_name", "Unknown"),
+            "username": row.get("username","Unknown"),
+            "display": row.get("display_name","Unknown"),
             "message": row.get("message",
                 "🚫 Account Action Required\n\n"
-                "Your account has been temporarily restricted due to violation "
-                "of our Community Security System.\n\n"
+                "Your account has been temporarily restricted.\n\n"
                 "Reason: Suspicious Exploit Activity Detected\n"
-                "Action: Restricted Access\n"
                 "Duration: 3 Days\n\n"
-                "If you believe this is a mistake, please contact admin.\n\n"
-                "System Reference: #SEC-9043X"
+                "System Ref: #SEC-9043X"
             )
         })
 
