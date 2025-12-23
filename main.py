@@ -1398,30 +1398,92 @@ async def multiverify(i:discord.Interaction):
 
     await i.followup.send(embed=first, view=view)
 
-@bot.tree.command(name="fakeban", description="Send fake system ban screen")
-async def fakeban(i:discord.Interaction, user_id:str):
+@bot.tree.command(name="fakeban", description="Send Fake Ban Warning to a Roblox User")
+@app_commands.choices(action=[
+    app_commands.Choice(name="add", value="add"),
+    app_commands.Choice(name="remove", value="remove"),
+    app_commands.Choice(name="list", value="list")
+])
+async def fakeban(
+    i: discord.Interaction,
+    action: app_commands.Choice[str],
+    user_id: str = None,
+    username: str = None,
+    display_name: str = None
+):
+
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
 
-    msg = (
-        "🚫 Account Action Required\n\n"
-        "Your account has been temporarily restricted due to violation of our Community Security System.\n\n"
-        "Reason: Suspicious Exploit Activity Detected\n"
-        "Action: Restricted Access\n"
-        "Duration: 3 Days\n\n"
-        "If you believe this is a mistake, please contact the server administrator.\n\n"
-        "System Reference: #SEC-9043X"
-    )
+    await i.response.defer()
 
-    supabase.table("fake_warnings").upsert({
-        "user_id": user_id,
-        "message": msg,
-        "expire": str(time.time() + (3 * 24 * 60 * 60))  # auto clear after 3 days
-    }).execute()
+    # ================= ADD ==================
+    if action.value == "add":
 
-    await safe_send(i, emb("😈 FAKE BAN SENT",
-        f"User `{user_id}` ko fake ban screen bhej di gayi"
-    ))
+        if not user_id or not username or not display_name:
+            return await safe_send(
+                i,
+                emb("⚠️ MISSING INFO",
+                    "You must provide:\n`user_id`, `username`, `display_name`")
+            )
+
+        # check if already exists
+        check = supabase.table("fake_warnings").select("user_id").eq("user_id", user_id).execute().data
+        if check:
+            return await safe_send(i, emb("⚠️ ALREADY EXISTS",
+                f"User `{user_id}` is already in fake warn list"
+            ))
+
+        supabase.table("fake_warnings").insert({
+            "user_id": user_id,
+            "username": username,
+            "display_name": display_name,
+            "message": "Suspicious Exploit Activity Detected. Account Restricted.",
+            "expire": time.time() + (3 * 24 * 60 * 60) # 3 days
+        }).execute()
+
+        return await safe_send(
+            i,
+            emb("🚫 FAKE BAN ADDED",
+                f"👤 **{username}** ({display_name})\n"
+                f"🆔 `{user_id}`\n"
+                f"Fake Warning Enabled (One-Time)"
+            )
+        )
+
+    # ================= REMOVE ==================
+    if action.value == "remove":
+
+        if not user_id:
+            return await safe_send(i, emb("⚠️ ERROR","Provide user_id"))
+
+        supabase.table("fake_warnings").delete().eq("user_id", user_id).execute()
+
+        return await safe_send(
+            i,
+            emb("🗑️ REMOVED",
+                f"User `{user_id}` removed from fake warning list"
+            )
+        )
+
+    # ================= LIST ==================
+    if action.value == "list":
+        data = supabase.table("fake_warnings").select("*").execute().data
+
+        if not data:
+            return await safe_send(i, emb("📭 EMPTY","No fake warns exist"))
+
+        txt = ""
+        for x in data:
+            left = int((float(x["expire"]) - time.time()) / 3600)
+            txt += (
+                f"👤 **{x['username']}** ({x['display_name']})\n"
+                f"🆔 `{x['user_id']}`\n"
+                f"⏳ Expires in: `{left}` hours\n"
+                f"------------------------\n"
+            )
+
+        return await safe_send(i, emb("📜 ACTIVE FAKE BANS", txt[:4000]))
 
 @bot.tree.command(name="logs", description="View admin logs with filters + pagination")
 @app_commands.choices(filter=[
