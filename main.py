@@ -1463,7 +1463,7 @@ async def multiverify(i:discord.Interaction):
 
     await i.response.defer()
 
-    logs = supabase.table("verify_logs").select("*").execute().data
+    logs = supabase.table("access_users").select("*").execute().data
     if not logs:
         return await safe_send(i, emb("ℹ️ INFO","No verification logs found"))
 
