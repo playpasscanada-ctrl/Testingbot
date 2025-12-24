@@ -1456,34 +1456,40 @@ async def profile(i: discord.Interaction, user_id: str):
         embed = emb("📂 USER PROFILE — PREMIUM", desc, 0x3498db)
     )
 
-@bot.tree.command(name="multiverify", description="Users who verified multiple DIFFERENT roblox accounts")
+@bot.tree.command(name="multiverify", description="Users who verified multiple DIFFERENT roblox accounts (LIVE FROM ACCESS DATABASE)")
 async def multiverify(i:discord.Interaction):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
 
     await i.response.defer()
 
-    logs = supabase.table("access_users").select("*").execute().data
-    if not logs:
-        return await safe_send(i, emb("ℹ️ INFO","No verification logs found"))
+    # ========= GET FROM ACCESS USERS =========
+    try:
+        rows = supabase.table("access_users").select("*").execute().data
+    except:
+        return await safe_send(i, emb("⚠️ ERROR","Failed to fetch access users database"))
+
+    if not rows:
+        return await safe_send(i, emb("ℹ️ INFO","No verified users found in access database"))
 
     users = {}
 
-    for x in logs:
-        did = x["discord_id"]
-        rid = x["roblox_id"]
+    for x in rows:
+        did = x.get("discord_id")
+        rid = x.get("user_id")
         uname = x.get("username","Unknown")
         dname = x.get("display_name","Unknown")
+
+        if not did or not rid:
+            continue
 
         if did not in users:
             users[did] = {
                 "roblox_ids": set(),
-                "entries": {}   # <-- CHANGED from list to dict
+                "entries": {}
             }
 
         users[did]["roblox_ids"].add(rid)
-
-        # store only 1 per roblox id
         users[did]["entries"][rid] = (uname, dname)
 
     result_blocks = []
@@ -1502,7 +1508,6 @@ async def multiverify(i:discord.Interaction):
                 f"👉 **Different Accounts Verified:** `{len(data['roblox_ids'])}`\n"
             )
 
-            # now only unique IDs shown
             for rid, info in data["entries"].items():
                 uname, dname = info
                 block += f"🆔 `{rid}` | {uname} ({dname})\n"
@@ -1513,6 +1518,7 @@ async def multiverify(i:discord.Interaction):
     if not result_blocks:
         return await safe_send(i, emb("✅ CLEAN", "No one verified multiple different accounts."))
 
+    # ========= PAGINATION =========
     PAGES = []
     temp = []
 
@@ -1558,8 +1564,8 @@ async def multiverify(i:discord.Interaction):
             except:
                 pass
 
-
     view = MVPages()
+
     first = emb(
         f"🔎 MULTI ACCOUNT VERIFIERS (1/{len(PAGES)})",
         PAGES[0],
