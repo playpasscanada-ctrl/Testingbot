@@ -1456,25 +1456,34 @@ async def profile(i: discord.Interaction, user_id: str):
         embed = emb("📂 USER PROFILE — PREMIUM", desc, 0x3498db)
     )
 
-@bot.tree.command(name="multiverify", description="Users who verified multiple DIFFERENT roblox accounts (LIVE FROM ACCESS DATABASE)")
-async def multiverify(i:discord.Interaction):
-    if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
+@bot.tree.command(name="multiverify", description="Users who verified multiple Roblox accounts")
+async def multiverify(i: discord.Interaction):
 
-    await i.response.defer()
-
-    # ========= GET FROM ACCESS USERS =========
+    # ---- ALWAYS DEFERS INSTANTLY (NO FAIL) ----
     try:
-        rows = supabase.table("access_users").select("*").execute().data
+        await i.response.defer(thinking=True)
     except:
-        return await safe_send(i, emb("⚠️ ERROR","Failed to fetch access users database"))
+        pass
 
-    if not rows:
-        return await safe_send(i, emb("ℹ️ INFO","No verified users found in access database"))
+    # ---- OWNER ONLY CHECK ----
+    if not owner(i):
+        try:
+            return await i.followup.send(embed=emb("❌ NO PERMISSION","Owner only"), ephemeral=True)
+        except:
+            return
+
+    # ---- SAFE SUPABASE FETCH ----
+    try:
+        logs = supabase.table("access_users").select("*").execute().data
+    except Exception as e:
+        return await i.followup.send(embed=emb("❌ Database Error", str(e)), ephemeral=True)
+
+    if not logs:
+        return await i.followup.send(embed=emb("ℹ️ INFO","No verified users found"))
 
     users = {}
 
-    for x in rows:
+    for x in logs:
         did = x.get("discord_id")
         rid = x.get("user_id")
         uname = x.get("username","Unknown")
@@ -1516,9 +1525,8 @@ async def multiverify(i:discord.Interaction):
             result_blocks.append(block)
 
     if not result_blocks:
-        return await safe_send(i, emb("✅ CLEAN", "No one verified multiple different accounts."))
+        return await i.followup.send(embed=emb("✅ CLEAN","No one verified multiple different accounts."))
 
-    # ========= PAGINATION =========
     PAGES = []
     temp = []
 
@@ -1532,30 +1540,37 @@ async def multiverify(i:discord.Interaction):
         PAGES.append("".join(temp))
 
 
+    # -------- SAFE PAGINATION --------
     class MVPages(discord.ui.View):
         def __init__(self):
-            super().__init__(timeout=120)
+            super().__init__(timeout=180)
             self.page = 0
 
-        async def update(self, interaction):
+        async def refresh(self, interaction):
             e = emb(
                 f"🔎 MULTI ACCOUNT VERIFIERS ({self.page+1}/{len(PAGES)})",
                 PAGES[self.page],
                 0xffa500
             )
-            await interaction.response.edit_message(embed=e, view=self)
+            try:
+                await interaction.response.edit_message(embed=e, view=self)
+            except:
+                try:
+                    await interaction.edit_original_response(embed=e, view=self)
+                except:
+                    pass
 
         @discord.ui.button(label="⬅ Back", style=discord.ButtonStyle.gray)
-        async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
+        async def back(self, interaction: discord.Interaction, btn: discord.ui.Button):
             if self.page > 0:
                 self.page -= 1
-            await self.update(interaction)
+            await self.refresh(interaction)
 
         @discord.ui.button(label="Next ➡", style=discord.ButtonStyle.gray)
-        async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
-            if self.page < len(PAGES) - 1:
+        async def next(self, interaction: discord.Interaction, btn: discord.ui.Button):
+            if self.page < len(PAGES)-1:
                 self.page += 1
-            await self.update(interaction)
+            await self.refresh(interaction)
 
         async def on_timeout(self):
             try:
