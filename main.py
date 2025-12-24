@@ -1792,6 +1792,33 @@ async def owner_cmd(i: discord.Interaction, action: app_commands.Choice[str], us
         txt += "\n".join(f"• `{x['user_id']}`" for x in data) or "None"
         return await safe_send(i, emb("👑 OWNER LIST", txt))
 
+@bot.tree.command(name="stop", description="Enable / Disable global script execution")
+@app_commands.choices(mode=[
+    app_commands.Choice(name="Enable Stop", value="on"),
+    app_commands.Choice(name="Disable Stop", value="off"),
+    app_commands.Choice(name="Status", value="status"),
+])
+async def stop(i: discord.Interaction, mode: app_commands.Choice[str]):
+
+    if not owner(i):
+        return await safe_send(i, emb("❌ NO PERMISSION","Owner Only"))
+
+    if mode.value == "status":
+        r = supabase.table("bot_settings").select("*").eq("key","stop_enabled").execute().data
+        state = "ON 🔴" if r and r[0]["value"]=="true" else "OFF 🟢"
+        return await safe_send(i, emb("⏹ STOP SYSTEM STATUS", f"Stop System is currently **{state}**", 0x3498db))
+
+    val = "true" if mode.value=="on" else "false"
+
+    supabase.table("bot_settings").upsert({
+        "key": "stop_enabled",
+        "value": val
+    }).execute()
+
+    msg = "🛑 Stop Mode ENABLED\nNew executions will be blocked" if val=="true" else "🟢 Stop Mode DISABLED\nScripts will execute normally"
+
+    await safe_send(i, emb("⏹ STOP SYSTEM UPDATED", msg, 0xf1c40f))
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
@@ -2003,6 +2030,17 @@ def fakecheck(uid):
     except Exception as e:
         print("FAKE ERROR:", e)
         return jsonify({"fake": False})
+
+@app.route("/stopstatus")
+def stopstatus():
+    try:
+        r = supabase.table("bot_settings").select("value").eq("key","stop_enabled").execute().data
+        if not r:
+            return "false"
+        return r[0]["value"]
+    except Exception as e:
+        print("STOP ERROR:", e)
+        return "false"  # fail safe = allow
         
 # ========= DISABLE SPAM LOG =========
 import logging
