@@ -197,7 +197,7 @@ async def on_message(msg):
         # AUTO ADD TO WHITELIST
         # =========================
         try:
-            supabase.table("access_users").upsert({
+            supabase.table("access_users").insert({
                 "user_id": user_id,
                 "username": username,
                 "display_name": display,
