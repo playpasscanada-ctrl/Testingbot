@@ -118,6 +118,7 @@ async def on_message(msg):
     if msg.author.bot:
         return
 
+    # --- ONLY THIS CHANNEL ---
     if msg.channel.id != 1451973498200133786:
         return
 
@@ -140,11 +141,18 @@ async def on_message(msg):
         username = data.get("name","Unknown")
         display = data.get("displayName","Unknown")
 
+
         # =========================
         # ⚠️ BLACKLIST CHECK
         # =========================
         try:
-            blk = supabase.table("blacklist_users").select("user_id").eq("user_id", user_id).execute().data
+            blk = (
+                supabase.table("blacklist_users")
+                .select("user_id")
+                .eq("user_id", user_id)
+                .execute()
+                .data
+            )
             if blk:
                 embed = discord.Embed(
                     title="🚫 Verification Denied",
@@ -159,28 +167,41 @@ async def on_message(msg):
 
         # =========================
         # 🎯 1 DISCORD = 1 ROBLOX LIMIT
-        # (Sirf ACTIVE verified users ke liye)
         # =========================
         try:
-            existing = supabase.table("access_users").select("roblox_id").eq("discord_id", str(msg.author.id)).execute().data
-            if existing:
+            already_user = (
+                supabase.table("access_users")
+                .select("roblox_id")
+                .eq("discord_id", str(msg.author.id))
+                .execute()
+                .data
+            )
+
+            if already_user:
                 embed = discord.Embed(
                     title="❌ Verification Limit Reached",
-                    description="You can verify **only 1 Roblox account per Discord user.**",
+                    description="You can verify **only 1 Roblox account per Discord account.**",
                     color=0xe74c3c
                 )
                 await msg.reply(embed=embed)
                 return
-        except:
-            pass
+
+        except Exception as e:
+            print("LIMIT CHECK ERROR:", e)
 
 
         # =========================
         # ✅ ALREADY VERIFIED CHECK
-        # (Same Roblox ID already whitelist hai?)
         # =========================
         try:
-            exist = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
+            exist = (
+                supabase.table("access_users")
+                .select("*")
+                .eq("user_id", user_id)
+                .execute()
+                .data
+            )
+
             if exist:
                 embed = discord.Embed(
                     title="✅ Already Verified",
@@ -189,6 +210,7 @@ async def on_message(msg):
                 )
                 await msg.reply(embed=embed)
                 return
+
         except:
             pass
 
@@ -197,14 +219,26 @@ async def on_message(msg):
         # AUTO ADD TO WHITELIST
         # =========================
         try:
-            supabase.table("access_users").insert({
-                "user_id": user_id,
-                "username": username,
-                "display_name": display,
-                "discord_id": str(msg.author.id)
-            }).execute()
-        except:
-            pass
+            res = (
+                supabase.table("access_users")
+                .insert({
+                    "user_id": user_id,
+                    "username": username,
+                    "display_name": display,
+                    "discord_id": str(msg.author.id)
+                })
+                .execute()
+            )
+
+        except Exception as e:
+            # INSERT FAILED = LIMIT / RESTRICTION HIT
+            embed = discord.Embed(
+                title="❌ Verification Limit Reached",
+                description="You can verify only **1 Roblox account per Discord account.**",
+                color=0xe74c3c
+            )
+            await msg.reply(embed=embed)
+            return
 
 
         # =========================
@@ -256,6 +290,7 @@ async def on_message(msg):
                 await log_ch.send(embed=log)
         except:
             pass
+
 
     except:
         await msg.reply("❌ Invalid Roblox ID ya Roblox API down hai")
