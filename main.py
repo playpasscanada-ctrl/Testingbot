@@ -125,11 +125,14 @@ async def on_message(msg):
 
     if not user_id.isdigit():
         await msg.delete()
-        await msg.channel.send(
-            f"{msg.author.mention} ❌ Sirf Roblox User ID bhejo!",
-            delete_after=5
+        embed = discord.Embed(
+            title="❌ Invalid Input",
+            description=f"{msg.author.mention} Sirf **Roblox User ID** bhejo!",
+            color=0xff0000
         )
+        await msg.channel.send(embed=embed, delete_after=6)
         return
+
 
     try:
         data = requests.get(
@@ -142,30 +145,81 @@ async def on_message(msg):
 
 
         # =========================
-        # ⚠️ BLACKLIST CHECK HERE
+        # ⚠️ BLACKLIST CHECK
         # =========================
         try:
             blk = supabase.table("blacklist_users").select("user_id").eq("user_id", user_id).execute().data
             if blk:
-                await msg.reply("🚫 You are blacklisted, verification denied.")
+                embed = discord.Embed(
+                    title="🚫 Verification Denied",
+                    description="You are **blacklisted**, verification failed.",
+                    color=0xff0000
+                )
+                await msg.reply(embed=embed)
                 return
         except:
             pass
 
 
+
         # =========================
-        # ✅ ALREADY VERIFIED CHECK
+        # 1 DISCORD = ONLY 1 ROBLOX
+        # =========================
+        try:
+            already = (
+                supabase.table("verify_logs")
+                .select("roblox_id")
+                .eq("discord_id", str(msg.author.id))
+                .execute()
+                .data
+            )
+
+            if already:
+                existing = already[0]["roblox_id"]
+
+                # Same Roblox dobara verify
+                if existing == user_id:
+                    embed = discord.Embed(
+                        title="✅ Already Verified",
+                        description="You are already verified & whitelisted.",
+                        color=0x2ecc71
+                    )
+                    await msg.reply(embed=embed)
+                    return
+
+                # Dusra Roblox verify karne ki koshish
+                embed = discord.Embed(
+                    title="❌ Verification Limit Reached",
+                    description="You can verify **only 1 Roblox account per Discord user**.",
+                    color=0xffa500
+                )
+                await msg.reply(embed=embed)
+                return
+        except Exception as e:
+            print("VERIFY LIMIT CHECK ERROR:", e)
+
+
+
+        # =========================
+        # ALREADY VERIFIED ROBLOX
         # =========================
         try:
             exist = supabase.table("access_users").select("user_id").eq("user_id", user_id).execute().data
             if exist:
-                return await msg.reply("✅ You are already verified & whitelisted.Abe bhosidiwale dobara kyu kr rha hai you motherfucker")
+                embed = discord.Embed(
+                    title="✅ Already Whitelisted",
+                    description="This Roblox account is already verified & whitelisted.",
+                    color=0x2ecc71
+                )
+                await msg.reply(embed=embed)
+                return
         except:
             pass
 
 
+
         # =========================
-        # AUTO ADD TO WHITELIST
+        # ADD TO WHITELIST
         # =========================
         try:
             supabase.table("access_users").upsert({
@@ -178,7 +232,7 @@ async def on_message(msg):
 
 
         # =========================
-        # SAVE VERIFY LOG TO SUPABASE
+        # SAVE VERIFY LOG
         # =========================
         try:
             supabase.table("verify_logs").insert({
@@ -192,9 +246,13 @@ async def on_message(msg):
             print("VERIFY LOG ERROR:", e)
 
 
-        # USER REPLY
+
+        # =========================
+        # USER SUCCESS EMBED
+        # =========================
         embed = discord.Embed(
-            title="✅ Verified & Whitelisted",
+            title="✅ Verification Successful",
+            description="You have been successfully **Verified & Whitelisted** 🎯",
             color=0x2ecc71
         )
         embed.add_field(name="Roblox ID", value=f"`{user_id}`", inline=False)
@@ -205,7 +263,10 @@ async def on_message(msg):
         await msg.reply(embed=embed)
 
 
-        # LOGS CHANNEL
+
+        # =========================
+        # LOG CHANNEL
+        # =========================
         try:
             log_ch = bot.get_channel(1451973589342621791)
             if log_ch:
@@ -223,9 +284,14 @@ async def on_message(msg):
         except:
             pass
 
-    except:
-        await msg.reply("❌ Invalid Roblox ID ya Roblox API down hai")
 
+    except:
+        embed = discord.Embed(
+            title="❌ Verification Failed",
+            description="Invalid Roblox ID ya Roblox API down hai.",
+            color=0xff0000
+        )
+        await msg.reply(embed=embed)
 
 # ================== BAN ==================
 @bot.tree.command(name="ban")
