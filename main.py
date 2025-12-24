@@ -2034,13 +2034,16 @@ def fakecheck(uid):
 @app.route("/stopstatus")
 def stopstatus():
     try:
-        r = supabase.table("bot_settings").select("value").eq("key","stop_enabled").execute().data
-        if not r:
-            return "false"
-        return r[0]["value"]
+        r = supabase.table("bot_settings").select("value").eq("key","stop_enabled").execute()
+
+        if not r.data:
+            return jsonify({"stop": False})   # fail-safe allow
+
+        return jsonify({"stop": (r.data[0]["value"] == "true")})
+
     except Exception as e:
-        print("STOP ERROR:", e)
-        return "false"  # fail safe = allow
+        print("STOP CHECK ERROR:", e)
+        return jsonify({"stop": False})       # fail-safe allow
         
 # ========= DISABLE SPAM LOG =========
 import logging
