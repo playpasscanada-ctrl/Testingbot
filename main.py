@@ -1305,6 +1305,89 @@ async def history(i: discord.Interaction, user_id: str):
 
     await i.followup.send(embed=emb("📂 USER HISTORY", desc, 0x9b59b6))
 
+@bot.tree.command(name="profile", description="Full profile + verification + moderation history of a Roblox user")
+async def profile(i: discord.Interaction, user_id: str):
+
+    if not owner(i):
+        return await safe_send(i, emb("❌ NO PERMISSION", "Owner only command"))
+
+    await i.response.defer()
+
+    try:
+        # Fetch Roblox Info
+        data = requests.get(f"https://users.roblox.com/v1/users/{user_id}", timeout=5).json()
+        username = data.get("name","Unknown")
+        display = data.get("displayName","Unknown")
+    except:
+        return await safe_send(i, emb("⚠️ ERROR", "Invalid Roblox ID / Roblox API Down"))
+
+    
+    # ===== ACCESS CHECK =====
+    access = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
+    access_text = "🟢 Whitelisted" if access else "🔴 Not Whitelisted"
+
+
+    # ===== BLACKLIST =====
+    blk = supabase.table("blacklist_users").select("*").eq("user_id", user_id).execute().data
+    blacklist_text = "🚫 Blacklisted" if blk else "🟢 Not Blacklisted"
+
+
+    # ===== BAN CHECK =====
+    bans = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
+    ban_text = "🟢 Not Banned"
+
+    if bans:
+        b = bans[0]
+
+        if b["perm"]:
+            ban_text = f"🔴 Permanent Ban\nReason: `{b['reason']}`"
+        else:
+            import time
+            left = int((float(b["expire"]) - time.time())/60)
+            ban_text = f"⏱ Tempban | `{left} min left`\nReason: `{b['reason']}`"
+
+
+    # ===== LAST VERIFY LOG =====
+    logs = (
+        supabase.table("verify_logs")
+        .select("*")
+        .eq("roblox_id", user_id)
+        .order("timestamp", desc=True)
+        .limit(1)
+        .execute()
+        .data
+    )
+
+    if logs:
+        v = logs[0]
+        verifier = f"<@{v['discord_id']}>"
+        vtime = v["timestamp"].replace("T"," ").split(".")[0]
+        verify_text = (
+            f"👤 Verified By: {verifier}\n"
+            f"🕒 Time: `{vtime}`"
+        )
+    else:
+        verify_text = "❌ Never Verified"
+
+
+    # ===== FINAL PREMIUM EMBED =====
+    desc = (
+        f"👤 **User Profile**\n"
+        f"🆔 ID: `{user_id}`\n"
+        f"🧑 Username: **{username}**\n"
+        f"✨ Display: **{display}**\n\n"
+
+        f"🔐 **Access:** {access_text}\n"
+        f"📛 **Blacklist:** {blacklist_text}\n"
+        f"🚫 **Ban Status:**\n{ban_text}\n\n"
+
+        f"📜 **Verification Info**\n{verify_text}"
+    )
+
+    await i.followup.send(
+        embed = emb("📂 USER PROFILE — PREMIUM", desc, 0x3498db)
+    )
+
 @bot.tree.command(name="multiverify", description="Users who verified multiple DIFFERENT roblox accounts")
 async def multiverify(i:discord.Interaction):
     if not owner(i):
