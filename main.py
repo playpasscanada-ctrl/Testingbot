@@ -295,6 +295,35 @@ async def on_message(msg):
     except:
         await msg.reply("❌ Invalid Roblox ID ya Roblox API down hai")
 
+@bot.event
+async def on_member_remove(member):
+    try:
+        supabase.table("access_users")\
+        .delete()\
+        .eq("discord_id", str(member.id))\
+        .execute()
+
+        supabase.table("verify_logs")\
+        .delete()\
+        .eq("discord_id", str(member.id))\
+        .execute()
+
+        ch = bot.get_channel(1451973589342621791)
+        if ch:
+            embed = discord.Embed(
+                title="❌ Member Left — Whitelist Removed",
+                description=(
+                    f"**User Left:** <@{member.id}>\n"
+                    f"Discord ID: `{member.id}`\n"
+                    f"Whitelist & Logs Successfully Deleted."
+                ),
+                color=0xe74c3c
+            )
+            await ch.send(embed=embed)
+
+    except Exception as e:
+        print("AUTO REMOVE ERROR:", e)
+
 # ================== BAN ==================
 @bot.tree.command(name="ban")
 async def ban(i:discord.Interaction, user_id:str, reason:str):
