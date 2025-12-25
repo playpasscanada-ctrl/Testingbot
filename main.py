@@ -298,24 +298,26 @@ async def on_message(msg):
 @bot.event
 async def on_member_remove(member):
     try:
-        supabase.table("access_users")\
-        .delete()\
-        .eq("discord_id", str(member.id))\
+        # DELETE FROM ACCESS
+        supabase.table("access_users") \
+        .delete() \
+        .eq("discord_id", str(member.id)) \
         .execute()
 
-        supabase.table("verify_logs")\
-        .delete()\
-        .eq("discord_id", str(member.id))\
+        # DELETE FROM LOGS
+        supabase.table("verify_logs") \
+        .delete() \
+        .eq("discord_id", str(member.id)) \
         .execute()
 
         ch = bot.get_channel(1451973589342621791)
         if ch:
             embed = discord.Embed(
-                title="❌ Member Left — Whitelist Removed",
+                title="❌ Member Left – Whitelist Removed",
                 description=(
                     f"**User Left:** <@{member.id}>\n"
-                    f"Discord ID: `{member.id}`\n"
-                    f"Whitelist & Logs Successfully Deleted."
+                    f"**Discord ID:** `{member.id}`\n"
+                    "Whitelist & Logs Successfully Deleted."
                 ),
                 color=0xe74c3c
             )
