@@ -2424,6 +2424,74 @@ async def on_member_remove(member):
     except Exception as e:
         print(f"LEAVE EVENT ERROR: {e}")
 
+# ================== SAY / BROADCAST COMMAND ==================
+@bot.tree.command(name="say", description="Make the bot speak (Text, Embed, or Image)")
+@app_commands.describe(
+    message="Message content",
+    channel="Where to send? (Default: current channel)",
+    mode="Style of message (Text/Embed)",
+    image="Attach an image (Optional)"
+)
+@app_commands.choices(mode=[
+    app_commands.Choice(name="Plain Text", value="text"),
+    app_commands.Choice(name="Green Embed (Success)", value="green"),
+    app_commands.Choice(name="Red Embed (Error)", value="red"),
+    app_commands.Choice(name="Blue Embed (Info)", value="blue"),
+])
+async def say(
+    i: discord.Interaction, 
+    message: str, 
+    mode: app_commands.Choice[str] = None,
+    channel: discord.TextChannel = None, 
+    image: discord.Attachment = None
+):
+    # 1. Permission Check
+    if not owner(i):
+        return await i.response.send_message("❌ Owner Only", ephemeral=True)
+
+    # 2. Channel Selection (Agar channel select nahi kiya, to wahi bhejo jahan command likhi hai)
+    target_channel = channel or i.channel
+    
+    # 3. Image Processing
+    file = await image.to_file() if image else None
+    
+    # 4. Sending Logic
+    try:
+        style = mode.value if mode else "text"
+
+        # --- PLAIN TEXT MODE ---
+        if style == "text":
+            if file:
+                await target_channel.send(content=message, file=file)
+            else:
+                await target_channel.send(content=message)
+
+        # --- EMBED MODE (Ye bot ko professional banata hai) ---
+        else:
+            color = 0x2ecc71 # Green
+            title = "✅ MESSAGE"
+            
+            if style == "red":
+                color = 0xff0000
+                title = "⚠️ ALERT"
+            elif style == "blue":
+                color = 0x3498db
+                title = "ℹ️ INFO"
+
+            embed = discord.Embed(description=message, color=color)
+            
+            # Agar image hai to embed ke andar lagao
+            if image:
+                embed.set_image(url=image.url)
+            
+            await target_channel.send(embed=embed)
+
+        # 5. Confirmation (Sirf tumhe dikhega)
+        await i.response.send_message(f"✅ Sent to {target_channel.mention}", ephemeral=True)
+
+    except Exception as e:
+        await i.response.send_message(f"❌ Error: {e}", ephemeral=True)
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
