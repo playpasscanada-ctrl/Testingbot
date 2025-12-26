@@ -135,14 +135,13 @@ async def on_message(msg):
         )
         return
 
-    try:
+try:
     r = requests.get(
         f"https://users.roblox.com/v1/users/{user_id}",
         headers={"User-Agent": "Mozilla/5.0"},
         timeout=5
     )
 
-    # ❌ Roblox ne proper response nahi diya
     if r.status_code == 404:
         return await msg.reply("❌ Yeh Roblox ID exist nahi karti!")
 
@@ -152,7 +151,6 @@ async def on_message(msg):
     elif r.status_code != 200:
         return await msg.reply(f"❌ Roblox API issue: {r.status_code}")
 
-    # ✔ Safe JSON parse
     data = r.json()
 
     if "name" not in data:
@@ -164,7 +162,7 @@ async def on_message(msg):
 except Exception as e:
     print("ROBLOX CHECK ERROR:", e)
     return await msg.reply("❌ Roblox API issue aya, thodi der baad try karo.")
-
+    
         # =========================
         # ⚠️ BLACKLIST CHECK
         # =========================
