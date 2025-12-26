@@ -81,15 +81,19 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 def owner(i):
     if i.user.id == OWNER_ID:
         return True
-    try:
-        r = supabase.table("bot_admins").select("user_id").eq("user_id", str(i.user.id)).execute()
-        return bool(r.data)
-    except:
-        return Falsdef emb(title, desc, color=0x5865F2):
-    e = discord.Embed(title=title, description=desc, color=color)
-    e.timestamp = datetime.utcnow()
-    return e
 
+    try:
+        r = (
+            supabase.table("bot_admins")
+            .select("user_id")
+            .eq("user_id", str(i.user.id))
+            .execute()
+        )
+        return bool(r.data)
+
+    except:
+        return False
+    
 @bot.event
 async def on_ready():
     await bot.tree.sync()
