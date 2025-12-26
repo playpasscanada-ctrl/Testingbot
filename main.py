@@ -161,28 +161,29 @@ except Exception as e:
     print("ROBLOX API ERROR:", e)
     return await msg.reply("⚠️ Roblox se response nahi mila. Thodi der baad try karo.")
 
-        # =========================
-        # ⚠️ BLACKLIST CHECK
-        # =========================
-        try:
-            blk = (
-                supabase.table("blacklist_users")
-                .select("user_id")
-                .eq("user_id", user_id)
-                .execute()
-                .data
-            )
-            if blk:
-                embed = discord.Embed(
-                    title="🚫 Verification Denied",
-                    description="You are blacklisted from this system.",
-                    color=0xe74c3c
-                )
-                await msg.reply(embed=embed)
-                return
-        except:
-            pass
+# =========================
+    # 🔐 BLACKLIST CHECK
+    # =========================
+    try:
+        blk = (
+            supabase.table("blacklist_users")
+            .select("user_id")
+            .eq("user_id", user_id)
+            .execute()
+            .data
+        )
 
+        if blk:
+            embed = discord.Embed(
+                title="🚫 Verification Denied",
+                description="You are blacklisted from this system.",
+                color=0xe74c3c
+            )
+            await msg.reply(embed=embed)
+            return
+
+    except Exception as e:
+        print("BLACKLIST ERROR:", e)
 
         # =========================
         # 🎯 LIMIT + OWNER APPROVAL SYSTEM
