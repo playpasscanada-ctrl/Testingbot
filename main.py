@@ -137,15 +137,29 @@ async def on_message(msg):
         )
         return
 
-    try:
-        data = requests.get(
-            f"https://users.roblox.com/v1/users/{user_id}",
-            timeout=5
-        ).json()
+try:
+    r = requests.get(
+        f"https://users.roblox.com/v1/users/{user_id}",
+        timeout=10
+    )
 
-        username = data.get("name","Unknown")
-        display = data.get("displayName","Unknown")
+    # ----- Roblox API check -----
+    if r.status_code == 429:
+        return await msg.reply("⚠️ Roblox rate-limit ho gaya. 30 sec baad try karo.")
 
+    if r.status_code == 404:
+        return await msg.reply("❌ Yeh Roblox ID exist nahi karti.")
+
+    if r.status_code != 200:
+        return await msg.reply(f"⚠️ Roblox API issue. Code: {r.status_code}")
+
+    data = r.json()
+    username = data.get("name", "Unknown")
+    display = data.get("displayName", "Unknown")
+
+except Exception as e:
+    print("ROBLOX API ERROR:", e)
+    return await msg.reply("⚠️ Roblox se response nahi mila. Thodi der baad try karo.")
 
         # =========================
         # ⚠️ BLACKLIST CHECK
