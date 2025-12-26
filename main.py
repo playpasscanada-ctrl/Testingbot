@@ -77,28 +77,26 @@ def roblox_info(uid):
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
-
+ 
 def owner(i):
     if i.user.id == OWNER_ID:
         return True
-
     try:
-        r = (
-            supabase.table("bot_admins")
-            .select("user_id")
-            .eq("user_id", str(i.user.id))
-            .execute()
-        )
+        r = supabase.table("bot_admins").select("user_id").eq("user_id", str(i.user.id)).execute()
         return bool(r.data)
-
     except:
         return False
-    
+ 
+def emb(title, desc, color=0x5865F2):
+    e = discord.Embed(title=title, description=desc, color=color)
+    e.timestamp = datetime.utcnow()
+    return e
+ 
 @bot.event
 async def on_ready():
     await bot.tree.sync()
     print("BOT ONLINE")
-
+    
 # ================== SAFE SEND ==================
 async def safe_send(i, embed):
     try:
