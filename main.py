@@ -120,7 +120,6 @@ async def on_message(msg):
     if msg.author.bot:
         return
 
-    # --- ONLY THIS CHANNEL ---
     if msg.channel.id != 1451973498200133786:
         return
 
@@ -137,32 +136,32 @@ async def on_message(msg):
         )
         return
 
-try:
-    r = requests.get(
-        f"https://users.roblox.com/v1/users/{user_id}",
-        timeout=10
-    )
+    try:
+        r = requests.get(
+            f"https://users.roblox.com/v1/users/{user_id}",
+            timeout=10
+        )
 
-    if r.status_code == 429:
-        await msg.reply("⚠️ Roblox rate-limit ho gaya. 30 sec baad try karo.")
+        if r.status_code == 429:
+            await msg.reply("⚠️ Roblox rate-limit ho gaya. 30 sec baad try karo.")
+            return
+
+        if r.status_code == 404:
+            await msg.reply("❌ Yeh Roblox ID exist nahi karti.")
+            return
+
+        if r.status_code != 200:
+            await msg.reply(f"⚠️ Roblox API issue. Code: {r.status_code}")
+            return
+
+        data = r.json()
+        username = data.get("name", "Unknown")
+        display = data.get("displayName", "Unknown")
+
+    except Exception as e:
+        print("ROBLOX API ERROR:", e)
+        await msg.reply("⚠️ Roblox se response nahi mila. Thodi der baad try karo.")
         return
-
-    if r.status_code == 404:
-        await msg.reply("❌ Yeh Roblox ID exist nahi karti.")
-        return
-
-    if r.status_code != 200:
-        await msg.reply(f"⚠️ Roblox API issue. Code: {r.status_code}")
-        return
-
-    data = r.json()
-    username = data.get("name", "Unknown")
-    display = data.get("displayName", "Unknown")
-
-except Exception as e:
-    print("ROBLOX API ERROR:", e)
-    await msg.reply("⚠️ Roblox se response nahi mila. Thodi der baad try karo.")
-    return
         
 # =========================
     # 🔐 BLACKLIST CHECK
