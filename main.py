@@ -143,7 +143,6 @@ try:
         timeout=10
     )
 
-    # ----- Roblox API check -----
     if r.status_code == 429:
         return await msg.reply("⚠️ Roblox rate-limit ho gaya. 30 sec baad try karo.")
 
@@ -154,8 +153,8 @@ try:
         return await msg.reply(f"⚠️ Roblox API issue. Code: {r.status_code}")
 
     data = r.json()
-    username = data.get("name", "Unknown")
-    display = data.get("displayName", "Unknown")
+    username = data.get("name","Unknown")
+    display = data.get("displayName","Unknown")
 
 except Exception as e:
     print("ROBLOX API ERROR:", e)
