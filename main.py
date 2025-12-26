@@ -1847,7 +1847,7 @@ async def audit(i: discord.Interaction):
         latency = 9999
 
         try:
-            r = requests.get("https://testingbot-5j5o.onrender.com/ping", timeout=6)
+            r = requests.get("https://testingbot-z0y6.onrender.com/ping", timeout=6)
             backend_online = (r.text.strip() == "pong")
             latency = int((time.time() - t) * 1000)
             log_request(True)
