@@ -886,6 +886,167 @@ async def verifiedlist(i: discord.Interaction):
     )
 
     await i.followup.send(embed=first, view=view)
+
+# ================== USER INFO (GOD MODE) ==================
+@bot.tree.command(name="userinfo", description="Get MAXIMUM details of a Discord User (Discord + Roblox + DB)")
+@app_commands.describe(user="Tag the player (@Username)")
+async def userinfo(i: discord.Interaction, user: discord.Member):
+    
+    await i.response.defer()
+
+    try:
+        # ================= 1. DISCORD DEEP DIVE =================
+        now = datetime.utcnow()
+        
+        # --- Dates & Age ---
+        created_at = user.created_at.replace(tzinfo=None)
+        acc_age = now - created_at
+        age_str = f"{acc_age.days // 365} Years, {acc_age.days % 365} Days"
+        
+        joined_at = user.joined_at.replace(tzinfo=None)
+        join_str = joined_at.strftime("%d %B %Y")
+        
+        # --- Join Position (Server Rank) ---
+        # Note: Requires intents.members = True
+        try:
+            sorted_members = sorted(i.guild.members, key=lambda m: m.joined_at or now)
+            join_pos = sorted_members.index(user) + 1
+            total_members = len(i.guild.members)
+            join_rank = f"#{join_pos} / {total_members}"
+        except:
+            join_rank = "Unknown (Intents Error)"
+
+        # --- Roles & Perms ---
+        roles = [r.mention for r in user.roles if r.name != "@everyone"]
+        roles.reverse()
+        role_count = len(roles)
+        top_roles = ", ".join(roles[:5]) + (f" (+{role_count-5} more)" if role_count > 5 else "")
+        
+        key_perms = []
+        if user.guild_permissions.administrator: key_perms.append("👑 ADMIN")
+        if user.guild_permissions.ban_members: key_perms.append("🔨 BAN")
+        if user.guild_permissions.kick_members: key_perms.append("👢 KICK")
+        if user.guild_permissions.manage_guild: key_perms.append("⚙️ MANAGER")
+        perm_str = " | ".join(key_perms) if key_perms else "User"
+
+        # --- Badges & Status ---
+        is_bot = "🤖 YES" if user.bot else "👤 NO"
+        is_booster = f"🚀 Yes (Since {user.premium_since.strftime('%b %Y')})" if user.premium_since else "❌ No"
+        nick = user.nick if user.nick else "None"
+
+        # ================= 2. SUPABASE (DB) DEEP SCAN =================
+        
+        # A. Multi-Access (VIP) Check
+        multi_data = supabase.table("multi_access").select("*").eq("discord_id", str(user.id)).execute().data
+        access_level = "🔓 UNLIMITED (VIP)" if multi_data else "🔒 LIMITED (Standard)"
+
+        # B. Fetch All Linked Accounts
+        acc_data = supabase.table("access_users").select("*").eq("discord_id", str(user.id)).execute().data
+        
+        roblox_list = ""
+        alert_list = ""
+        total_accs = 0
+        risk_score = 0  # 0 = Safe, 100 = Critical
+        
+        if acc_data:
+            total_accs = len(acc_data)
+            
+            # Risk Logic: More accounts = Slight risk increase (Alt farming check)
+            if total_accs > 2: risk_score += 10
+            if total_accs > 5: risk_score += 20
+
+            for acc in acc_data:
+                rid = acc['user_id']
+                # Database me purana username ho sakta hai, koshish karo naya fetch karne ki (Optional)
+                # Agar slow ho raha ho to 'roblox_info(rid)' hata kar seedha acc['username'] use karna
+                try:
+                    u, d = roblox_info(rid) 
+                except:
+                    u, d = acc.get('username','Unknown'), acc.get('display_name','Unknown')
+
+                # BAN & BLACKLIST CHECK
+                ban_chk = supabase.table("bans").select("*").eq("user_id", rid).execute().data
+                blk_chk = supabase.table("blacklist_users").select("*").eq("user_id", rid).execute().data
+                
+                status_icon = "🟢"
+                note = ""
+
+                if ban_chk:
+                    status_icon = "🔴"
+                    reason = ban_chk[0].get('reason', 'No reason')
+                    alert_list += f"🚨 **BANNED:** `{u}` ({reason})\n"
+                    risk_score += 50
+                    note = "[BANNED]"
+
+                if blk_chk:
+                    status_icon = "⚫"
+                    alert_list += f"🚫 **BLACKLIST:** `{u}`\n"
+                    risk_score += 100
+                    note = "[BLACKLISTED]"
+
+                roblox_list += f"{status_icon} **{d}** (`@{u}`)\n   🆔 `{rid}` {note}\n"
+
+            # Trim list if too long
+            if len(roblox_list) > 900:
+                roblox_list = roblox_list[:900] + "\n... (More hidden)"
+        else:
+            roblox_list = "❌ No verified accounts linked."
+        
+        # C. Calculate Final Risk Status
+        if risk_score == 0: risk_status = "🟢 SAFE"
+        elif risk_score < 40: risk_status = "🟡 MODERATE (Multi-Accounting)"
+        elif risk_score < 80: risk_status = "🟠 HIGH RISK (Active Bans)"
+        else: risk_status = "🔴 CRITICAL (Blacklisted)"
+
+        # ================= 3. BUILD THE EMBED =================
+        embed = discord.Embed(color=user.color)
+        embed.set_author(name=f"{user.name} ({user.display_name})", icon_url=user.avatar.url if user.avatar else None)
+        embed.set_thumbnail(url=user.avatar.url if user.avatar else None)
+        
+        # Banner Image (Agar user ke paas hai)
+        if user.banner:
+            embed.set_image(url=user.banner.url)
+
+        # --- SECTION 1: DISCORD PROFILE ---
+        embed.add_field(name="🏷️ Identity", value=(
+            f"**ID:** `{user.id}`\n"
+            f"**Nickname:** `{nick}`\n"
+            f"**Bot:** {is_bot}\n"
+            f"**Booster:** {is_booster}"
+        ), inline=True)
+
+        embed.add_field(name="📅 History", value=(
+            f"**Age:** `{age_str}`\n"
+            f"**Joined:** `{join_str}`\n"
+            f"**Join Rank:** `{join_rank}`"
+        ), inline=True)
+
+        embed.add_field(name=f"🛡️ Roles & Perms ({role_count})", value=(
+            f"**Permissions:** {perm_str}\n"
+            f"**Top Roles:** {top_roles}"
+        ), inline=False)
+
+        # --- SECTION 2: SYSTEM SECURITY ---
+        embed.add_field(name="⚙️ Verification Profile", value=(
+            f"**Access Level:** {access_level}\n"
+            f"**Linked Accounts:** `{total_accs}`\n"
+            f"**Risk Analysis:** {risk_status}"
+        ), inline=False)
+
+        # --- SECTION 3: ROBLOX ACCOUNTS ---
+        embed.add_field(name="🎮 Roblox Connections", value=roblox_list, inline=False)
+
+        # --- SECTION 4: ALERTS (Only if dangerous) ---
+        if alert_list:
+            embed.add_field(name="⚠️ SECURITY ALERTS", value=alert_list, inline=False)
+
+        # Footer
+        embed.set_footer(text=f"Requested by {i.user.name} • {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+
+        await i.followup.send(embed=embed)
+
+    except Exception as e:
+        await i.followup.send(embed=emb("❌ ERROR", f"Failed to fetch profile: `{e}`"))
     
 @bot.tree.command(name="verifycheck", description="Check which Roblox IDs a Discord user verified")
 async def verifycheck(i: discord.Interaction, discord_id: str):
