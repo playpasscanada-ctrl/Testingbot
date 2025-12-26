@@ -347,40 +347,45 @@ async def on_message(msg):
         print(f"ERROR AAYA HAI: {e}")
         await msg.reply(f"❌ System Error: `{e}`\nAdmin ko contact karein.")
                         
-# ================== BAN ==================
+# ================== BAN SYSTEM (UPDATED WITH ADMIN NAME) ==================
+
 @bot.tree.command(name="ban")
 async def ban(i:discord.Interaction, user_id:str, reason:str):
     if not owner(i): 
         return
 
+    # Defer isliye taaki API call me time lage to error na aaye
+    await i.response.defer()
+
     u, d = roblox_info(user_id)
 
+    # Database me Executor (Admin) bhi save kar rahe hain
     supabase.table("bans").upsert({
         "user_id": user_id,
         "perm": True,
         "reason": reason,
-        "expire": None
+        "expire": None,
+        "executor": str(i.user.id)  # <-- Ye nayi cheez hai
     }).execute()
 
-    # LOG ACTION HERE ✅
+    # Log Action
     try:
         log_action("ban", user_id, u, d, i.user.id)
     except:
         pass
 
-    await safe_send(
-        i,
-        emb(
-            "🔨 BANNED",
-            f"ID: `{user_id}`\nUsername: `{u}`\nDisplay: `{d}`\nReason: {reason}",
-            0xff0000
-        )
-    )
+    await i.followup.send(embed=emb(
+        "🔨 BANNED",
+        f"**ID:** `{user_id}`\n**User:** `{u}` ({d})\n**Reason:** {reason}\n**Banned By:** {i.user.mention}",
+        0xff0000
+    ))
 
 @bot.tree.command(name="tempban")
 async def tempban(i:discord.Interaction, user_id:str, minutes:int, reason:str):
     if not owner(i): 
         return
+
+    await i.response.defer()
 
     u, d = roblox_info(user_id)
 
@@ -388,23 +393,80 @@ async def tempban(i:discord.Interaction, user_id:str, minutes:int, reason:str):
         "user_id": user_id,
         "perm": False,
         "reason": reason,
-        "expire": time.time() + minutes * 60
+        "expire": time.time() + minutes * 60,
+        "executor": str(i.user.id)  # <-- Ye nayi cheez hai
     }).execute()
 
-    # LOG ACTION HERE ✅
     try:
         log_action("tempban", user_id, u, d, i.user.id)
     except:
         pass
 
-    await safe_send(
-        i,
-        emb(
-            "⏱ TEMPBAN",
-            f"ID: `{user_id}`\nUsername: `{u}`\nDisplay: `{d}`\nTime: `{minutes} min`\nReason: {reason}",
-            0xffa500
-        )
-    )
+    await i.followup.send(embed=emb(
+        "⏱ TEMPBAN",
+        f"**ID:** `{user_id}`\n**User:** `{u}` ({d})\n**Time:** `{minutes} min`\n**Reason:** {reason}\n**Banned By:** {i.user.mention}",
+        0xffa500
+    ))
+
+@bot.tree.command(name="list")
+async def listb(i:discord.Interaction):
+    if not owner(i): 
+        return
+    
+    await i.response.defer()
+    
+    try:
+        data = supabase.table("bans").select("*").execute().data
+        
+        if not data:
+            return await i.followup.send(embed=emb("🚫 BANNED USERS", "No banned users found."))
+
+        txt = ""
+        now = time.time()
+
+        for x in list(data):
+            # Expired bans hatao
+            if not x["perm"] and x.get("expire") and now > float(x["expire"]):
+                supabase.table("bans").delete().eq("user_id", x["user_id"]).execute()
+                continue
+            
+            u, n = roblox_info(x["user_id"])
+
+            # Time Logic
+            if x["perm"]:
+                t = "PERM"
+            else:
+                try:
+                    left = int((float(x['expire']) - now) / 60)
+                    t = f"{left}m"
+                except:
+                    t = "Unknown"
+
+            # Reason fetch
+            reason = x.get("reason", "No Reason")
+            
+            # Executor (Admin) Fetch logic
+            admin_txt = ""
+            if x.get("executor"):
+                try:
+                    # Discord se naam nikal rahe hain
+                    admin_obj = await bot.fetch_user(int(x["executor"]))
+                    admin_txt = f" | 👮 By: {admin_obj.name}"
+                except:
+                    admin_txt = " | 👮 By: Unknown"
+
+            # Final Line
+            txt += f"• `{x['user_id']}` | **{u}** ({n})\n   ⏳ `{t}` | 📝 `{reason}`{admin_txt}\n\n"
+
+            # Embed Limit Check
+            if len(txt) > 3500:
+                txt += "\n... (List truncated)"
+                break
+
+        await i.followup.send(embed=emb("🚫 BANNED USERS LIST", txt or "None"))
+
+    except Exception as e:
+        await i.followup.send(embed=emb("❌ ERROR", f"List error: `{e}`"))
 
 @bot.tree.command(name="unban")
 async def unban(i:discord.Interaction, user_id:str):
@@ -559,37 +621,6 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
         
         except Exception as e:
             await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
-
-@bot.tree.command(name="list")
-async def listb(i:discord.Interaction):
-    if not owner(i): 
-        return
-    
-    data = supabase.table("bans").select("*").execute().data
-    txt = ""
-    now = time.time()
-
-    for x in list(data):
-        # Auto remove expired temp bans
-        if not x["perm"] and x.get("expire") and now > float(x["expire"]):
-            supabase.table("bans").delete().eq("user_id", x["user_id"]).execute()
-            continue
-        
-        u, n = roblox_info(x["user_id"])
-
-        # Ban Type & Time
-        if x["perm"]:
-            t = "PERM"
-        else:
-            t = f"{int((float(x['expire']) - now) / 60)}m"
-
-        # Reason
-        reason = x.get("reason", "No Reason")
-
-        txt += f"• `{x['user_id']}` | {u} ({n}) | {t}\n   ➤ Reason: **{reason}**\n\n"
-
-    await safe_send(i, emb("🚫 BANNED USERS", txt or "None"))
-
 
 # ================== ACCESS ==================
 @bot.tree.command(name="access")
