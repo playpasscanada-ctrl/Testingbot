@@ -493,6 +493,73 @@ async def banclear(i: discord.Interaction):
         view=view
     )
 
+# ================== MULTI-VERIFY MANAGEMENT ==================
+@bot.tree.command(name="multiaccess", description="Manage users who can verify UNLIMITED accounts")
+@app_commands.choices(mode=[
+    app_commands.Choice(name="Add Permission", value="add"),
+    app_commands.Choice(name="Remove Permission", value="remove"),
+    app_commands.Choice(name="List Users", value="list"),
+])
+@app_commands.describe(discord_id="Discord User ID (Required for Add/Remove)")
+async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], discord_id: str = None):
+    
+    # 1. OWNER CHECK
+    if not owner(i):
+        return await safe_send(i, emb("❌ NO PERMISSION", "Only Owner can manage multi-access."))
+
+    # ================= ADD USER =================
+    if mode.value == "add":
+        if not discord_id:
+            return await safe_send(i, emb("❌ ERROR", "Discord ID dena zaroori hai!"))
+
+        # Save to Supabase
+        try:
+            supabase.table("multi_access").upsert({
+                "discord_id": discord_id,
+                "approved": True
+            }).execute()
+
+            await safe_send(i, emb(
+                "✅ ACCESS GRANTED",
+                f"User <@{discord_id}> (`{discord_id}`)\n\nAb ye user **Unlimited Roblox IDs** verify kar sakta hai.",
+                0x2ecc71
+            ))
+        except Exception as e:
+            await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
+
+    # ================= REMOVE USER =================
+    elif mode.value == "remove":
+        if not discord_id:
+            return await safe_send(i, emb("❌ ERROR", "Discord ID dena zaroori hai!"))
+
+        try:
+            supabase.table("multi_access").delete().eq("discord_id", discord_id).execute()
+
+            await safe_send(i, emb(
+                "🗑 ACCESS REVOKED",
+                f"User <@{discord_id}> (`{discord_id}`)\n\nAb ye user **sirf 1 ID** verify kar payega.",
+                0xff0000
+            ))
+        except Exception as e:
+            await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
+
+    # ================= LIST USERS =================
+    elif mode.value == "list":
+        try:
+            data = supabase.table("multi_access").select("*").execute().data
+
+            if not data:
+                return await safe_send(i, emb("📂 MULTI-ACCESS LIST", "No users found."))
+
+            txt = ""
+            for x in data:
+                did = x['discord_id']
+                txt += f"• <@{did}> (`{did}`)\n"
+
+            await safe_send(i, emb("📂 MULTI-ACCESS ALLOWED USERS", txt, 0x3498db))
+        
+        except Exception as e:
+            await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
 
 @bot.tree.command(name="list")
 async def listb(i:discord.Interaction):
