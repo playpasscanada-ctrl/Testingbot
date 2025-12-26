@@ -2055,33 +2055,90 @@ async def audit(i: discord.Interaction):
             )
         )
 
-# ================== OWNER ==================
-@bot.tree.command(name="owner", description="Manage bot owners")
+# ================== OWNER MANAGEMENT ==================
+@bot.tree.command(name="owner", description="Manage bot owners (Add/Remove/List)")
 @app_commands.choices(action=[
     app_commands.Choice(name="add", value="add"),
     app_commands.Choice(name="remove", value="remove"),
     app_commands.Choice(name="list", value="list"),
 ])
+@app_commands.describe(user_id="Discord User ID (Required for Add/Remove)")
 async def owner_cmd(i: discord.Interaction, action: app_commands.Choice[str], user_id: str = None):
 
+    # Sirf MAIN OWNER (Environment Variable wala) hi owners manage kar sakta hai
     if i.user.id != OWNER_ID:
-        return await safe_send(i, emb("❌ DENIED", "Only MAIN owner can manage owners"))
+        return await safe_send(i, emb("❌ DENIED", "Sirf MAIN OWNER hi owners ko manage kar sakta hai."))
 
-    if action.value == "add" and user_id:
-        supabase.table("bot_admins").upsert({
-            "user_id": user_id
-        }).execute()
-        return await safe_send(i, emb("👑 OWNER ADDED", f"`{user_id}` is now owner", 0x00ff00))
+    # ================= ADD OWNER =================
+    if action.value == "add":
+        if not user_id:
+            return await safe_send(i, emb("❌ ERROR", "User ID daalna zaroori hai!"))
 
-    if action.value == "remove" and user_id:
-        supabase.table("bot_admins").delete().eq("user_id", user_id).execute()
-        return await safe_send(i, emb("🗑 OWNER REMOVED", f"`{user_id}` removed", 0xff0000))
+        try:
+            # Check if user exists on Discord
+            try:
+                user = await bot.fetch_user(int(user_id))
+                name = f"{user.name} ({user.display_name})"
+            except:
+                name = "Unknown User"
 
+            supabase.table("bot_admins").upsert({
+                "user_id": user_id
+            }).execute()
+            
+            return await safe_send(i, emb(
+                "👑 OWNER ADDED", 
+                f"**User:** {name}\n**ID:** `{user_id}`\n\nAb ye banda bot commands access kar sakta hai.", 
+                0x00ff00
+            ))
+        except Exception as e:
+            return await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
+
+    # ================= REMOVE OWNER =================
+    if action.value == "remove":
+        if not user_id:
+            return await safe_send(i, emb("❌ ERROR", "User ID daalna zaroori hai!"))
+
+        try:
+            supabase.table("bot_admins").delete().eq("user_id", user_id).execute()
+            return await safe_send(i, emb("🗑 OWNER REMOVED", f"User ID `{user_id}` ko owner list se hata diya gaya.", 0xff0000))
+        except Exception as e:
+            return await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
+
+    # ================= LIST OWNERS =================
     if action.value == "list":
-        data = supabase.table("bot_admins").select("*").execute().data
-        txt = f"**MAIN OWNER:** `{OWNER_ID}`\n\n**EXTRA OWNERS:**\n"
-        txt += "\n".join(f"• `{x['user_id']}`" for x in data) or "None"
-        return await safe_send(i, emb("👑 OWNER LIST", txt))
+        await i.response.defer() # List fetch karne me time lag sakta hai
+
+        try:
+            data = supabase.table("bot_admins").select("*").execute().data
+            
+            # Main Owner Info
+            try:
+                main_user = await bot.fetch_user(OWNER_ID)
+                main_txt = f"👑 **MAIN OWNER:** {main_user.mention} (`{main_user.name}`)"
+            except:
+                main_txt = f"👑 **MAIN OWNER:** <@{OWNER_ID}>"
+
+            txt = f"{main_txt}\n\n**🛡️ EXTRA OWNERS:**\n"
+
+            if not data:
+                txt += "None"
+            else:
+                for x in data:
+                    uid = x['user_id']
+                    try:
+                        # Discord se naam fetch karo
+                        u = await bot.fetch_user(int(uid))
+                        txt += f"• {u.mention} — **{u.name}**\n   🆔 `{uid}`\n"
+                    except:
+                        # Agar user Discord chhod chuka hai
+                        txt += f"• <@{uid}> (User Not Found)\n   🆔 `{uid}`\n"
+
+            await i.followup.send(embed=emb("👑 BOT OWNER LIST", txt, 0xf1c40f))
+
+        except Exception as e:
+            await i.followup.send(embed=emb("❌ ERROR", f"List fetch nahi ho payi: `{e}`"))
+
 
 @bot.tree.command(name="stop", description="Enable / Disable global script execution")
 @app_commands.choices(mode=[
