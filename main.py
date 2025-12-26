@@ -135,11 +135,33 @@ async def on_message(msg):
         )
         return
 
-    try:
-        data = requests.get(
-            f"https://users.roblox.com/v1/users/{user_id}",
-            timeout=5
-        ).json()
+try:
+    r = requests.get(
+        f"https://users.roblox.com/v1/users/{user_id}",
+        timeout=8,
+        headers={"User-Agent": "Mozilla/5.0"}
+    )
+
+    if r.status_code == 200:
+        data = r.json()
+        username = data.get("name","Unknown")
+        display = data.get("displayName","Unknown")
+
+    elif r.status_code == 404:
+        return await msg.reply("❌ Roblox ID exist nahi karta.")
+
+    elif r.status_code in (429, 500, 503):
+        return await msg.reply("⛔ Roblox API busy / rate-limited hai. Thodi der baad try karo.")
+
+    else:
+        return await msg.reply(f"⚠️ Roblox API Error: `{r.status_code}`")
+
+except requests.Timeout:
+    return await msg.reply("⏳ Roblox server response nahi de raha. Timeout ho gaya.")
+
+except Exception as e:
+    print("ROBLOX ERROR:", e)
+    return await msg.reply("⚠️ Unexpected Roblox API error.")
 
         username = data.get("name","Unknown")
         display = data.get("displayName","Unknown")
