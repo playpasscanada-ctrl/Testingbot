@@ -117,254 +117,185 @@ async def safe_send(i, embed):
 @bot.event
 async def on_message(msg):
 
-    if msg.author.bot:
-        return
+if msg.author.bot:  
+    return  
 
-    if msg.channel.id != 1451973498200133786:
-        return
+# --- ONLY THIS CHANNEL ---  
+if msg.channel.id != 1451973498200133786:  
+    return  
 
-    REVIEW_CHANNEL_ID = 1450514760276774967
-    OWNER_ID = 804687084249284618
+user_id = msg.content.strip()  
 
-    user_id = msg.content.strip()
+if not user_id.isdigit():  
+    await msg.delete()  
+    await msg.channel.send(  
+        f"{msg.author.mention} ❌ Sirf Roblox User ID bhejo!",  
+        delete_after=5  
+    )  
+    return  
 
-    if not user_id.isdigit():
-        await msg.delete()
-        await msg.channel.send(
-            f"{msg.author.mention} ❌ Sirf Roblox User ID bhejo!",
-            delete_after=5
-        )
-        return
+try:  
+    data = requests.get(  
+        f"https://users.roblox.com/v1/users/{user_id}",  
+        timeout=5  
+    ).json()  
 
-    try:
-        r = requests.get(
-            f"https://users.roblox.com/v1/users/{user_id}",
-            timeout=10
-        )
-
-        if r.status_code == 429:
-            await msg.reply("⚠️ Roblox rate-limit ho gaya. 30 sec baad try karo.")
-            return
-
-        if r.status_code == 404:
-            await msg.reply("❌ Yeh Roblox ID exist nahi karti.")
-            return
-
-        if r.status_code != 200:
-            await msg.reply(f"⚠️ Roblox API issue. Code: {r.status_code}")
-            return
-
-        data = r.json()
-        username = data.get("name", "Unknown")
-        display = data.get("displayName", "Unknown")
-
-    except Exception as e:
-        print("ROBLOX API ERROR:", e)
-        await msg.reply("⚠️ Roblox se response nahi mila. Thodi der baad try karo.")
-        return
-        
-# =========================
-    # 🔐 BLACKLIST CHECK
-    # =========================
-    try:
-        blk = (
-            supabase.table("blacklist_users")
-            .select("user_id")
-            .eq("user_id", user_id)
-            .execute()
-            .data
-        )
-
-        if blk:
-            embed = discord.Embed(
-                title="🚫 Verification Denied",
-                description="You are blacklisted from this system.",
-                color=0xe74c3c
-            )
-            await msg.reply(embed=embed)
-            return
-
-    except Exception as e:
-        print("BLACKLIST ERROR:", e)
-
-        # =========================
-        # 🎯 LIMIT + OWNER APPROVAL SYSTEM
-        # =========================
-        try:
-            already = (
-                supabase.table("access_users")
-                .select("user_id")
-                .eq("discord_id", str(msg.author.id))
-                .execute()
-                .data
-            )
-
-            if already:
-
-                approved = (
-                    supabase.table("multi_access")
-                    .select("discord_id")
-                    .eq("discord_id", str(msg.author.id))
-                    .execute()
-                    .data
-                )
-
-                if not approved:
-
-                    embed = discord.Embed(
-                        title="❌ Verification Limit Reached",
-                        description="You reached max verification limit.\nPlease wait for admin approval.",
-                        color=0xe74c3c
-                    )
-                    await msg.reply(embed=embed)
+    username = data.get("name","Unknown")  
+    display = data.get("displayName","Unknown")  
 
 
-                    ch = bot.get_channel(REVIEW_CHANNEL_ID)
-                    if ch:
-
-                        req = discord.Embed(
-                            title="⚠️ MULTI VERIFY REQUEST",
-                            description=f"User: {msg.author.mention}\nDiscord ID: `{msg.author.id}`",
-                            color=0xffa500
-                        )
-
-                        view = discord.ui.View()
-
-                        async def approve(interaction: discord.Interaction):
-                            if interaction.user.id != OWNER_ID:
-                                return await interaction.response.send_message(
-                                    "Only owner can approve.", ephemeral=True
-                                )
-
-                            supabase.table("multi_access").upsert({
-                                "discord_id": str(msg.author.id),
-                                "approved": True
-                            }).execute()
-
-                            await interaction.response.edit_message(
-                                embed=discord.Embed(
-                                    title="🟢 ACCESS GRANTED",
-                                    description=f"{msg.author.mention} can now verify unlimited Roblox accounts.",
-                                    color=0x2ecc71
-                                ),
-                                view=None
-                            )
-
-                        async def deny(interaction: discord.Interaction):
-                            if interaction.user.id != OWNER_ID:
-                                return await interaction.response.send_message(
-                                    "Only owner can deny.", ephemeral=True
-                                )
-
-                            await interaction.response.edit_message(
-                                embed=discord.Embed(
-                                    title="🔴 ACCESS DENIED",
-                                    description=f"{msg.author.mention} will stay limited.",
-                                    color=0xe74c3c
-                                ),
-                                view=None
-                            )
-
-                        approve_btn = discord.ui.Button(style=discord.ButtonStyle.green, label="Give Access")
-                        deny_btn = discord.ui.Button(style=discord.ButtonStyle.red, label="Deny Access")
-
-                        approve_btn.callback = approve
-                        deny_btn.callback = deny
-
-                        view.add_item(approve_btn)
-                        view.add_item(deny_btn)
-
-                        await ch.send(embed=req, view=view)
-
-                    return
-
-        except Exception as e:
-            print("LIMIT SYSTEM ERROR:", e)
+    # =========================  
+    # ⚠️ BLACKLIST CHECK  
+    # =========================  
+    try:  
+        blk = (  
+            supabase.table("blacklist_users")  
+            .select("user_id")  
+            .eq("user_id", user_id)  
+            .execute()  
+            .data  
+        )  
+        if blk:  
+            embed = discord.Embed(  
+                title="🚫 Verification Denied",  
+                description="You are blacklisted from this system.",  
+                color=0xe74c3c  
+            )  
+            await msg.reply(embed=embed)  
+            return  
+    except:  
+        pass  
 
 
+    # =========================  
+    # 🎯 1 DISCORD = 1 ROBLOX LIMIT  
+    # =========================  
+    try:  
+        already_user = (  
+            supabase.table("access_users")  
+            .select("roblox_id")  
+            .eq("discord_id", str(msg.author.id))  
+            .execute()  
+            .data  
+        )  
 
-        # =========================
-        # ✅ ALREADY VERIFIED CHECK
-        # =========================
-        exist = (
-            supabase.table("access_users")
-            .select("*")
-            .eq("user_id", user_id)
-            .execute()
-            .data
-        )
+        if already_user:  
+            embed = discord.Embed(  
+                title="❌ Verification Limit Reached",  
+                description="You can verify **only 1 Roblox account per Discord account.**",  
+                color=0xe74c3c  
+            )  
+            await msg.reply(embed=embed)  
+            return  
 
-        if exist:
-            embed = discord.Embed(
-                title="✅ Already Verified",
-                description="You are already verified & whitelisted.",
-                color=0x2ecc71
-            )
-            await msg.reply(embed=embed)
-            return
-
-
-        # =========================
-        # AUTO ADD TO WHITELIST
-        # =========================
-        supabase.table("access_users").insert({
-            "user_id": user_id,
-            "username": username,
-            "display_name": display,
-            "discord_id": str(msg.author.id)
-        }).execute()
+    except Exception as e:  
+        print("LIMIT CHECK ERROR:", e)  
 
 
-        # =========================
-        # SAVE VERIFY LOG
-        # =========================
-        supabase.table("verify_logs").insert({
-            "discord_id": str(msg.author.id),
-            "roblox_id": user_id,
-            "username": username,
-            "display_name": display,
-            "timestamp": datetime.utcnow().isoformat()
-        }).execute()
+    # =========================  
+    # ✅ ALREADY VERIFIED CHECK  
+    # =========================  
+    try:  
+        exist = (  
+            supabase.table("access_users")  
+            .select("*")  
+            .eq("user_id", user_id)  
+            .execute()  
+            .data  
+        )  
+
+        if exist:  
+            embed = discord.Embed(  
+                title="✅ Already Verified",  
+                description="You are already verified & whitelisted.",  
+                color=0x2ecc71  
+            )  
+            await msg.reply(embed=embed)  
+            return  
+
+    except:  
+        pass  
 
 
-        # =========================
-        # USER SUCCESS EMBED
-        # =========================
-        embed = discord.Embed(
-            title="✅ Verified & Whitelisted",
-            color=0x2ecc71
-        )
-        embed.add_field(name="Roblox ID", value=f"`{user_id}`", inline=False)
-        embed.add_field(name="Username", value=username, inline=True)
-        embed.add_field(name="Display Name", value=display, inline=True)
-        embed.set_footer(text="Access Granted")
+    # =========================  
+    # AUTO ADD TO WHITELIST  
+    # =========================  
+    try:  
+        res = (  
+            supabase.table("access_users")  
+            .insert({  
+                "user_id": user_id,  
+                "username": username,  
+                "display_name": display,  
+                "discord_id": str(msg.author.id)  
+            })  
+            .execute()  
+        )  
 
-        await msg.reply(embed=embed)
-
-
-        # =========================
-        # LOG CHANNEL
-        # =========================
-        try:
-            log_ch = bot.get_channel(1451973589342621791)
-            if log_ch:
-                log = discord.Embed(
-                    title="📥 New Verification Logged",
-                    color=0x3498db
-                )
-                log.add_field(name="Discord User", value=f"{msg.author.mention}", inline=False)
-                log.add_field(name="Roblox ID", value=f"`{user_id}`", inline=False)
-                log.add_field(name="Username", value=username, inline=True)
-                log.add_field(name="Display Name", value=display, inline=True)
-                log.timestamp = datetime.utcnow()
-
-                await log_ch.send(embed=log)
-        except:
-            pass
+    except Exception as e:  
+        # INSERT FAILED = LIMIT / RESTRICTION HIT  
+        embed = discord.Embed(  
+            title="❌ Verification Limit Reached",  
+            description="You can verify only **1 Roblox account per Discord account.**",  
+            color=0xe74c3c  
+        )  
+        await msg.reply(embed=embed)  
+        return  
 
 
-    except:
-        await msg.reply("❌ Invalid Roblox ID ya Roblox API down hai")
+    # =========================  
+    # SAVE VERIFY LOG  
+    # =========================  
+    try:  
+        supabase.table("verify_logs").insert({  
+            "discord_id": str(msg.author.id),  
+            "roblox_id": user_id,  
+            "username": username,  
+            "display_name": display,  
+            "timestamp": datetime.utcnow().isoformat()  
+        }).execute()  
+    except Exception as e:  
+        print("VERIFY LOG ERROR:", e)  
+
+
+    # =========================  
+    # USER SUCCESS EMBED  
+    # =========================  
+    embed = discord.Embed(  
+        title="✅ Verified & Whitelisted",  
+        color=0x2ecc71  
+    )  
+    embed.add_field(name="Roblox ID", value=f"`{user_id}`", inline=False)  
+    embed.add_field(name="Username", value=username, inline=True)  
+    embed.add_field(name="Display Name", value=display, inline=True)  
+    embed.set_footer(text="Access Granted")  
+
+    await msg.reply(embed=embed)  
+
+
+    # =========================  
+    # LOG CHANNEL  
+    # =========================  
+    try:  
+        log_ch = bot.get_channel(1451973589342621791)  
+        if log_ch:  
+            log = discord.Embed(  
+                title="📥 New Verification Logged",  
+                color=0x3498db  
+            )  
+            log.add_field(name="Discord User", value=f"{msg.author.mention}", inline=False)  
+            log.add_field(name="Roblox ID", value=f"`{user_id}`", inline=False)  
+            log.add_field(name="Username", value=username, inline=True)  
+            log.add_field(name="Display Name", value=display, inline=True)  
+            log.timestamp = datetime.utcnow()  
+
+            await log_ch.send(embed=log)  
+    except:  
+        pass  
+
+
+except:  
+    await msg.reply("❌ Invalid Roblox ID ya Roblox API down hai")
 
 # ================== BAN ==================
 @bot.tree.command(name="ban")
