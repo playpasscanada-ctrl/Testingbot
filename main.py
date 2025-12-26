@@ -344,8 +344,9 @@ async def on_message(msg):
             pass
 
 
-    except:
-        await msg.reply("❌ Invalid Roblox ID ya Roblox API down hai")
+    except Exception as e:
+        print(f"ERROR AAYA HAI: {e}")  # Ye tumhare computer/render logs mein dikhega
+        await msg.reply(f"❌ Error: {e}") # Ye discord pe dikhega taaki pata chale galti kya hai
 
 # ================== BAN ==================
 @bot.tree.command(name="ban")
