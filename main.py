@@ -143,7 +143,6 @@ try:
         timeout=10
     )
 
-    # ---- Roblox API check -----
     if r.status_code == 429:
         await msg.reply("⚠️ Roblox rate-limit ho gaya. 30 sec baad try karo.")
         return
