@@ -73,9 +73,10 @@ def roblox_info(uid):
     except:
         return "Unknown","Unknown"
 
-# ================== DISCORD ==================
+# ================== DISCORD INTENTS ==================
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True  # <--- YE LINE ADD KARNA ZAROORI HAI
 bot = commands.Bot(command_prefix="!", intents=intents)
  
 def owner(i):
@@ -2380,6 +2381,48 @@ async def stop(i: discord.Interaction, mode: app_commands.Choice[str]):
     msg = "🛑 Stop Mode ENABLED\nNew executions will be blocked" if val=="true" else "🟢 Stop Mode DISABLED\nScripts will execute normally"
 
     await safe_send(i, emb("⏹ STOP SYSTEM UPDATED", msg, 0xf1c40f))
+
+# ================== AUTO REMOVE ON LEAVE ==================
+@bot.event
+async def on_member_remove(member):
+    # Log channel ID jahan notification bhejna hai
+    LOG_CHANNEL_ID = 1451973589342621791  # <-- Apna Log Channel ID yahan daalna
+    
+    try:
+        # Check karo ki is user ne koi account verify kiya tha ya nahi
+        data = supabase.table("access_users").select("*").eq("discord_id", str(member.id)).execute().data
+        
+        if data:
+            # Agar data mila, to delete karo
+            supabase.table("access_users").delete().eq("discord_id", str(member.id)).execute()
+            
+            # (Optional) Multi-Access bhi hata do agar hai to
+            try:
+                supabase.table("multi_access").delete().eq("discord_id", str(member.id)).execute()
+            except:
+                pass
+
+            print(f"AUTO-REMOVE: User {member.name} left. Whitelist removed.")
+
+            # --- LOG TO DISCORD ---
+            channel = bot.get_channel(LOG_CHANNEL_ID)
+            if channel:
+                # Kitne accounts delete huye (Agar multi-verify tha)
+                count = len(data)
+                accounts_list = "\n".join([f"• `{x['user_id']}` ({x.get('username','Unknown')})" for x in data])
+
+                embed = discord.Embed(
+                    title="👋 User Left - Access Revoked",
+                    description=f"**User:** {member.mention} (`{member.id}`)\nserver chhod gaya, isliye access hata diya gaya.",
+                    color=0xff0000
+                )
+                embed.add_field(name=f"🗑 Removed Accounts ({count})", value=accounts_list, inline=False)
+                embed.timestamp = datetime.utcnow()
+                
+                await channel.send(embed=embed)
+
+    except Exception as e:
+        print(f"LEAVE EVENT ERROR: {e}")
 
 
 # ================== OPTIMIZED FLASK BACKEND ==================
