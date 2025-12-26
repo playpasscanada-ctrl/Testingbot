@@ -136,33 +136,34 @@ async def on_message(msg):
         return
 
     try:
-        # =========================
-        # 📡 ROBLOX API CHECK
-        # =========================
-        r = requests.get(
-    f"https://users.roblox.com/v1/users/{user_id}",
-    headers={"User-Agent": "Mozilla/5.0"},
-    timeout=5
-)
+    r = requests.get(
+        f"https://users.roblox.com/v1/users/{user_id}",
+        headers={"User-Agent": "Mozilla/5.0"},
+        timeout=5
+    )
 
-# ❌ Roblox ne proper response nahi diya
-if r.status_code == 404:
-    return await msg.reply("❌ Yeh Roblox ID exist nahi karti!")
+    # ❌ Roblox ne proper response nahi diya
+    if r.status_code == 404:
+        return await msg.reply("❌ Yeh Roblox ID exist nahi karti!")
 
-elif r.status_code == 403:
-    return await msg.reply("❌ Roblox ne request block kar di. Thodi der baad try karo.")
+    elif r.status_code == 403:
+        return await msg.reply("❌ Roblox ne request block kar di. Thodi der baad try karo.")
 
-elif r.status_code != 200:
-    return await msg.reply(f"❌ Roblox API issue: {r.status_code}")
+    elif r.status_code != 200:
+        return await msg.reply(f"❌ Roblox API issue: {r.status_code}")
 
-# ✔️ Ab safe hai JSON lena
-data = r.json()
+    # ✔ Safe JSON parse
+    data = r.json()
 
-if "name" not in data:
-    return await msg.reply("❌ Roblox ne valid data nahi diya. Account hidden / banned ho sakta hai.")
+    if "name" not in data:
+        return await msg.reply("❌ Roblox ne valid data nahi diya. Account hidden / banned ho sakta hai.")
 
-username = data.get("name", "Unknown")
-display = data.get("displayName", "Unknown")
+    username = data.get("name", "Unknown")
+    display = data.get("displayName", "Unknown")
+
+except Exception as e:
+    print("ROBLOX CHECK ERROR:", e)
+    return await msg.reply("❌ Roblox API issue aya, thodi der baad try karo.")
 
         # =========================
         # ⚠️ BLACKLIST CHECK
