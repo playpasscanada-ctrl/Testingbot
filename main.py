@@ -140,15 +140,29 @@ async def on_message(msg):
         # 📡 ROBLOX API CHECK
         # =========================
         r = requests.get(
-            f"https://users.roblox.com/v1/users/{user_id}", timeout=5
-        )
+    f"https://users.roblox.com/v1/users/{user_id}",
+    headers={"User-Agent": "Mozilla/5.0"},
+    timeout=5
+)
 
-        if r.status_code != 200:
-            return await msg.reply("❌ Invalid Roblox ID ya Roblox API down hai")
+# ❌ Roblox ne proper response nahi diya
+if r.status_code == 404:
+    return await msg.reply("❌ Yeh Roblox ID exist nahi karti!")
 
-        data = r.json()
-        username = data.get("name", "Unknown")
-        display = data.get("displayName", "Unknown")
+elif r.status_code == 403:
+    return await msg.reply("❌ Roblox ne request block kar di. Thodi der baad try karo.")
+
+elif r.status_code != 200:
+    return await msg.reply(f"❌ Roblox API issue: {r.status_code}")
+
+# ✔️ Ab safe hai JSON lena
+data = r.json()
+
+if "name" not in data:
+    return await msg.reply("❌ Roblox ne valid data nahi diya. Account hidden / banned ho sakta hai.")
+
+username = data.get("name", "Unknown")
+display = data.get("displayName", "Unknown")
 
         # =========================
         # ⚠️ BLACKLIST CHECK
