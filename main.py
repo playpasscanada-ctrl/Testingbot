@@ -1069,13 +1069,22 @@ async def maintenance(i:discord.Interaction, mode:app_commands.Choice[str]):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
 
+    val = "true" if mode.value=="on" else "false"
+    
+    # DB Update
     supabase.table("bot_settings").update(
-        {"value":"true" if mode.value=="on" else "false"}
+        {"value": val}
     ).eq("key","maintenance").execute()
+    
+    # 🔥 LOG SAVE KARO
+    try:
+        log_action(f"maintenance_{mode.value}", "-", "-", "-", i.user.id)
+    except:
+        pass
 
     await safe_send(i, emb(
         "🛠 MAINTENANCE",
-        f"{mode.value.upper()}"
+        f"System Maintenance is now **{mode.value.upper()}**"
     ))
 
 
@@ -1780,12 +1789,17 @@ async def fakeban(i: discord.Interaction, action: str, userid: str=None, message
 
 @bot.tree.command(name="logs", description="View admin logs with filters + pagination")
 @app_commands.choices(filter=[
-    app_commands.Choice(name="All", value="all"),
+    app_commands.Choice(name="All Actions", value="all"),
+    app_commands.Choice(name="Maintenance (On/Off)", value="maintenance"),  # <-- NEW
+    app_commands.Choice(name="Stop System (On/Off)", value="stop"),        # <-- NEW
     app_commands.Choice(name="Ban", value="ban"),
     app_commands.Choice(name="Tempban", value="tempban"),
     app_commands.Choice(name="Unban", value="unban"),
+    app_commands.Choice(name="Kick", value="kick"),
     app_commands.Choice(name="Access Add", value="access_add"),
     app_commands.Choice(name="Access Remove", value="access_remove"),
+    app_commands.Choice(name="Multi-Access Granted", value="multi_add"),
+    app_commands.Choice(name="Multi-Access Revoked", value="multi_remove"),
     app_commands.Choice(name="Blacklist Add", value="blacklist_add"),
     app_commands.Choice(name="Blacklist Remove", value="blacklist_remove"),
 ])
@@ -1793,34 +1807,41 @@ async def logs(i: discord.Interaction, filter: app_commands.Choice[str]):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION", "Owner Only"))
 
-    # ❌ ephemeral hata diya
     await i.response.defer()
 
     try:
+        # Query Logic Updated for Partial Matching (like 'maintenance%')
         if filter.value == "all":
             data = supabase.table("admin_logs").select("*").order("timestamp", desc=True).limit(100).execute().data
         else:
-            data = supabase.table("admin_logs").select("*").eq("action", filter.value).order("timestamp", desc=True).limit(100).execute().data
+            # .ilike use kar rahe hain taaki 'maintenance' filter 'maintenance_on' aur 'maintenance_off' dono pakad le
+            data = supabase.table("admin_logs").select("*").ilike("action", f"{filter.value}%").order("timestamp", desc=True).limit(100).execute().data
+            
     except Exception as e:
         return await i.followup.send(embed=emb("❌ ERROR", f"Logs failed:\n`{e}`", 0xff0000))
 
     if not data:
-        return await i.followup.send(embed=emb("📭 NO DATA", "No logs found for this filter", 0xffc107))
+        return await i.followup.send(embed=emb("📭 NO DATA", f"No logs found for filter: **{filter.name}**", 0xffc107))
 
     pages = []
     chunk = []
 
     for x in data:
         t = x["timestamp"].split("T")[0]
+        
+        # Executor formatting
+        executor_id = x.get('executor', 'Unknown')
+        executor_mention = f"<@{executor_id}>"
+
+        # Action formatting (Thoda clean dikhe)
+        act = x['action'].replace("_", " ").upper()
 
         chunk.append(
-            f"**Action:** `{x['action']}`\n"
-            f"👤 **Executor:** <@{x['executor']}>\n"
-            f"🆔 `{x['user_id']}`\n"
-            f"👛 **Username:** `{x['username']}`\n"
-            f"🎭 **Display:** `{x['display']}`\n"
+            f"📌 **Action:** `{act}`\n"
+            f"👮 **Admin:** {executor_mention}\n"
+            f"🆔 **Target:** `{x.get('user_id', '-')}`\n"
             f"📅 `{t}`\n"
-            f"──────────────\n"
+            f"────────────────\n"
         )
 
         if len(chunk) == 5:
@@ -1856,20 +1877,15 @@ async def logs(i: discord.Interaction, filter: app_commands.Choice[str]):
                 self.page += 1
             await self.update(interaction)
 
-        async def on_timeout(self):
-            try:
-                for item in self.children:
-                    item.disabled = True
-            except:
-                pass
-
-
     view = LogPages()
     e = emb(
         f"🗂 LOGS — {filter.name.upper()} (1/{len(pages)})",
         pages[0],
         0x3498db
     )
+
+    await i.followup.send(embed=e, view=view)
+
 
     # ❌ yaha bhi ephemeral hata diya
     await i.followup.send(embed=e, view=view)
@@ -2142,8 +2158,8 @@ async def owner_cmd(i: discord.Interaction, action: app_commands.Choice[str], us
 
 @bot.tree.command(name="stop", description="Enable / Disable global script execution")
 @app_commands.choices(mode=[
-    app_commands.Choice(name="Enable Stop", value="on"),
-    app_commands.Choice(name="Disable Stop", value="off"),
+    app_commands.Choice(name="Enable Stop (Block Scripts)", value="on"),
+    app_commands.Choice(name="Disable Stop (Allow Scripts)", value="off"),
     app_commands.Choice(name="Status", value="status"),
 ])
 async def stop(i: discord.Interaction, mode: app_commands.Choice[str]):
@@ -2153,8 +2169,8 @@ async def stop(i: discord.Interaction, mode: app_commands.Choice[str]):
 
     if mode.value == "status":
         r = supabase.table("bot_settings").select("*").eq("key","stop_enabled").execute().data
-        state = "ON 🔴" if r and r[0]["value"]=="true" else "OFF 🟢"
-        return await safe_send(i, emb("⏹ STOP SYSTEM STATUS", f"Stop System is currently **{state}**", 0x3498db))
+        state = "ON 🔴 (Blocked)" if r and r[0]["value"]=="true" else "OFF 🟢 (Allowed)"
+        return await safe_send(i, emb("⏹ STOP SYSTEM STATUS", f"Current Status: **{state}**", 0x3498db))
 
     val = "true" if mode.value=="on" else "false"
 
@@ -2162,6 +2178,12 @@ async def stop(i: discord.Interaction, mode: app_commands.Choice[str]):
         "key": "stop_enabled",
         "value": val
     }).execute()
+    
+    # 🔥 LOG SAVE KARO
+    try:
+        log_action(f"stop_{mode.value}", "-", "-", "-", i.user.id)
+    except:
+        pass
 
     msg = "🛑 Stop Mode ENABLED\nNew executions will be blocked" if val=="true" else "🟢 Stop Mode DISABLED\nScripts will execute normally"
 
