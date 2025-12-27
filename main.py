@@ -13,7 +13,7 @@ import google.generativeai as genai
 
 # AI Setup
 genai.configure(api_key="AIzaSyCH1G9EXaluuu54Ln_k7vPVhFMu8mEJjtU")
-model = genai.GenerativeModel('gemini-pro')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 
 def get_roblox_info(user_id):
@@ -170,10 +170,11 @@ async def on_message(msg):
                 await msg.reply(final_reply)
                 return  # 🛑 YAHI RUK JAYEGA
                 
-            except Exception as e:
-                print(f"AI Error: {e}")
-                await msg.reply("Dimag mat kha, server busy hai mera. 😒")
+                        except Exception as e:
+                # Ye hamein batayega ki error kya hai
+                await msg.reply(f"❌ Error aaya hai: {e}") 
                 return
+
 
 
            # ==================================================
