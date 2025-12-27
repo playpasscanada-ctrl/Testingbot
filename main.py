@@ -234,7 +234,11 @@ async def on_message(msg):
         )
         return
 
-            # 1. Pehle Roblox Info Fetch Karo (FAST MODE 🚀)
+                    # 0. Safety Variables (Ye add karna hai)
+        username = "Unknown"
+        display = "Unknown"
+
+        # 1. Pehle Roblox Info Fetch Karo (FAST MODE 🚀)
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(f"https://users.roblox.com/v1/users/{user_id}") as resp:
@@ -249,7 +253,6 @@ async def on_message(msg):
         except Exception as e:
             await msg.reply(f"❌ Invalid Roblox ID ya Roblox API down hai. Error: {e}")
             return
-
 
     # 2. Main Logic (Database & Checks)
     try:
