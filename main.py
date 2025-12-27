@@ -9,13 +9,6 @@ from discord.ext import commands
 from flask import Flask, jsonify
 from supabase import create_client, Client
 
-import google.generativeai as genai
-
-# AI Setup
-genai.configure(api_key="AIzaSyBfhwjMwTfhcjHTNBDP9hREH65wdrv8XwA")
-model = genai.GenerativeModel('gemini-1.5-flash')
-
-
 def get_roblox_info(user_id):
     try:
         user = requests.get(
@@ -127,53 +120,100 @@ async def on_message(msg):
         return
 
             # ==================================================
-    # 🔥 AI ATTITUDE MODE (Powered by Google Gemini)
+    # 🔥 ULTIMATE ATTITUDE AUTO-REPLY (VIP + 100 ROASTS)
     # ==================================================
-    OWNER_ID = 804687084249284618
+    OWNER_ID = 804687084249284618  # Tumhari ID
     
-    # 1. Trigger Check: Kya Naam liya? Tag kiya? Ya Reply kiya?
-    trigger = False
-    
-    # Check: Saksham bola? Bot ko Tag kiya? Ya Reply kiya?
-    if "saksham" in msg.content.lower() or str(OWNER_ID) in msg.content: trigger = True
-    if bot.user in msg.mentions: trigger = True
-    if msg.reference and msg.reference.resolved and msg.reference.resolved.author.id == bot.user.id: trigger = True
+    # Check: Agar message me "Saksham" hai ya Tumhe Tag kiya hai
+    if "saksham" in msg.content.lower() or str(OWNER_ID) in msg.content:
+        
+        # 1. Khud ko reply nahi karna
+        if msg.author.id == OWNER_ID:
+            return
 
-    if trigger:
-        # Khud ko reply nahi karna
-        if msg.author.id == OWNER_ID: return
-
-        # 2. VIP CHECK (Allow List)
+        # 2. VIP CHECK (Database Check)
+        # Agar banda '/allow' list me hai to ignore karo
         try:
             is_vip = supabase.table("attitude_bypass").select("*").eq("user_id", str(msg.author.id)).execute().data
-            if is_vip: return # VIP hai to shant raho
-        except: pass
+            if is_vip:
+                return  # 🟢 VIP User Detected - Silent Mode
+        except:
+            pass # DB Error aayi to bhi Attitude dikhayenge (Safety)
 
-        # 3. 🤖 AI SE JAWAB MAANGO
-        async with msg.channel.typing(): # Bot 'Typing...' dikhayega
-            try:
-                # Bot ko instruction (Hindi/Hinglish Attitude)
-                prompt = (
-                    f"User '{msg.author.name}' ne bola: '{msg.content}'. "
-                    "Tum ek full attitude wale Discord Bot ho jo 'Saksham' (Mera Maalik) ke assistant ho. "
-                    "Hinglish (Hindi+English mix) mein ek chhota, savage, aur roast karne wala reply do. "
-                    "Agar usne Saksham ko tag kiya hai to use daant do ki wo busy hai. "
-                    "Agar usne tumhe (bot ko) tag kiya hai to uska mazaak udao. "
-                    "Bahut lamba mat likhna, bas 1-2 line me bezzati karo."
-                )
-                
-                response = model.generate_content(prompt)
-                
-                # Backup agar AI khali reply de
-                final_reply = response.text if response.text else "Mood nahi hai, nikal. 😒"
-                
-                await msg.reply(final_reply)
-                return  # 🛑 YAHI RUK JAYEGA
-                
-            except Exception as e:
-                # Agar koi error aaye to bata do
-                await msg.reply(f"❌ Error aaya hai: {e}")
-                return
+        # 3. 😈 ATTITUDE REPLIES COLLECTION (Full Savage Mode)
+        import random
+                # 3. 😈 ATTITUDE REPLIES COLLECTION (Updated: 150+ Savage Dialogues)
+        import random
+        replies = [
+            # --- 🤬 DESI GALI & SLANG (Full Rude) ---
+            f"Abe {msg.author.mention}, ch*tiya hai kya tu? Dimaag mat kha. 🧠",
+            f"Sun be {msg.author.mention}, apni shakal dekhi hai aine mein? Ulti aa jayegi. 🤮",
+            "Bhos*ike, shant nahi baitha jata tujhse? 🤬",
+            "Oye chhapri! Saksham ko tag karna band kar, warna yahi patak ke marunga. 👊",
+            f"Kutte ki dum aur {msg.author.mention}, kabhi seedhe nahi ho sakte. 🐕",
+            "Nikal law*e, pehli fursat mein nikal. 👋",
+            "Bhootni ke, tujhe samajh nahi aata ya dimaag ghutne mein hai? 🦵",
+            "Gadha hai kya be? Ek baar bolne pe samajh nahi aata? 🐴",
+            "Saale nalle, koi kaam dhandha dhund le. Din bhar yahi mara rehta hai. 😒",
+            f"Oye {msg.author.mention}, muh band rakh apna, baas aa rahi hai. 🤢",
+            "Madar*hod, bola na busy hai! 😡", 
+            "Behen ke takke, spam mat kar. 🔨",
+            "Ch*tiye, agar agli baar tag kiya toh ghar aake marunga. 🏠",
+            "Teri gaand mein kide hai kya? Jo shant nahi baitha ja raha? 🐛",
+            "Harami manus, dur reh mere maalik se. ✋",
+            f"Abey {msg.author.mention}, tu paida hua tha ya download hua tha virus ke saath? 🦠",
+
+            # --- 🔥 HARDCORE INSULTS (Gandi Bezzati) ---
+            f"Tera janm galti se hua tha kya {msg.author.mention}? Itna irritate kyu karta hai?",
+            "Agar dimaag bechne jayega toh 'Unused' condition mein bikega tera. 🧠📉",
+            f"Saksham se baat karne ki aukaat bana pehle, fir tag kar. 😎",
+            "Tujhe paida karke bhagwan bhi regret kar rahe honge. 🙏",
+            "Jitna tera IQ hai, utne toh mere phone ki battery percentage hai. 🔋",
+            f"Dekh {msg.author.mention}, tu dharti pe bojh hai. 🌍",
+            "Tere jokes aur teri zindagi, dono hi flop hain. 😂",
+            "Beta, tumse na ho payega. Jaake Pogo dekh aur doodh pee. 🍼",
+            "Tujhe ignore karne ka maza hi kuch aur hai. Try karta reh. 🥱",
+            "Tu wo 'Add' hai jise sab Skip karna chahte hain. ⏭️",
+            "Shakal dekh ke lagta hai bhagwan ne rough copy banayi thi. 📝",
+            "Tujhe dekh ke toh andha bhi bol de... 'Hatao isko'. 🫣",
+            "Apni rai apne paas rakh, aur apni shakal bhi. 🗑️",
+            
+            # --- 🤣 FUNNY ROASTS (Mazaak) ---
+            "Bhai, tu wahi hai na jo Colgate se muh dhota hai? 🪥",
+            "Agar tu chup rahega toh main tujhe 5 rupay wali chocolate dunga. 🍫",
+            "Saksham abhi bathroom mein hai, tu bhi jayega kya? 🚽",
+            "Tujhe award milna chahiye... 'Duniya ka Sabse Vella Insaan'. 🏆",
+            "Mere processer mein itni shakti nahi ki teri bakwaas jhel saku. 💻",
+            "Oye, tu sabun se nahata hai ya gobar se? 🐮",
+            "Tere message padh ke mujhe cancer hone wala hai. 💀",
+            
+            # --- 🛑 BUSY / DND (Direct) ---
+            f"Oye {msg.author.mention}! 🤨\nKya kaam hai? Kyu 'Saksham Saksham' laga rakha hai? Shanti rakh.",
+            "Notification off hai mere maalik ke. 🔕\nBaad mein aana, abhi mood nahi hai.",
+            "Code kar raha hu, disturb mat kar. 💻\nAgar bug aaya toh tera naam laga dunga!",
+            "Saksham so raha hai. 😴\nDhakka-mukki mat kar, line mein lag.",
+            "Abey yaar... fir aa gaya tu? 😫\nJa na bhai, pakka mat.",
+            "Busy. Do not disturb. ⛔\n(Iska matlab 'Nikal' hota hai, pyaar se).",
+            "Bhaag yahan se, chillar nahi hai. 🪙",
+
+            # --- 🤖 FUNNY / TROLL (Mazaak) ---
+            "Error 404: Saksham Not Found. 🤖\nAur tu bhi gayab ho ja.",
+            f"Abe {msg.author.mention}, saans to lene de bande ko! 😤",
+            "Kya hai bhai? 😑\nPaisa maangna hai toh mana kar dena, Saksham garib hai.",
+            "Hello Police? 📞\nHaan, ye pagal aadmi mujhe pareshan kar raha hai.",
+            "Aap jis vyakti se sampark karna chahte hain, wo abhi bhaav kha rahe hain. 🍎",
+
+            # --- 💀 EXTREME RUDE (Sambhal ke use karna) ---
+            "Tere message se phone hang ho raha hai mera. 📱\nBand kar ye bawasir.",
+            "Saksham nahi aayega. 🚪\nDarwaza band hai, kundi laga di hai.",
+            "Tag karna band kar, warna bot se laat padegi. 🦵",
+            "Bhai 100 rupay Paytm kar de, fir baat karunga. 💸",
+            "Free ka net mil gaya toh kuch bhi likhega kya? 🌐",
+            "Muh dhoke aa pehle, fir baat kar. 🚿"
+        ]
+        
+        await msg.reply(random.choice(replies))
+        return  # 🛑 YAHI RUK JAYEGA
 
 
     # --- ONLY THIS CHANNEL ---
