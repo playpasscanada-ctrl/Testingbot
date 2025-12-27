@@ -1,5 +1,6 @@
 import os, json, time, threading, requests
 from datetime import datetime
+import aiohttp
 
 import discord
 from discord import app_commands
@@ -233,22 +234,22 @@ async def on_message(msg):
         )
         return
 
-    # 1. Pehle Roblox Info Fetch Karo (Alag Try/Except)
-    try:
-        data = requests.get(
-            f"https://users.roblox.com/v1/users/{user_id}",
-            timeout=5
-        ).json()
+            # 1. Pehle Roblox Info Fetch Karo (FAST MODE 🚀)
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"https://users.roblox.com/v1/users/{user_id}") as resp:
+                    if resp.status != 200:
+                        raise Exception("Invalid Roblox ID")
+                    data = await resp.json()
+            
+            # Data nikaal liya
+            username = data.get("name", "Unknown")
+            display = data.get("displayName", "Unknown")
 
-        if 'errors' in data:
-            raise Exception("Invalid Roblox ID")
+        except Exception as e:
+            await msg.reply(f"❌ Invalid Roblox ID ya Roblox API down hai. Error: {e}")
+            return
 
-        username = data.get("name", "Unknown")
-        display = data.get("displayName", "Unknown")
-
-    except Exception as e:
-        await msg.reply(f"❌ Invalid Roblox ID ya Roblox API down hai. Error: `{e}`")
-        return
 
     # 2. Main Logic (Database & Checks)
     try:
