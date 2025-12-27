@@ -9,6 +9,13 @@ from discord.ext import commands
 from flask import Flask, jsonify
 from supabase import create_client, Client
 
+import google.generativeai as genai
+
+# AI Setup
+genai.configure(api_key="AIzaSyCH1G9EXaluuu54Ln_k7vPVhFMu8mEJjtU")
+model = genai.GenerativeModel('gemini-pro')
+
+
 def get_roblox_info(user_id):
     try:
         user = requests.get(
@@ -118,6 +125,56 @@ async def on_message(msg):
 
     if msg.author.bot:
         return
+
+        # ==================================================
+    # 🔥 AI ATTITUDE MODE (Powered by Google Gemini)
+    # ==================================================
+    OWNER_ID = 804687084249284618
+    
+    # 1. Trigger Check: Kya Naam liya? Tag kiya? Ya Reply kiya?
+    trigger = False
+    
+    # Check: Saksham bola? Bot ko Tag kiya? Ya Reply kiya?
+    if "saksham" in msg.content.lower() or str(OWNER_ID) in msg.content: trigger = True
+    if bot.user in msg.mentions: trigger = True
+    if msg.reference and msg.reference.resolved and msg.reference.resolved.author.id == bot.user.id: trigger = True
+
+    if trigger:
+        # Khud ko reply nahi karna
+        if msg.author.id == OWNER_ID: return
+
+        # 2. VIP CHECK (Allow List)
+        try:
+            is_vip = supabase.table("attitude_bypass").select("*").eq("user_id", str(msg.author.id)).execute().data
+            if is_vip: return # VIP hai to shant raho
+        except: pass
+
+        # 3. 🤖 AI SE JAWAB MAANGO
+        async with msg.channel.typing(): # Bot 'Typing...' dikhayega
+            try:
+                # Bot ko instruction (Hindi/Hinglish Attitude)
+                prompt = (
+                    f"User '{msg.author.name}' ne bola: '{msg.content}'. "
+                    "Tum ek full attitude wale Discord Bot ho jo 'Saksham' (Mera Maalik) ke assistant ho. "
+                    "Hinglish (Hindi+English mix) mein ek chhota, savage, aur roast karne wala reply do. "
+                    "Agar usne Saksham ko tag kiya hai to use daant do ki wo busy hai. "
+                    "Agar usne tumhe (bot ko) tag kiya hai to uska mazaak udao. "
+                    "Bahut lamba mat likhna, bas 1-2 line me bezzati karo."
+                )
+                
+                response = model.generate_content(prompt)
+                
+                # Backup agar AI khali reply de
+                final_reply = response.text if response.text else "Mood nahi hai, nikal. 😒"
+                
+                await msg.reply(final_reply)
+                return  # 🛑 YAHI RUK JAYEGA
+                
+            except Exception as e:
+                print(f"AI Error: {e}")
+                await msg.reply("Dimag mat kha, server busy hai mera. 😒")
+                return
+
 
            # ==================================================
     # 🔥 ULTIMATE ATTITUDE AUTO-REPLY (VIP + 50 ROASTS)
