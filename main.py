@@ -226,6 +226,9 @@ async def on_message(msg):
 
     user_id = msg.content.strip()
 
+    username = "Unknown"
+    display = "Unknown"
+
     if not user_id.isdigit():
         await msg.delete()
         await msg.channel.send(
@@ -234,10 +237,7 @@ async def on_message(msg):
         )
         return
 
-                    # 0. Safety Variables (Ye add karna hai)
-        username = "Unknown"
-        display = "Unknown"
-
+            
         # 1. Pehle Roblox Info Fetch Karo (FAST MODE 🚀)
         try:
             async with aiohttp.ClientSession() as session:
