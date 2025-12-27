@@ -163,8 +163,8 @@ async def on_message(msg):
         ]
 
             
-            await msg.reply(random.choice(replies))
-            return  # 🛑 YAHI RUK JAYEGA (Verify code nahi chalega iske baad)
+        await msg.reply(random.choice(replies))
+        return  # 🛑 YAHI RUK JAYEGA (Verify code nahi chalega iske baad)
             
     # ==================================================
 
