@@ -131,13 +131,37 @@ async def on_message(msg):
         if msg.author.id != OWNER_ID:
             import random
             
-            # Mast Attitude Replies
-            replies = [
-                f"Oye {msg.author.mention}! 🤨\nKya kaam hai Saksham se? Kyu 'Saksham Saksham' laga rakha hai? Shanti rakh thodi.",
-                f"Sun {msg.author.mention}, Saksham abhi busy hai. 🤫\nJo bolna hai yahi likh de, spam mat kar.",
-                f"Bhai {msg.author.mention}, kya dikkat hai? 😒\nFans ki line peeche hai, dhakka-mukki mat kar. Message drop kar aur wait kar.",
-                f"Kya hua {msg.author.mention}? 🙄\nSaksham ka naam lene se pehle appointment li thi kya? Chupchap message likh aur nikal."
-            ]
+                    # Mast Attitude Replies (Full Collection)
+        replies = [
+            # --- BUSY / DND ---
+            f"Oye {msg.author.mention}! 🤨\nKya kaam hai Saksham se? Kyu 'Saksham Saksham' laga rakha hai? Shanti rakh thodi.",
+            f"Sun {msg.author.mention}, Saksham abhi busy hai. 🤫\nJo bolna hai yahi likh de, spam mat kar.",
+            f"Notification off hai mere maalik ke. 🔕\nBaad mein aana, abhi mood nahi hai reply karne ka.",
+            f"Code kar raha hu, disturb mat kar {msg.author.mention}. 💻\nAgar bug aaya toh tera naam laga dunga!",
+            f"Saksham so raha hai (ya shayad Netflix dekh raha hai). 😴\nDhakka-mukki mat kar, line mein lag.",
+
+            # --- SAVAGE / ROAST ---
+            f"Kya hua {msg.author.mention}? 🙄\nSaksham ka naam lene se pehle appointment li thi kya? Chupchap message likh aur nikal.",
+            f"Bhai {msg.author.mention}, kya dikkat hai? 😒\nFans ki line peeche hai. Autograph chahiye toh Sunday ko aana.",
+            f"Dekh {msg.author.mention}, mujhe tag karne se tera rank nahi badhega. 😂\nPadhai-wadhai kar le thoda.",
+            f"Agar ek baar aur tag kiya na {msg.author.mention}...\nToh main tujhe reply nahi, seedha Ban hammer dunga. 🔨 (Mazaak kar raha hu... shayad 😈)",
+            f"Saksham server ka Owner hai, tera personal assistant nahi. ☕\nJo chahiye ticket khol ke maang.",
+
+            # --- FUNNY / RANDOM ---
+            f"Error 404: Saksham Not Found. 🤖\nPlease try again after 2-3 business days.",
+            f"Abe {msg.author.mention}, saans to lene de bande ko! 😤\nItna yaad toh meri ex bhi nahi karti thi.",
+            f"Kya hai bhai? 😑\nPaisa maangna hai toh mana kar dena, Saksham garib hai.",
+            f"System Hacked by {msg.author.mention}?! 🚨\nArre nahi, ye toh bas ek fan hai. Relax boys.",
+            f"Bhai tu thakta nahi hai kya? 🥱\nJake paani pee le, phir type kar.",
+            
+            # --- SHORT & DIRECT ---
+            "Bol. Sun raha hu. (Lekin reply ka promise nahi hai).",
+            "Busy. Do not disturb. ⛔",
+            "Haan bhai, aa gayi teri notification. Khush? Ab shant baith.",
+            "Tujhe ignore kar raha hu, samajh nahi aa raha kya? 👀",
+            f"Oye {msg.author.mention}, bas kar bhai. Rulayega kya? 😭"
+        ]
+
             
             await msg.reply(random.choice(replies))
             return  # 🛑 YAHI RUK JAYEGA (Verify code nahi chalega iske baad)
