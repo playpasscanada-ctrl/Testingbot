@@ -170,10 +170,10 @@ async def on_message(msg):
                 await msg.reply(final_reply)
                 return  # 🛑 YAHI RUK JAYEGA
                 
-                        except Exception as e:
+        except Exception as e:
                 # Ye hamein batayega ki error kya hai
-                await msg.reply(f"❌ Error aaya hai: {e}") 
-                return
+            await msg.reply(f"❌ Error aaya hai: {e}") 
+            return
 
 
 
