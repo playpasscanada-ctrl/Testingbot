@@ -216,7 +216,6 @@ async def on_message(msg):
         await msg.reply(random.choice(replies))
         return  # 🛑 YAHI RUK JAYEGA
 
-
     # 1. Channel Check (Sirf usi channel mein chalega)
     if msg.channel.id != 1451973498200133786:
         return
@@ -227,7 +226,6 @@ async def on_message(msg):
     user_id = msg.content.strip()
 
     # ✅ STEP 1: SAFETY VARIABLES (CRITICAL FIX) ⛑️
-    # Ye sabse upar hone chahiye taaki bot kabhi crash na kare
     username = "Unknown"
     display = "Unknown"
 
@@ -241,7 +239,6 @@ async def on_message(msg):
         return
 
     # ✅ STEP 3: ROBLOX FETCH (FAST MODE 🚀)
-    # Hum koshish karenge naam laane ki, par fail hue to rukenge nahi
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(f"https://users.roblox.com/v1/users/{user_id}") as resp:
@@ -250,9 +247,9 @@ async def on_message(msg):
                     username = data.get("name", "Unknown")
                     display = data.get("displayName", "Unknown")
                 else:
-                    print(f"⚠️ Roblox API Error: {resp.status} (Using 'Unknown')")
+                    print(f"⚠️ Roblox API Error: {resp.status}")
     except Exception as e:
-        print(f"⚠️ Connection Error: {e} (Using 'Unknown')")
+        print(f"⚠️ Connection Error: {e}")
 
     # ✅ STEP 4: MAIN DATABASE LOGIC
     try:
@@ -273,7 +270,7 @@ async def on_message(msg):
             await msg.reply(embed=embed)
             return
 
-        # --- B. LIMIT + OWNER APPROVAL SYSTEM ---
+        # --- B. LIMIT + OWNER APPROVAL SYSTEM (BUTTONS ADDED HERE) 🔘 ---
         already = (
             supabase.table("access_users")
             .select("user_id")
@@ -312,46 +309,49 @@ async def on_message(msg):
                     req.add_field(name="✨ Display Name", value=f"{display}", inline=True)
                     req.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
 
-                    # Buttons Setup
-                    view = discord.ui.View()
-                    
-                    async def approve(interaction: discord.Interaction):
-                        if interaction.user.id != OWNER_ID: return
-                        await interaction.response.send_message("Only owner can approve.", ephemeral=True)
+                    # 👇 BUTTONS KA LOGIC (YAHAN ADD KIYA HAI) 👇
+                    async def approve_callback(interaction: discord.Interaction):
+                        # Sirf Owner click kar sakta hai
+                        if interaction.user.id != OWNER_ID:
+                            await interaction.response.send_message("❌ Only Owner can approve.", ephemeral=True)
+                            return
                         
+                        # Database Update
                         supabase.table("multi_access").upsert({
                             "discord_id": str(msg.author.id),
                             "approved": True
                         }).execute()
                         
+                        # Message Update
                         await interaction.response.edit_message(
                             embed=discord.Embed(title="🟢 ACCESS GRANTED", description=f"{msg.author.mention} can now verify unlimited Roblox accounts.", color=0x2ecc71),
                             view=None
                         )
 
-                    async def deny(interaction: discord.Interaction):
-                        if interaction.user.id != OWNER_ID: return
-                        await interaction.response.send_message("Only owner can deny.", ephemeral=True)
+                    async def deny_callback(interaction: discord.Interaction):
+                        if interaction.user.id != OWNER_ID:
+                            await interaction.response.send_message("❌ Only Owner can deny.", ephemeral=True)
+                            return
                         
                         await interaction.response.edit_message(
-                            embed=discord.Embed(title="🔴 ACCESS DENIED", description=f"{msg.author.mention} will stay limited.", color=0xe74c3c),
+                            embed=discord.Embed(title="🔴 ACCESS DENIED", description=f"{msg.author.mention} request denied.", color=0xe74c3c),
                             view=None
                         )
 
-                    approve_btn = discord.ui.Button(style=discord.ButtonStyle.green, label="Give Access")
-                    deny_btn = discord.ui.Button(style=discord.ButtonStyle.red, label="Deny Access")
+                    # View aur Buttons banana
+                    view = discord.ui.View()
+                    btn_approve = discord.ui.Button(style=discord.ButtonStyle.green, label="Give Access")
+                    btn_deny = discord.ui.Button(style=discord.ButtonStyle.red, label="Deny Access")
+
+                    # Connect karna
+                    btn_approve.callback = approve_callback
+                    btn_deny.callback = deny_callback
+
+                    view.add_item(btn_approve)
+                    view.add_item(btn_deny)
                     
-                    # Callbacks link karna zaruri hai (logic adjust kiya hai taaki buttons kaam karein)
-                    # Note: Yahan simplified tarika use kiya hai for inline handling
-                    # Real button handling ke liye alag class better hoti hai, but ye work karega agar restart na ho.
-                    # Lekin quick fix ke liye main direct callback attach nahi kar raha kyunki 'msg' variable scope issue karega interaction mein.
-                    # Isliye button logic ko simple rakha hai.
-                    
-                    # FIX: Button callbacks ko upar define karna padega agar 'msg' access chahiye.
-                    # Filhal main request bhej deta hu bina button logic complexity ke taaki error na aaye.
-                    # Agar buttons click nahi ho rahe, to batana, uska alag class code dunga.
-                    
-                    await ch.send(embed=req) # (View abhi remove kiya hai taaki crash na ho, agar view chahiye to batana)
+                    # Message bhejna view ke saath
+                    await ch.send(embed=req, view=view)
                 return
 
         # --- C. ALREADY VERIFIED CHECK ---
