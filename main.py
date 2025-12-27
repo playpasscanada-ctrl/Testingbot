@@ -719,8 +719,8 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
         except Exception as e:
             await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
 
-# ================== ACCESS ==================
-@bot.tree.command(name="access")
+# ================== ACCESS COMMAND (PUBLIC REPLY) ==================
+@bot.tree.command(name="access", description="Manage access list (Owner Only)")
 @app_commands.choices(mode=[
     app_commands.Choice(name="on", value="on"),
     app_commands.Choice(name="off", value="off"),
@@ -728,116 +728,111 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
     app_commands.Choice(name="remove", value="remove"),
     app_commands.Choice(name="list", value="list"),
 ])
-async def access(i:discord.Interaction, mode:app_commands.Choice[str], user_id:str=None):
-    if not owner(i): 
+async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id: str = None):
+    
+    # 1. Owner Check
+    if i.user.id != 804687084249284618: # Tumhari ID
+        # Agar koi aur use kare, toh usse private gaali/error mile (ye theek hai)
+        await i.response.send_message("❌ Only Owner can use this.", ephemeral=True)
         return
 
-    # ================== ACCESS ON / OFF ==================
-    if mode.value in ["on","off"]:
-        supabase.table("bot_settings").update(
-            {"value":"true" if mode.value=="on" else "false"}
-        ).eq("key","access_enabled").execute()
+    # 2. 🪄 DEFER (PUBLIC MODE) 📢
+    # 'ephemeral=False' kar diya, ab message SABKO dikhega
+    await i.response.defer(ephemeral=False)
 
-        # LOG
-        try:
-            log_action(
-                f"access_{mode.value}",
-                "-",
-                "-",
-                "-",
-                i.user.id
+    try:
+        # ================== ACCESS ON / OFF ==================
+        if mode.value in ["on", "off"]:
+            # Database Update
+            supabase.table("bot_settings").update(
+                {"value": "true" if mode.value == "on" else "false"}
+            ).eq("key", "access_enabled").execute()
+
+            # Log
+            try:
+                log_action(f"access_{mode.value}", "-", "-", "-", i.user.id)
+            except: pass
+
+            await i.followup.send(embed=emb("🔐 ACCESS SETTING", f"Access System is now `{mode.value.upper()}`"))
+            return
+
+        # ================== ACCESS ADD ==================
+        if mode.value == "add":
+            if not user_id:
+                await i.followup.send("❌ Please provide a Roblox ID for adding!")
+                return
+            
+            # Info fetch karo
+            u, d = roblox_info(user_id) 
+
+            # Database Update
+            supabase.table("access_users").upsert({
+                "user_id": user_id,
+                "username": u,
+                "display_name": d
+            }).execute()
+
+            # Log
+            try:
+                log_action("access_add", user_id, u, d, i.user.id)
+            except: pass
+
+            await i.followup.send(
+                embed=emb(
+                    "🔐 ACCESS GRANTED",
+                    f"**Roblox ID:** `{user_id}`\n**Username:** `{u}`\n**Display:** `{d}`\n\n🎉 Added to Whitelist",
+                    0x2ecc71
+                )
             )
-        except:
-            pass
+            return
 
-        return await safe_send(
-            i,
-            emb("🔐 ACCESS", f"Access `{mode.value.upper()}`")
-        )
+        # ================== ACCESS REMOVE ==================
+        if mode.value == "remove":
+            if not user_id:
+                await i.followup.send("❌ Please provide a Roblox ID to remove!")
+                return
 
-    # ================== ACCESS ADD ==================
-    if mode.value=="add" and user_id:
-        u, d = roblox_info(user_id)
+            u, d = roblox_info(user_id)
 
-        supabase.table("access_users").upsert({
-            "user_id": user_id,
-            "username": u,
-            "display_name": d
-        }).execute()
+            # Database Delete
+            supabase.table("access_users").delete().eq("user_id", user_id).execute()
 
-        # LOG
-        try:
-            log_action(
-                "access_add",
-                user_id,
-                u,
-                d,
-                i.user.id
+            # Log
+            try:
+                log_action("access_remove", user_id, u, d, i.user.id)
+            except: pass
+
+            await i.followup.send(
+                embed=emb(
+                    "🔐 ACCESS REMOVED",
+                    f"**Roblox ID:** `{user_id}`\n❌ Removed from Whitelist",
+                    0xff0000
+                )
             )
-        except:
-            pass
+            return
 
-        return await safe_send(
-            i,
-            emb(
-                "🔐 ACCESS GRANTED",
-                f"**Roblox ID:** `{user_id}`\n"
-                f"**Username:** `{u}`\n"
-                f"**Display Name:** `{d}`\n\n"
-                f"🎉 Successfully Added to Access List",
-                0x2ecc71
-            )
-        )
+        # ================== ACCESS LIST ==================
+        if mode.value == "list":
+            data = supabase.table("access_users").select("*").execute().data
 
-    # ================== ACCESS REMOVE ==================
-    if mode.value=="remove" and user_id:
-        u, d = roblox_info(user_id)
+            if not data:
+                await i.followup.send(embed=emb("🔐 ACCESS LIST", "List is Empty."))
+                return
 
-        supabase.table("access_users").delete().eq("user_id", user_id).execute()
+            txt = ""
+            for x in data:
+                txt += f"• **{x.get('username', 'Unknown')}** (`{x['user_id']}`)\n"
+            
+            if len(txt) > 4000:
+                txt = txt[:4000] + "\n... (List Truncated)"
 
-        # LOG
-        try:
-            log_action(
-                "access_remove",
-                user_id,
-                u,
-                d,
-                i.user.id
-            )
-        except:
-            pass
+            await i.followup.send(embed=emb("🔐 ACCESS LIST", txt))
+            return
 
-        return await safe_send(
-            i,
-            emb(
-                "🔐 ACCESS REMOVED",
-                f"**Roblox ID:** `{user_id}`\n"
-                f"**Username:** `{u}`\n"
-                f"**Display Name:** `{d}`\n\n"
-                f"❌ Removed from Access List",
-                0xff0000
-            )
-        )
+    except Exception as e:
+        print(f"ERROR: {e}")
+        await i.followup.send(f"❌ System Error: `{e}`")
 
-    # ================== ACCESS LIST ==================
-    if mode.value=="list":
-        data = supabase.table("access_users").select("*").execute().data
-
-        if not data:
-            return await safe_send(i, emb("🔐 ACCESS LIST", "None"))
-
-        txt = ""
-        for x in data:
-            txt += (
-                f"• **Username:** {x['username']}\n"
-                f"  Display: {x['display_name']}\n"
-                f"  ID: `{x['user_id']}`\n\n"
-            )
-
-        return await safe_send(
-            i,
-            emb("🔐 ACCESS LIST", txt)
-        )
 
 from discord import ui
 
