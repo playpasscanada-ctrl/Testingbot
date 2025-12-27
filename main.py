@@ -719,8 +719,8 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
         except Exception as e:
             await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
 
-# ================== ACCESS COMMAND (PUBLIC REPLY) ==================
-@bot.tree.command(name="access", description="Manage access list (Owner Only)")
+# ================== ACCESS COMMAND (FIXED & STYLED) ==================
+@bot.tree.command(name="access", description="Manage Verification Access (Owner Only)")
 @app_commands.choices(mode=[
     app_commands.Choice(name="on", value="on"),
     app_commands.Choice(name="off", value="off"),
@@ -730,110 +730,133 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
 ])
 async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id: str = None):
     
-    # 1. Owner Check
-    if i.user.id != 804687084249284618: # Tumhari ID
-        # Agar koi aur use kare, toh usse private gaali/error mile (ye theek hai)
+    # 1. OWNER CHECK
+    if i.user.id != 804687084249284618: 
         await i.response.send_message("❌ Only Owner can use this.", ephemeral=True)
         return
 
-    # 2. 🪄 DEFER (PUBLIC MODE) 📢
-    # 'ephemeral=False' kar diya, ab message SABKO dikhega
+    # 2. PUBLIC LOAD (Sabko dikhega)
     await i.response.defer(ephemeral=False)
 
     try:
-        # ================== ACCESS ON / OFF ==================
+        # ================== ACCESS ON / OFF (Styling Added) ==================
         if mode.value in ["on", "off"]:
             # Database Update
             supabase.table("bot_settings").update(
                 {"value": "true" if mode.value == "on" else "false"}
             ).eq("key", "access_enabled").execute()
 
-            # Log
-            try:
-                log_action(f"access_{mode.value}", "-", "-", "-", i.user.id)
+            # Colors: Green for ON, Red for OFF
+            color = 0x2ecc71 if mode.value == "on" else 0xe74c3c
+            status_emoji = "🟢" if mode.value == "on" else "🔴"
+            
+            embed = discord.Embed(
+                title=f"{status_emoji} Access System Updated",
+                description=f"**Verification Access is now:** `{mode.value.upper()}`",
+                color=color
+            )
+            embed.set_footer(text=f"Updated by {i.user.display_name}")
+            
+            # Log try/except
+            try: log_action(f"access_{mode.value}", "-", "-", "-", i.user.id)
             except: pass
 
-            await i.followup.send(embed=emb("🔐 ACCESS SETTING", f"Access System is now `{mode.value.upper()}`"))
+            await i.followup.send(embed=embed)
             return
 
-        # ================== ACCESS ADD ==================
+        # ================== ACCESS ADD (Error Fixed) ==================
         if mode.value == "add":
             if not user_id:
-                await i.followup.send("❌ Please provide a Roblox ID for adding!")
+                await i.followup.send("❌ **Roblox ID required!**")
                 return
             
-            # Info fetch karo
-            u, d = roblox_info(user_id) 
+            # Fetch Info
+            u, d = roblox_info(user_id)
 
-            # Database Update
+            # Database Update (YAHAN THI DIKKAT - FIXED NOW)
             supabase.table("access_users").upsert({
                 "user_id": user_id,
                 "username": u,
-                "display_name": d
+                "display_name": d,
+                "discord_id": str(i.user.id)  # <--- Ye line missing thi, isliye error aa raha tha
             }).execute()
 
-            # Log
-            try:
-                log_action("access_add", user_id, u, d, i.user.id)
+            try: log_action("access_add", user_id, u, d, i.user.id)
             except: pass
 
-            await i.followup.send(
-                embed=emb(
-                    "🔐 ACCESS GRANTED",
-                    f"**Roblox ID:** `{user_id}`\n**Username:** `{u}`\n**Display:** `{d}`\n\n🎉 Added to Whitelist",
-                    0x2ecc71
-                )
+            embed = discord.Embed(
+                title="✅ Access Granted",
+                description=f"User has been whitelisted successfully.",
+                color=0x2ecc71
             )
+            embed.add_field(name="👤 User Info", value=f"**Name:** {u}\n**Display:** {d}", inline=True)
+            embed.add_field(name="🆔 Roblox ID", value=f"`{user_id}`", inline=True)
+            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+            
+            await i.followup.send(embed=embed)
             return
 
-        # ================== ACCESS REMOVE ==================
+        # ================== ACCESS REMOVE (With Details) ==================
         if mode.value == "remove":
             if not user_id:
-                await i.followup.send("❌ Please provide a Roblox ID to remove!")
+                await i.followup.send("❌ **Roblox ID required!**")
                 return
 
+            # Pehle Info nikalo taaki message mein dikha sake
             u, d = roblox_info(user_id)
 
-            # Database Delete
+            # Phir Delete karo
             supabase.table("access_users").delete().eq("user_id", user_id).execute()
 
-            # Log
-            try:
-                log_action("access_remove", user_id, u, d, i.user.id)
+            try: log_action("access_remove", user_id, u, d, i.user.id)
             except: pass
 
-            await i.followup.send(
-                embed=emb(
-                    "🔐 ACCESS REMOVED",
-                    f"**Roblox ID:** `{user_id}`\n❌ Removed from Whitelist",
-                    0xff0000
-                )
+            embed = discord.Embed(
+                title="🗑️ Access Removed",
+                description=f"User has been removed from whitelist.",
+                color=0xff0000 # Red Color
             )
+            # Ab yahan Username aur Display Name bhi aayega
+            embed.add_field(name="👤 Removed User", value=f"**Name:** {u}\n**Display:** {d}", inline=True)
+            embed.add_field(name="🆔 Roblox ID", value=f"`{user_id}`", inline=True)
+            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+
+            await i.followup.send(embed=embed)
             return
 
-        # ================== ACCESS LIST ==================
+        # ================== ACCESS LIST (Better Formatting) ==================
         if mode.value == "list":
             data = supabase.table("access_users").select("*").execute().data
 
             if not data:
-                await i.followup.send(embed=emb("🔐 ACCESS LIST", "List is Empty."))
+                embed = discord.Embed(title="📜 Access List", description="❌ **List is Empty.** No users verified.", color=0xffa500)
+                await i.followup.send(embed=embed)
                 return
 
+            # List ko sunder banao
             txt = ""
+            count = 1
             for x in data:
-                txt += f"• **{x.get('username', 'Unknown')}** (`{x['user_id']}`)\n"
+                r_name = x.get('username', 'Unknown')
+                r_disp = x.get('display_name', 'Unknown')
+                r_id = x.get('user_id', 'Unknown')
+                
+                txt += f"`{count}.` **{r_name}** ({r_disp})\n🆔 `{r_id}`\n\n"
+                count += 1
             
+            # Agar list bahut lambi hai
             if len(txt) > 4000:
-                txt = txt[:4000] + "\n... (List Truncated)"
+                txt = txt[:3900] + "\n... (Aur bhi hain, list truncated)"
 
-            await i.followup.send(embed=emb("🔐 ACCESS LIST", txt))
+            embed = discord.Embed(title=f"📜 Access List ({len(data)} Users)", description=txt, color=0x3498db)
+            await i.followup.send(embed=embed)
             return
 
     except Exception as e:
         print(f"ERROR: {e}")
-        await i.followup.send(f"❌ System Error: `{e}`")
+        await i.followup.send(f"❌ **System Error:** `{e}`")
 
-
+    
 from discord import ui
 
 @bot.tree.command(name="accessclear", description="Remove ALL whitelisted users with confirmation")
