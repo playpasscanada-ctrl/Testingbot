@@ -13,7 +13,7 @@ import google.generativeai as genai
 
 # AI Setup
 genai.configure(api_key="AIzaSyCH1G9EXaluuu54Ln_k7vPVhFMu8mEJjtU")
-model = genai.GenerativeModel('gemini-pro')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 
 def get_roblox_info(user_id):
