@@ -12,7 +12,7 @@ from supabase import create_client, Client
 import google.generativeai as genai
 
 # AI Setup
-genai.configure(api_key="AIzaSyCH1G9EXaluuu54Ln_k7vPVhFMu8mEJjtU")
+genai.configure(api_key="AIzaSyBfhwjMwTfhcjHTNBDP9hREH65wdrv8XwA")
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 
