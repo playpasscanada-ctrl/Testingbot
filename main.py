@@ -119,6 +119,32 @@ async def on_message(msg):
     if msg.author.bot:
         return
 
+        # ==================================================
+    # 🔥 ATTITUDE AUTO-REPLY SYSTEM (Saksham Tag/Name)
+    # ==================================================
+    OWNER_ID = 804687084249284618  # Tumhari ID
+    
+    # Check: Agar message me "Saksham" hai ya Tumhe Tag kiya hai
+    if "saksham" in msg.content.lower() or str(OWNER_ID) in msg.content:
+        
+        # Khud ko reply nahi karna (Agar tumne khud likha to reply nahi aayega)
+        if msg.author.id != OWNER_ID:
+            import random
+            
+            # Mast Attitude Replies
+            replies = [
+                f"Oye {msg.author.mention}! 🤨\nKya kaam hai Saksham se? Kyu 'Saksham Saksham' laga rakha hai? Shanti rakh thodi.",
+                f"Sun {msg.author.mention}, Saksham abhi busy hai. 🤫\nJo bolna hai yahi likh de, spam mat kar.",
+                f"Bhai {msg.author.mention}, kya dikkat hai? 😒\nFans ki line peeche hai, dhakka-mukki mat kar. Message drop kar aur wait kar.",
+                f"Kya hua {msg.author.mention}? 🙄\nSaksham ka naam lene se pehle appointment li thi kya? Chupchap message likh aur nikal."
+            ]
+            
+            await msg.reply(random.choice(replies))
+            return  # 🛑 YAHI RUK JAYEGA (Verify code nahi chalega iske baad)
+            
+    # ==================================================
+
+
     # --- ONLY THIS CHANNEL ---
     if msg.channel.id != 1451973498200133786:
         return
