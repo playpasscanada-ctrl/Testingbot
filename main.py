@@ -126,7 +126,7 @@ async def on_message(msg):
     if msg.author.bot:
         return
 
-        # ==================================================
+            # ==================================================
     # 🔥 AI ATTITUDE MODE (Powered by Google Gemini)
     # ==================================================
     OWNER_ID = 804687084249284618
@@ -170,90 +170,10 @@ async def on_message(msg):
                 await msg.reply(final_reply)
                 return  # 🛑 YAHI RUK JAYEGA
                 
-        except Exception as e:
-                # Ye hamein batayega ki error kya hai
-            await msg.reply(f"❌ Error aaya hai: {e}") 
-            return
-
-
-
-           # ==================================================
-    # 🔥 ULTIMATE ATTITUDE AUTO-REPLY (VIP + 50 ROASTS)
-    # ==================================================
-    OWNER_ID = 804687084249284618  # Tumhari ID
-    
-    # Check: Agar message me "Saksham" hai ya Tumhe Tag kiya hai
-    if "saksham" in msg.content.lower() or str(OWNER_ID) in msg.content:
-        
-        # 1. Khud ko reply nahi karna
-        if msg.author.id == OWNER_ID:
-            return
-
-        # 2. VIP CHECK (Database Check)
-        # Agar banda '/allow' list me hai to ignore karo
-        try:
-            is_vip = supabase.table("attitude_bypass").select("*").eq("user_id", str(msg.author.id)).execute().data
-            if is_vip:
-                return  # 🟢 VIP User Detected - Silent Mode
-        except:
-            pass # DB Error aayi to bhi Attitude dikhayenge (Safety)
-
-        # 3. 😈 ATTITUDE REPLIES COLLECTION (50+ Dialogues)
-        import random
-        replies = [
-            # --- 🛑 BUSY / DND (Rude) ---
-            f"Oye {msg.author.mention}! 🤨\nKya kaam hai? Kyu 'Saksham Saksham' laga rakha hai? Shanti rakh.",
-            f"Sun {msg.author.mention}, Saksham abhi busy hai. 🤫\nJo bolna hai yahi likh de, spam mat kar.",
-            "Notification off hai mere maalik ke. 🔕\nBaad mein aana, abhi mood nahi hai.",
-            "Code kar raha hu, disturb mat kar. 💻\nAgar bug aaya toh tera naam laga dunga!",
-            "Saksham so raha hai (ya shayad Netflix dekh raha hai). 😴\nDhakka-mukki mat kar, line mein lag.",
-            "Abey yaar... fir aa gaya tu? 😫\nJa na bhai, koi kaam dhandha nahi hai kya?",
-            "Busy. Do not disturb. ⛔\n(Iska matlab 'Nikal' hota hai, pyaar se).",
-            "Message padh liya hai, reply karne ka man nahi hai. 🤷‍♂️",
-
-            # --- 🔥 SAVAGE ROASTS (Bezzati) ---
-            f"Kya hua {msg.author.mention}? 🙄\nSaksham ka naam lene se pehle appointment li thi kya?",
-            f"Bhai {msg.author.mention}, kya dikkat hai? 😒\nFans ki line peeche hai. Autograph Sunday ko milega.",
-            f"Dekh {msg.author.mention}, mujhe tag karne se tera rank nahi badhega. 😂\nPadhai-wadhai kar le thoda.",
-            f"Agar ek baar aur tag kiya na {msg.author.mention}...\nToh main tujhe reply nahi, seedha Ban hammer dunga. 🔨",
-            "Saksham server ka Owner hai, tera personal assistant nahi. ☕\nTicket khol ke ro le wahan pe.",
-            "Aukaat me reh chote. 😎\nSaksham se baat karne ke liye level badha ke aa.",
-            f"Tujhe ignore kar raha hu {msg.author.mention}, samajh nahi aa raha kya? 👀\nYa special invitation bheju chup rehne ka?",
-            "Jitni der mein tu tag karta hai, utni der mein Saksham 4 script likh deta hai. 🚀\nTime waste mat kar.",
-            "Beta, tumse na ho payega. 😂\nSaksham ko tag karna chhod, jaake Pogo dekh.",
-
-            # --- 🤖 FUNNY / TROLL (Mazaak) ---
-            "Error 404: Saksham Not Found. 🤖\nPlease try again after 2-3 business days.",
-            f"Abe {msg.author.mention}, saans to lene de bande ko! 😤\nItna yaad toh meri ex bhi nahi karti thi.",
-            "Kya hai bhai? 😑\nPaisa maangna hai toh mana kar dena, Saksham garib hai.",
-            f"System Hacked by {msg.author.mention}?! 🚨\nArre nahi, ye toh bas ek fan hai. Relax boys.",
-            "Bhai tu thakta nahi hai kya? 🥱\nJake paani pee le, phir type kar.",
-            "Hello Police? 📞\nHaan, ye {msg.author.mention} mujhe pareshan kar raha hai.",
-            "Computer ji, {msg.author.mention} ko lock kiya jaye! 🔒\n(Aur chabi ghooma di jaye).",
-            "Aap jis vyakti se sampark karna chahte hain, wo abhi bhaav kha rahe hain. 🍎\nKripya baad mein try karein.",
-
-            # --- 🤏 SHORT & DIRECT ---
-            "Bol. Sun raha hu. (Lekin reply ka promise nahi hai).",
-            "Haan bhai, aa gayi teri notification. Khush? Ab shant baith.",
-            f"Oye {msg.author.mention}, bas kar bhai. Rulayega kya? 😭",
-            "Kyu? Aakhir kyu? 🤌",
-            "Chup. 🤫",
-            "Seen. ✅ (Lekin reply nahi milega).",
-            "Mat kar. Mat kar bhai. Rehne de.",
-            
-            # --- 💀 EXTREME RUDE (Sambhal ke use karna) ---
-            f"Dimaag mat kha {msg.author.mention}. 🧠\nPehle hi kam hai mere paas.",
-            "Tere message se phone hang ho raha hai mera. 📱\nBand kar ye sab.",
-            "Saksham nahi aayega. 🚪\nDarwaza band hai, kundi laga di hai.",
-            "Tag karna band kar, warna bot se laat padegi. 🦵",
-            "Log kehte hain sabr ka fal meetha hota hai.\nTu sabr kar, fal main kha lunga. 🍉",
-            f"Sun be {msg.author.mention}...\nTu thoda sa... wo hai kya? (Samajh ja).",
-            "Bhai 100 rupay Paytm kar de, fir baat karunga. 💸",
-            "Free ka net mil gaya toh kuch bhi likhega kya? 🌐"
-        ]
-        
-        await msg.reply(random.choice(replies))
-        return  # 🛑 YAHI RUK JAYEGA (Verify code nahi chalega iske baad)
+            except Exception as e:
+                # Agar koi error aaye to bata do
+                await msg.reply(f"❌ Error aaya hai: {e}")
+                return
 
 
     # --- ONLY THIS CHANNEL ---
