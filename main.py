@@ -238,21 +238,33 @@ async def on_message(msg):
         return
 
             
-        # 1. Pehle Roblox Info Fetch Karo (FAST MODE 🚀)
+                # 1. Pehle Roblox Info Fetch Karo (DEBUG MODE 🧐)
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(f"https://users.roblox.com/v1/users/{user_id}") as resp:
+                    
+                    # Agar page nahi mila
                     if resp.status != 200:
-                        raise Exception("Invalid Roblox ID")
+                        await msg.reply(f"❌ Roblox API Error! Status Code: {resp.status}")
+                        return
+
                     data = await resp.json()
+                    # Debug: Console mein print karo ki kya aaya
+                    print(f"DEBUG DATA: {data}") 
             
             # Data nikaal liya
             username = data.get("name", "Unknown")
             display = data.get("displayName", "Unknown")
 
+            # SAFETY CHECK: Agar naam abhi bhi Unknown hai, toh rok do
+            if username == "Unknown":
+                await msg.reply(f"❌ ID Sahi hai par Naam nahi mila. Roblox Data: {data}")
+                return
+
         except Exception as e:
-            await msg.reply(f"❌ Invalid Roblox ID ya Roblox API down hai. Error: {e}")
+            await msg.reply(f"❌ Error aaya data laane mein: {e}")
             return
+
 
     # 2. Main Logic (Database & Checks)
     try:
