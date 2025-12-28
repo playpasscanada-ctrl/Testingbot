@@ -3036,6 +3036,38 @@ async def match(i: discord.Interaction, user1: discord.User, user2: discord.User
     
     await i.response.send_message(embed=embed)
 
+# ================== FUN: DESI THAPPAD (SLAP) ==================
+@bot.tree.command(name="slap", description="Slap someone nicely (Desi Style)")
+async def slap(i: discord.Interaction, target: discord.User):
+    # Khud ko nahi maar sakte
+    if target.id == i.user.id:
+        await i.response.send_message("Bhai khud ko kyu maar raha hai? Depression? 😢", ephemeral=True)
+        return
+
+    import random
+    # Funny Weapons List
+    weapons = [
+        "🩴 **Bheegi Hui Chappal** (Geeli pappi)",
+        "🥖 **Mummy ka Belan** (Headshot)",
+        "🧱 **Sadak ki Eeet** (Critical Damage)",
+        "⌨️ **Mechanical Keyboard** (RGB Wala)",
+        "🐟 **Gandi Machli** (Smelly)",
+        "🍳 **Garam Tawa** (Burn damage)",
+        "🚜 **JCB ka Panja** (Khatam Tata Bye Bye)"
+    ]
+    
+    weapon = random.choice(weapons)
+    
+    # Embed
+    embed = discord.Embed(
+        description=f"👋 **{i.user.mention}** ne **{target.mention}** ko mara!",
+        color=0xff5555
+    )
+    embed.add_field(name="🔫 Weapon Used:", value=weapon)
+    embed.set_footer(text="Ouch! That hurts. 🤕")
+    
+    await i.response.send_message(embed=embed)
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
