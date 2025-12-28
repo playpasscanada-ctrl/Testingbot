@@ -12,41 +12,56 @@ from supabase import create_client, Client
 
 import re
 
+import re
+
 # ================== GLOBAL CACHES (RAM) ==================
 BANNED_WORDS_CACHE = set()
-BYPASS_USERS_CACHE = set()  # <--- NEW VIP LIST
+BYPASS_USERS_CACHE = set() 
 
-# Online List for Auto-Download
-BAD_WORDS_URL = "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en"
+# 🌍 Online Lists (English + Hindi)
+BAD_WORDS_URL_EN = "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en"
+BAD_WORDS_URL_HI = "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/hi"
 
 async def load_banned_words():
     global BANNED_WORDS_CACHE, BYPASS_USERS_CACHE
     BANNED_WORDS_CACHE = set()
     BYPASS_USERS_CACHE = set() # Reset
 
-    # 1. DOWNLOAD ONLINE WORDS
+    # 1. DOWNLOAD ONLINE WORDS (ENGLISH + HINDI) 🌐
+    urls = [BAD_WORDS_URL_EN, BAD_WORDS_URL_HI]
+    
+    print("🌍 Downloading Bad Words (Eng + Hindi)...")
     try:
-        print("🌍 Downloading Bad Words...")
         async with aiohttp.ClientSession() as session:
-            async with session.get(BAD_WORDS_URL) as resp:
-                if resp.status == 200:
-                    text = await resp.text()
-                    online_words = {w.strip().lower() for w in text.splitlines() if len(w.strip()) > 2}
-                    BANNED_WORDS_CACHE.update(online_words)
-    except: pass
+            for url in urls:
+                try:
+                    async with session.get(url) as resp:
+                        if resp.status == 200:
+                            text = await resp.text()
+                            # Har word ko set me daalo
+                            online_words = {w.strip().lower() for w in text.splitlines() if len(w.strip()) > 2}
+                            BANNED_WORDS_CACHE.update(online_words)
+                except Exception as e:
+                    print(f"⚠️ Failed to fetch URL: {e}")
+                    
+        print(f"✅ Downloaded Online Database.")
+    except Exception as e:
+        print(f"⚠️ Internet List Error: {e}")
 
-    # 2. LOAD CUSTOM WORDS (DB)
+    # 2. LOAD CUSTOM WORDS (Tumhare Database wale) 🗄️
     try:
         data = supabase.table("banned_words").select("word").execute().data
         custom_words = {item["word"].lower() for item in data}
         BANNED_WORDS_CACHE.update(custom_words)
-    except: pass
+        print(f"✅ Loaded {len(custom_words)} Custom Words from Database.")
+    except Exception as e:
+        print(f"⚠️ Database List Error: {e}")
 
-    # 3. LOAD VIP USERS (New Feature) 👑
+    # 3. LOAD VIP USERS (Restrict Bypass) 👑
     try:
         data = supabase.table("restrict_bypass").select("user_id").execute().data
         BYPASS_USERS_CACHE = {int(item["user_id"]) for item in data}
-        print(f"✅ Loaded {len(BYPASS_USERS_CACHE)} VIP Users who can abuse.")
+        print(f"✅ Loaded {len(BYPASS_USERS_CACHE)} VIP Users.")
     except Exception as e:
         print(f"⚠️ VIP List Error: {e}")
     
