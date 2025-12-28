@@ -2567,7 +2567,62 @@ async def on_member_remove(member):
     except Exception as e:
         print(f"LEAVE EVENT ERROR: {e}")
 
-# ================== SAY / BROADCAST COMMAND ==================
+# ================== SAY ACCESS MANAGER (NEW COMMAND) ==================
+@bot.tree.command(name="sayaccess", description="Manage who can use /say command (Owner Only)")
+@app_commands.choices(action=[
+    app_commands.Choice(name="add", value="add"),
+    app_commands.Choice(name="remove", value="remove"),
+    app_commands.Choice(name="list", value="list"),
+])
+async def sayaccess(i: discord.Interaction, action: app_commands.Choice[str], user: discord.User = None):
+    # Sirf Owner hi permission de sakta hai
+    if not owner(i):
+        await i.response.send_message("❌ Only Owner can manage permissions.", ephemeral=True)
+        return
+
+    # --- ADD USER ---
+    if action.value == "add":
+        if not user: return await i.response.send_message("❌ User select karna zaruri hai!", ephemeral=True)
+        
+        try:
+            supabase.table("say_access").upsert({
+                "user_id": str(user.id),
+                "added_by": str(i.user.id)
+            }).execute()
+            
+            await i.response.send_message(f"✅ **Permission Granted:** {user.mention} ab `/say` use kar sakta hai.", ephemeral=True)
+        except Exception as e:
+            await i.response.send_message(f"❌ Error: {e}", ephemeral=True)
+
+    # --- REMOVE USER ---
+    elif action.value == "remove":
+        if not user: return await i.response.send_message("❌ User select karna zaruri hai!", ephemeral=True)
+        
+        try:
+            supabase.table("say_access").delete().eq("user_id", str(user.id)).execute()
+            await i.response.send_message(f"🗑️ **Permission Revoked:** {user.mention} ab `/say` use nahi kar payega.", ephemeral=True)
+        except Exception as e:
+            await i.response.send_message(f"❌ Error: {e}", ephemeral=True)
+
+    # --- LIST USERS ---
+    elif action.value == "list":
+        try:
+            data = supabase.table("say_access").select("*").execute().data
+            if not data:
+                await i.response.send_message("📂 List is Empty. Sirf Owner use kar sakta hai.", ephemeral=True)
+                return
+
+            txt = ""
+            for x in data:
+                txt += f"• <@{x['user_id']}> (`{x['user_id']}`)\n"
+            
+            embed = discord.Embed(title="🗣️ Say Command Access List", description=txt, color=0x3498db)
+            await i.response.send_message(embed=embed, ephemeral=True)
+        except Exception as e:
+            await i.response.send_message(f"❌ Error: {e}", ephemeral=True)
+
+
+# ================== UPDATED SAY COMMAND ==================
 @bot.tree.command(name="say", description="Make the bot speak (Text, Embed, or Image)")
 @app_commands.describe(
     message="Message content",
@@ -2588,11 +2643,22 @@ async def say(
     channel: discord.TextChannel = None, 
     image: discord.Attachment = None
 ):
-    # 1. Permission Check
-    if not owner(i):
-        return await i.response.send_message("❌ Owner Only", ephemeral=True)
+    # 1. PERMISSION CHECK (Owner + Access List) 🔒
+    is_owner = owner(i)
+    has_perm = False
+    
+    # Database check karo agar owner nahi hai
+    if not is_owner:
+        try:
+            data = supabase.table("say_access").select("user_id").eq("user_id", str(i.user.id)).execute().data
+            if data: has_perm = True
+        except:
+            pass
 
-    # 2. Channel Selection (Agar channel select nahi kiya, to wahi bhejo jahan command likhi hai)
+    if not is_owner and not has_perm:
+        return await i.response.send_message("❌ Aapke paas is command ki permission nahi hai.", ephemeral=True)
+
+    # 2. Channel Selection
     target_channel = channel or i.channel
     
     # 3. Image Processing
@@ -2609,27 +2675,18 @@ async def say(
             else:
                 await target_channel.send(content=message)
 
-        # --- EMBED MODE (Ye bot ko professional banata hai) ---
+        # --- EMBED MODE ---
         else:
             color = 0x2ecc71 # Green
-            title = "✅ MESSAGE"
-            
-            if style == "red":
-                color = 0xff0000
-                title = "⚠️ ALERT"
-            elif style == "blue":
-                color = 0x3498db
-                title = "ℹ️ INFO"
+            if style == "red": color = 0xff0000
+            elif style == "blue": color = 0x3498db
 
             embed = discord.Embed(description=message, color=color)
-            
-            # Agar image hai to embed ke andar lagao
-            if image:
-                embed.set_image(url=image.url)
+            if image: embed.set_image(url=image.url)
             
             await target_channel.send(embed=embed)
 
-        # 5. Confirmation (Sirf tumhe dikhega)
+        # 5. Confirmation (Sirf sender ko dikhega)
         await i.response.send_message(f"✅ Sent to {target_channel.mention}", ephemeral=True)
 
     except Exception as e:
