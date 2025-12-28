@@ -271,7 +271,49 @@ async def on_message(msg):
             "Shakal dekh ke lagta hai bhagwan ne rough copy banayi thi. 📝",
             "Tujhe dekh ke toh andha bhi bol de... 'Hatao isko'. 🫣",
             "Apni rai apne paas rakh, aur apni shakal bhi. 🗑️",
-            
+
+            # --- 🤬 FULL DESI GAALI & RUDE (Censored for Safety) ---
+            f"Bhos*ike {msg.author.mention}, bola na busy hai? Kaan ke neeche bajau kya? 👋",
+            f"Abe Ch*tiye {msg.author.mention}, shant nahi baitha jata? G*nd mein kide hain kya? 🐛",
+            "Madar*hod, spam mat kar! Warna yahi patak ke marunga. 🔨",
+            "Teri aukaat jhaat barabar, aur baatein aatankwadi wali? Nikal L*de. 🤏",
+            f"Sun be {msg.author.mention}, apni shakal dekh aine mein, suwar bhi sharma jaye. 🐷",
+            "Behen ke takke, agar agli baar tag kiya toh Discord uninstall karwa dunga tera. 💻",
+            "Gandu hai kya tu? Ek baar mein baat samajh nahi aati? 🧠🚫",
+            "Haramkhor, tujhe paida karke bhagwan bhi regret kar rahe honge. 🙏",
+            f"Oye {msg.author.mention}, muh se supari nikaal ke baat kar, totle. 🗣️",
+            "Tere jaise nalle log na, dharti pe bojh hain. Mar kyu nahi jata tu? ☠️",
+            "Saale kutton wali harkatein mat kar, insaan ban. 🐕",
+            "Chup kar B*sdk, varna muh mein mute thoos dunga. 🤐",
+            "Tujhe dekh ke ulti aati hai, dur reh mere maalik se. 🤮",
+
+            # --- 🔥 KHATARNAAK ROASTS (Deep Insults) ---
+            f"Sahi bata {msg.author.mention}, bachpan mein tujhe haath se uthaya tha ya chimte se? 🥢",
+            "Tera dimaag 'Titanic' jaisa hai... Dooba hua. 🚢",
+            "Agar 'Bewakoofi' ka Olympic hota, toh tu har saal Gold lata. 🥇",
+            "Teri shakal dekh ke toh andha bhi bol de... 'Hatao is manhoos ko'. 🫣",
+            "Tu wo bacteria hai jo Harpic se bhi nahi marta. 🦠",
+            f"Oye {msg.author.mention}, tu condom ka add hai kya? Jise dekh ke log savdhaan ho jate hain. 🛑",
+            "Tujhe ignore karna meri hobby nahi, majboori hai... kyuki tu hai hi itna irritating. 😤",
+            "Apni rai apne pichwade mein daal le, yahan kisi ko chahiye nahi. 🗑️",
+            "Tere paida hone pe 2 minute ka silence rakha tha hospital walo ne. 🏥",
+            "Tu dharti pe oxygen lene nahi, sirf Carbon Dioxide badhane aaya hai. 🌫️",
+
+            # --- 🤣 BIKHARI / VELLA THEME (Jobless Insults) ---
+            f"Bhai {msg.author.mention}, tu itna vella kyu hai? Jaake bartan maanj le. 🍽️",
+            "Saksham se baat karne ke liye pehle 500 Paytm kar, bhikari. 💸",
+            "Shakal hai nahi, akal hai nahi, aur aa gaya tag karne. 🤡",
+            "Jeb mein nahi hai dhela, aur dekh {msg.author.mention} karta hai mela. 😂",
+            "Sadak pe katora leke baith ja, yahan tag karne se kuch nahi milega. 🥣",
+            "Tere ghar wale tujhe 'Error' bulate hain kya? ⚠️",
+
+            # --- 🛑 DIRECT THREATS (Fake Bot Threats) ---
+            "Last warning de raha hu {msg.author.mention}, agli baar tag kiya toh IP Address leak kar dunga. 📍",
+            "Mera system garam mat kar, warna tera account hack kar lunga. 💻",
+            "Bhaag ja yahan se, isse pehle ki main tujhe Ban kar du. 🔨",
+            "Saksham ka bodyguard hu main, zyada chipak mat. 🔫",
+            "Tera net pack khatam hone wala hai, jaake recharge karwa pehle. 📉"
+        
             # --- 🤣 FUNNY ROASTS (Mazaak) ---
             "Bhai, tu wahi hai na jo Colgate se muh dhota hai? 🪥",
             "Agar tu chup rahega toh main tujhe 5 rupay wali chocolate dunga. 🍫",
