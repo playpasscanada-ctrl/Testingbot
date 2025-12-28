@@ -280,7 +280,58 @@ async def on_message(msg):
             "Mere processer mein itni shakti nahi ki teri bakwaas jhel saku. 💻",
             "Oye, tu sabun se nahata hai ya gobar se? 🐮",
             "Tere message padh ke mujhe cancer hone wala hai. 💀",
-            
+
+            # --- 🔥 ULTRA SAVAGE (Gandi Bezzati) ---
+            f"Oye {msg.author.mention}, tu wo 'Skip Ad' hai jise dekh ke gussa aata hai. ⏭️",
+            "Bhagwan ne tujhe banaya nahi, galti se 'Copy-Paste' ho gaya tu. 📋",
+            f"Sun {msg.author.mention}, agar dimaag pe tax lagta na, toh tu sabse bada tax chor hota. 🧠🚫",
+            "Tujhe dekh ke lagta hai insaan ka evolution ulti disha mein ja raha hai. 🦍",
+            "Apni aukaat anusaar Tag karein. Abhi balance kam hai tera. 📉",
+            "Muh kholta hai toh gutter ki yaad aa jati hai, band rakh. 🤢",
+            f"Abe {msg.author.mention}, tujhe ghar wale 'Spam Folder' mein rakhte hain kya? 🗑️",
+            "Tu dharti pe bojh nahi, tu toh pure solar system ka waste material hai. 🪐",
+            "Shakal 'Aadhar Card' wali aur baatein iPhone wali? Waah re {msg.author.mention}! 🆔",
+            "Tere dimaag mein Wi-Fi ke signal nahi aate kya? Tubelight insaan. 📶",
+
+            # --- 🤖 BOT / TECH SPECIAL (Kyuki main Bot hu) ---
+            "Mere server garam mat kar, warna tujhe permanent mute kar dunga. 🔇",
+            f"Error 404: Tera Dimaag Not Found. Please try again later. 🤖",
+            "Tu wo bug hai jo developer se bhi fix nahi ho raha. 🐛",
+            "Mera RAM waste mat kar, jaake Ludo khel. 🎲",
+            f"Oye {msg.author.mention}, tu Incognito mode band kar pehle, shakal dikh rahi hai. 🕵️",
+            "Tere message se mere database mein virus aa jayega. Dur reh. 🦠",
+            "System Hilana mere baaye haath ka khel hai, par tujhe hilana time waste hai. 🖥️",
+            "Jitna tera IQ hai, utni toh mere phone ki battery low hai abhi. 🔋",
+
+            # --- 🤣 FUNNY & SARCASTIC (Mazaak udana) ---
+            "Agar tu chup raha toh main tujhe Oscar dilaunga 'Best Silent Actor' ka. 🏆",
+            f"Bhai {msg.author.mention}, tu paida hua tha ya kisi ne download kiya tha tujhe? 📥",
+            "Itna free hai toh road pe jhadu hi laga le, desh saaf hoga. 🧹",
+            "Saksham ko tag karne ka Tax lagta hai. Pehle Paytm kar 500. 💸",
+            "Tere jokes sunke toh Aleexa aur Siri ne bhi khudkhushi kar li. 💀",
+            "Tu zinda hai ya sirf oxygen waste karne ka contract liya hai? 🌬️",
+            f"Dekh {msg.author.mention}, main robot hu, mujhe gussa nahi aata... par teri shakal dekh ke aa raha hai. 😡",
+            "Ja na bhai, kyu meri script kharab kar raha hai. 📜",
+
+            # --- 🤬 DESI TADKA (Thoda Rude) ---
+            f"Abey {msg.author.mention}, dimaag ghutne mein hai ya wo bhi bech khaya? 🍗",
+            "Chup kar be 2 rupay ki pepsi, mera maalik sexy. 😎",
+            "Tujhe hospital mein nurse ne haath se nahi, chimte se uthaya hoga. 🥢",
+            "Bhaunk mat, yahan biscuits nahi milte. 🍪",
+            "Tera sabun slow hai kya? Jo baat samajh nahi aati? 🧼",
+            f"Oye {msg.author.mention}, naha ke aaya kar, message se baas aa rahi hai. 🚿",
+            "Jali na? Teri Jali na? 🔥",
+            "Kyun thak raha hai bhai? Saksham bhaav nahi dega. 💁‍♂️",
+
+            # --- ⛔ SHORT & DIRECT (Busy Mode) ---
+            "Busy hu. Nikal. 👋",
+            "Tata. Bye Bye. Khatam. Gaya. 👋",
+            "Mood nahi hai, kal aana. (Ya mat hi aana). 📅",
+            f"{msg.author.mention} ➡️ 🚪 (Darwaza udhar hai).",
+            "DND mode on. Disturb kiya toh uda dunga. ✈️",
+            "Kripya line mein lagein, dhakka mukki na karein. 🚶‍♂️🚶‍♀️",
+            "Abey yaar... fir aa gaya tu? 🤦‍♂️"
+        
             # --- 🛑 BUSY / DND (Direct) ---
             f"Oye {msg.author.mention}! 🤨\nKya kaam hai? Kyu 'Saksham Saksham' laga rakha hai? Shanti rakh.",
             "Notification off hai mere maalik ke. 🔕\nBaad mein aana, abhi mood nahi hai.",
