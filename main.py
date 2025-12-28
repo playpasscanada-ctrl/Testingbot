@@ -213,6 +213,26 @@ async def on_message(msg):
             except:
                 pass
 
+        # ---------------------------------------------------------
+    # 🤫 2. OWNER SILENCE COMMAND (Maalik ka Darr)
+    # ---------------------------------------------------------
+    # Agar Owner bole "Chup" ya "Shant", toh bot maafi mangega
+    silence_triggers = ["chup", "shant", "keep quiet", "shut up", "muh band", "silence"]
+    
+    # Check: Message Owner ka hai + Inme se koi word hai
+    if msg.author.id == OWNER_ID and any(word in msg.content.lower() for word in silence_triggers):
+        
+        # Ek Sad/Apology Embed banayenge
+        embed = discord.Embed(
+            description="**Sorry Sir... 😔**\nAage se nahi bolungi. Galti ho gayi.",
+            color=0x2f3136 # Dark/Sad Color
+        )
+        embed.set_footer(text="System Muted 🤐")
+        
+        await msg.reply(embed=embed)
+        return  # 🛑 Yahi ruk jao (Taaki bot aage Attitude na dikhaye)
+
+
             # ==================================================
     # 🔥 ULTIMATE ATTITUDE AUTO-REPLY (VIP + 100 ROASTS)
     # ==================================================
