@@ -178,6 +178,8 @@ async def on_message(msg):
     if msg.author.bot:
         return
 
+    OWNER_ID = 804687084249284618
+
             # ---------------------------------------------------------
     # 🛡️ 1. SMART AI MOD SYSTEM (With VIP Bypass)
     # ---------------------------------------------------------
