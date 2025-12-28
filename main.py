@@ -216,7 +216,7 @@ async def on_message(msg):
         await msg.reply(random.choice(replies))
         return  # 🛑 YAHI RUK JAYEGA
 
-    # 1. Channel Check (Sirf usi channel mein chalega)
+            # 1. Channel Check
     if msg.channel.id != 1451973498200133786:
         return
 
@@ -225,7 +225,7 @@ async def on_message(msg):
     
     user_id = msg.content.strip()
 
-    # ✅ STEP 1: SAFETY VARIABLES (CRITICAL FIX) ⛑️
+    # ✅ STEP 1: SAFETY VARIABLES
     username = "Unknown"
     display = "Unknown"
 
@@ -253,7 +253,7 @@ async def on_message(msg):
 
     # ✅ STEP 4: MAIN DATABASE LOGIC
     try:
-        # --- A. BLACKLIST CHECK ---
+        # --- A. BLACKLIST CHECK (Sabse Pehle) ---
         blk = (
             supabase.table("blacklist_users")
             .select("user_id")
@@ -270,7 +270,27 @@ async def on_message(msg):
             await msg.reply(embed=embed)
             return
 
-        # --- B. LIMIT + OWNER APPROVAL SYSTEM (BUTTONS ADDED HERE) 🔘 ---
+        # 🔄 CHANGE: "ALREADY VERIFIED" KO UPAR LAYE HAIN
+        # --- B. ALREADY VERIFIED CHECK (Pehle ye check karo) ---
+        exist = (
+            supabase.table("access_users")
+            .select("*")
+            .eq("user_id", user_id)
+            .execute()
+            .data
+        )
+        if exist:
+            embed = discord.Embed(
+                title="✅ Already Verified",
+                description="You are already verified & whitelisted.",
+                color=0x2ecc71
+            )
+            await msg.reply(embed=embed)
+            return
+
+        # 🔄 CHANGE: "LIMIT CHECK" KO NEECHE LAYE HAIN
+        # --- C. LIMIT + OWNER APPROVAL SYSTEM (Ab yahan check hoga) ---
+        # Agar banda nayi ID laaya hai, tab dekho limit hai ya nahi
         already = (
             supabase.table("access_users")
             .select("user_id")
@@ -309,20 +329,17 @@ async def on_message(msg):
                     req.add_field(name="✨ Display Name", value=f"{display}", inline=True)
                     req.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
 
-                    # 👇 BUTTONS KA LOGIC (YAHAN ADD KIYA HAI) 👇
+                    # 👇 BUTTONS LOGIC 👇
                     async def approve_callback(interaction: discord.Interaction):
-                        # Sirf Owner click kar sakta hai
                         if interaction.user.id != OWNER_ID:
                             await interaction.response.send_message("❌ Only Owner can approve.", ephemeral=True)
                             return
                         
-                        # Database Update
                         supabase.table("multi_access").upsert({
                             "discord_id": str(msg.author.id),
                             "approved": True
                         }).execute()
                         
-                        # Message Update
                         await interaction.response.edit_message(
                             embed=discord.Embed(title="🟢 ACCESS GRANTED", description=f"{msg.author.mention} can now verify unlimited Roblox accounts.", color=0x2ecc71),
                             view=None
@@ -338,38 +355,18 @@ async def on_message(msg):
                             view=None
                         )
 
-                    # View aur Buttons banana
                     view = discord.ui.View()
                     btn_approve = discord.ui.Button(style=discord.ButtonStyle.green, label="Give Access")
                     btn_deny = discord.ui.Button(style=discord.ButtonStyle.red, label="Deny Access")
-
-                    # Connect karna
+                    
                     btn_approve.callback = approve_callback
                     btn_deny.callback = deny_callback
-
+                    
                     view.add_item(btn_approve)
                     view.add_item(btn_deny)
                     
-                    # Message bhejna view ke saath
                     await ch.send(embed=req, view=view)
                 return
-
-        # --- C. ALREADY VERIFIED CHECK ---
-        exist = (
-            supabase.table("access_users")
-            .select("*")
-            .eq("user_id", user_id)
-            .execute()
-            .data
-        )
-        if exist:
-            embed = discord.Embed(
-                title="✅ Already Verified",
-                description="You are already verified & whitelisted.",
-                color=0x2ecc71
-            )
-            await msg.reply(embed=embed)
-            return
 
         # --- D. AUTO ADD TO WHITELIST ---
         supabase.table("access_users").insert({
@@ -419,7 +416,7 @@ async def on_message(msg):
 
     except Exception as e:
         print(f"CRITICAL DB ERROR: {e}")
-        await msg.reply(f"❌ System Error: `{e}`\nAdmin ko contact karein.")
+        await msg.reply(f"❌ System Error: `{e}`\nAdmin ko contact karein.")        
 
 
                         
