@@ -2961,6 +2961,42 @@ async def restrict(i: discord.Interaction, action: app_commands.Choice[str], wor
     else:
         await i.followup.send("❌ **Error:** Ya toh `word` likho ya `user` select karo!")
 
+# ================== FUN: FAKE HACK COMMAND ==================
+@bot.tree.command(name="hack", description="Prank hack a user (Funny)")
+async def hack(i: discord.Interaction, target: discord.User):
+    # 1. Start Operation
+    await i.response.send_message(f"💻 **Initiating Hack on {target.mention}...**")
+    msg = await i.original_response()
+    
+    # 2. Fake Steps (Loop)
+    import asyncio
+    import random
+    
+    # Funny "Leaked" Passwords & History
+    passwords = ["ilovepappu", "password123", "saksham_is_pro", "mummy_ka_ladla", "00000000"]
+    history = ["how to impress girls", "baal kaise ugaye", "free fire diamond hack", "funny cat videos", "saksham se dosti kaise kare"]
+    
+    steps = [
+        f"🔍 Fetching IP Address of {target.name}...",
+        "🔓 Bypassing Firewall...",
+        "💉 Injecting Trojan Virus...",
+        f"📂 Accessing Files... Found 'Homework' folder (Empty) 📁",
+        f"🔑 Decrypting Password... Success: ||**{random.choice(passwords)}**||",
+        f"👀 Reading Google Search History: '`{random.choice(history)}`'...",
+        "📡 Uploading Photos to Dark Web...",
+        "💸 Stealing Paytm Balance... ₹12 found.",
+        "✅ **HACK COMPLETE! System Destroyed.** 💀"
+    ]
+
+    # Har step ko 1.5 second baad dikhayenge (Edit karke)
+    for step in steps:
+        await asyncio.sleep(1.5) # Wait time
+        await msg.edit(content=f"```diff\n- {step}\n```")
+
+    # Final Message
+    await asyncio.sleep(1)
+    await msg.edit(content=f"🔥 **{target.mention} has been HACKED!** ☠️\n(Just kidding, masti thi 😂)")
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
