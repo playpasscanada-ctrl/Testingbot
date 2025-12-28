@@ -10,6 +10,18 @@ from discord.ext import commands
 from flask import Flask, jsonify
 from supabase import create_client, Client
 
+# --- 🛡️ BANNED WORDS SYSTEM (Variables) ---
+BANNED_WORDS_CACHE = set()
+
+async def load_banned_words():
+    global BANNED_WORDS_CACHE
+    try:
+        data = supabase.table("banned_words").select("word").execute().data
+        BANNED_WORDS_CACHE = {item["word"].lower() for item in data}
+        print(f"✅ Loaded {len(BANNED_WORDS_CACHE)} Banned Words.")
+    except Exception as e:
+        print(f"⚠️ Error loading words: {e}")
+
 def get_roblox_info(user_id):
     try:
         user = requests.get(
@@ -96,8 +108,9 @@ def emb(title, desc, color=0x5865F2):
  
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
     print("BOT ONLINE")
+    await load_banned_words()  # <--- ✅ YE LINE ADD KARNI HAI
+    await bot.tree.sync()
     
 # ================== SAFE SEND ==================
 async def safe_send(i, embed):
@@ -119,6 +132,25 @@ async def on_message(msg):
 
     if msg.author.bot:
         return
+
+        # ---------------------------------------------------------
+    # 🛡️ 1. AUTO MOD SYSTEM (BANNED WORDS)
+    # ---------------------------------------------------------
+    if BANNED_WORDS_CACHE and msg.content:
+        msg_lower = msg.content.lower()
+        # Agar message mein banned word hai
+        if any(bad_word in msg_lower.split() for bad_word in BANNED_WORDS_CACHE):
+            try:
+                await msg.delete()
+                warning = discord.Embed(
+                    title="⚠️ Language Warning",
+                    description=f"{msg.author.mention}, **apna bolne ka tarika sahi rakho!** 🚫",
+                    color=0xff0000
+                )
+                await msg.channel.send(embed=warning, delete_after=5)
+                return  # 🛑 YAHI RUK JAO (Aage mat badho)
+            except:
+                pass
 
             # ==================================================
     # 🔥 ULTIMATE ATTITUDE AUTO-REPLY (VIP + 100 ROASTS)
@@ -2602,6 +2634,42 @@ async def say(
 
     except Exception as e:
         await i.response.send_message(f"❌ Error: {e}", ephemeral=True)
+
+# ================== RESTRICT COMMAND ==================
+@bot.tree.command(name="restrict", description="Manage Banned Words (Owner Only)")
+@app_commands.choices(action=[
+    app_commands.Choice(name="add", value="add"),
+    app_commands.Choice(name="remove", value="remove"),
+    app_commands.Choice(name="list", value="list"),
+])
+async def restrict(i: discord.Interaction, action: app_commands.Choice[str], word: str = None):
+    # Owner Check (Tumhari ID)
+    if i.user.id != 804687084249284618: 
+        await i.response.send_message("❌ Only Owner can use this.", ephemeral=True)
+        return
+
+    global BANNED_WORDS_CACHE
+    word_clean = word.lower().strip() if word else None
+
+    # --- ADD ---
+    if action.value == "add":
+        if not word_clean: return await i.response.send_message("❌ Word required!", ephemeral=True)
+        supabase.table("banned_words").insert({"word": word_clean}).execute()
+        BANNED_WORDS_CACHE.add(word_clean)
+        await i.response.send_message(f"✅ Added Banned Word: ||**{word_clean}**||", ephemeral=True)
+
+    # --- REMOVE ---
+    elif action.value == "remove":
+        if not word_clean: return await i.response.send_message("❌ Word required!", ephemeral=True)
+        supabase.table("banned_words").delete().eq("word", word_clean).execute()
+        BANNED_WORDS_CACHE.discard(word_clean)
+        await i.response.send_message(f"🗑️ Removed Banned Word: ||**{word_clean}**||", ephemeral=True)
+
+    # --- LIST ---
+    elif action.value == "list":
+        if not BANNED_WORDS_CACHE: return await i.response.send_message("📂 List is Empty.", ephemeral=True)
+        words_list = ", ".join([f"`{w}`" for w in BANNED_WORDS_CACHE])
+        await i.response.send_message(f"🚫 **Banned Words:**\n{words_list}", ephemeral=True)
 
 
 # ================== OPTIMIZED FLASK BACKEND ==================
