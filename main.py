@@ -213,8 +213,8 @@ async def on_message(msg):
             except:
                 pass
 
-        # ---------------------------------------------------------
-    # 🤫 2. OWNER SILENCE COMMAND (Maalik ka Darr)
+            # ---------------------------------------------------------
+    # 🤫 OWNER SILENCE COMMAND (Maalik ka Darr)
     # ---------------------------------------------------------
     # Agar Owner bole "Chup" ya "Shant", toh bot maafi mangega
     silence_triggers = ["chup", "shant", "keep quiet", "shut up", "muh band", "silence"]
@@ -231,7 +231,6 @@ async def on_message(msg):
         
         await msg.reply(embed=embed)
         return  # 🛑 Yahi ruk jao (Taaki bot aage Attitude na dikhaye)
-
 
             # ==================================================
     # 🔥 ULTIMATE ATTITUDE AUTO-REPLY (VIP + 100 ROASTS)
