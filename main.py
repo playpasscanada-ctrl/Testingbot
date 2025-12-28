@@ -2997,6 +2997,45 @@ async def hack(i: discord.Interaction, target: discord.User):
     await asyncio.sleep(1)
     await msg.edit(content=f"🔥 **{target.mention} has been HACKED!** ☠️\n(Just kidding, masti thi 😂)")
 
+# ================== FUN: LOVE / DOSTI METER ==================
+@bot.tree.command(name="match", description="Calculate Love/Friendship % between two users")
+async def match(i: discord.Interaction, user1: discord.User, user2: discord.User = None):
+    # Agar 2nd user nahi diya, toh command use karne wale ke saath check karenge
+    if user2 is None:
+        user2 = i.user
+
+    # Masti: Random Percentage
+    import random
+    score = random.randint(0, 100)
+    
+    # Funny Comments based on Score
+    comment = ""
+    color = 0x000000
+    
+    if score < 20:
+        comment = "💔 **Bhai-Behen ka rishta lagta hai.** (No chance)"
+        color = 0xff0000 # Red
+    elif score < 50:
+        comment = "😐 **Kaam chalaau dosti.** (Bas Hi-Hello)"
+        color = 0xffa500 # Orange
+    elif score < 80:
+        comment = "❤️ **Arey waah! Mast Jodi hai.** (Party kab?)"
+        color = 0xffff00 # Yellow
+    else:
+        comment = "💍 **Rab ne bana di jodi!** (Shaadi ka card bhejna)"
+        color = 0x2ecc71 # Green
+
+    # Progress Bar (Visual)
+    # E.g: [████......]
+    bar_length = 10
+    filled = int(score / 10)
+    bar = "█" * filled + "░" * (bar_length - filled)
+
+    embed = discord.Embed(title="💖 Love/Dosti Calculator 💖", color=color)
+    embed.add_field(name=f"🔻 Match: {user1.name} x {user2.name}", value=f"**{score}%**\n`[{bar}]`\n\n{comment}")
+    
+    await i.response.send_message(embed=embed)
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
