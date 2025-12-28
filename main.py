@@ -2635,7 +2635,7 @@ async def say(
     except Exception as e:
         await i.response.send_message(f"❌ Error: {e}", ephemeral=True)
 
-# ================== RESTRICT COMMAND (PREMIUM & PUBLIC) ==================
+# ================== RESTRICT COMMAND (BULK ADD SUPPORT) ==================
 @bot.tree.command(name="restrict", description="Manage Banned Words (Owner Only)")
 @app_commands.choices(action=[
     app_commands.Choice(name="add", value="add"),
@@ -2645,93 +2645,93 @@ async def say(
 async def restrict(i: discord.Interaction, action: app_commands.Choice[str], word: str = None):
     # Owner Check
     if i.user.id != 804687084249284618: 
-        # Error message abhi bhi private rakha hai taaki chat gandi na ho
         await i.response.send_message("❌ **Access Denied:** Only Owner can use this.", ephemeral=True)
         return
 
-    # ✅ PUBLIC MODE ON: Sabko dikhega ki Owner ne kya kiya
+    # Public dikhana hai (Thinking...)
     await i.response.defer(ephemeral=False)
 
     global BANNED_WORDS_CACHE
-    word_clean = word.lower().strip() if word else None
 
     try:
-        # --- ACTION: ADD WORD ---
+        # --- ACTION: ADD WORDS (BULK) ---
         if action.value == "add":
-            if not word_clean:
-                embed = discord.Embed(description="❌ **Error:** Word likhna zaruri hai!", color=0xff0000)
-                await i.followup.send(embed=embed)
+            if not word:
+                await i.followup.send("❌ **Error:** Words likhna zaruri hai!")
                 return
             
-            # Check Duplicate
-            if word_clean in BANNED_WORDS_CACHE:
-                embed = discord.Embed(description=f"⚠️ **Notice:** Word ||`{word_clean}`|| pehle se list mein hai.", color=0xffa500)
-                await i.followup.send(embed=embed)
-                return
+            # Comma se split karke list bana lenge
+            raw_words = [w.strip().lower() for w in word.split(',')]
+            added_words = []
+            already_exists = []
 
-            # DB & Cache Update
-            supabase.table("banned_words").insert({"word": word_clean}).execute()
-            BANNED_WORDS_CACHE.add(word_clean)
+            for w in raw_words:
+                if w and w not in BANNED_WORDS_CACHE:
+                    # Database & Cache Update
+                    supabase.table("banned_words").insert({"word": w}).execute()
+                    BANNED_WORDS_CACHE.add(w)
+                    added_words.append(w)
+                elif w:
+                    already_exists.append(w)
 
-            # Premium Embed
-            embed = discord.Embed(
-                title="🛡️ Security Update: Word Added",
-                description=f"A new word has been added to the **Auto-Mod Filter**.",
-                color=0x2ecc71 # Green
-            )
-            embed.add_field(name="🔤 Restricted Word", value=f"||**{word_clean}**||", inline=False)
-            embed.set_footer(text=f"Action by {i.user.display_name}")
+            # Embed banana
+            desc = ""
+            color = 0x2ecc71 # Green
+
+            if added_words:
+                desc += f"✅ **Added ({len(added_words)}):**\n" + ", ".join([f"||`{x}`||" for x in added_words]) + "\n\n"
             
+            if already_exists:
+                desc += f"⚠️ **Skipped (Already in list):**\n" + ", ".join([f"`{x}`" for x in already_exists])
+                if not added_words: color = 0xffa500 # Orange if only skipped
+
+            embed = discord.Embed(title="🛡️ Bulk Words Update", description=desc, color=color)
             await i.followup.send(embed=embed)
 
-        # --- ACTION: REMOVE WORD ---
+        # --- ACTION: REMOVE WORDS (BULK) ---
         elif action.value == "remove":
-            if not word_clean:
-                embed = discord.Embed(description="❌ **Error:** Word likhna zaruri hai!", color=0xff0000)
-                await i.followup.send(embed=embed)
+            if not word:
+                await i.followup.send("❌ **Error:** Words likhna zaruri hai!")
                 return
 
-            if word_clean not in BANNED_WORDS_CACHE:
-                embed = discord.Embed(description=f"⚠️ **Error:** Word ||`{word_clean}`|| list mein nahi mila.", color=0xffa500)
-                await i.followup.send(embed=embed)
-                return
+            raw_words = [w.strip().lower() for w in word.split(',')]
+            removed_words = []
+            not_found = []
 
-            # DB & Cache Update
-            supabase.table("banned_words").delete().eq("word", word_clean).execute()
-            BANNED_WORDS_CACHE.discard(word_clean)
+            for w in raw_words:
+                if w in BANNED_WORDS_CACHE:
+                    supabase.table("banned_words").delete().eq("word", w).execute()
+                    BANNED_WORDS_CACHE.discard(w)
+                    removed_words.append(w)
+                else:
+                    not_found.append(w)
 
-            # Premium Embed
-            embed = discord.Embed(
-                title="🗑️ Security Update: Word Removed",
-                description=f"A word has been removed from the **Auto-Mod Filter**.",
-                color=0xe74c3c # Red
-            )
-            embed.add_field(name="🔓 Unbanned Word", value=f"||**{word_clean}**||", inline=False)
-            embed.set_footer(text=f"Action by {i.user.display_name}")
+            desc = ""
+            color = 0xe74c3c # Red
 
+            if removed_words:
+                desc += f"🗑️ **Removed ({len(removed_words)}):**\n" + ", ".join([f"||`{x}`||" for x in removed_words]) + "\n\n"
+            
+            if not_found:
+                desc += f"⚠️ **Not Found:**\n" + ", ".join([f"`{x}`" for x in not_found])
+
+            embed = discord.Embed(title="🗑️ Bulk Removal Update", description=desc, color=color)
             await i.followup.send(embed=embed)
 
-        # --- ACTION: LIST WORDS ---
+        # --- ACTION: LIST ---
         elif action.value == "list":
             if not BANNED_WORDS_CACHE:
-                embed = discord.Embed(title="📂 Restricted Words", description="✅ List is currently **Empty**.", color=0x3498db)
-                await i.followup.send(embed=embed)
+                await i.followup.send(embed=discord.Embed(title="📂 Restricted Words", description="List Empty hai.", color=0x3498db))
                 return
             
-            # Format List
             words_list = ", ".join([f"`{w}`" for w in BANNED_WORDS_CACHE])
-            
-            # Check length (Discord limit 4096 chars)
-            if len(words_list) > 4000:
-                words_list = words_list[:4000] + "..."
+            if len(words_list) > 4000: words_list = words_list[:4000] + "..."
 
             embed = discord.Embed(
                 title=f"🚫 Restricted Words List ({len(BANNED_WORDS_CACHE)})",
                 description=words_list,
-                color=0x3498db # Blue
+                color=0x3498db
             )
-            embed.set_footer(text="Auto-Delete System Active")
-            
             await i.followup.send(embed=embed)
 
     except Exception as e:
