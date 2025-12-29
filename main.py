@@ -104,22 +104,6 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 VERIFY_CHANNEL_ID = 123456789012345678      # <-- apna verify channel
 LOG_CHANNEL_ID = 987654321098765432         # <-- apna logs channel
 
-# ================== ROBLOX ==================
-# 👇 PURANA FUNCTION HATA KE YE LAGA DO 👇
-async def roblox_info(uid):
-    url = f"https://users.roblox.com/v1/users/{uid}"
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return data.get("name", "Unknown"), data.get("displayName", "Unknown")
-                else:
-                    return "Invalid ID", "Invalid ID"
-    except Exception as e:
-        print(f"API Error: {e}")
-        return "Unknown", "Unknown"
-
 # ================== DISCORD INTENTS ==================
 intents = discord.Intents.default()
 intents.message_content = True
@@ -144,7 +128,13 @@ def emb(title, desc, color=0x5865F2):
 @bot.event
 async def on_ready():
     print("BOT ONLINE")
-    await load_banned_words()  # <--- ✅ YE LINE ADD KARNI HAI
+    
+    # 👇 YE NAYA CODE HAI (Session Banane ke liye)
+    if not hasattr(bot, 'session') or bot.session is None:
+        bot.session = aiohttp.ClientSession()
+        print("✅ Shared Session Created")
+
+    await load_banned_words()
     await bot.tree.sync()
     
 # ================== SAFE SEND ==================
@@ -3250,5 +3240,29 @@ def keep_alive():
 # Flask ko "Single Thread" mode me chalayenge taaki Errno 11 na aaye
 threading.Thread(target=lambda: app.run("0.0.0.0", 10000, threaded=False, use_reloader=False)).start()
 threading.Thread(target=keep_alive, daemon=True).start()
+
+# 👇 ISKO UPDATE KARO (Purana hata kar ye lagao)
+async def roblox_info(uid):
+    url = f"https://users.roblox.com/v1/users/{uid}"
+    try:
+        # 👇 DHYAN DEIN: Yahan hum 'bot.session' use kar rahe hain
+        async with bot.session.get(url) as response:
+            if response.status == 200:
+                data = await response.json()
+                return data.get("name", "Unknown"), data.get("displayName", "Unknown")
+            else:
+                return "Invalid ID", "Invalid ID"
+    except Exception as e:
+        print(f"API Error: {e}")
+        # Agar bot.session fail ho jaye to backup (Safety)
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                     if response.status == 200:
+                        data = await response.json()
+                        return data.get("name", "Unknown"), data.get("displayName", "Unknown")
+        except:
+            pass
+        return "Unknown", "Unknown"
 
 bot.run(DISCORD_TOKEN)
