@@ -3250,21 +3250,4 @@ def keep_alive():
 threading.Thread(target=lambda: app.run("0.0.0.0", 10000)).start()
 threading.Thread(target=keep_alive, daemon=True).start()
 
-# === FORCE FIX: ISKO SABSE NEECHE (bot.run se pehle) PASTE KARO ===
-async def roblox_info(uid):
-    url = f"https://users.roblox.com/v1/users/{uid}"
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return data.get("name", "Unknown"), data.get("displayName", "Unknown")
-                else:
-                    return "Invalid ID", "Invalid ID"
-    except Exception as e:
-        print(f"API Error: {e}")
-        return "Unknown", "Unknown"
-
-# bot.run(TOKEN)  <-- Ye line tumhare code me pehle se hogi, uske upar chipkana hai bas.
-
 bot.run(DISCORD_TOKEN)
