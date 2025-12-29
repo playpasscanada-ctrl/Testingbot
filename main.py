@@ -105,12 +105,20 @@ VERIFY_CHANNEL_ID = 123456789012345678      # <-- apna verify channel
 LOG_CHANNEL_ID = 987654321098765432         # <-- apna logs channel
 
 # ================== ROBLOX ==================
-def roblox_info(uid):
+# 👇 PURANA FUNCTION HATA KE YE LAGA DO 👇
+async def roblox_info(uid):
+    url = f"https://users.roblox.com/v1/users/{uid}"
     try:
-        r = requests.get(f"https://users.roblox.com/v1/users/{uid}", timeout=5).json()
-        return r.get("name","Unknown"), r.get("displayName","Unknown")
-    except:
-        return "Unknown","Unknown"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get("name", "Unknown"), data.get("displayName", "Unknown")
+                else:
+                    return "Invalid ID", "Invalid ID"
+    except Exception as e:
+        print(f"API Error: {e}")
+        return "Unknown", "Unknown"
 
 # ================== DISCORD INTENTS ==================
 intents = discord.Intents.default()
@@ -586,7 +594,7 @@ async def ban(i:discord.Interaction, user_id:str, reason:str):
     # Defer isliye taaki API call me time lage to error na aaye
     await i.response.defer()
 
-    u, d = roblox_info(user_id)
+    u, d = await roblox_info(user_id)
 
     # Database me Executor (Admin) bhi save kar rahe hain
     supabase.table("bans").upsert({
@@ -616,7 +624,7 @@ async def tempban(i:discord.Interaction, user_id:str, minutes:int, reason:str):
 
     await i.response.defer()
 
-    u, d = roblox_info(user_id)
+    u, d = await roblox_info(user_id)
 
     supabase.table("bans").upsert({
         "user_id": user_id,
@@ -659,7 +667,7 @@ async def listb(i:discord.Interaction):
                 supabase.table("bans").delete().eq("user_id", x["user_id"]).execute()
                 continue
             
-            u, n = roblox_info(x["user_id"])
+            u, n = await roblox_info(x["user_id"])
 
             # Time Logic
             if x["perm"]:
@@ -703,7 +711,7 @@ async def unban(i:discord.Interaction, user_id:str):
         return
 
     # Roblox Info
-    username, display = roblox_info(user_id)
+    username, display = await roblox_info(user_id)
 
     # Delete from bans
     supabase.table("bans").delete().eq("user_id", user_id).execute()
@@ -1403,7 +1411,7 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
     # ADD BLACKLIST + REMOVE ACCESS
     # =============================
     if mode.value == "add" and user_id:
-        u, d = roblox_info(user_id)
+        u, d = await roblox_info(user_id)
 
         supabase.table("blacklist_users").upsert({
             "user_id": user_id
@@ -1470,7 +1478,7 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
         txt = ""
         for x in data:
             uid = x["user_id"]
-            u, d = roblox_info(uid)
+            u, d = await roblox_info(uid)
 
             txt += (
                 f"• **Username:** {u}\n"
@@ -1493,7 +1501,7 @@ async def kick(i: discord.Interaction, user_id: str, reason: str = "No reason pr
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
 
-    username, display = roblox_info(user_id)
+    username, display = await roblox_info(user_id)
 
     try:
         supabase.table("kick_logs").insert({
@@ -1557,7 +1565,7 @@ async def whois(i: discord.Interaction, user_id: str):
         await i.response.defer()
 
         # ROBLOX DATA
-        u, d = roblox_info(user_id)
+        u, d = await roblox_info(user_id)
         if not u: u = "Unknown"
         if not d: d = "Unknown"
 
@@ -1891,7 +1899,7 @@ async def history(i: discord.Interaction, user_id: str):
     await i.response.defer()
 
     # Roblox Info
-    u, d = roblox_info(user_id)
+    u, d = await roblox_info(user_id)
 
     # ================= VERIFY LOGS =================
     try:
@@ -2190,19 +2198,18 @@ async def fakeban(i: discord.Interaction, action: str, userid: str=None, message
     await i.response.defer()
 
     try:
+        # ================= ADD FAKE BAN =================
         if action.lower() == "add":
             if not userid:
                 return await i.followup.send(embed=emb("❌ ERROR","User ID required"))
 
-            # Already exists?
+            # Already exists check
             chk = supabase.table("fake_warnings").select("user_id").eq("user_id", userid).execute().data
             if chk:
                 return await i.followup.send(embed=emb("⚠️ ALREADY PENDING","This player already has a fake warning pending"))
 
-            # Get username + display automatically
-            info = get_roblox_info(userid)   # <-- Tumhara function already hoga
-            uname = info["username"]
-            dname = info["display"]
+            # 👇 YAHAN FIX KIYA HAI (Await + Correct Unpacking)
+            uname, dname = await roblox_info(userid)
 
             supabase.table("fake_warnings").insert({
                 "user_id": userid,
