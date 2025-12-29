@@ -3237,16 +3237,18 @@ def stopstatus():
 import logging
 logging.getLogger("werkzeug").disabled = True
 
-# ================== KEEP ALIVE ==================
+# ================== OPTIMIZED KEEP ALIVE (RAM SAVER) ==================
 def keep_alive():
     while True:
         try:
-            requests.get(f"{RENDER_URL}/ping", timeout=5)
+            # Sleep time badha diya (25s -> 45s) taaki load kam pade
+            time.sleep(45) 
+            requests.get(f"{RENDER_URL}/ping", timeout=10)
         except:
             pass
-        time.sleep(25)
 
-threading.Thread(target=lambda: app.run("0.0.0.0", 10000)).start()
+# Flask ko "Single Thread" mode me chalayenge taaki Errno 11 na aaye
+threading.Thread(target=lambda: app.run("0.0.0.0", 10000, threaded=False, use_reloader=False)).start()
 threading.Thread(target=keep_alive, daemon=True).start()
 
 bot.run(DISCORD_TOKEN)
