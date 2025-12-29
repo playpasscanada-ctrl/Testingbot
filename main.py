@@ -892,7 +892,7 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
         except Exception as e:
             await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
 
-# ================== ACCESS COMMAND (WITH PAGINATION) ==================
+# ================== ACCESS COMMAND (FINAL FIX) ==================
 @bot.tree.command(name="access")
 @app_commands.choices(mode=[
     app_commands.Choice(name="on", value="on"),
@@ -902,103 +902,126 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
     app_commands.Choice(name="list", value="list"),
 ])
 async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id: str = None):
-    # 1. Check Owner (Global Helper)
+    # 1. Check Owner
     if not owner(i):
+        await i.response.send_message("❌ You are not the owner.", ephemeral=True)
         return
 
+    # 2. Defer (Thinking...)
     await i.response.defer()
-
-    # --- PREMIUM EMBED HELPER ---
-    def premium_embed(title, desc, color, thumb=None):
-        embed = discord.Embed(title=title, description=desc, color=color, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Action by {i.user.display_name}", icon_url=i.user.display_avatar.url)
-        if thumb: embed.set_thumbnail(url=thumb)
-        return embed
 
     try:
         # === MODE: ON / OFF ===
         if mode.value in ["on", "off"]:
+            # Database Update
             supabase.table("bot_settings").update(
                 {"value": "true" if mode.value == "on" else "false"}
             ).eq("key", "access_enabled").execute()
 
-            status_color = 0x2ecc71 if mode.value == "on" else 0xe74c3c
-            status_emoji = "🟢" if mode.value == "on" else "🔴"
+            # Embed Design
+            color = 0x2ecc71 if mode.value == "on" else 0xe74c3c
+            emoji = "🟢" if mode.value == "on" else "🔴"
             
-            try: log_action(f"access_{mode.value}", "-", "-", "-", i.user.id)
-            except: pass
-
-            await safe_send(i, premium_embed(
-                f"{status_emoji} SYSTEM UPDATE",
-                f"**Verification Access:** `{mode.value.upper()}`\nAuthentication system status updated.",
-                status_color
-            ))
+            embed = discord.Embed(
+                title=f"{emoji} SYSTEM UPDATE",
+                description=f"**Verification Access:** `{mode.value.upper()}`\nAuthentication system status updated.",
+                color=color,
+                timestamp=discord.utils.utcnow()
+            )
+            embed.set_footer(text=f"Action by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+            
+            await safe_send(i, embed)
             return
 
         # === MODE: ADD ===
         if mode.value == "add":
             if not user_id:
-                await safe_send(i, premium_embed("❌ ERROR", "Valid **Roblox ID** required.", 0xff0000))
+                await safe_send(i, discord.Embed(title="❌ ERROR", description="Please provide a valid **Roblox ID**.", color=0xff0000))
                 return
             
-            u, d = await roblox_info(user_id) # Async call
+            # Fetch Info (Global Function se)
+            u, d = await roblox_info(user_id) 
+
             if u == "Invalid ID":
-                await safe_send(i, premium_embed("⚠️ INVALID USER", "Roblox ID does not exist.", 0xffaa00))
+                await safe_send(i, discord.Embed(title="⚠️ INVALID USER", description="This Roblox ID does not exist.", color=0xffaa00))
                 return
 
+            # Database Insert
             supabase.table("access_users").upsert({
-                "user_id": user_id, "username": u, "display_name": d, "discord_id": str(i.user.id)
+                "user_id": user_id,
+                "username": u,
+                "display_name": d,
+                "discord_id": str(i.user.id)
             }).execute()
 
+            # Logs (Safety ke saath)
             try: log_action("access_add", user_id, u, d, i.user.id)
             except: pass
 
+            # Embed
             thumb_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
-            await safe_send(i, premium_embed(
-                "💎 ACCESS GRANTED",
-                f"User **Whitelisted**.\n\n👤 **User:** `{u}` ({d})\n🆔 **ID:** `{user_id}`",
-                0xf1c40f, thumb_url
-            ))
+            embed = discord.Embed(
+                title="💎 ACCESS GRANTED",
+                description=f"User has been **Whitelisted** successfully.\n\n👤 **Username:** `{u}`\n🏷️ **Display:** `{d}`\n🆔 **ID:** `{user_id}`",
+                color=0xf1c40f, # Gold
+                timestamp=discord.utils.utcnow()
+            )
+            embed.set_thumbnail(url=thumb_url)
+            embed.set_footer(text=f"Action by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+
+            await safe_send(i, embed)
             return
 
         # === MODE: REMOVE ===
         if mode.value == "remove":
             if not user_id:
-                await safe_send(i, premium_embed("❌ ERROR", "Valid **Roblox ID** required.", 0xff0000))
+                await safe_send(i, discord.Embed(title="❌ ERROR", description="Please provide a valid **Roblox ID**.", color=0xff0000))
                 return
 
+            # Fetch Info
             u, d = await roblox_info(user_id)
+            
+            # Database Delete
             supabase.table("access_users").delete().eq("user_id", user_id).execute()
 
+            # Logs
             try: log_action("access_remove", user_id, u, d, i.user.id)
             except: pass
 
+            # Embed
             thumb_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
-            await safe_send(i, premium_embed(
-                "🗑️ ACCESS REMOVED",
-                f"User **Blacklisted**.\n\n👤 **User:** `{u}`\n🆔 **ID:** `{user_id}`",
-                0xff0000, thumb_url
-            ))
+            embed = discord.Embed(
+                title="🗑️ ACCESS REMOVED",
+                description=f"User has been **Blacklisted/Removed**.\n\n👤 **Username:** `{u}`\n🆔 **ID:** `{user_id}`",
+                color=0xff0000, # Red
+                timestamp=discord.utils.utcnow()
+            )
+            embed.set_thumbnail(url=thumb_url)
+            embed.set_footer(text=f"Action by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+
+            await safe_send(i, embed)
             return
 
-        # === MODE: LIST (WITH PAGINATION) ===
+        # === MODE: LIST (Pagination ke saath) ===
         if mode.value == "list":
             data = supabase.table("access_users").select("*").execute().data
 
             if not data:
-                await safe_send(i, premium_embed("📜 EMPTY LIST", "No users are currently whitelisted.", 0xffa500))
+                await safe_send(i, discord.Embed(title="📜 EMPTY LIST", description="No users are currently whitelisted.", color=0xffa500))
                 return
 
-            # Pagination View Create Karo
+            # View Create Karo
             view = AccessPagination(data, i.user)
-            view.update_buttons() # Buttons check karo (First page par Prev button disable hoga)
+            view.update_buttons()
             
-            # Message bhejo (View ke saath)
+            # Send
             await safe_send(i, embed=view.get_embed(), view=view)
             return
 
     except Exception as e:
-        await safe_send(i, premium_embed("💀 SYSTEM ERROR", f"`{e}`", 0x000000))
+        # Error aayega to dikhega ab
+        print(f"COMMAND ERROR: {e}")
+        await safe_send(i, discord.Embed(title="💀 CRITICAL ERROR", description=f"An error occurred:\n`{e}`", color=0x000000))
             
     
 from discord import ui
