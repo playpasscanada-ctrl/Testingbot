@@ -173,6 +173,14 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 VERIFY_CHANNEL_ID = 123456789012345678      # <-- apna verify channel
 LOG_CHANNEL_ID = 987654321098765432         # <-- apna logs channel
 
+# ================== ROBLOX ==================
+def roblox_info(uid):
+    try:
+        r = requests.get(f"https://users.roblox.com/v1/users/{uid}", timeout=5).json()
+        return r.get("name","Unknown"), r.get("displayName","Unknown")
+    except:
+        return "Unknown","Unknown"
+
 # ================== DISCORD INTENTS ==================
 intents = discord.Intents.default()
 intents.message_content = True
@@ -189,8 +197,7 @@ def owner(i):
         return False
  
 def emb(title, desc, color=0x5865F2):
-    e = discord.Embed(title=title, description=desc, color=color)
-    e.timestamp = datetime.utcnow()
+    e = discord.Embed(title=title, 
     return e
  
 @bot.event
@@ -3272,5 +3279,23 @@ def keep_alive():
 
 threading.Thread(target=lambda: app.run("0.0.0.0", 10000)).start()
 threading.Thread(target=keep_alive, daemon=True).start()
+
+# 👇 ISKO CODE KE SABSE NEECHE (End me) PASTE KARO 👇
+
+async def roblox_info(uid):
+    url = f"https://users.roblox.com/v1/users/{uid}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get("name", "Unknown"), data.get("displayName", "Unknown")
+                else:
+                    return "Invalid ID", "Invalid ID"
+    except Exception as e:
+        print(f"API Error: {e}")
+        return "Unknown", "Unknown"
+
+# bot.run(DISCORD_TOKEN) <--- Ye line pehle se hogi, iske upar lagana hai
 
 bot.run(DISCORD_TOKEN)
