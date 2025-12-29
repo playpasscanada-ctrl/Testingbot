@@ -197,7 +197,7 @@ def owner(i):
         return False
  
 def emb(title, desc, color=0x5865F2):
-    e = discord.Embed(title=title, 
+    e = discord.Embed(title=title,)
     return e
  
 @bot.event
