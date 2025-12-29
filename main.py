@@ -1529,62 +1529,77 @@ async def maintenance(i:discord.Interaction, mode:app_commands.Choice[str]):
     ))
 
 
-# ================== WHOIS ==================
-@bot.tree.command(name="whois")
+@bot.tree.command(name="whois", description="🕵️ Get detailed status of a Roblox User")
 async def whois(i: discord.Interaction, user_id: str):
     if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
+        return await safe_send(i, emb("❌ NO PERMISSION", "Owner only command"))
+
+    await i.response.defer()
 
     try:
-        await i.response.defer()
+        # ✅ FIX: Using await for async function
+        username, display = await roblox_info(user_id)
+        
+        # Handle invalid user
+        if username == "Invalid ID":
+            return await i.followup.send(embed=discord.Embed(title="❌ Invalid ID", description="Roblox ID exist nahi karti.", color=0xff0000))
 
-        # ROBLOX DATA
-        u, d = await roblox_info(user_id)
-        if not u: u = "Unknown"
-        if not d: d = "Unknown"
-
-        # ===== BAN CHECK =====
-        data = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
-        ban_status = "🟢 Not Banned"
-        reason = "—"
-
-        if data:
-            b = data[0]
+        # ===== DATABASE CHECKS =====
+        # 1. Ban Check
+        ban_data = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
+        if ban_data:
+            b = ban_data[0]
             if b.get("perm"):
-                ban_status = "🔴 Permanent Ban"
-                reason = b.get("reason","No Reason")
+                status_emoji = "🔴"
+                status_text = f"**BANNED (Permanent)**\nReason: `{b.get('reason')}`"
+                color = 0xff0000
             else:
-                if time.time() < float(b.get("expire",0)):
-                    mins = int((float(b["expire"]) - time.time())/60)
-                    ban_status = f"⏱ Temp Ban ({mins}m left)"
-                    reason = b.get("reason","No Reason")
+                # Time calc
+                left = int((float(b["expire"]) - time.time())/60)
+                if left > 0:
+                    status_emoji = "🟠"
+                    status_text = f"**TEMP BANNED ({left}m left)**\nReason: `{b.get('reason')}`"
+                    color = 0xffa500
+                else:
+                    status_emoji = "🟢"
+                    status_text = "Clean (Ban Expired)"
+                    color = 0x2ecc71
+        else:
+            status_emoji = "🟢"
+            status_text = "Clean (No Active Bans)"
+            color = 0x2ecc71
 
-        # ===== ACCESS CHECK =====
+        # 2. Access Check
         ac = supabase.table("access_users").select("user_id").eq("user_id",user_id).execute().data
-        access = "✅ Whitelisted" if ac else "❌ Not Whitelisted"
+        access_str = "✅ **Whitelisted**" if ac else "❌ **Not Whitelisted**"
 
-        # ===== BLACKLIST CHECK =====
+        # 3. Blacklist Check
         blk = supabase.table("blacklist_users").select("user_id").eq("user_id", user_id).execute().data
-        blacklist_status = "🚫 Blacklisted" if blk else "🟢 Not Blacklisted"
+        blacklist_str = "🚫 **Yes (Restricted)**" if blk else "🟢 **No**"
 
-        desc = (
-            f"**Roblox ID:** `{user_id}`\n"
-            f"**Username:** `{u}`\n"
-            f"**Display Name:** `{d}`\n\n"
-            f"**Ban Status:** {ban_status}\n"
-            f"**Reason:** {reason}\n\n"
-            f"**Access:** {access}\n"
-            f"**Blacklist:** {blacklist_status}"
-        )
+        # ===== BUILD PREMIUM EMBED =====
+        embed = discord.Embed(title=f"{status_emoji} User Lookup Result", color=color)
+        
+        # Header (User Info)
+        embed.add_field(name="👤 Identity", value=f"**User:** `{username}`\n**Display:** `{display}`\n**ID:** `{user_id}`", inline=False)
+        
+        # Status Grid
+        embed.add_field(name="🛡️ Moderation", value=status_text, inline=True)
+        embed.add_field(name="🔐 Access", value=access_str, inline=True)
+        embed.add_field(name="⛔ Blacklist", value=blacklist_str, inline=True)
 
-        await i.followup.send(embed=emb("🔍 WHOIS RESULT", desc, 0x3498db))
+        # Thumbnail (Roblox Headshot)
+        embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+        
+        # Footer
+        embed.set_footer(text=f"Requested by {i.user.name}", icon_url=i.user.display_avatar.url)
+        embed.timestamp = datetime.utcnow()
+
+        await i.followup.send(embed=embed)
 
     except Exception as e:
-        print("WHOIS ERROR:", e)
-        try:
-            await i.followup.send(embed=emb("❌ ERROR","Whois run karte time error aaya",0xff0000))
-        except:
-            pass
+        print(f"WHOIS ERROR: {e}")
+        await i.followup.send(f"❌ **System Error:** `{e}`")
 
         
 # ================== STATS ==================
@@ -1942,88 +1957,96 @@ async def history(i: discord.Interaction, user_id: str):
 
     await i.followup.send(embed=emb("📂 USER HISTORY", desc, 0x9b59b6))
 
-@bot.tree.command(name="profile", description="Full profile + verification + moderation history of a Roblox user")
+@bot.tree.command(name="profile", description="📂 View full Verification & Safety Profile")
 async def profile(i: discord.Interaction, user_id: str):
-
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION", "Owner only command"))
 
     await i.response.defer()
 
     try:
-        # Fetch Roblox Info
-        data = requests.get(f"https://users.roblox.com/v1/users/{user_id}", timeout=5).json()
-        username = data.get("name","Unknown")
-        display = data.get("displayName","Unknown")
-    except:
-        return await safe_send(i, emb("⚠️ ERROR", "Invalid Roblox ID / Roblox API Down"))
+        # ✅ FIX: Using await
+        username, display = await roblox_info(user_id)
 
-    
-    # ===== ACCESS CHECK =====
-    access = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
-    access_text = "🟢 Whitelisted" if access else "🔴 Not Whitelisted"
+        if username == "Invalid ID":
+             return await i.followup.send(embed=discord.Embed(title="❌ Error", description="Invalid Roblox ID", color=0xff0000))
 
+        # ===== FETCH DATA =====
+        # Access
+        access = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
+        is_verified = bool(access)
+        
+        # Logs (Last verification)
+        logs = supabase.table("verify_logs").select("*").eq("roblox_id", user_id).order("timestamp", desc=True).limit(1).execute().data
+        
+        # Bans
+        bans = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
+        
+        # Blacklist
+        blk = supabase.table("blacklist_users").select("*").eq("user_id", user_id).execute().data
 
-    # ===== BLACKLIST =====
-    blk = supabase.table("blacklist_users").select("*").eq("user_id", user_id).execute().data
-    blacklist_text = "🚫 Blacklisted" if blk else "🟢 Not Blacklisted"
-
-
-    # ===== BAN CHECK =====
-    bans = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
-    ban_text = "🟢 Not Banned"
-
-    if bans:
-        b = bans[0]
-
-        if b["perm"]:
-            ban_text = f"🔴 Permanent Ban\nReason: `{b['reason']}`"
+        # ===== FORMAT DATA =====
+        
+        # Verification Status
+        if is_verified:
+            verify_status = "✅ **Verified & Whitelisted**"
+            verify_color = 0x2ecc71 # Green
         else:
-            import time
-            left = int((float(b["expire"]) - time.time())/60)
-            ban_text = f"⏱ Tempban | `{left} min left`\nReason: `{b['reason']}`"
+            verify_status = "⚠️ **Not Whitelisted**"
+            verify_color = 0x3498db # Blue (Default)
 
+        # Override color if banned/blacklisted
+        if bans or blk:
+            verify_color = 0xff0000 # Red
 
-    # ===== LAST VERIFY LOG =====
-    logs = (
-        supabase.table("verify_logs")
-        .select("*")
-        .eq("roblox_id", user_id)
-        .order("timestamp", desc=True)
-        .limit(1)
-        .execute()
-        .data
-    )
+        # Verification History Info
+        if logs:
+            v = logs[0]
+            discord_id = v['discord_id']
+            try:
+                # Time formatting
+                dt = datetime.fromisoformat(v['timestamp'])
+                time_str = f"<t:{int(dt.timestamp())}:R>" # Discord Relative Time
+            except:
+                time_str = "`Unknown Date`"
+            
+            verify_info = f"🔗 **Linked Discord:** <@{discord_id}>\n📅 **Verified:** {time_str}"
+        else:
+            verify_info = "❌ **No Verification History Found**"
 
-    if logs:
-        v = logs[0]
-        verifier = f"<@{v['discord_id']}>"
-        vtime = v["timestamp"].replace("T"," ").split(".")[0]
-        verify_text = (
-            f"👤 Verified By: {verifier}\n"
-            f"🕒 Time: `{vtime}`"
-        )
-    else:
-        verify_text = "❌ Never Verified"
+        # Ban Info
+        if bans:
+            b = bans[0]
+            if b['perm']:
+                ban_info = f"🔴 **Permanent Ban**\nReason: `{b['reason']}`"
+            else:
+                 ban_info = f"🟠 **Temp Ban**\nReason: `{b['reason']}`"
+        else:
+            ban_info = "🟢 **Clean Record**"
 
+        if blk:
+            ban_info += "\n⛔ **User is Blacklisted**"
 
-    # ===== FINAL PREMIUM EMBED =====
-    desc = (
-        f"👤 **User Profile**\n"
-        f"🆔 ID: `{user_id}`\n"
-        f"🧑 Username: **{username}**\n"
-        f"✨ Display: **{display}**\n\n"
+        # ===== BUILD EMBED =====
+        embed = discord.Embed(title=f"📂 User Profile: {username}", color=verify_color)
+        
+        embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+        
+        embed.add_field(name="👤 Account Details", value=f"**Display:** {display}\n**Username:** @{username}\n**ID:** `{user_id}`", inline=False)
+        
+        embed.add_field(name="🔐 System Status", value=verify_status, inline=True)
+        embed.add_field(name="🛡️ Moderation", value=ban_info, inline=True)
+        
+        embed.add_field(name="📜 Verification Log", value=verify_info, inline=False)
+        
+        # Footer
+        embed.set_footer(text="RoboPal Premium Profile System", icon_url=i.user.display_avatar.url)
+        
+        await i.followup.send(embed=embed)
 
-        f"🔐 **Access:** {access_text}\n"
-        f"📛 **Blacklist:** {blacklist_text}\n"
-        f"🚫 **Ban Status:**\n{ban_text}\n\n"
-
-        f"📜 **Verification Info**\n{verify_text}"
-    )
-
-    await i.followup.send(
-        embed = emb("📂 USER PROFILE — PREMIUM", desc, 0x3498db)
-    )
+    except Exception as e:
+        print(f"PROFILE ERROR: {e}")
+        await i.followup.send(f"❌ **System Error:** `{e}`")        
 
 @bot.tree.command(name="multiverify", description="Users who verified multiple Roblox accounts")
 async def multiverify(i: discord.Interaction):
