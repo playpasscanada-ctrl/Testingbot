@@ -553,10 +553,12 @@ async def on_message(msg):
                 await log_ch.send(embed=log)
         except:
             pass
-
-    except Exception as e:
-        print(f"DB Error: {e}")
-        await msg.reply("❌ System Error. Try again later.")                            
+            
+ except Exception as e:
+        # 👇 Ye line aapko asli error batayegi
+        await msg.reply(f"❌ Critical Error: `{e}`")
+        print(f"DEBUG ERROR: {e}")
+                            
                         
 # ================== BAN SYSTEM (UPDATED WITH ADMIN NAME) ==================
 
