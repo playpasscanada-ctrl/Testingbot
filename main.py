@@ -173,14 +173,6 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 VERIFY_CHANNEL_ID = 123456789012345678      # <-- apna verify channel
 LOG_CHANNEL_ID = 987654321098765432         # <-- apna logs channel
 
-# ================== ROBLOX ==================
-def roblox_info(uid):
-    try:
-        r = requests.get(f"https://users.roblox.com/v1/users/{uid}", timeout=5).json()
-        return r.get("name","Unknown"), r.get("displayName","Unknown")
-    except:
-        return "Unknown","Unknown"
-
 # ================== DISCORD INTENTS ==================
 intents = discord.Intents.default()
 intents.message_content = True
