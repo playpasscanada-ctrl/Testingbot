@@ -200,18 +200,18 @@ async def on_ready():
     await bot.tree.sync()
     
 # ================== SAFE SEND ==================
-async def safe_send(i, embed):
+# ✅✅✅ YE NAYA WALA LAGA DO ✅✅✅
+async def safe_send(i, embed, view=None):  # <-- Dekho yahan 'view' add ho gaya
     try:
         if not i.response.is_done():
-            await i.response.send_message(embed=embed)
+            await i.response.send_message(embed=embed, view=view)
         else:
-            await i.followup.send(embed=embed)
-    except:
+            await i.followup.send(embed=embed, view=view)
+    except Exception as e:
         try:
-            await i.followup.send(embed=embed)
+            await i.followup.send(embed=embed, view=view)
         except:
             pass
-
 
 # ================== VERIFY + AUTO WHITELIST + LOGS ==================
 @bot.event
@@ -3249,5 +3249,22 @@ def keep_alive():
 
 threading.Thread(target=lambda: app.run("0.0.0.0", 10000)).start()
 threading.Thread(target=keep_alive, daemon=True).start()
+
+# === FORCE FIX: ISKO SABSE NEECHE (bot.run se pehle) PASTE KARO ===
+async def roblox_info(uid):
+    url = f"https://users.roblox.com/v1/users/{uid}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get("name", "Unknown"), data.get("displayName", "Unknown")
+                else:
+                    return "Invalid ID", "Invalid ID"
+    except Exception as e:
+        print(f"API Error: {e}")
+        return "Unknown", "Unknown"
+
+# bot.run(TOKEN)  <-- Ye line tumhare code me pehle se hogi, uske upar chipkana hai bas.
 
 bot.run(DISCORD_TOKEN)
