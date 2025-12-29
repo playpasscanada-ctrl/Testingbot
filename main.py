@@ -893,7 +893,7 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
         except Exception as e:
             await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
 
-# ================== ACCESS COMMAND (FIXED & STYLED) ==================
+# ================== ACCESS COMMAND (ENV + SUPABASE ONLY) ==================
 @bot.tree.command(name="access", description="Manage Verification Access (Owner/Admin Only)")
 @app_commands.choices(mode=[
     app_commands.Choice(name="on", value="on"),
@@ -904,36 +904,38 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
 ])
 async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id: str = None):
     
-    # ================== 1. OWNER / ADMIN CHECK ==================
-    is_owner = False
-
-    # A. Pehle Hardcoded ID Check (Sabse Fast)
-    if i.user.id == 804687084249284618:
-        is_owner = True
+    # ================== 1. PERMISSION CHECK (ENV + DB) ==================
+    is_authorized = False
+    user_discord_id = str(i.user.id) # User ki ID string me convert ki
     
-    # B. Agar Hardcoded nahi hai, toh Supabase 'bot_admins' check karo
-    if not is_owner:
+    # CHECK A: Environment Variable (Jo tumne Render me lagaya hai)
+    env_owner_id = os.getenv("OWNER_ID") # Render se 'OWNER_ID' uthayega
+    
+    if env_owner_id and user_discord_id == str(env_owner_id):
+        is_authorized = True
+        
+    # CHECK B: Supabase 'bot_admins' Table (Agar Env match nahi hua)
+    if not is_authorized:
         try:
-            # Ab ye 'bot_admins' table use karega
-            check = supabase.table("bot_admins").select("discord_id").eq("discord_id", str(i.user.id)).execute().data
+            # Supabase me check karo
+            check = supabase.table("bot_admins").select("discord_id").eq("discord_id", user_discord_id).execute().data
             if check:
-                is_owner = True
+                is_authorized = True
         except Exception as e:
-            print(f"Admin Check DB Error: {e}")
+            print(f"⚠️ Admin DB Check Error: {e}")
             pass
 
-    # C. Agar dono jagah nahi mila, toh Access Denied
-    if not is_owner: 
-        await i.response.send_message("❌ Only Owner & Admins can use this.", ephemeral=True)
+    # RESULT: Agar na Env me mila, na Supabase me
+    if not is_authorized:
+        await i.response.send_message("❌ **Access Denied:** You are not the Owner or Admin.", ephemeral=True)
         return
 
-    # ================== 2. MAIN LOGIC START ==================
+    # ================== 2. MAIN LOGIC STARTS ==================
     await i.response.defer(ephemeral=False)
 
     try:
-        # ================== ACCESS ON / OFF ==================
+        # --- MODE: ON / OFF ---
         if mode.value in ["on", "off"]:
-            # Database Update
             supabase.table("bot_settings").update(
                 {"value": "true" if mode.value == "on" else "false"}
             ).eq("key", "access_enabled").execute()
@@ -947,24 +949,18 @@ async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id
                 color=color
             )
             embed.set_footer(text=f"Updated by {i.user.display_name}")
-            
-            # Log try/except
-            try: log_action(f"access_{mode.value}", "-", "-", "-", i.user.id)
-            except: pass
-
             await i.followup.send(embed=embed)
             return
 
-        # ================== ACCESS ADD ==================
+        # --- MODE: ADD ---
         if mode.value == "add":
             if not user_id:
                 await i.followup.send("❌ **Roblox ID required!**")
                 return
             
-            # Fetch Info
-            u, d = roblox_info(user_id)
+            u, d = roblox_info(user_id) # Tumhara function info layega
 
-            # Database Update
+            # Database Insert
             supabase.table("access_users").upsert({
                 "user_id": user_id,
                 "username": u,
@@ -972,22 +968,12 @@ async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id
                 "discord_id": str(i.user.id)
             }).execute()
 
-            try: log_action("access_add", user_id, u, d, i.user.id)
-            except: pass
-
-            embed = discord.Embed(
-                title="✅ Access Granted",
-                description=f"User has been whitelisted successfully.",
-                color=0x2ecc71
-            )
-            embed.add_field(name="👤 User Info", value=f"**Name:** {u}\n**Display:** {d}", inline=True)
-            embed.add_field(name="🆔 Roblox ID", value=f"`{user_id}`", inline=True)
+            embed = discord.Embed(title="✅ Access Granted", description=f"User **{u}** whitelisted.", color=0x2ecc71)
             embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
-            
             await i.followup.send(embed=embed)
             return
 
-        # ================== ACCESS REMOVE ==================
+        # --- MODE: REMOVE ---
         if mode.value == "remove":
             if not user_id:
                 await i.followup.send("❌ **Roblox ID required!**")
@@ -996,51 +982,29 @@ async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id
             u, d = roblox_info(user_id)
             supabase.table("access_users").delete().eq("user_id", user_id).execute()
 
-            try: log_action("access_remove", user_id, u, d, i.user.id)
-            except: pass
-
-            embed = discord.Embed(
-                title="🗑️ Access Removed",
-                description=f"User has been removed from whitelist.",
-                color=0xff0000
-            )
-            embed.add_field(name="👤 Removed User", value=f"**Name:** {u}\n**Display:** {d}", inline=True)
-            embed.add_field(name="🆔 Roblox ID", value=f"`{user_id}`", inline=True)
+            embed = discord.Embed(title="🗑️ Access Removed", description=f"User **{u}** removed.", color=0xff0000)
             embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
-
             await i.followup.send(embed=embed)
             return
 
-        # ================== ACCESS LIST ==================
+        # --- MODE: LIST ---
         if mode.value == "list":
             data = supabase.table("access_users").select("*").execute().data
-
             if not data:
-                embed = discord.Embed(title="📜 Access List", description="❌ **List is Empty.** No users verified.", color=0xffa500)
-                await i.followup.send(embed=embed)
+                await i.followup.send(embed=discord.Embed(title="📜 Access List", description="List is Empty.", color=0xffa500))
                 return
 
             txt = ""
-            count = 1
             for x in data:
-                r_name = x.get('username', 'Unknown')
-                r_disp = x.get('display_name', 'Unknown')
-                r_id = x.get('user_id', 'Unknown')
-                
-                txt += f"`{count}.` **{r_name}** ({r_disp})\n🆔 `{r_id}`\n\n"
-                count += 1
+                txt += f"• **{x.get('username', 'Unk')}** (`{x.get('user_id')}`)\n"
             
-            if len(txt) > 4000:
-                txt = txt[:3900] + "\n... (List Truncated)"
-
-            embed = discord.Embed(title=f"📜 Access List ({len(data)} Users)", description=txt, color=0x3498db)
-            await i.followup.send(embed=embed)
+            if len(txt) > 4000: txt = txt[:3900] + "\n..."
+            await i.followup.send(embed=discord.Embed(title=f"📜 Access List ({len(data)})", description=txt, color=0x3498db))
             return
 
     except Exception as e:
-        print(f"ERROR: {e}")
-        await i.followup.send(f"❌ **System Error:** `{e}`")
-
+        await i.followup.send(f"❌ Error: `{e}`")
+            
     
 from discord import ui
 
