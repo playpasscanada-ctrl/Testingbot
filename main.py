@@ -1412,7 +1412,11 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
     # =============================
     # ADD BLACKLIST + REMOVE ACCESS
     # =============================
-    if mode.value == "add" and user_id:
+    if mode.value == "add":  # <-- User ID check condition ke andar le gaye
+        if not user_id:
+             return await safe_send(i, emb("❌ ERROR", "User ID required!"))
+
+        # 👇 YAHAN GALTI THI (Ab 'await' laga diya)
         u, d = await roblox_info(user_id)
 
         supabase.table("blacklist_users").upsert({
@@ -1424,11 +1428,9 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
         except:
             pass
 
-        # 🔥 LOG ADDED HERE
-        try:
-            log_action("blacklist_add", user_id, u, d, i.user.id)
-        except:
-            pass
+        # Log Action
+        try: log_action("blacklist_add", user_id, u, d, i.user.id)
+        except: pass
 
         return await safe_send(
             i,
@@ -1445,16 +1447,18 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
     # =============================
     # REMOVE FROM BLACKLIST
     # =============================
-    if mode.value == "remove" and user_id:
-        u, d = roblox_info(user_id)
+    if mode.value == "remove":
+        if not user_id:
+             return await safe_send(i, emb("❌ ERROR", "User ID required!"))
+
+        # 👇 YAHAN BHI 'await' MISSING THA (Fixed)
+        u, d = await roblox_info(user_id)
 
         supabase.table("blacklist_users").delete().eq("user_id", user_id).execute()
 
-        # 🔥 LOG ADDED HERE
-        try:
-            log_action("blacklist_remove", user_id, u, d, i.user.id)
-        except:
-            pass
+        # Log Action
+        try: log_action("blacklist_remove", user_id, u, d, i.user.id)
+        except: pass
 
         return await safe_send(
             i,
@@ -1480,6 +1484,7 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
         txt = ""
         for x in data:
             uid = x["user_id"]
+            # 👇 YAHAN BHI 'await' ZAROORI HAI
             u, d = await roblox_info(uid)
 
             txt += (
