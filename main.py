@@ -67,75 +67,6 @@ async def load_banned_words():
     
     print(f"🔥 TOTAL BANNED WORDS: {len(BANNED_WORDS_CACHE)}")
 
-# ================== PAGINATION CLASS (Iske bina List Next nahi hogi) ==================
-class AccessPagination(discord.ui.View):
-    def __init__(self, data, author, items_per_page=10):
-        super().__init__(timeout=60)
-        self.data = data
-        self.author = author
-        self.items_per_page = items_per_page
-        self.current_page = 0
-        self.total_pages = (len(data) - 1) // items_per_page + 1
-
-    def get_embed(self):
-        start = self.current_page * self.items_per_page
-        end = start + self.items_per_page
-        page_data = self.data[start:end]
-
-        txt = ""
-        for idx, x in enumerate(page_data, start=start + 1):
-            name = x.get('username', 'Unknown')
-            rid = x.get('user_id', 'Unknown')
-            txt += f"`{idx}.` **{name}** (`{rid}`)\n"
-
-        embed = discord.Embed(
-            title=f"📜 Access List ({len(self.data)} Users)",
-            description=txt,
-            color=0x3498db
-        )
-        embed.set_footer(text=f"Page {self.current_page + 1}/{self.total_pages} • Action by {self.author.display_name}", icon_url=self.author.display_avatar.url)
-        return embed
-
-    def update_buttons(self):
-        # Buttons disable logic
-        self.children[0].disabled = self.current_page == 0 
-        self.children[1].disabled = self.current_page == self.total_pages - 1
-
-    @discord.ui.button(label="◀️ Previous", style=discord.ButtonStyle.blurple)
-    async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.author.id:
-            return await interaction.response.send_message("❌ Only command sender can use this.", ephemeral=True)
-        
-        self.current_page -= 1
-        self.update_buttons()
-        await interaction.response.edit_message(embed=self.get_embed(), view=self)
-
-    @discord.ui.button(label="Next ▶️", style=discord.ButtonStyle.blurple)
-    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.author.id:
-            return await interaction.response.send_message("❌ Only command sender can use this.", ephemeral=True)
-
-        self.current_page += 1
-        self.update_buttons()
-        await interaction.response.edit_message(embed=self.get_embed(), view=self)
-
-# Upar imports me ye hona chahiye: import aiohttp
-
-async def roblox_info(uid):
-    # Ye function ab Non-Blocking hai (Server hang nahi karega)
-    url = f"https://users.roblox.com/v1/users/{uid}"
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return data.get("name", "Unknown"), data.get("displayName", "Unknown")
-                else:
-                    return "Invalid ID", "Invalid ID"
-    except Exception as e:
-        print(f"API Error: {e}")
-        return "Unknown", "Unknown"
-
 def log_action(action, user_id, username, display, executor):
     import time
 
@@ -207,16 +138,15 @@ async def on_ready():
     await bot.tree.sync()
     
 # ================== SAFE SEND ==================
-# ✅✅✅ YE NAYA WALA LAGA DO ✅✅✅
-async def safe_send(i, embed, view=None):  # <-- Dekho yahan 'view' add ho gaya
+async def safe_send(i, embed):
     try:
         if not i.response.is_done():
-            await i.response.send_message(embed=embed, view=view)
+            await i.response.send_message(embed=embed)
         else:
-            await i.followup.send(embed=embed, view=view)
-    except Exception as e:
+            await i.followup.send(embed=embed)
+    except:
         try:
-            await i.followup.send(embed=embed, view=view)
+            await i.followup.send(embed=embed)
         except:
             pass
 
@@ -472,136 +402,179 @@ async def on_message(msg):
         await msg.reply(random.choice(replies))
         return  # 🛑 YAHI RUK JAYEGA
                      
-    # ================== A. AUTO VERIFY SYSTEM ==================
-    # Sirf Verify Channel ID check karega (Apni ID confirm kar lena)
-    VERIFY_CHANNEL_ID = 1451973498200133786 
+    # ---------------------------------------------------------
+    # 1. CHANNEL CHECK (Sirf Verify Channel me sunega)
+    # ---------------------------------------------------------
+    # Apni Verify Channel ID yahan check karein
+    VERIFY_CHANNEL_ID = 1451973498200133786
     
-    if msg.channel.id == VERIFY_CHANNEL_ID:
-        # Settings
-        REVIEW_CHANNEL_ID = 1450514760276774967
-        LOG_CHANNEL_ID = 1451973589342621791
-        OWNER_ID = 804687084249284618 # Ya os.getenv("OWNER_ID")
-        
-        user_id = msg.content.strip()
-        username = "Unknown"
-        display = "Unknown"
+    if msg.channel.id != VERIFY_CHANNEL_ID:
+        return
 
-        # --- STEP 1: VALIDATION ---
-        if not user_id.isdigit():
-            await msg.delete()
-            temp = await msg.channel.send(f"{msg.author.mention} ❌ Sirf **Roblox User ID** (Numbers) bhejo!", delete_after=5)
-            return
+    # Settings
+    REVIEW_CHANNEL_ID = 1450514760276774967
+    OWNER_ID = 804687084249284618
+    user_id = msg.content.strip()
 
-        # --- STEP 2: ROBLOX FETCH (ASYNC - Safe for Server) ---
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"https://users.roblox.com/v1/users/{user_id}") as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        username = data.get("name", "Unknown")
-                        display = data.get("displayName", "Unknown")
-                    else:
-                        await msg.channel.send("❌ Invalid Roblox ID.", delete_after=5)
-                        return
-        except Exception as e:
-            print(f"API Error: {e}")
-            return
+    # ✅ STEP 1: SAFETY VARIABLES
+    username = "Unknown"
+    display = "Unknown"
 
-        # --- STEP 3: DATABASE LOGIC ---
-        try:
-            # A. BLACKLIST CHECK
-            blk = supabase.table("blacklist_users").select("user_id").eq("user_id", user_id).execute().data
-            if blk:
-                await msg.reply(embed=discord.Embed(title="🚫 Denied", description="You are blacklisted.", color=0xe74c3c))
-                return
+    # ✅ STEP 2: ID VALIDATION
+    if not user_id.isdigit():
+        await msg.delete()
+        temp_msg = await msg.channel.send(f"{msg.author.mention} ❌ Sirf **Roblox User ID** (Numbers) bhejo!", delete_after=5)
+        return
 
-            # B. ALREADY VERIFIED CHECK
-            exist = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
-            if exist:
-                await msg.reply(embed=discord.Embed(title="✅ Already Verified", description="Account already whitelisted.", color=0x2ecc71))
-                return
+    # ✅ STEP 3: ROBLOX FETCH (FAST MODE 🚀)
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"https://users.roblox.com/v1/users/{user_id}") as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    username = data.get("name", "Unknown")
+                    display = data.get("displayName", "Unknown")
+                else:
+                    await msg.reply("❌ Ye Roblox ID invalid hai ya exist nahi karti.")
+                    return # 🛑 Yahi ruk jao agar ID galat hai
+    except Exception as e:
+        print(f"⚠️ Connection Error: {e}")
+        await msg.reply("❌ Roblox API down hai, thodi der baad try karein.")
+        return
 
-            # C. LIMIT & APPROVAL SYSTEM
-            already = supabase.table("access_users").select("user_id").eq("discord_id", str(msg.author.id)).execute().data
-            if already:
-                approved = supabase.table("multi_access").select("discord_id").eq("discord_id", str(msg.author.id)).execute().data
-                if not approved:
-                    # Send Request to Admin
-                    await msg.reply(embed=discord.Embed(title="⏳ Request Sent", description="Limit reached. Approval request sent to Owner.", color=0xffa500))
-                    
-                    ch = bot.get_channel(REVIEW_CHANNEL_ID)
-                    if ch:
-                        req_embed = discord.Embed(title="⚠️ MULTI VERIFY REQUEST", description=f"**User:** {msg.author.mention}\n**ID:** `{msg.author.id}`", color=0xffa500)
-                        req_embed.add_field(name="Target ID", value=user_id)
-                        
-                        # Buttons
-                        async def approve_cb(interaction):
-                            if interaction.user.id != OWNER_ID: return await interaction.response.send_message("❌ Owner Only.", ephemeral=True)
-                            supabase.table("multi_access").upsert({"discord_id": str(msg.author.id), "approved": True}).execute()
-                            await interaction.response.edit_message(embed=discord.Embed(title="🟢 Access Granted", color=0x2ecc71), view=None)
-
-                        async def deny_cb(interaction):
-                            if interaction.user.id != OWNER_ID: return await interaction.response.send_message("❌ Owner Only.", ephemeral=True)
-                            await interaction.response.edit_message(embed=discord.Embed(title="🔴 Access Denied", color=0xe74c3c), view=None)
-
-                        view = discord.ui.View()
-                        btn1 = discord.ui.Button(style=discord.ButtonStyle.green, label="Approve")
-                        btn2 = discord.ui.Button(style=discord.ButtonStyle.red, label="Deny")
-                        btn1.callback = approve_cb
-                        btn2.callback = deny_cb
-                        view.add_item(btn1)
-                        view.add_item(btn2)
-                        await ch.send(embed=req_embed, view=view)
-                    return
-
-            # D. FINAL SUCCESS (Insert to DB)
-            supabase.table("access_users").insert({
-                "user_id": user_id, "username": username, "display_name": display, "discord_id": str(msg.author.id)
-            }).execute()
-
-            # E. LOGS
-            current_time = datetime.utcnow().isoformat()
-            supabase.table("verify_logs").insert({
-                "discord_id": str(msg.author.id), "roblox_id": user_id, "username": username, "display_name": display, "timestamp": current_time
-            }).execute()
-
-            # F. SUCCESS MESSAGE
-            embed = discord.Embed(title="✅ Verified Successfully", color=0x2ecc71)
-            embed.add_field(name="User", value=f"{username} ({display})", inline=True)
-            embed.add_field(name="ID", value=f"`{user_id}`", inline=True)
-            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+    # ✅ STEP 4: MAIN DATABASE LOGIC
+    try:
+        # --- A. BLACKLIST CHECK (Sabse Pehle) ---
+        blk = supabase.table("blacklist_users").select("user_id").eq("user_id", user_id).execute().data
+        if blk:
+            embed = discord.Embed(
+                title="🚫 Verification Denied",
+                description="You are blacklisted from this system.",
+                color=0xe74c3c
+            )
             await msg.reply(embed=embed)
+            return
 
-            # G. LOG CHANNEL
-            log_ch = bot.get_channel(LOG_CHANNEL_ID)
+        # --- B. ALREADY VERIFIED CHECK (Unique Roblox ID Check) ---
+        exist = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
+        if exist:
+            embed = discord.Embed(
+                title="✅ Already Verified",
+                description="This Roblox account is already verified & whitelisted.",
+                color=0x2ecc71
+            )
+            await msg.reply(embed=embed)
+            return
+
+        # --- C. LIMIT + OWNER APPROVAL SYSTEM ---
+        # Check: Kya ye Discord user pehle se verify kar chuka hai?
+        already = supabase.table("access_users").select("user_id").eq("discord_id", str(msg.author.id)).execute().data
+        
+        if already:
+            # Agar pehle se verify hai, toh check karo Multi-Access approved hai ya nahi
+            approved = supabase.table("multi_access").select("discord_id").eq("discord_id", str(msg.author.id)).execute().data
+            
+            if not approved:
+                # 🛑 LIMIT REACHED
+                embed = discord.Embed(
+                    title="❌ Verification Limit Reached",
+                    description="You reached max verification limit (1 Account).\nRequest sent to Admin for approval. ⏳",
+                    color=0xe74c3c
+                )
+                await msg.reply(embed=embed)
+
+                # Send Request to Admin Channel
+                ch = bot.get_channel(REVIEW_CHANNEL_ID)
+                if ch:
+                    req = discord.Embed(
+                        title="⚠️ MULTI VERIFY REQUEST",
+                        description=f"**User:** {msg.author.mention}\n**Discord ID:** `{msg.author.id}`",
+                        color=0xffa500
+                    )
+                    req.add_field(name="🆔 Requested ID", value=f"`{user_id}`", inline=False)
+                    req.add_field(name="👤 Username", value=f"**{username}**", inline=True)
+                    req.add_field(name="✨ Display Name", value=f"{display}", inline=True)
+                    req.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+
+                    # 👇 BUTTONS LOGIC 👇
+                    async def approve_callback(interaction: discord.Interaction):
+                        if interaction.user.id != OWNER_ID:
+                            await interaction.response.send_message("❌ Only Owner can approve.", ephemeral=True)
+                            return
+                        # Add to Multi-Access
+                        supabase.table("multi_access").upsert({"discord_id": str(msg.author.id), "approved": True}).execute()
+                        await interaction.response.edit_message(
+                            embed=discord.Embed(title="🟢 ACCESS GRANTED", description=f"{msg.author.mention} can now verify unlimited Roblox accounts.", color=0x2ecc71),
+                            view=None
+                        )
+
+                    async def deny_callback(interaction: discord.Interaction):
+                        if interaction.user.id != OWNER_ID:
+                            await interaction.response.send_message("❌ Only Owner can deny.", ephemeral=True)
+                            return
+                        await interaction.response.edit_message(
+                            embed=discord.Embed(title="🔴 ACCESS DENIED", description=f"{msg.author.mention} request denied.", color=0xe74c3c),
+                            view=None
+                        )
+
+                    view = discord.ui.View()
+                    btn_approve = discord.ui.Button(style=discord.ButtonStyle.green, label="Give Access")
+                    btn_deny = discord.ui.Button(style=discord.ButtonStyle.red, label="Deny Access")
+                    
+                    btn_approve.callback = approve_callback
+                    btn_deny.callback = deny_callback
+                    
+                    view.add_item(btn_approve)
+                    view.add_item(btn_deny)
+                    
+                    await ch.send(embed=req, view=view)
+                return # 🛑 STOP HERE (Don't verify yet)
+
+        # --- D. AUTO ADD TO WHITELIST (Agar sab sahi hai) ---
+        supabase.table("access_users").insert({
+            "user_id": user_id,
+            "username": username,
+            "display_name": display,
+            "discord_id": str(msg.author.id)
+        }).execute()
+
+        # --- E. SAVE VERIFY LOG ---
+        # Note: 'datetime' import hona chahiye upar
+        current_time = datetime.utcnow().isoformat()
+        supabase.table("verify_logs").insert({
+            "discord_id": str(msg.author.id),
+            "roblox_id": user_id,
+            "username": username,
+            "display_name": display,
+            "timestamp": current_time
+        }).execute()
+
+        # --- F. USER SUCCESS EMBED ---
+        embed = discord.Embed(title="✅ Verified & Whitelisted", color=0x2ecc71)
+        embed.add_field(name="Roblox ID", value=f"`{user_id}`", inline=False)
+        embed.add_field(name="Username", value=username, inline=True)
+        embed.add_field(name="Display Name", value=display, inline=True)
+        embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+        embed.set_footer(text="Access Granted")
+        await msg.reply(embed=embed)
+
+        # --- G. LOG CHANNEL ---
+        try:
+            log_ch = bot.get_channel(1451973589342621791)
             if log_ch:
-                await log_ch.send(embed=discord.Embed(title="📥 New Verify", description=f"{msg.author.mention} verified `{username}`", color=0x3498db))
-
+                log = discord.Embed(title="📥 New Verification Logged", color=0x3498db)
+                log.add_field(name="Discord User", value=f"{msg.author.mention}", inline=False)
+                log.add_field(name="Roblox ID", value=f"`{user_id}`", inline=False)
+                log.add_field(name="Username", value=username, inline=True)
+                log.timestamp = datetime.utcnow()
+                await log_ch.send(embed=log)
         except Exception as e:
-            print(f"DB Error: {e}")
-            await msg.channel.send("❌ System Error. Try again later.")
-        
-        return # YAHAN RUK JAO (Taaki Chatbot trigger na ho)
+            print(f"Log Error: {e}")
 
-
-    # ================== B. CHATBOT / TAG SYSTEM ==================
-    # Agar message Verify channel ka nahi hai, tabhi ye chalega
-    if bot.user.mentioned_in(msg) and not msg.mention_everyone:
-        clean_text = msg.content.replace(f'<@{bot.user.id}>', '').strip()
-        if not clean_text: clean_text = "Haan bhai?"
-        
-        async with msg.channel.typing():
-            try:
-                # Agar Gemini Error de, toh try-except bacha lega
-                prompt = f"You are a savage bot. User said: '{clean_text}'. Reply funny in Hinglish."
-                response = await model.generate_content_async(prompt)
-                await msg.reply(response.text)
-            except Exception as e:
-                await msg.reply("Arre yaar, Gemini mood me nahi hai abhi. (Error)")
-
-    # ================== C. PROCESS COMMANDS ==================
-    await bot.process_commands(msg)
-                                       
+    except Exception as e:
+        print(f"CRITICAL DB ERROR: {e}")
+        await msg.reply(f"❌ System Error: `{e}`\nAdmin ko contact karein.")
+                               
                         
 # ================== BAN SYSTEM (UPDATED WITH ADMIN NAME) ==================
 
@@ -899,8 +872,8 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
         except Exception as e:
             await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
 
-# ================== ACCESS COMMAND (FINAL FIX) ==================
-@bot.tree.command(name="access")
+# ================== ACCESS COMMAND (FIXED & STYLED) ==================
+@bot.tree.command(name="access", description="Manage Verification Access (Owner Only)")
 @app_commands.choices(mode=[
     app_commands.Choice(name="on", value="on"),
     app_commands.Choice(name="off", value="off"),
@@ -909,51 +882,51 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
     app_commands.Choice(name="list", value="list"),
 ])
 async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id: str = None):
-    # 1. Check Owner
-    if not owner(i):
-        await i.response.send_message("❌ You are not the owner.", ephemeral=True)
+    
+    # 1. OWNER CHECK
+    if i.user.id != 804687084249284618: 
+        await i.response.send_message("❌ Only Owner can use this.", ephemeral=True)
         return
 
-    # 2. Defer (Thinking...)
-    await i.response.defer()
+    # 2. PUBLIC LOAD (Sabko dikhega)
+    await i.response.defer(ephemeral=False)
 
     try:
-        # === MODE: ON / OFF ===
+        # ================== ACCESS ON / OFF ==================
         if mode.value in ["on", "off"]:
             # Database Update
             supabase.table("bot_settings").update(
                 {"value": "true" if mode.value == "on" else "false"}
             ).eq("key", "access_enabled").execute()
 
-            # Embed Design
+            # Colors: Green for ON, Red for OFF
             color = 0x2ecc71 if mode.value == "on" else 0xe74c3c
-            emoji = "🟢" if mode.value == "on" else "🔴"
+            status_emoji = "🟢" if mode.value == "on" else "🔴"
             
             embed = discord.Embed(
-                title=f"{emoji} SYSTEM UPDATE",
-                description=f"**Verification Access:** `{mode.value.upper()}`\nAuthentication system status updated.",
-                color=color,
-                timestamp=discord.utils.utcnow()
+                title=f"{status_emoji} Access System Updated",
+                description=f"**Verification Access is now:** `{mode.value.upper()}`",
+                color=color
             )
-            embed.set_footer(text=f"Action by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+            embed.set_footer(text=f"Updated by {i.user.display_name}")
             
-            await safe_send(i, embed)
+            # Log try/except
+            try: log_action(f"access_{mode.value}", "-", "-", "-", i.user.id)
+            except: pass
+
+            await i.followup.send(embed=embed)
             return
 
-        # === MODE: ADD ===
+        # ================== ACCESS ADD ==================
         if mode.value == "add":
             if not user_id:
-                await safe_send(i, discord.Embed(title="❌ ERROR", description="Please provide a valid **Roblox ID**.", color=0xff0000))
+                await i.followup.send("❌ **Roblox ID required!**")
                 return
             
-            # Fetch Info (Global Function se)
-            u, d = await roblox_info(user_id) 
+            # Fetch Info (Await added for safety)
+            u, d = await roblox_info(user_id)
 
-            if u == "Invalid ID":
-                await safe_send(i, discord.Embed(title="⚠️ INVALID USER", description="This Roblox ID does not exist.", color=0xffaa00))
-                return
-
-            # Database Insert
+            # Database Update
             supabase.table("access_users").upsert({
                 "user_id": user_id,
                 "username": u,
@@ -961,75 +934,80 @@ async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id
                 "discord_id": str(i.user.id)
             }).execute()
 
-            # Logs (Safety ke saath)
             try: log_action("access_add", user_id, u, d, i.user.id)
             except: pass
 
-            # Embed
-            thumb_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
             embed = discord.Embed(
-                title="💎 ACCESS GRANTED",
-                description=f"User has been **Whitelisted** successfully.\n\n👤 **Username:** `{u}`\n🏷️ **Display:** `{d}`\n🆔 **ID:** `{user_id}`",
-                color=0xf1c40f, # Gold
-                timestamp=discord.utils.utcnow()
+                title="✅ Access Granted",
+                description=f"User has been whitelisted successfully.",
+                color=0x2ecc71
             )
-            embed.set_thumbnail(url=thumb_url)
-            embed.set_footer(text=f"Action by {i.user.display_name}", icon_url=i.user.display_avatar.url)
-
-            await safe_send(i, embed)
+            embed.add_field(name="👤 User Info", value=f"**Name:** {u}\n**Display:** {d}", inline=True)
+            embed.add_field(name="🆔 Roblox ID", value=f"`{user_id}`", inline=True)
+            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+            
+            await i.followup.send(embed=embed)
             return
 
-        # === MODE: REMOVE ===
+        # ================== ACCESS REMOVE ==================
         if mode.value == "remove":
             if not user_id:
-                await safe_send(i, discord.Embed(title="❌ ERROR", description="Please provide a valid **Roblox ID**.", color=0xff0000))
+                await i.followup.send("❌ **Roblox ID required!**")
                 return
 
-            # Fetch Info
+            # Info nikalo details ke liye
             u, d = await roblox_info(user_id)
-            
-            # Database Delete
+
+            # Phir Delete karo
             supabase.table("access_users").delete().eq("user_id", user_id).execute()
 
-            # Logs
             try: log_action("access_remove", user_id, u, d, i.user.id)
             except: pass
 
-            # Embed
-            thumb_url = f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png"
             embed = discord.Embed(
-                title="🗑️ ACCESS REMOVED",
-                description=f"User has been **Blacklisted/Removed**.\n\n👤 **Username:** `{u}`\n🆔 **ID:** `{user_id}`",
-                color=0xff0000, # Red
-                timestamp=discord.utils.utcnow()
+                title="🗑️ Access Removed",
+                description=f"User has been removed from whitelist.",
+                color=0xff0000 
             )
-            embed.set_thumbnail(url=thumb_url)
-            embed.set_footer(text=f"Action by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+            embed.add_field(name="👤 Removed User", value=f"**Name:** {u}\n**Display:** {d}", inline=True)
+            embed.add_field(name="🆔 Roblox ID", value=f"`{user_id}`", inline=True)
+            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
 
-            await safe_send(i, embed)
+            await i.followup.send(embed=embed)
             return
 
-        # === MODE: LIST (Pagination ke saath) ===
+        # ================== ACCESS LIST ==================
         if mode.value == "list":
             data = supabase.table("access_users").select("*").execute().data
 
             if not data:
-                await safe_send(i, discord.Embed(title="📜 EMPTY LIST", description="No users are currently whitelisted.", color=0xffa500))
+                embed = discord.Embed(title="📜 Access List", description="❌ **List is Empty.** No users verified.", color=0xffa500)
+                await i.followup.send(embed=embed)
                 return
 
-            # View Create Karo
-            view = AccessPagination(data, i.user)
-            view.update_buttons()
+            # List format formatting
+            txt = ""
+            count = 1
+            for x in data:
+                r_name = x.get('username', 'Unknown')
+                r_disp = x.get('display_name', 'Unknown')
+                r_id = x.get('user_id', 'Unknown')
+                
+                txt += f"`{count}.` **{r_name}** ({r_disp})\n🆔 `{r_id}`\n\n"
+                count += 1
             
-            # Send
-            await safe_send(i, embed=view.get_embed(), view=view)
+            # Agar list lambi ho
+            if len(txt) > 4000:
+                txt = txt[:3900] + "\n... (List truncated)"
+
+            embed = discord.Embed(title=f"📜 Access List ({len(data)} Users)", description=txt, color=0x3498db)
+            await i.followup.send(embed=embed)
             return
 
     except Exception as e:
-        # Error aayega to dikhega ab
-        print(f"COMMAND ERROR: {e}")
-        await safe_send(i, discord.Embed(title="💀 CRITICAL ERROR", description=f"An error occurred:\n`{e}`", color=0x000000))
-            
+        print(f"ERROR: {e}")
+        await i.followup.send(f"❌ **System Error:** `{e}`")
+
     
 from discord import ui
 
@@ -3279,23 +3257,5 @@ def keep_alive():
 
 threading.Thread(target=lambda: app.run("0.0.0.0", 10000)).start()
 threading.Thread(target=keep_alive, daemon=True).start()
-
-# 👇 ISKO CODE KE SABSE NEECHE (End me) PASTE KARO 👇
-
-async def roblox_info(uid):
-    url = f"https://users.roblox.com/v1/users/{uid}"
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return data.get("name", "Unknown"), data.get("displayName", "Unknown")
-                else:
-                    return "Invalid ID", "Invalid ID"
-    except Exception as e:
-        print(f"API Error: {e}")
-        return "Unknown", "Unknown"
-
-# bot.run(DISCORD_TOKEN) <--- Ye line pehle se hogi, iske upar lagana hai
 
 bot.run(DISCORD_TOKEN)
