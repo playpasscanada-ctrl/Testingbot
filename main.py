@@ -3227,6 +3227,17 @@ def stopstatus():
 import logging
 logging.getLogger("werkzeug").disabled = True
 
+# 👇 ISKO SABSE NEECHE ADD KARO 👇
+
+@bot.event
+async def on_command_error(ctx, error):
+    # Agar command nahi mili, to shant raho (Log mat bharo)
+    if isinstance(error, commands.CommandNotFound):
+        return
+    
+    # Agar koi aur error hai, to batao
+    print(f"⚠️ Command Error: {error}")
+
 # ================== OPTIMIZED KEEP ALIVE (RAM SAVER) ==================
 def keep_alive():
     while True:
