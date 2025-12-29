@@ -554,8 +554,11 @@ async def on_message(msg):
         except:
             pass
             
- except Exception as e:
-        # 👇 Ye line aapko asli error batayegi
+      # ❌ Purana galat indentation wala hatao
+    # ✅ Ye sahi indentation wala lagao (Thoda peeche karke)
+
+    except Exception as e:
+        # Ye 'except' ab peeche khisak gaya hai (Sahi jagah par)
         await msg.reply(f"❌ Critical Error: `{e}`")
         print(f"DEBUG ERROR: {e}")
                             
