@@ -154,7 +154,7 @@ async def safe_send(i, embed):
 @bot.event
 async def on_message(msg):
 
-    if msg.author == bot.user:
+    if msg.author.bot:
         return
 
     OWNER_ID = 804687084249284618
