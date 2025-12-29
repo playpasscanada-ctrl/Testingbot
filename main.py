@@ -135,8 +135,10 @@ def owner(i):
     except:
         return False
  
+# ✅ SAHI CODE (Isse Copy karke Paste karo)
 def emb(title, desc, color=0x5865F2):
-    e = discord.Embed(title=title,)
+    e = discord.Embed(title=title, description=desc, color=color)
+    e.timestamp = datetime.utcnow()
     return e
  
 @bot.event
