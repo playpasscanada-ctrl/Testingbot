@@ -423,13 +423,15 @@ async def on_message(msg):
         await msg.reply(random.choice(replies))
         return  # 🛑 YAHI RUK JAYEGA
 
-            # 1. Channel Check
-    if msg.channel.id != 1451973498200133786:
+              # ---------------------------------------------------------
+    # 1. CHANNEL CHECK (Sirf Verify Channel me sunega)
+    # ---------------------------------------------------------
+    # Apni Verify Channel ID yahan check karein
+    if msg.channel.id != 1451973498200133786: 
         return
 
     REVIEW_CHANNEL_ID = 1450514760276774967
     OWNER_ID = 804687084249284618
-    
     user_id = msg.content.strip()
 
     # ✅ STEP 1: SAFETY VARIABLES
@@ -439,10 +441,7 @@ async def on_message(msg):
     # ✅ STEP 2: ID VALIDATION
     if not user_id.isdigit():
         await msg.delete()
-        await msg.channel.send(
-            f"{msg.author.mention} ❌ Sirf Roblox User ID bhejo!",
-            delete_after=5
-        )
+        temp_msg = await msg.channel.send(f"{msg.author.mention} ❌ Sirf **Roblox User ID** (Numbers) bhejo!", delete_after=5)
         return
 
     # ✅ STEP 3: ROBLOX FETCH (FAST MODE 🚀)
@@ -454,20 +453,17 @@ async def on_message(msg):
                     username = data.get("name", "Unknown")
                     display = data.get("displayName", "Unknown")
                 else:
-                    print(f"⚠️ Roblox API Error: {resp.status}")
+                    await msg.reply("❌ Ye Roblox ID invalid hai ya exist nahi karti.")
+                    return # 🛑 Yahi ruk jao agar ID galat hai
     except Exception as e:
         print(f"⚠️ Connection Error: {e}")
+        await msg.reply("❌ Roblox API down hai, thodi der baad try karein.")
+        return
 
     # ✅ STEP 4: MAIN DATABASE LOGIC
     try:
         # --- A. BLACKLIST CHECK (Sabse Pehle) ---
-        blk = (
-            supabase.table("blacklist_users")
-            .select("user_id")
-            .eq("user_id", user_id)
-            .execute()
-            .data
-        )
+        blk = supabase.table("blacklist_users").select("user_id").eq("user_id", user_id).execute().data
         if blk:
             embed = discord.Embed(
                 title="🚫 Verification Denied",
@@ -477,48 +473,30 @@ async def on_message(msg):
             await msg.reply(embed=embed)
             return
 
-        # 🔄 CHANGE: "ALREADY VERIFIED" KO UPAR LAYE HAIN
-        # --- B. ALREADY VERIFIED CHECK (Pehle ye check karo) ---
-        exist = (
-            supabase.table("access_users")
-            .select("*")
-            .eq("user_id", user_id)
-            .execute()
-            .data
-        )
+        # --- B. ALREADY VERIFIED CHECK (Unique Roblox ID Check) ---
+        exist = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
         if exist:
             embed = discord.Embed(
                 title="✅ Already Verified",
-                description="You are already verified & whitelisted.",
+                description="This Roblox account is already verified & whitelisted.",
                 color=0x2ecc71
             )
             await msg.reply(embed=embed)
             return
 
-        # 🔄 CHANGE: "LIMIT CHECK" KO NEECHE LAYE HAIN
-        # --- C. LIMIT + OWNER APPROVAL SYSTEM (Ab yahan check hoga) ---
-        # Agar banda nayi ID laaya hai, tab dekho limit hai ya nahi
-        already = (
-            supabase.table("access_users")
-            .select("user_id")
-            .eq("discord_id", str(msg.author.id))
-            .execute()
-            .data
-        )
+        # --- C. LIMIT + OWNER APPROVAL SYSTEM ---
+        # Check: Kya ye Discord user pehle se verify kar chuka hai?
+        already = supabase.table("access_users").select("user_id").eq("discord_id", str(msg.author.id)).execute().data
         
         if already:
-            approved = (
-                supabase.table("multi_access")
-                .select("discord_id")
-                .eq("discord_id", str(msg.author.id))
-                .execute()
-                .data
-            )
-
+            # Agar pehle se verify hai, toh check karo Multi-Access approved hai ya nahi
+            approved = supabase.table("multi_access").select("discord_id").eq("discord_id", str(msg.author.id)).execute().data
+            
             if not approved:
+                # 🛑 LIMIT REACHED
                 embed = discord.Embed(
                     title="❌ Verification Limit Reached",
-                    description="You reached max verification limit.\nPlease wait for admin approval.",
+                    description="You reached max verification limit (1 Account).\nRequest sent to Admin for approval. ⏳",
                     color=0xe74c3c
                 )
                 await msg.reply(embed=embed)
@@ -527,7 +505,7 @@ async def on_message(msg):
                 ch = bot.get_channel(REVIEW_CHANNEL_ID)
                 if ch:
                     req = discord.Embed(
-                        title="⚠️ MULTI VERIFY REQUEST",
+                        title="⚠️ MULTI VERIFY REQUEST", 
                         description=f"**User:** {msg.author.mention}\n**Discord ID:** `{msg.author.id}`",
                         color=0xffa500
                     )
@@ -542,10 +520,8 @@ async def on_message(msg):
                             await interaction.response.send_message("❌ Only Owner can approve.", ephemeral=True)
                             return
                         
-                        supabase.table("multi_access").upsert({
-                            "discord_id": str(msg.author.id),
-                            "approved": True
-                        }).execute()
+                        # Add to Multi-Access
+                        supabase.table("multi_access").upsert({"discord_id": str(msg.author.id), "approved": True}).execute()
                         
                         await interaction.response.edit_message(
                             embed=discord.Embed(title="🟢 ACCESS GRANTED", description=f"{msg.author.mention} can now verify unlimited Roblox accounts.", color=0x2ecc71),
@@ -573,9 +549,10 @@ async def on_message(msg):
                     view.add_item(btn_deny)
                     
                     await ch.send(embed=req, view=view)
-                return
+                
+                return # 🛑 STOP HERE (Don't verify yet)
 
-        # --- D. AUTO ADD TO WHITELIST ---
+        # --- D. AUTO ADD TO WHITELIST (Agar sab sahi hai) ---
         supabase.table("access_users").insert({
             "user_id": user_id,
             "username": username,
@@ -584,19 +561,18 @@ async def on_message(msg):
         }).execute()
 
         # --- E. SAVE VERIFY LOG ---
+        # Note: 'datetime' import hona chahiye upar
+        current_time = datetime.utcnow().isoformat()
         supabase.table("verify_logs").insert({
             "discord_id": str(msg.author.id),
             "roblox_id": user_id,
             "username": username,
             "display_name": display,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": current_time
         }).execute()
 
         # --- F. USER SUCCESS EMBED ---
-        embed = discord.Embed(
-            title="✅ Verified & Whitelisted",
-            color=0x2ecc71
-        )
+        embed = discord.Embed(title="✅ Verified & Whitelisted", color=0x2ecc71)
         embed.add_field(name="Roblox ID", value=f"`{user_id}`", inline=False)
         embed.add_field(name="Username", value=username, inline=True)
         embed.add_field(name="Display Name", value=display, inline=True)
@@ -608,24 +584,18 @@ async def on_message(msg):
         try:
             log_ch = bot.get_channel(1451973589342621791)
             if log_ch:
-                log = discord.Embed(
-                    title="📥 New Verification Logged",
-                    color=0x3498db
-                )
+                log = discord.Embed(title="📥 New Verification Logged", color=0x3498db)
                 log.add_field(name="Discord User", value=f"{msg.author.mention}", inline=False)
                 log.add_field(name="Roblox ID", value=f"`{user_id}`", inline=False)
                 log.add_field(name="Username", value=username, inline=True)
-                log.add_field(name="Display Name", value=display, inline=True)
                 log.timestamp = datetime.utcnow()
                 await log_ch.send(embed=log)
-        except:
-            pass
+        except Exception as e:
+            print(f"Log Error: {e}")
 
     except Exception as e:
         print(f"CRITICAL DB ERROR: {e}")
-        await msg.reply(f"❌ System Error: `{e}`\nAdmin ko contact karein.")        
-
-
+        await msg.reply(f"❌ System Error: `{e}`\nAdmin ko contact karein.")                                      
                         
 # ================== BAN SYSTEM (UPDATED WITH ADMIN NAME) ==================
 
