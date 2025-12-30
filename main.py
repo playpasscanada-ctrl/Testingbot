@@ -2221,95 +2221,129 @@ async def history(i: discord.Interaction, user_id: str):
         print(f"HISTORY ERROR: {e}")
         await i.followup.send(f"❌ **System Error:** `{e}`")
         
-@bot.tree.command(name="profile", description="📂 View full Verification & Safety Profile")
+# ================== PROFILE COMMAND (ALL TABLES INTEGRATED) ==================
+@bot.tree.command(name="profile", description="📂 View full Verification, Safety & Moderation Profile")
 async def profile(i: discord.Interaction, user_id: str):
+    
+    # 1. OWNER CHECK (Database Logic)
     if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION", "Owner only command"))
+        return await i.response.send_message("❌ **Access Denied:** Owner/Admin only.", ephemeral=True)
 
-    await i.response.defer()
+    await i.response.defer(ephemeral=False)
 
     try:
-        # ✅ FIX: Using await
+        # A. Roblox Info (Async & Fast)
         username, display = await roblox_info(user_id)
 
         if username == "Invalid ID":
              return await i.followup.send(embed=discord.Embed(title="❌ Error", description="Invalid Roblox ID", color=0xff0000))
 
-        # ===== FETCH DATA =====
-        # A        access = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
-        is_verified = bool(access)
+        # ================= B. FETCH DATA FROM ALL TABLES =================
+        # Hum try-except use karenge taaki agar koi table missing ho to error na aaye
         
-        # Logs (Last verification)
-        logs = supabase.table("verify_logs").select("*").eq("roblox_id", user_id).order("timestamp", desc=True).limit(1).execute().data
+        # 1. Access Users (Main Verification Status)
+        access = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
         
-        # Bans
+        # 2. Bans & Blacklist (Safety)
         bans = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
-        
-        # Blacklist
         blk = supabase.table("blacklist_users").select("*").eq("user_id", user_id).execute().data
-
-        # ===== FORMAT DATA =====
         
-        # Verification Status
-        if is_verified:
-            verify_status = "✅ **Verified & Whitelisted**"
-            verify_color = 0x2ecc71 # Green
+        # 3. Flags & Warnings (Extra Tables)
+        warnings = supabase.table("fake_warnings").select("*").eq("user_id", user_id).execute().data
+        flags = supabase.table("fake_flags").select("*").eq("user_id", user_id).execute().data
+        kicks = supabase.table("kick_flags").select("*").eq("user_id", user_id).execute().data
+
+        # ================= C. PROCESS DATA =================
+
+        # --- 1. Verification Logic (From Access Users) ---
+        if access:
+            data = access[0]
+            verifier_id = data.get("discord_id")
+            
+            # Format Time
+            try:
+                date_str = data.get("created_at", "").split("T")[0]
+            except:
+                date_str = "Unknown"
+
+            verify_status = "✅ **Whitelisted**"
+            verify_desc = (
+                f"👤 **Verified By:** <@{verifier_id}>\n"
+                f"📅 **Date:** `{date_str}`\n"
+                f"🆔 **Verifier ID:** `{verifier_id}`"
+            )
+            color = 0x2ecc71 # Green
         else:
             verify_status = "⚠️ **Not Whitelisted**"
-            verify_color = 0x3498db # Blue (Default)
+            verify_desc = "User verify nahi hai aur na hi whitelist access hai."
+            color = 0x3498db # Blue (Neutral)
 
-        # Override color if banned/blacklisted
-        if bans or blk:
-            verify_color = 0xff0000 # Red
-
-        # Verification History Info
-        if logs:
-            v = logs[0]
-            discord_id = v['discord_id']
-            try:
-                # Time formatting
-                dt = datetime.fromisoformat(v['timestamp'])
-                time_str = f"<t:{int(dt.timestamp())}:R>" # Discord Relative Time
-            except:
-                time_str = "`Unknown Date`"
-            
-            verify_info = f"🔗 **Linked Discord:** <@{discord_id}>\n📅 **Verified:** {time_str}"
-        else:
-            verify_info = "❌ **No Verification History Found**"
-
-        # Ban Info
+        # --- 2. Moderation Logic ---
+        mod_status = []
+        
+        # Check Bans
         if bans:
             b = bans[0]
-            if b['perm']:
-                ban_info = f"🔴 **Permanent Ban**\nReason: `{b['reason']}`"
+            if b.get('perm'):
+                mod_status.append(f"🔴 **Permanent Ban:** `{b.get('reason')}`")
+                color = 0xff0000 # Red
             else:
-                 ban_info = f"🟠 **Temp Ban**\nReason: `{b['reason']}`"
-        else:
-            ban_info = "🟢 **Clean Record**"
+                mod_status.append(f"🟠 **Temp Ban:** `{b.get('reason')}`")
+                color = 0xe67e22 # Orange
 
+        # Check Blacklist
         if blk:
-            ban_info += "\n⛔ **User is Blacklisted**"
+            mod_status.append("🚫 **Blacklisted User**")
+            color = 0x2c3e50 # Dark
 
-        # ===== BUILD EMBED =====
-        embed = discord.Embed(title=f"📂 User Profile: {username}", color=verify_color)
+        # Check Flags
+        if flags:
+            mod_status.append(f"🚩 **Flags:** {len(flags)} Active Flags")
         
+        # Check Kicks
+        if kicks:
+            mod_status.append(f"👢 **Kick History:** {len(kicks)} times kicked")
+
+        # Check Warnings
+        if warnings:
+            mod_status.append(f"⚠️ **Warnings:** {len(warnings)} Warnings")
+
+        # Combine Moderation Text
+        if mod_status:
+            mod_text = "\n".join(mod_status)
+        else:
+            mod_text = "🟢 **Clean Record** (No bans, flags, or warnings)"
+
+
+        # ================= D. BUILD PREMIUM EMBED =================
+        embed = discord.Embed(title=f"📂 Player Profile: {display}", color=color)
+        
+        # Header: User Identity
+        embed.add_field(name="👤 Identity", value=f"**User:** @{username}\n**ID:** `{user_id}`", inline=False)
+        
+        # Section 1: Verification (Access Users)
+        embed.add_field(name="🔐 Access Status", value=verify_status, inline=True)
+        embed.add_field(name="🛡️ Safety Status", value="See Below 👇", inline=True)
+        
+        # Section 2: Verification Details (Verifier Info)
+        embed.add_field(name="📜 Verification Details", value=verify_desc, inline=False)
+        
+        # Section 3: Full Moderation History (All Tables)
+        embed.add_field(name="🚨 Moderation History", value=mod_text, inline=False)
+
+        # Thumbnail (Avatar)
         embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
         
-        embed.add_field(name="👤 Account Details", value=f"**Display:** {display}\n**Username:** @{username}\n**ID:** `{user_id}`", inline=False)
-        
-        embed.add_field(name="🔐 System Status", value=verify_status, inline=True)
-        embed.add_field(name="🛡️ Moderation", value=ban_info, inline=True)
-        
-        embed.add_field(name="📜 Verification Log", value=verify_info, inline=False)
-        
         # Footer
-        embed.set_footer(text="RoboPal Premium Profile System", icon_url=i.user.display_avatar.url)
-        
+        embed.set_footer(text=f"Requested by {i.user.display_name} • Full Database Scan", icon_url=i.user.display_avatar.url)
+        embed.timestamp = datetime.utcnow()
+
         await i.followup.send(embed=embed)
 
     except Exception as e:
         print(f"PROFILE ERROR: {e}")
-        await i.followup.send(f"❌ **System Error:** `{e}`")        
+        await i.followup.send(f"❌ **System Error:** `{e}`")
+            
 
 @bot.tree.command(name="multiverify", description="Users who verified multiple Roblox accounts")
 async def multiverify(i: discord.Interaction):
