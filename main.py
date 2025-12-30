@@ -323,6 +323,64 @@ class RestrictUserPaginator(discord.ui.View):
         embed = await self.get_page_embed()
         await i.response.edit_message(embed=embed, view=self)
 
+# ================== SAY ACCESS PAGINATOR ==================
+class SayAccessPaginator(discord.ui.View):
+    def __init__(self, data, author, bot_ref):
+        super().__init__(timeout=60)
+        self.data = data
+        self.author = author
+        self.bot = bot_ref
+        self.per_page = 10
+        self.current_page = 0
+        self.total_pages = (len(data) + self.per_page - 1) // self.per_page
+
+    async def get_page_embed(self):
+        start = self.current_page * self.per_page
+        end = start + self.per_page
+        page_data = self.data[start:end]
+
+        embed = discord.Embed(title=f"🗣️ Say Access List (Total: {len(self.data)})", color=0x9b59b6) # Purple Color
+        desc = ""
+        
+        for index, row in enumerate(page_data):
+            uid = int(row['user_id'])
+            s_no = start + index + 1
+            
+            # Fetch User
+            user = self.bot.get_user(uid)
+            if not user:
+                try: user = await self.bot.fetch_user(uid)
+                except: user = None
+
+            if user:
+                desc += f"`{s_no:02d}.` **{user.display_name}** (@{user.name})\n🆔 `{uid}`\n\n"
+            else:
+                desc += f"`{s_no:02d}.` **Unknown User**\n🆔 `{uid}`\n\n"
+
+        embed.description = desc
+        embed.set_footer(text=f"Page {self.current_page + 1}/{self.total_pages} • Say Command Manager")
+        return embed
+
+    def update_buttons(self):
+        self.children[0].disabled = (self.current_page == 0)
+        self.children[1].disabled = (self.current_page == self.total_pages - 1)
+
+    @discord.ui.button(label="◀️ Previous", style=discord.ButtonStyle.secondary)
+    async def prev_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id: return await i.response.send_message("❌ Not for you.", ephemeral=True)
+        self.current_page -= 1
+        self.update_buttons()
+        embed = await self.get_page_embed()
+        await i.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Next ▶️", style=discord.ButtonStyle.primary)
+    async def next_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id: return await i.response.send_message("❌ Not for you.", ephemeral=True)
+        self.current_page += 1
+        self.update_buttons()
+        embed = await self.get_page_embed()
+        await i.response.edit_message(embed=embed, view=self)
+
 # ================== ENV ==================
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
@@ -3072,75 +3130,76 @@ async def sayaccess(i: discord.Interaction, action: app_commands.Choice[str], us
             await i.response.send_message(f"❌ Error: {e}", ephemeral=True)
 
 
-# ================== UPDATED SAY COMMAND ==================
-@bot.tree.command(name="say", description="Make the bot speak (Text, Embed, or Image)")
-@app_commands.describe(
-    message="Message content",
-    channel="Where to send? (Default: current channel)",
-    mode="Style of message (Text/Embed)",
-    image="Attach an image (Optional)"
-)
-@app_commands.choices(mode=[
-    app_commands.Choice(name="Plain Text", value="text"),
-    app_commands.Choice(name="Green Embed (Success)", value="green"),
-    app_commands.Choice(name="Red Embed (Error)", value="red"),
-    app_commands.Choice(name="Blue Embed (Info)", value="blue"),
+# ================== SAY ACCESS MANAGER (PREMIUM) ==================
+@bot.tree.command(name="sayaccess", description="Manage who can use /say command (Owner Only)")
+@app_commands.choices(action=[
+    app_commands.Choice(name="add", value="add"),
+    app_commands.Choice(name="remove", value="remove"),
+    app_commands.Choice(name="list", value="list"),
 ])
-async def say(
-    i: discord.Interaction, 
-    message: str, 
-    mode: app_commands.Choice[str] = None,
-    channel: discord.TextChannel = None, 
-    image: discord.Attachment = None
-):
-    # 1. PERMISSION CHECK (Owner + Access List) 🔒
-    is_owner = owner(i)
-    has_perm = False
+async def sayaccess(i: discord.Interaction, action: app_commands.Choice[str], user: discord.User = None):
     
-    # Database check karo agar owner nahi hai
-    if not is_owner:
-        try:
-            data = supabase.table("say_access").select("user_id").eq("user_id", str(i.user.id)).execute().data
-            if data: has_perm = True
-        except:
-            pass
+    # 1. OWNER CHECK (Database Logic)
+    if not owner(i):
+        return await i.response.send_message("❌ **Access Denied:** Owner/Admin only.", ephemeral=True)
 
-    if not is_owner and not has_perm:
-        return await i.response.send_message("❌ Aapke paas is command ki permission nahi hai.", ephemeral=True)
+    await i.response.defer(ephemeral=False)
 
-    # 2. Channel Selection
-    target_channel = channel or i.channel
-    
-    # 3. Image Processing
-    file = await image.to_file() if image else None
-    
-    # 4. Sending Logic
     try:
-        style = mode.value if mode else "text"
-
-        # --- PLAIN TEXT MODE ---
-        if style == "text":
-            if file:
-                await target_channel.send(content=message, file=file)
-            else:
-                await target_channel.send(content=message)
-
-        # --- EMBED MODE ---
-        else:
-            color = 0x2ecc71 # Green
-            if style == "red": color = 0xff0000
-            elif style == "blue": color = 0x3498db
-
-            embed = discord.Embed(description=message, color=color)
-            if image: embed.set_image(url=image.url)
+        # ================== ADD USER ==================
+        if action.value == "add":
+            if not user:
+                return await i.followup.send("❌ **User select karna zaroori hai!**")
             
-            await target_channel.send(embed=embed)
+            # Upsert to DB
+            supabase.table("say_access").upsert({
+                "user_id": str(user.id),
+                "added_by": str(i.user.id)
+            }).execute()
+            
+            embed = discord.Embed(title="✅ Access Granted", description=f"**{user.mention}** ab `/say` command use kar sakta hai.", color=0x2ecc71)
+            embed.set_thumbnail(url=user.display_avatar.url)
+            embed.add_field(name="👤 User Info", value=f"**Name:** {user.display_name}\n**ID:** `{user.id}`", inline=False)
+            embed.set_footer(text=f"Added by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+            
+            await i.followup.send(embed=embed)
 
-        # 5. Confirmation (Sirf sender ko dikhega)
-        await i.response.send_message(f"✅ Sent to {target_channel.mention}", ephemeral=True)
+        # ================== REMOVE USER ==================
+        elif action.value == "remove":
+            if not user:
+                return await i.followup.send("❌ **User select karna zaroori hai!**")
+            
+            # Delete from DB
+            supabase.table("say_access").delete().eq("user_id", str(user.id)).execute()
+            
+            embed = discord.Embed(title="🗑️ Access Revoked", description=f"**{user.mention}** se `/say` command ki permission le li gayi hai.", color=0xe74c3c)
+            embed.set_thumbnail(url=user.display_avatar.url)
+            embed.add_field(name="👤 User Info", value=f"**Name:** {user.display_name}\n**ID:** `{user.id}`", inline=False)
+            embed.set_footer(text=f"Removed by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+
+            await i.followup.send(embed=embed)
+
+        # ================== LIST USERS ==================
+        elif action.value == "list":
+            data = supabase.table("say_access").select("user_id").execute().data
+
+            if not data:
+                return await i.followup.send(embed=discord.Embed(title="🗣️ Say Access List", description="❌ List is Empty.", color=0xffa500))
+
+            # Paginator Call
+            view = SayAccessPaginator(data, i.user, bot)
+            if view.total_pages <= 1:
+                view.children[0].disabled = True
+                view.children[1].disabled = True
+            else:
+                view.update_buttons()
+
+            embed = await view.get_page_embed()
+            await i.followup.send(embed=embed, view=view)
 
     except Exception as e:
-        await i.response.send_message(f"❌ Error: {e}", ephemeral=True)
+        print(f"SAYACCESS ERROR: {e}")
+        await i.followup.send(f"❌ **System Error:** `{e}`")
 
 # ================== RESTRICT COMMAND (PREMIUM) ==================
 @bot.tree.command(name="restrict", description="Manage Banned Words & Whitelisted Users")
