@@ -3263,7 +3263,7 @@ def keep_alive():
     while True:
         try:
             # Sleep time badha diya (25s -> 45s) taaki load kam pade
-            time.sleep(45) 
+            time.sleep(60) 
             requests.get(f"{RENDER_URL}/ping", timeout=10)
         except:
             pass
