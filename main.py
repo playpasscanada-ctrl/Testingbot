@@ -2221,7 +2221,7 @@ async def history(i: discord.Interaction, user_id: str):
         print(f"HISTORY ERROR: {e}")
         await i.followup.send(f"❌ **System Error:** `{e}`")
         
-@botcommandommand(name="profile", description="📂 View full Verification & Safety Profile")
+@bot.tree.command(name="profile", description="📂 View full Verification & Safety Profile")
 async def profile(i: discord.Interaction, user_id: str):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION", "Owner only command"))
