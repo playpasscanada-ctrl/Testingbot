@@ -786,212 +786,269 @@ async def on_message(msg):
         print(f"DEBUG ERROR: {e}")
                             
                         
-# ================== BAN SYSTEM (UPDATED WITH ADMIN NAME) ==================
+# ================== 1. BAN PAGINATOR CLASS (List ke liye) ==================
+class BanPaginator(discord.ui.View):
+    def __init__(self, data, author, bot_ref):
+        super().__init__(timeout=60)
+        self.data = data
+        self.author = author
+        self.bot = bot_ref
+        self.per_page = 5
+        self.current_page = 0
+        self.total_pages = (len(data) + self.per_page - 1) // self.per_page
 
-@bot.tree.command(name="ban")
-async def ban(i:discord.Interaction, user_id:str, reason:str):
-    if not owner(i): 
-        return
+    async def get_page_embed(self):
+        start = self.current_page * self.per_page
+        end = start + self.per_page
+        page_data = self.data[start:end]
 
-    # Defer isliye taaki API call me time lage to error na aaye
-    await i.response.defer()
-
-    u, d = await roblox_info(user_id)
-
-    # Database me Executor (Admin) bhi save kar rahe hain
-    supabase.table("bans").upsert({
-        "user_id": user_id,
-        "perm": True,
-        "reason": reason,
-        "expire": None,
-        "executor": str(i.user.id)  # <-- Ye nayi cheez hai
-    }).execute()
-
-    # Log Action
-    try:
-        log_action("ban", user_id, u, d, i.user.id)
-    except:
-        pass
-
-    await i.followup.send(embed=emb(
-        "🔨 BANNED",
-        f"**ID:** `{user_id}`\n**User:** `{u}` ({d})\n**Reason:** {reason}\n**Banned By:** {i.user.mention}",
-        0xff0000
-    ))
-
-@bot.tree.command(name="tempban")
-async def tempban(i:discord.Interaction, user_id:str, minutes:int, reason:str):
-    if not owner(i): 
-        return
-
-    await i.response.defer()
-
-    u, d = await roblox_info(user_id)
-
-    supabase.table("bans").upsert({
-        "user_id": user_id,
-        "perm": False,
-        "reason": reason,
-        "expire": time.time() + minutes * 60,
-        "executor": str(i.user.id)  # <-- Ye nayi cheez hai
-    }).execute()
-
-    try:
-        log_action("tempban", user_id, u, d, i.user.id)
-    except:
-        pass
-
-    await i.followup.send(embed=emb(
-        "⏱ TEMPBAN",
-        f"**ID:** `{user_id}`\n**User:** `{u}` ({d})\n**Time:** `{minutes} min`\n**Reason:** {reason}\n**Banned By:** {i.user.mention}",
-        0xffa500
-    ))
-
-@bot.tree.command(name="list")
-async def listb(i:discord.Interaction):
-    if not owner(i): 
-        return
-    
-    await i.response.defer()
-    
-    try:
-        data = supabase.table("bans").select("*").execute().data
+        embed = discord.Embed(title=f"🚫 Banned Users List (Total: {len(self.data)})", color=0xff0000)
         
-        if not data:
-            return await i.followup.send(embed=emb("🚫 BANNED USERS", "No banned users found."))
-
-        txt = ""
-        now = time.time()
-
-        for x in list(data):
-            # Expired bans hatao
-            if not x["perm"] and x.get("expire") and now > float(x["expire"]):
-                supabase.table("bans").delete().eq("user_id", x["user_id"]).execute()
-                continue
+        for row in page_data:
+            uid = row.get("user_id")
+            reason = row.get("reason", "No Reason")
+            executor_id = row.get("executor")
             
-            u, n = await roblox_info(x["user_id"])
-
-            # Time Logic
-            if x["perm"]:
-                t = "PERM"
+            # Fetch Info
+            u, d = await roblox_info(uid)
+            
+            # Ban Type Logic
+            if row.get("perm"):
+                type_str = "🔴 **PERM**"
+                time_str = "Never"
             else:
                 try:
-                    left = int((float(x['expire']) - now) / 60)
-                    t = f"{left}m"
+                    expire_ts = float(row.get("expire", 0))
+                    type_str = "🟠 **TEMP**"
+                    time_str = f"<t:{int(expire_ts)}:R>"
                 except:
-                    t = "Unknown"
+                    type_str = "Unknown"
+                    time_str = "-"
 
-            # Reason fetch
-            reason = x.get("reason", "No Reason")
+            admin_tag = f"<@{executor_id}>" if executor_id else "Unknown"
+
+            embed.add_field(
+                name=f"👤 {d} (@{u})",
+                value=f"🆔 `{uid}`\n⚖️ Type: {type_str}\n⏳ Expires: {time_str}\n📝 Reason: `{reason}`\n👮 By: {admin_tag}",
+                inline=False
+            )
+
+        embed.set_footer(text=f"Page {self.current_page + 1}/{self.total_pages} • Ban System")
+        return embed
+
+    def update_buttons(self):
+        self.children[0].disabled = (self.current_page == 0)
+        self.children[1].disabled = (self.current_page == self.total_pages - 1)
+
+    @discord.ui.button(label="◀️ Previous", style=discord.ButtonStyle.secondary)
+    async def prev_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id: return await i.response.send_message("❌ Not for you.", ephemeral=True)
+        self.current_page -= 1
+        self.update_buttons()
+        embed = await self.get_page_embed()
+        await i.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Next ▶️", style=discord.ButtonStyle.primary)
+    async def next_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id: return await i.response.send_message("❌ Not for you.", ephemeral=True)
+        self.current_page += 1
+        self.update_buttons()
+        embed = await self.get_page_embed()
+        await i.response.edit_message(embed=embed, view=self)
+
+
+# ================== 2. CONFIRM VIEW CLASS (Clear All ke liye) ==================
+class BanClearView(discord.ui.View):
+    def __init__(self, author_id):
+        super().__init__(timeout=30)
+        self.author_id = author_id
+
+    @discord.ui.button(label="⚠️ YES - DELETE ALL DATA", style=discord.ButtonStyle.danger)
+    async def confirm(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author_id:
+            return await i.response.send_message("❌ You cannot use this button.", ephemeral=True)
+        
+        supabase.table("bans").delete().neq("user_id", "0").execute()
+        
+        embed = discord.Embed(title="♻️ BAN LIST CLEARED", description="✅ All bans have been successfully removed from the database.", color=0x2ecc71)
+        embed.set_footer(text=f"Cleared by {i.user.display_name}")
+        
+        await i.response.edit_message(embed=embed, view=None)
+        self.stop()
+
+    @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.secondary)
+    async def cancel(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author_id:
+            return await i.response.send_message("❌ You cannot use this button.", ephemeral=True)
+
+        embed = discord.Embed(title="🛡️ Operation Cancelled", description="Ban list was **NOT** cleared.", color=0x95a5a6)
+        await i.response.edit_message(embed=embed, view=None)
+        self.stop()
+
+
+# ================== 3. MAIN ACTION COMMAND (ALL IN ONE) ==================
+@bot.tree.command(name="action", description="🛡️ Ultimate Moderation System (Kick, Ban, Unban, List)")
+@app_commands.choices(mode=[
+    app_commands.Choice(name="👢 Kick Player", value="kick"),
+    app_commands.Choice(name="🔨 Ban (Permanent)", value="ban"),
+    app_commands.Choice(name="⏱ Temp Ban (Timed)", value="tempban"),
+    app_commands.Choice(name="✅ Unban", value="unban"),
+    app_commands.Choice(name="📜 List All Bans", value="list"),
+    app_commands.Choice(name="🧨 Clear All Bans (Reset)", value="clear"),
+])
+@app_commands.describe(
+    user_id="Roblox ID (Required)",
+    reason="Reason for action",
+    duration="Minutes (Only for Tempban)"
+)
+async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id: str = None, reason: str = "No Reason Provided", duration: int = None):
+    
+    # OWNER CHECK
+    if not owner(i):
+        return await i.response.send_message("❌ **Access Denied:** Owner/Admin only.", ephemeral=True)
+
+    # Note: 'clear' ke liye defer nahi karenge
+    if mode.value != "clear":
+        await i.response.defer(ephemeral=False)
+
+    try:
+        # ================== 1. KICK (NEW ADDED) ==================
+        if mode.value == "kick":
+            if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
             
-            # Executor (Admin) Fetch logic
-            admin_txt = ""
-            if x.get("executor"):
-                try:
-                    # Discord se naam nikal rahe hain
-                    admin_obj = await bot.fetch_user(int(x["executor"]))
-                    admin_txt = f" | 👮 By: {admin_obj.name}"
-                except:
-                    admin_txt = " | 👮 By: Unknown"
+            u, d = await roblox_info(user_id)
 
-            # Final Line
-            txt += f"• `{x['user_id']}` | **{u}** ({n})\n   ⏳ `{t}` | 📝 `{reason}`{admin_txt}\n\n"
+            # Insert into Kick Logs (History)
+            try:
+                supabase.table("kick_logs").insert({
+                    "user_id": user_id,
+                    "username": u,
+                    "display_name": d,
+                    "reason": reason,
+                    "timestamp": datetime.utcnow().isoformat()
+                }).execute()
+            except: pass
 
-            # Embed Limit Check
-            if len(txt) > 3500:
-                txt += "\n... (List truncated)"
-                break
+            # Update Kick Flags (Active Flag for Game)
+            supabase.table("kick_flags").upsert({
+                "user_id": user_id,
+                "reason": reason
+            }).execute()
 
-        await i.followup.send(embed=emb("🚫 BANNED USERS LIST", txt or "None"))
+            # Premium Embed
+            embed = discord.Embed(title="👢 PLAYER KICKED", color=0xe74c3c) # Red color
+            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+            embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
+            embed.add_field(name="📝 Reason", value=f"`{reason}`", inline=True)
+            embed.set_footer(text=f"Kicked by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+            
+            await i.followup.send(embed=embed)
+
+
+        # ================== 2. PERMANENT BAN ==================
+        elif mode.value == "ban":
+            if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
+            
+            u, d = await roblox_info(user_id)
+            
+            supabase.table("bans").upsert({
+                "user_id": user_id, "perm": True, "reason": reason, "expire": None, "executor": str(i.user.id)
+            }).execute()
+
+            try: log_action("ban", user_id, u, d, i.user.id)
+            except: pass
+
+            embed = discord.Embed(title="🔨 USER BANNED", color=0xff0000)
+            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+            embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
+            embed.add_field(name="📝 Reason", value=f"`{reason}`", inline=True)
+            embed.set_footer(text=f"Banned by {i.user.display_name}")
+            await i.followup.send(embed=embed)
+
+
+        # ================== 3. TEMP BAN ==================
+        elif mode.value == "tempban":
+            if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
+            if not duration: return await i.followup.send("⚠️ **Duration (minutes) Required!**")
+
+            u, d = await roblox_info(user_id)
+            expire_time = time.time() + (duration * 60)
+
+            supabase.table("bans").upsert({
+                "user_id": user_id, "perm": False, "reason": reason, "expire": expire_time, "executor": str(i.user.id)
+            }).execute()
+
+            try: log_action("tempban", user_id, u, d, i.user.id)
+            except: pass
+
+            embed = discord.Embed(title="⏱ USER TEMP-BANNED", color=0xe67e22)
+            embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
+            embed.add_field(name="⏳ Duration", value=f"{duration} Mins\nUnban: <t:{int(expire_time)}:R>", inline=True)
+            embed.add_field(name="📝 Reason", value=f"`{reason}`", inline=False)
+            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+            await i.followup.send(embed=embed)
+
+
+        # ================== 4. UNBAN ==================
+        elif mode.value == "unban":
+            if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
+
+            u, d = await roblox_info(user_id)
+            supabase.table("bans").delete().eq("user_id", user_id).execute()
+
+            try: log_action("unban", user_id, u, d, i.user.id)
+            except: pass
+
+            embed = discord.Embed(title="✅ USER UNBANNED", color=0x2ecc71)
+            embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
+            embed.add_field(name="🆔 ID", value=f"`{user_id}`", inline=True)
+            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+            await i.followup.send(embed=embed)
+
+
+        # ================== 5. LIST BANS ==================
+        elif mode.value == "list":
+            data = supabase.table("bans").select("*").execute().data
+
+            # Filter Expired Bans
+            active_bans = []
+            now = time.time()
+            for row in data:
+                if not row.get("perm") and row.get("expire") and now > float(row["expire"]):
+                    supabase.table("bans").delete().eq("user_id", row["user_id"]).execute()
+                else:
+                    active_bans.append(row)
+
+            if not active_bans:
+                return await i.followup.send(embed=discord.Embed(title="📜 Ban List", description="✅ No active bans found.", color=0x2ecc71))
+
+            view = BanPaginator(active_bans, i.user, bot)
+            if view.total_pages <= 1:
+                view.children[0].disabled = True
+                view.children[1].disabled = True
+            else:
+                view.update_buttons()
+
+            embed = await view.get_page_embed()
+            await i.followup.send(embed=embed, view=view)
+
+
+        # ================== 6. CLEAR ALL ==================
+        elif mode.value == "clear":
+            embed = discord.Embed(
+                title="⚠️ DANGER ZONE: CLEAR DATABASE",
+                description="Are you sure you want to **DELETE ALL BANS**?\nThis cannot be undone.",
+                color=0xffaa00
+            )
+            view = BanClearView(i.user.id)
+            await i.response.send_message(embed=embed, view=view, ephemeral=False)
 
     except Exception as e:
-        await i.followup.send(embed=emb("❌ ERROR", f"List error: `{e}`"))
-
-@bot.tree.command(name="unban")
-async def unban(i:discord.Interaction, user_id:str):
-    if not owner(i):
-        return
-
-    # Roblox Info
-    username, display = await roblox_info(user_id)
-
-    # Delete from bans
-    supabase.table("bans").delete().eq("user_id", user_id).execute()
-
-    # LOG ACTION HERE ✅ (inside function)
-    try:
-        log_action("unban", user_id, username, display, i.user.id)
-    except:
-        pass
-
-    # Response
-    await safe_send(
-        i,
-        emb(
-            "✅ USER UNBANNED",
-            f"**Roblox ID:** `{user_id}`\n"
-            f"**Username:** `{username}`\n"
-            f"**Display Name:** `{display}`\n\n"
-            f"🎉 Successfully **UNBANNED**",
-            0x00ff00
-        )
-    )
-    
-
-from discord import ui
-
-@bot.tree.command(name="banclear", description="Remove ALL banned users with confirmation")
-async def banclear(i: discord.Interaction):
-
-    if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION", "Only owners can do this"))
-
-    class Confirm(ui.View):
-        def __init__(self):
-            super().__init__(timeout=30)
-
-        @ui.button(label="YES - Clear All Bans", style=discord.ButtonStyle.danger)
-        async def yes(self, interaction: discord.Interaction, button: ui.Button):
-            if interaction.user.id != i.user.id:
-                return await interaction.response.send_message(
-                    "❌ Ye confirmation tumhara nahi hai.", ephemeral=True
-                )
-
-            supabase.table("bans").delete().neq("user_id", "").execute()
-
-            await interaction.response.edit_message(
-                embed=emb(
-                    "🚫 BAN RESET CONFIRMED",
-                    "All bans successfully removed from system!",
-                    0xff0000
-                ),
-                view=None
-            )
-            self.stop()
-
-        @ui.button(label="NO - Cancel", style=discord.ButtonStyle.success)
-        async def no(self, interaction: discord.Interaction, button: ui.Button):
-            if interaction.user.id != i.user.id:
-                return await interaction.response.send_message(
-                    "❌ Ye confirmation tumhara nahi hai.", ephemeral=True
-                )
-
-            await interaction.response.edit_message(
-                embed=emb("❎ CANCELLED", "Ban reset cancelled.", 0x2ecc71),
-                view=None
-            )
-            self.stop()
-
-    view = Confirm()
-
-    await i.response.send_message(
-        embed=emb(
-            "⚠️ CONFIRMATION REQUIRED",
-            "Are you sure you want to **delete ALL banned users?**\nThis cannot be undone.",
-            0xffaa00
-        ),
-        view=view
-    )
+        print(f"ACTION ERROR: {e}")
+        try:
+            await i.followup.send(f"❌ **System Error:** `{e}`")
+        except:
+            await i.response.send_message(f"❌ **System Error:** `{e}`", ephemeral=True)
 
 # ================== ATTITUDE CONTROL (VIP SYSTEM) ==================
 @bot.tree.command(name="vip", description="Manage Bot Attitude (Owner Only)")
@@ -1716,37 +1773,6 @@ async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user
                 0xffaa00
             )
         )
-
-# ================== KICK ==================
-@bot.tree.command(name="kick")
-async def kick(i: discord.Interaction, user_id: str, reason: str = "No reason provided"):
-    if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
-
-    username, display = await roblox_info(user_id)
-
-    try:
-        supabase.table("kick_logs").insert({
-            "user_id": user_id,
-            "username": username,
-            "display_name": display,
-            "reason": reason,
-            "timestamp": datetime.utcnow().isoformat()
-        }).execute()
-    except:
-        pass
-
-    supabase.table("kick_flags").upsert({
-        "user_id": user_id,
-        "reason": reason
-    }).execute()
-
-    await safe_send(i, emb(
-        "👢 PLAYER KICKED",
-        f"**ID:** `{user_id}`\n**Username:** `{username}`\n**Display Name:** `{display}`\n**Reason:** {reason}",
-        0xff5555
-    ))
-
 
 # ================== MAINTENANCE ==================
 @bot.tree.command(name="maintenance")
