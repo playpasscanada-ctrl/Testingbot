@@ -1248,163 +1248,286 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
         except Exception as e:
             await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
 
-# ================== ACCESS COMMAND (WITH PAGINATION) ==================
-@bot.tree.command(name="access", description="Manage Verification Access (Owner Only)")
+ # ================== 1. PAGINATOR CLASSES (List ke liye) ==================
+
+# --- A. ACCESS LIST PAGINATOR ---
+class AccessPaginator(discord.ui.View):
+    def __init__(self, data, author):
+        super().__init__(timeout=60)
+        self.data = data
+        self.author = author
+        self.per_page = 10
+        self.current_page = 0
+        self.total_pages = (len(data) + self.per_page - 1) // self.per_page
+
+    def get_embed(self):
+        start = self.current_page * self.per_page
+        end = start + self.per_page
+        page_data = self.data[start:end]
+
+        desc = ""
+        for index, user in enumerate(page_data):
+            s_no = start + index + 1
+            uid = user.get("user_id", "Unknown")
+            uname = user.get("username", "Unknown")
+            dname = user.get("display_name", "Unknown")
+            desc += f"`{s_no:02d}.` **{dname}** (@{uname})\n   🆔 `{uid}`\n\n"
+
+        embed = discord.Embed(title=f"📜 Whitelisted Users (Total: {len(self.data)})", description=desc, color=0x3498db)
+        embed.set_footer(text=f"Page {self.current_page + 1}/{self.total_pages}", icon_url=self.author.display_avatar.url)
+        return embed
+
+    def update_buttons(self):
+        self.children[0].disabled = (self.current_page == 0)
+        self.children[1].disabled = (self.current_page == self.total_pages - 1)
+
+    @discord.ui.button(label="◀️ Previous", style=discord.ButtonStyle.secondary)
+    async def prev_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id: return await i.response.send_message("❌ Not for you.", ephemeral=True)
+        self.current_page -= 1
+        self.update_buttons()
+        await i.response.edit_message(embed=self.get_embed(), view=self)
+
+    @discord.ui.button(label="Next ▶️", style=discord.ButtonStyle.primary)
+    async def next_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id: return await i.response.send_message("❌ Not for you.", ephemeral=True)
+        self.current_page += 1
+        self.update_buttons()
+        await i.response.edit_message(embed=self.get_embed(), view=self)
+
+
+# --- B. BLACKLIST PAGINATOR (Async Fetching included) ---
+class BlacklistPaginator(discord.ui.View):
+    def __init__(self, data, author):
+        super().__init__(timeout=60)
+        self.data = data
+        self.author = author
+        self.per_page = 5 # Kam rakha hai taaki load fast ho
+        self.current_page = 0
+        self.total_pages = (len(data) + self.per_page - 1) // self.per_page
+
+    async def get_page_embed(self):
+        start = self.current_page * self.per_page
+        end = start + self.per_page
+        page_data = self.data[start:end]
+
+        embed = discord.Embed(title=f"🚫 Blacklisted Users (Total: {len(self.data)})", color=0x2c3e50) # Dark Color
+        
+        for index, row in enumerate(page_data):
+            uid = row.get("user_id")
+            # Fetch info live for premium feel
+            u, d = await roblox_info(uid)
+            
+            embed.add_field(
+                name=f"👤 {d} (@{u})",
+                value=f"🆔 `{uid}`",
+                inline=False
+            )
+
+        embed.set_footer(text=f"Page {self.current_page + 1}/{self.total_pages} • Blacklist System")
+        return embed
+
+    def update_buttons(self):
+        self.children[0].disabled = (self.current_page == 0)
+        self.children[1].disabled = (self.current_page == self.total_pages - 1)
+
+    @discord.ui.button(label="◀️ Previous", style=discord.ButtonStyle.secondary)
+    async def prev_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id: return await i.response.send_message("❌ Not for you.", ephemeral=True)
+        self.current_page -= 1
+        self.update_buttons()
+        embed = await self.get_page_embed()
+        await i.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Next ▶️", style=discord.ButtonStyle.primary)
+    async def next_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id: return await i.response.send_message("❌ Not for you.", ephemeral=True)
+        self.current_page += 1
+        self.update_buttons()
+        embed = await self.get_page_embed()
+        await i.response.edit_message(embed=embed, view=self)
+
+
+# ================== 2. CLEAR CONFIRMATION VIEW ==================
+class AccessClearView(discord.ui.View):
+    def __init__(self, author_id):
+        super().__init__(timeout=30)
+        self.author_id = author_id
+
+    @discord.ui.button(label="⚠️ YES - DELETE WHITELIST", style=discord.ButtonStyle.danger)
+    async def confirm(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author_id: return await i.response.send_message("❌ You cannot use this button.", ephemeral=True)
+        
+        supabase.table("access_users").delete().neq("user_id", "0").execute()
+        
+        embed = discord.Embed(title="♻️ ACCESS LIST CLEARED", description="✅ All whitelisted users have been removed.", color=0xff0000)
+        embed.set_footer(text=f"Cleared by {i.user.display_name}")
+        await i.response.edit_message(embed=embed, view=None)
+        self.stop()
+
+    @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.secondary)
+    async def cancel(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author_id: return await i.response.send_message("❌ You cannot use this button.", ephemeral=True)
+
+        embed = discord.Embed(title="🛡️ Operation Cancelled", description="Access list safe hai.", color=0x2ecc71)
+        await i.response.edit_message(embed=embed, view=None)
+        self.stop()
+
+
+# ================== 3. ULTIMATE ACCESS COMMAND ==================
+@bot.tree.command(name="access", description="⚙️ Manage Access, Maintenance, Whitelist & Blacklist (Owner Only)")
 @app_commands.choices(mode=[
-    app_commands.Choice(name="on", value="on"),
-    app_commands.Choice(name="off", value="off"),
-    app_commands.Choice(name="add", value="add"),
-    app_commands.Choice(name="remove", value="remove"),
-    app_commands.Choice(name="list", value="list"),
+    app_commands.Choice(name="🟢 Unlock Verification (Access ON)", value="on"),
+    app_commands.Choice(name="🔴 Lock Verification (Access OFF)", value="off"),
+    app_commands.Choice(name="🛡️ Enable Maintenance (Bot Down)", value="maint_on"),
+    app_commands.Choice(name="🚀 Disable Maintenance (Bot Live)", value="maint_off"),
+    app_commands.Choice(name="👤 Add to Whitelist", value="add"),
+    app_commands.Choice(name="🗑️ Remove from Whitelist", value="remove"),
+    app_commands.Choice(name="📜 List Whitelist", value="list"),
+    app_commands.Choice(name="🚫 Add to Blacklist", value="blk_add"),
+    app_commands.Choice(name="✅ Remove from Blacklist", value="blk_remove"),
+    app_commands.Choice(name="☠️ List Blacklist", value="blk_list"),
+    app_commands.Choice(name="🧨 Clear All Whitelist", value="clear"),
 ])
 async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id: str = None):
     
-    # 1. OWNER CHECK (Database se)
+    # 1. OWNER CHECK
     if not owner(i): 
-        await i.response.send_message("❌ Only Owner can use this.", ephemeral=True)
+        await i.response.send_message("❌ **Access Denied:** Owner Only.", ephemeral=True)
         return
 
-    # 2. Defer (Loading...)
-    await i.response.defer(ephemeral=False)
+    # Clear mode ke liye defer nahi karenge (Button turant aana chahiye)
+    if mode.value != "clear":
+        await i.response.defer(ephemeral=False)
 
     try:
-        # ================== ACCESS ON / OFF ==================
+        # ================== 1. ACCESS ON/OFF ==================
         if mode.value in ["on", "off"]:
-            supabase.table("bot_settings").update(
-                {"value": "true" if mode.value == "on" else "false"}
-            ).eq("key", "access_enabled").execute()
-
+            supabase.table("bot_settings").update({"value": "true" if mode.value == "on" else "false"}).eq("key", "access_enabled").execute()
+            
             status_emoji = "🟢" if mode.value == "on" else "🔴"
-            color = 0x2ecc71 if mode.value == "on" else 0xe74c3c
+            embed = discord.Embed(title=f"{status_emoji} System Updated", description=f"Verification Access is now **{mode.value.upper()}**", color=0x2ecc71 if mode.value == "on" else 0xe74c3c)
+            embed.set_footer(text=f"Updated by {i.user.display_name}", icon_url=i.user.display_avatar.url)
             
-            embed = discord.Embed(
-                title=f"{status_emoji} Access System Updated",
-                description=f"Verification Access is now **{mode.value.upper()}**",
-                color=color
-            )
-            embed.set_footer(text=f"Executed by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+            try: log_action(f"access_{mode.value}", "-", "-", "-", i.user.id)
+            except: pass
             await i.followup.send(embed=embed)
-            return
 
-        # ================== ACCESS ADD ==================
-        if mode.value == "add":
-            if not user_id:
-                return await i.followup.send("❌ **Roblox ID required!**")
+        # ================== 2. MAINTENANCE ON/OFF ==================
+        elif mode.value in ["maint_on", "maint_off"]:
+            is_maint = "true" if mode.value == "maint_on" else "false"
+            supabase.table("bot_settings").update({"value": is_maint}).eq("key", "maintenance").execute()
+
+            if mode.value == "maint_on":
+                embed = discord.Embed(title="🛡️ Maintenance Enabled", description="⚠️ **System is now in Maintenance Mode.**\nUsers cannot verify script.", color=0xe67e22)
+            else:
+                embed = discord.Embed(title="🚀 Maintenance Disabled", description="✅ **System is now LIVE.**\nUsers can verify script again.", color=0x2ecc71)
             
+            embed.set_footer(text=f"Control by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+            
+            try: log_action(f"maintenance_{is_maint}", "-", "-", "-", i.user.id)
+            except: pass
+            await i.followup.send(embed=embed)
+
+        # ================== 3. WHITELIST ADD ==================
+        elif mode.value == "add":
+            if not user_id: return await i.followup.send("❌ **Roblox ID required!**")
             u, d = await roblox_info(user_id)
-
-            supabase.table("access_users").upsert({
-                "user_id": user_id, "username": u, "display_name": d, "discord_id": str(i.user.id)
-            }).execute()
-
+            
+            supabase.table("access_users").upsert({"user_id": user_id, "username": u, "display_name": d, "discord_id": str(i.user.id)}).execute()
+            
+            try: log_action("access_add", user_id, u, d, i.user.id)
+            except: pass
+            
             embed = discord.Embed(title="✅ Access Granted", color=0x2ecc71)
             embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
             embed.add_field(name="🆔 ID", value=f"`{user_id}`", inline=True)
             embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
-            embed.set_footer(text=f"Added by {i.user.display_name}", icon_url=i.user.display_avatar.url)
-            
             await i.followup.send(embed=embed)
-            return
 
-        # ================== ACCESS REMOVE ==================
-        if mode.value == "remove":
-            if not user_id:
-                return await i.followup.send("❌ **Roblox ID required!**")
-
+        # ================== 4. WHITELIST REMOVE ==================
+        elif mode.value == "remove":
+            if not user_id: return await i.followup.send("❌ **Roblox ID required!**")
             u, d = await roblox_info(user_id)
+            
             supabase.table("access_users").delete().eq("user_id", user_id).execute()
-
+            
+            try: log_action("access_remove", user_id, u, d, i.user.id)
+            except: pass
+            
             embed = discord.Embed(title="🗑️ Access Removed", color=0xff0000)
             embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
-            embed.add_field(name="🆔 ID", value=f"`{user_id}`", inline=True)
-            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
-            embed.set_footer(text=f"Removed by {i.user.display_name}", icon_url=i.user.display_avatar.url)
-
             await i.followup.send(embed=embed)
-            return
 
-        # ================== ACCESS LIST (PAGINATION ADDED) ==================
-        if mode.value == "list":
-            # Data fetch karo
+        # ================== 5. WHITELIST LIST ==================
+        elif mode.value == "list":
             data = supabase.table("access_users").select("*").execute().data
-
-            if not data:
-                return await i.followup.send(embed=discord.Embed(title="📜 Access List", description="❌ List is empty.", color=0xffa500))
-
-            # View Class ko call karo (Jo upar banayi hai)
-            view = AccessPaginator(data, i.user)
+            if not data: return await i.followup.send(embed=discord.Embed(title="📜 Access List", description="❌ List is empty.", color=0xffa500))
             
-            # Agar 1 page se kam hai to buttons disable kar do
-            if view.total_pages <= 1:
-                view.children[0].disabled = True
-                view.children[1].disabled = True
-            else:
-                view.update_buttons()
-
+            view = AccessPaginator(data, i.user)
+            if view.total_pages <= 1: view.children[0].disabled = True; view.children[1].disabled = True
+            else: view.update_buttons()
             await i.followup.send(embed=view.get_embed(), view=view)
-            return
+
+        # ================== 6. BLACKLIST ADD ==================
+        elif mode.value == "blk_add":
+            if not user_id: return await i.followup.send("❌ **Roblox ID required!**")
+            u, d = await roblox_info(user_id)
+
+            # Blacklist me daalo
+            supabase.table("blacklist_users").upsert({"user_id": user_id}).execute()
+            # Whitelist se hatao (Double Attack 😈)
+            try: supabase.table("access_users").delete().eq("user_id", user_id).execute()
+            except: pass
+
+            try: log_action("blacklist_add", user_id, u, d, i.user.id)
+            except: pass
+
+            embed = discord.Embed(title="🚫 User Blacklisted", color=0x000000) # Full Black
+            embed.add_field(name="👤 Target", value=f"**{d}**\n(@{u})", inline=True)
+            embed.add_field(name="🆔 ID", value=f"`{user_id}`", inline=True)
+            embed.add_field(name="💀 Status", value="Removed from Whitelist & Blocked.", inline=False)
+            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+            await i.followup.send(embed=embed)
+
+        # ================== 7. BLACKLIST REMOVE ==================
+        elif mode.value == "blk_remove":
+            if not user_id: return await i.followup.send("❌ **Roblox ID required!**")
+            u, d = await roblox_info(user_id)
+
+            supabase.table("blacklist_users").delete().eq("user_id", user_id).execute()
+
+            try: log_action("blacklist_remove", user_id, u, d, i.user.id)
+            except: pass
+
+            embed = discord.Embed(title="✅ Blacklist Removed", color=0x3498db)
+            embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
+            embed.add_field(name="✨ Status", value="User is no longer blocked.", inline=False)
+            await i.followup.send(embed=embed)
+
+        # ================== 8. BLACKLIST LIST ==================
+        elif mode.value == "blk_list":
+            data = supabase.table("blacklist_users").select("user_id").execute().data
+            if not data: return await i.followup.send(embed=discord.Embed(title="☠️ Blacklist", description="✅ No users blacklisted.", color=0x2ecc71))
+
+            view = BlacklistPaginator(data, i.user)
+            if view.total_pages <= 1: view.children[0].disabled = True; view.children[1].disabled = True
+            else: view.update_buttons()
+            
+            # Note: Blacklist me fetch async hai, so we call get_page_embed first
+            embed = await view.get_page_embed()
+            await i.followup.send(embed=embed, view=view)
+
+        # ================== 9. CLEAR WHITELIST ==================
+        elif mode.value == "clear":
+            embed = discord.Embed(title="⚠️ DANGER ZONE", description="Are you sure you want to **RESET** the whitelist?", color=0xffaa00)
+            view = AccessClearView(i.user.id)
+            await i.response.send_message(embed=embed, view=view, ephemeral=False)
 
     except Exception as e:
         print(f"ERROR: {e}")
-        await i.followup.send(f"❌ System Error: `{e}`")
-
-    
-from discord import ui
-
-@bot.tree.command(name="accessclear", description="Remove ALL whitelisted users with confirmation")
-async def accessclear(i: discord.Interaction):
-
-    if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION", "Only owners can do this"))
-
-    class Confirm(ui.View):
-        def __init__(self):
-            super().__init__(timeout=30)
-            self.value = None
-
-        @ui.button(label="YES - Clear All", style=discord.ButtonStyle.danger)
-        async def yes(self, interaction: discord.Interaction, button: ui.Button):
-            if interaction.user.id != i.user.id:
-                return await interaction.response.send_message(
-                    "❌ Ye confirmation tumhara nahi hai.", ephemeral=True
-                )
-
-            supabase.table("access_users").delete().neq("user_id", "").execute()
-
-            await interaction.response.edit_message(
-                embed=emb(
-                    "🔐 ACCESS RESET CONFIRMED",
-                    "All whitelisted users successfully removed!",
-                    0xff0000
-                ),
-                view=None
-            )
-            self.value = True
-            self.stop()
-
-        @ui.button(label="NO - Cancel", style=discord.ButtonStyle.success)
-        async def no(self, interaction: discord.Interaction, button: ui.Button):
-            if interaction.user.id != i.user.id:
-                return await interaction.response.send_message(
-                    "❌ Ye confirmation tumhara nahi hai.", ephemeral=True
-                )
-
-            await interaction.response.edit_message(
-                embed=emb("❎ CANCELLED", "Access reset cancelled.", 0x2ecc71),
-                view=None
-            )
-            self.value = False
-            self.stop()
-
-    view = Confirm()
-    await i.response.send_message(
-        embed=emb(
-            "⚠️ CONFIRMATION REQUIRED",
-            "Are you sure you want to **delete ALL access whitelist users?**\nThis cannot be undone.",
-            0xffaa00
-        ),
-        view=view
-    )
+        try: await i.followup.send(f"❌ **System Error:** `{e}`")
+        except: await i.response.send_message(f"❌ **System Error:** `{e}`", ephemeral=True)               
 
 @bot.tree.command(
     name="verifiedlist",
@@ -1728,138 +1851,6 @@ async def verifycheck(i: discord.Interaction, discord_id: str):
         )
 
     await safe_send(i, emb("🔍 USER VERIFICATION HISTORY", txt[:4000], 0x9b59b6))
-    
-@bot.tree.command(name="blacklist", description="Manage verify blacklist")
-@app_commands.choices(mode=[
-    app_commands.Choice(name="add", value="add"),
-    app_commands.Choice(name="remove", value="remove"),
-    app_commands.Choice(name="list", value="list"),
-])
-async def blacklist(i: discord.Interaction, mode: app_commands.Choice[str], user_id: str = None):
-    if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION", "Owner only command"))
-
-    # =============================
-    # ADD BLACKLIST + REMOVE ACCESS
-    # =============================
-    if mode.value == "add":  # <-- User ID check condition ke andar le gaye
-        if not user_id:
-             return await safe_send(i, emb("❌ ERROR", "User ID required!"))
-
-        # 👇 YAHAN GALTI THI (Ab 'await' laga diya)
-        u, d = await roblox_info(user_id)
-
-        supabase.table("blacklist_users").upsert({
-            "user_id": user_id
-        }).execute()
-
-        try:
-            supabase.table("access_users").delete().eq("user_id", user_id).execute()
-        except:
-            pass
-
-        # Log Action
-        try: log_action("blacklist_add", user_id, u, d, i.user.id)
-        except: pass
-
-        return await safe_send(
-            i,
-            emb(
-                "🚫 BLACKLISTED",
-                f"**Roblox ID:** `{user_id}`\n"
-                f"**Username:** `{u}`\n"
-                f"**Display Name:** `{d}`\n\n"
-                f"User successfully **Blacklisted & Removed From Whitelist**",
-                0xff0000
-            )
-        )
-
-    # =============================
-    # REMOVE FROM BLACKLIST
-    # =============================
-    if mode.value == "remove":
-        if not user_id:
-             return await safe_send(i, emb("❌ ERROR", "User ID required!"))
-
-        # 👇 YAHAN BHI 'await' MISSING THA (Fixed)
-        u, d = await roblox_info(user_id)
-
-        supabase.table("blacklist_users").delete().eq("user_id", user_id).execute()
-
-        # Log Action
-        try: log_action("blacklist_remove", user_id, u, d, i.user.id)
-        except: pass
-
-        return await safe_send(
-            i,
-            emb(
-                "✅ BLACKLIST REMOVED",
-                f"**Roblox ID:** `{user_id}`\n"
-                f"**Username:** `{u}`\n"
-                f"**Display Name:** `{d}`\n\n"
-                f"User removed from blacklist",
-                0x00ff00
-            )
-        )
-
-    # =============================
-    # LIST BLACKLIST
-    # =============================
-    if mode.value == "list":
-        data = supabase.table("blacklist_users").select("user_id").execute().data
-
-        if not data:
-            return await safe_send(i, emb("📛 BLACKLISTED USERS", "None"))
-
-        txt = ""
-        for x in data:
-            uid = x["user_id"]
-            # 👇 YAHAN BHI 'await' ZAROORI HAI
-            u, d = await roblox_info(uid)
-
-            txt += (
-                f"• **Username:** {u}\n"
-                f"  Display: {d}\n"
-                f"  ID: `{uid}`\n\n"
-            )
-
-        return await safe_send(
-            i,
-            emb(
-                "📛 BLACKLISTED USERS",
-                txt,
-                0xffaa00
-            )
-        )
-
-# ================== MAINTENANCE ==================
-@bot.tree.command(name="maintenance")
-@app_commands.choices(mode=[
-    app_commands.Choice(name="on", value="on"),
-    app_commands.Choice(name="off", value="off")
-])
-async def maintenance(i:discord.Interaction, mode:app_commands.Choice[str]):
-    if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
-
-    val = "true" if mode.value=="on" else "false"
-    
-    # DB Update
-    supabase.table("bot_settings").update(
-        {"value": val}
-    ).eq("key","maintenance").execute()
-    
-    # 🔥 LOG SAVE KARO
-    try:
-        log_action(f"maintenance_{mode.value}", "-", "-", "-", i.user.id)
-    except:
-        pass
-
-    await safe_send(i, emb(
-        "🛠 MAINTENANCE",
-        f"System Maintenance is now **{mode.value.upper()}**"
-    ))
-
 
 @bot.tree.command(name="whois", description="🕵️ Get detailed status of a Roblox User")
 async def whois(i: discord.Interaction, user_id: str):
