@@ -3066,8 +3066,12 @@ async def on_member_remove(member):
     except Exception as e:
         print(f"LEAVE EVENT ERROR: {e}")
 
-# ================== RESTORED SAY COMMAND (COLOR EMBEDS) ==================
-@bot.tree.command(name="say", description="📢 Make the bot speak (Text, Embed, or Image)")
+# ================== SAY COMMAND (WITH IMAGE & LOGS) ==================
+
+# 👇 Apki di hui Log Channel ID set kar di hai
+SAY_LOG_CHANNEL_ID = 1450514760276774967
+
+@bot.tree.command(name="say", description="📢 Make the bot speak (With Image Support & Logs)")
 @app_commands.describe(
     message="Message content",
     channel="Where to send? (Default: current channel)",
@@ -3082,60 +3086,75 @@ async def on_member_remove(member):
 ])
 async def say(i: discord.Interaction, message: str, mode: app_commands.Choice[str] = None, channel: discord.TextChannel = None, image: discord.Attachment = None):
     
-    # 1. PERMISSION CHECK (Owner + Say Access List)
+    # 1. PERMISSION CHECK
     is_authorized = owner(i)
-
     if not is_authorized:
         try:
-            # Database check
             data = supabase.table("say_access").select("user_id").eq("user_id", str(i.user.id)).execute().data
-            if data:
-                is_authorized = True
-        except:
-            pass
+            if data: is_authorized = True
+        except: pass
 
     if not is_authorized:
         return await i.response.send_message("❌ **Access Denied:** Aapko `/say` use karne ki permission nahi hai.", ephemeral=True)
 
-    # 2. SETUP VARIABLES
+    # 2. SETUP
     target_channel = channel or i.channel
     mode_value = mode.value if mode else "text"
     
     await i.response.defer(ephemeral=True)
 
     try:
-        # Image Processing
+        # --- IMAGE PROCESSING ---
+        # Agar user ne image attach ki hai, to use file banao
         file_attachment = await image.to_file() if image else None
         
-        # --- MODE 1: PLAIN TEXT ---
+        # --- SENDING MESSAGE ---
         if mode_value == "text":
-            await target_channel.send(content=message, file=file_attachment)
-
-        # --- MODE 2: COLORED EMBEDS ---
+            # Plain text ke saath image bhejo
+            sent_msg = await target_channel.send(content=message, file=file_attachment)
         else:
-            # Color Selection
-            if mode_value == "green":
-                color = 0x2ecc71
-                title = "✅ Success"
-            elif mode_value == "red":
-                color = 0xff0000
-                title = "❌ Error"
-            elif mode_value == "blue":
-                color = 0x3498db
-                title = "ℹ️ Info"
-            else:
-                color = 0x2f3136
-                title = "📢 Notice"
+            # Color logic
+            if mode_value == "green": color, title = 0x2ecc71, "✅ Success"
+            elif mode_value == "red": color, title = 0xff0000, "❌ Error"
+            elif mode_value == "blue": color, title = 0x3498db, "ℹ️ Info"
+            else: color, title = 0x2f3136, "📢 Notice"
 
-            # Create Embed
+            # Embed banao
             embed = discord.Embed(title=title, description=message, color=color)
             
-            # Agar image hai, to embed ke andar lagana hai ya bahar?
-            # Usually bahar attach karte hain taaki bada dikhe
-            await target_channel.send(embed=embed, file=file_attachment)
+            # Embed ke saath image (Attachment) bhejo
+            # Note: Embed ke andar image dikhane ke liye hum 'set_image' use kar sakte hain
+            # lekin attachment bhejna zyada safe/reliable hota hai.
+            if image:
+                embed.set_image(url=f"attachment://{image.filename}")
+                
+            sent_msg = await target_channel.send(embed=embed, file=file_attachment)
 
         # 3. CONFIRMATION
         await i.followup.send(f"✅ **Sent!** Message delivered to {target_channel.mention}")
+
+        # ================== 4. LOGGING TO YOUR CHANNEL ==================
+        try:
+            log_channel = bot.get_channel(SAY_LOG_CHANNEL_ID)
+            if log_channel:
+                log_embed = discord.Embed(title="📢 Say Command Used", color=0xffa500) # Orange Log
+                
+                log_embed.add_field(name="👤 Executor", value=f"{i.user.mention}\n(`{i.user.id}`)", inline=True)
+                log_embed.add_field(name="📍 Channel", value=f"{target_channel.mention}\n(`{target_channel.id}`)", inline=True)
+                log_embed.add_field(name="🎨 Mode", value=f"`{mode_value.upper()}`", inline=True)
+                log_embed.add_field(name="📝 Content", value=f"```{message}```", inline=False)
+                
+                # Log me photo dikhana
+                if image:
+                    log_embed.set_thumbnail(url=image.url)
+                    log_embed.add_field(name="🖼️ Image Attached", value=f"[Click to View]({image.url})", inline=False)
+
+                log_embed.set_footer(text=f"Time: {datetime.utcnow().strftime('%H:%M:%S UTC')}")
+                
+                await log_channel.send(embed=log_embed)
+            
+        except Exception as e:
+            print(f"Logging Error: {e}")
 
     except discord.Forbidden:
         await i.followup.send(f"❌ **Permission Error:** Bot ko {target_channel.mention} me message bhejne ki permission nahi hai.")
@@ -3169,7 +3188,7 @@ async def sayaccess(i: discord.Interaction, action: app_commands.Choice[str], us
                 "added_by": str(i.user.id)
             }).execute()
             
-            embed = discord.Embed(title="✅ Access Granted", description=f"**{user.mention}** ab `/say` command use kar sakta hai.", color=0x2ecc71)
+            embed discord.Embed(title="✅ Access Granted", description=f"**{user.mention}** ab `/say` command use kar sakta hai.", color=0x2ecc71)
             embed.set_thumbnail(url=user.display_avatar.url)
             embed.add_field(name="👤 User Info", value=f"**Name:** {user.display_name}\n**ID:** `{user.id}`", inline=False)
             embed.set_footer(text=f"Added by {i.user.display_name}", icon_url=i.user.display_avatar.url)
