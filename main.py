@@ -221,6 +221,108 @@ class VipPaginator(discord.ui.View):
         embed = await self.get_page_embed()
         await i.response.edit_message(embed=embed, view=self)
 
+# ================== WORD PAGINATOR (FOR BANNED WORDS) ==================
+class WordPaginator(discord.ui.View):
+    def __init__(self, data, author):
+        super().__init__(timeout=60)
+        self.data = data
+        self.author = author
+        self.per_page = 20 # Ek page par 20 words
+        self.current_page = 0
+        self.total_pages = (len(data) + self.per_page - 1) // self.per_page
+
+    def get_embed(self):
+        start = self.current_page * self.per_page
+        end = start + self.per_page
+        page_data = self.data[start:end]
+
+        # Words ko comma se jod kar dikhayenge
+        desc = ", ".join([f"||`{w}`||" for w in page_data])
+        
+        embed = discord.Embed(
+            title=f"🚫 Banned Words List (Total: {len(self.data)})",
+            description=desc if desc else "No words found.",
+            color=0xe74c3c
+        )
+        embed.set_footer(text=f"Page {self.current_page + 1}/{self.total_pages} • Restricted Words System")
+        return embed
+
+    def update_buttons(self):
+        self.children[0].disabled = (self.current_page == 0)
+        self.children[1].disabled = (self.current_page == self.total_pages - 1)
+
+    @discord.ui.button(label="◀️ Previous", style=discord.ButtonStyle.secondary)
+    async def prev_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id: return await i.response.send_message("❌ Not for you.", ephemeral=True)
+        self.current_page -= 1
+        self.update_buttons()
+        await i.response.edit_message(embed=self.get_embed(), view=self)
+
+    @discord.ui.button(label="Next ▶️", style=discord.ButtonStyle.primary)
+    async def next_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id: return await i.response.send_message("❌ Not for you.", ephemeral=True)
+        self.current_page += 1
+        self.update_buttons()
+        await i.response.edit_message(embed=self.get_embed(), view=self)
+
+# ================== VIP USER PAGINATOR (REUSED) ==================
+# Note: Agar aapne pichle code me VipPaginator lagaya hai to dobara lagane ki zaroorat nahi hai.
+# Agar nahi lagaya, to ye use karein:
+class RestrictUserPaginator(discord.ui.View):
+    def __init__(self, data, author, bot_ref):
+        super().__init__(timeout=60)
+        self.data = data
+        self.author = author
+        self.bot = bot_ref
+        self.per_page = 10
+        self.current_page = 0
+        self.total_pages = (len(data) + self.per_page - 1) // self.per_page
+
+    async def get_page_embed(self):
+        start = self.current_page * self.per_page
+        end = start + self.per_page
+        page_data = self.data[start:end]
+
+        embed = discord.Embed(title=f"👑 Allowed Users (Total: {len(self.data)})", color=0x2ecc71)
+        desc = ""
+        
+        for index, row in enumerate(page_data):
+            uid = int(row['user_id'])
+            s_no = start + index + 1
+            user = self.bot.get_user(uid)
+            if not user:
+                try: user = await self.bot.fetch_user(uid)
+                except: user = None
+
+            if user:
+                desc += f"`{s_no:02d}.` **{user.display_name}** (@{user.name})\n🆔 `{uid}`\n\n"
+            else:
+                desc += f"`{s_no:02d}.` **Unknown User**\n🆔 `{uid}`\n\n"
+
+        embed.description = desc
+        embed.set_footer(text=f"Page {self.current_page + 1}/{self.total_pages} • Bypass List")
+        return embed
+
+    def update_buttons(self):
+        self.children[0].disabled = (self.current_page == 0)
+        self.children[1].disabled = (self.current_page == self.total_pages - 1)
+
+    @discord.ui.button(label="◀️ Previous", style=discord.ButtonStyle.secondary)
+    async def prev_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id: return await i.response.send_message("❌ Not for you.", ephemeral=True)
+        self.current_page -= 1
+        self.update_buttons()
+        embed = await self.get_page_embed()
+        await i.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Next ▶️", style=discord.ButtonStyle.primary)
+    async def next_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id: return await i.response.send_message("❌ Not for you.", ephemeral=True)
+        self.current_page += 1
+        self.update_buttons()
+        embed = await self.get_page_embed()
+        await i.response.edit_message(embed=embed, view=self)
+
 # ================== ENV ==================
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
@@ -2965,100 +3067,139 @@ async def say(
     except Exception as e:
         await i.response.send_message(f"❌ Error: {e}", ephemeral=True)
 
-# ================== RESTRICT COMMAND (VIP USER + BULK WORDS) ==================
+# ================== RESTRICT COMMAND (PREMIUM) ==================
 @bot.tree.command(name="restrict", description="Manage Banned Words & Whitelisted Users")
 @app_commands.choices(action=[
     app_commands.Choice(name="add / allow", value="add"),
     app_commands.Choice(name="remove / block", value="remove"),
     app_commands.Choice(name="list", value="list"),
 ])
-@app_commands.describe(word="Comma laga ke multiple likh sakte ho (e.g. kutt, kamina)", user="VIP banane ke liye user select karo")
+@app_commands.describe(word="Comma separated (e.g. word1, word2)", user="User to Allow/Block")
 async def restrict(i: discord.Interaction, action: app_commands.Choice[str], word: str = None, user: discord.User = None):
     
-    if i.user.id != 804687084249284618: 
-        await i.response.send_message("❌ **Access Denied**", ephemeral=True)
+    # 1. OWNER CHECK (Database Logic)
+    if not owner(i): 
+        await i.response.send_message("❌ **Only Owner/Admins can use this.**", ephemeral=True)
         return
 
     await i.response.defer(ephemeral=False)
+    
+    # Global Cache access (Zaroori hai fast processing ke liye)
     global BANNED_WORDS_CACHE, BYPASS_USERS_CACHE
 
-    # ================= 1. USER MANAGEMENT (VIP) =================
-    if user:
-        if action.value == "add":
-            # Add to VIP
-            supabase.table("restrict_bypass").upsert({"user_id": str(user.id)}).execute()
-            BYPASS_USERS_CACHE.add(user.id)
-            
-            embed = discord.Embed(title="👑 VIP User Added", description=f"{user.mention} ab **gaali** de sakta hai. Bot delete nahi karega.", color=0x2ecc71)
-            await i.followup.send(embed=embed)
+    try:
+        # ================= 1. USER MANAGEMENT (VIP) =================
+        if user:
+            if action.value == "add":
+                # Add to DB
+                supabase.table("restrict_bypass").upsert({"user_id": str(user.id)}).execute()
+                # Update Cache
+                BYPASS_USERS_CACHE.add(user.id)
+                
+                embed = discord.Embed(title="👑 Exception Added", description=f"✅ **{user.mention}** ab restrictions bypass kar sakta hai.", color=0x2ecc71)
+                embed.set_thumbnail(url=user.display_avatar.url)
+                embed.set_footer(text=f"Allowed by {i.user.display_name}")
+                await i.followup.send(embed=embed)
+                return
 
-        elif action.value == "remove":
-            # Remove from VIP
-            supabase.table("restrict_bypass").delete().eq("user_id", str(user.id)).execute()
-            BYPASS_USERS_CACHE.discard(user.id)
+            elif action.value == "remove":
+                # Remove from DB
+                supabase.table("restrict_bypass").delete().eq("user_id", str(user.id)).execute()
+                # Update Cache
+                BYPASS_USERS_CACHE.discard(user.id)
 
-            embed = discord.Embed(title="💀 VIP Removed", description=f"{user.mention} ab normal user hai. Gaali di toh ban hoga.", color=0xe74c3c)
-            await i.followup.send(embed=embed)
-            
-        elif action.value == "list":
-             # List VIPs
-            if not BYPASS_USERS_CACHE:
-                await i.followup.send("📂 Koi VIP User nahi hai.")
+                embed = discord.Embed(title="🚫 Exception Removed", description=f"⚠️ **{user.mention}** ab restrictions bypass nahi kar sakta.", color=0xe74c3c)
+                embed.set_thumbnail(url=user.display_avatar.url)
+                embed.set_footer(text=f"Blocked by {i.user.display_name}")
+                await i.followup.send(embed=embed)
+                return
+                
+            elif action.value == "list":
+                # Fetch fresh list from DB for pagination
+                data = supabase.table("restrict_bypass").select("user_id").execute().data
+                
+                if not data:
+                    await i.followup.send(embed=discord.Embed(title="📂 List Empty", description="Koi user allowed nahi hai.", color=0xffa500))
+                    return
+                
+                # Pagination
+                view = RestrictUserPaginator(data, i.user, bot)
+                if view.total_pages <= 1:
+                    view.children[0].disabled = True
+                    view.children[1].disabled = True
+                else:
+                    view.update_buttons()
+
+                embed = await view.get_page_embed()
+                await i.followup.send(embed=embed, view=view)
+                return
+
+        # ================= 2. WORD MANAGEMENT (BULK) =================
+        if word:
+            # Words clean karna
+            raw_words = [w.strip().lower() for w in word.split(',') if w.strip()]
+
+            if action.value == "add":
+                added = []
+                for w in raw_words:
+                    if w and w not in BANNED_WORDS_CACHE:
+                        supabase.table("banned_words").insert({"word": w}).execute()
+                        BANNED_WORDS_CACHE.add(w)
+                        added.append(w)
+                
+                if added:
+                    # Spoiler tag lagaya taaki chat gandi na dikhe
+                    msg = ", ".join([f"||`{x}`||" for x in added])
+                    embed = discord.Embed(title="🛡️ Words Banned", description=f"**Successfully Added:**\n{msg}", color=0xe74c3c)
+                    embed.set_footer(text=f"Total: {len(added)} words added")
+                    await i.followup.send(embed=embed)
+                else:
+                    await i.followup.send("⚠️ Ye words pehle se list mein hain.")
+                return
+
+            elif action.value == "remove":
+                removed = []
+                for w in raw_words:
+                    if w in BANNED_WORDS_CACHE:
+                        supabase.table("banned_words").delete().eq("word", w).execute()
+                        BANNED_WORDS_CACHE.discard(w)
+                        removed.append(w)
+                
+                if removed:
+                    msg = ", ".join([f"||`{x}`||" for x in removed])
+                    embed = discord.Embed(title="🗑️ Words Unbanned", description=f"**Successfully Removed:**\n{msg}", color=0x2ecc71)
+                    await i.followup.send(embed=embed)
+                else:
+                    await i.followup.send("⚠️ Ye words list mein nahi mile.")
                 return
             
-            txt = ", ".join([f"<@{uid}>" for uid in BYPASS_USERS_CACHE])
-            embed = discord.Embed(title="👑 Whitelisted Users (Allowed to abuse)", description=txt, color=0xf1c40f)
-            await i.followup.send(embed=embed)
-        return
+        # ================= 3. LIST ALL WORDS =================
+        if action.value == "list":
+            # Cache ko list me convert karke sort karo
+            all_words = sorted(list(BANNED_WORDS_CACHE))
 
-    # ================= 2. WORD MANAGEMENT (BULK SUPPORT) =================
-    if word:
-        # Comma se tod kar list banao
-        raw_words = [w.strip().lower() for w in word.split(',')]
-
-        if action.value == "add":
-            added = []
-            for w in raw_words:
-                if w and w not in BANNED_WORDS_CACHE:
-                    supabase.table("banned_words").insert({"word": w}).execute()
-                    BANNED_WORDS_CACHE.add(w)
-                    added.append(w)
+            if not all_words:
+                await i.followup.send(embed=discord.Embed(title="📂 Banned Words", description="List is currently empty.", color=0x3498db))
+                return
             
-            if added:
-                msg = ", ".join([f"||`{x}`||" for x in added])
-                await i.followup.send(embed=discord.Embed(title="🛡️ Bulk Words Added", description=f"**Added:** {msg}", color=0x2ecc71))
+            # Pagination Logic for Words
+            view = WordPaginator(all_words, i.user)
+            if view.total_pages <= 1:
+                view.children[0].disabled = True
+                view.children[1].disabled = True
             else:
-                await i.followup.send("⚠️ Ye words pehle se added hain.")
+                view.update_buttons()
 
-        elif action.value == "remove":
-            removed = []
-            for w in raw_words:
-                if w in BANNED_WORDS_CACHE:
-                    supabase.table("banned_words").delete().eq("word", w).execute()
-                    BANNED_WORDS_CACHE.discard(w)
-                    removed.append(w)
-            
-            if removed:
-                msg = ", ".join([f"||`{x}`||" for x in removed])
-                await i.followup.send(embed=discord.Embed(title="🗑️ Bulk Words Removed", description=f"**Removed:** {msg}", color=0xe74c3c))
-            else:
-                await i.followup.send("⚠️ Ye words list mein nahi mile.")
-            
-        return
-
-    # ================= 3. LIST ALL WORDS =================
-    if action.value == "list":
-        if not BANNED_WORDS_CACHE:
-            await i.followup.send(embed=discord.Embed(title="📂 Banned Words", description="List Empty hai.", color=0x3498db))
+            await i.followup.send(embed=view.get_embed(), view=view)
             return
         
-        words_list = ", ".join([f"`{w}`" for w in BANNED_WORDS_CACHE])
-        if len(words_list) > 4000: words_list = words_list[:4000] + "..."
-        await i.followup.send(embed=discord.Embed(title=f"🚫 Banned Words ({len(BANNED_WORDS_CACHE)})", description=words_list, color=0x3498db))
-    
-    else:
-        await i.followup.send("❌ **Error:** Ya toh `word` likho ya `user` select karo!")
+        # Agar kuch select nahi kiya
+        await i.followup.send("❌ **Usage Error:** Ya toh `word` likho ya `user` select karo!", ephemeral=True)
 
+    except Exception as e:
+        print(f"RESTRICT ERROR: {e}")
+        await i.followup.send(f"❌ System Error: `{e}`")
+                
 # ================== FUN: FAKE HACK COMMAND ==================
 @bot.tree.command(name="hack", description="Prank hack a user (Funny)")
 async def hack(i: discord.Interaction, target: discord.User):
