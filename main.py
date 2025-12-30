@@ -3075,6 +3075,82 @@ async def on_member_remove(member):
     except Exception as e:
         print(f"LEAVE EVENT ERROR: {e}")
 
+# ================== RESTORED SAY COMMAND (COLOR EMBEDS) ==================
+@bot.tree.command(name="say", description="📢 Make the bot speak (Text, Embed, or Image)")
+@app_commands.describe(
+    message="Message content",
+    channel="Where to send? (Default: current channel)",
+    mode="Style of message (Text/Embed)",
+    image="Attach an image (Optional)"
+)
+@app_commands.choices(mode=[
+    app_commands.Choice(name="📝 Plain Text", value="text"),
+    app_commands.Choice(name="✅ Green Embed (Success)", value="green"),
+    app_commands.Choice(name="❌ Red Embed (Error)", value="red"),
+    app_commands.Choice(name="ℹ️ Blue Embed (Info)", value="blue"),
+])
+async def say(i: discord.Interaction, message: str, mode: app_commands.Choice[str] = None, channel: discord.TextChannel = None, image: discord.Attachment = None):
+    
+    # 1. PERMISSION CHECK (Owner + Say Access List)
+    is_authorized = owner(i)
+
+    if not is_authorized:
+        try:
+            # Database check
+            data = supabase.table("say_access").select("user_id").eq("user_id", str(i.user.id)).execute().data
+            if data:
+                is_authorized = True
+        except:
+            pass
+
+    if not is_authorized:
+        return await i.response.send_message("❌ **Access Denied:** Aapko `/say` use karne ki permission nahi hai.", ephemeral=True)
+
+    # 2. SETUP VARIABLES
+    target_channel = channel or i.channel
+    mode_value = mode.value if mode else "text"
+    
+    await i.response.defer(ephemeral=True)
+
+    try:
+        # Image Processing
+        file_attachment = await image.to_file() if image else None
+        
+        # --- MODE 1: PLAIN TEXT ---
+        if mode_value == "text":
+            await target_channel.send(content=message, file=file_attachment)
+
+        # --- MODE 2: COLORED EMBEDS ---
+        else:
+            # Color Selection
+            if mode_value == "green":
+                color = 0x2ecc71
+                title = "✅ Success"
+            elif mode_value == "red":
+                color = 0xff0000
+                title = "❌ Error"
+            elif mode_value == "blue":
+                color = 0x3498db
+                title = "ℹ️ Info"
+            else:
+                color = 0x2f3136
+                title = "📢 Notice"
+
+            # Create Embed
+            embed = discord.Embed(title=title, description=message, color=color)
+            
+            # Agar image hai, to embed ke andar lagana hai ya bahar?
+            # Usually bahar attach karte hain taaki bada dikhe
+            await target_channel.send(embed=embed, file=file_attachment)
+
+        # 3. CONFIRMATION
+        await i.followup.send(f"✅ **Sent!** Message delivered to {target_channel.mention}")
+
+    except discord.Forbidden:
+        await i.followup.send(f"❌ **Permission Error:** Bot ko {target_channel.mention} me message bhejne ki permission nahi hai.")
+    except Exception as e:
+        await i.followup.send(f"❌ **System Error:** `{e}`")
+
 # ================== SAY ACCESS MANAGER (PREMIUM) ==================
 @bot.tree.command(name="sayaccess", description="Manage who can use /say command (Owner Only)")
 @app_commands.choices(action=[
