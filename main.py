@@ -90,6 +90,74 @@ def log_action(action, user_id, username, display, executor):
     
     print("⚠️ Failed to save log after retries")
 
+# ================== PAGINATION CLASS (PREMIUM LIST) ==================
+class AccessPaginator(discord.ui.View):
+    def __init__(self, data, author):
+        super().__init__(timeout=60)
+        self.data = data
+        self.author = author
+        self.per_page = 10  # Ek page par 10 log dikhenge
+        self.current_page = 0
+        self.total_pages = (len(data) + self.per_page - 1) // self.per_page
+
+    def get_embed(self):
+        # Data slicing (Page logic)
+        start = self.current_page * self.per_page
+        end = start + self.per_page
+        page_data = self.data[start:end]
+
+        # Embed Text Build
+        desc = ""
+        for index, user in enumerate(page_data):
+            # Serial Number (Overall list ke hisaab se)
+            s_no = start + index + 1
+            
+            uid = user.get("user_id", "Unknown")
+            uname = user.get("username", "Unknown")
+            dname = user.get("display_name", "Unknown")
+            
+            # ✨ Premium Line Format
+            desc += (
+                f"`{s_no:02d}.` **{dname}** (@{uname})\n"
+                f"   🆔 `{uid}`\n\n"
+            )
+
+        embed = discord.Embed(
+            title=f"📜 Whitelisted Users (Total: {len(self.data)})",
+            description=desc,
+            color=0x3498db
+        )
+        # Footer me requester ka naam aur Page number
+        embed.set_footer(
+            text=f"Requested by {self.author.display_name} • Page {self.current_page + 1}/{self.total_pages}",
+            icon_url=self.author.display_avatar.url
+        )
+        return embed
+
+    def update_buttons(self):
+        # Pehle page par "Back" disable
+        self.children[0].disabled = (self.current_page == 0)
+        # Aakhri page par "Next" disable
+        self.children[1].disabled = (self.current_page == self.total_pages - 1)
+
+    @discord.ui.button(label="◀️ Previous", style=discord.ButtonStyle.secondary, disabled=True)
+    async def prev_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id:
+            return await i.response.send_message("❌ You cannot control this menu.", ephemeral=True)
+        
+        self.current_page -= 1
+        self.update_buttons()
+        await i.response.edit_message(embed=self.get_embed(), view=self)
+
+    @discord.ui.button(label="Next ▶️", style=discord.ButtonStyle.primary)
+    async def next_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id:
+            return await i.response.send_message("❌ You cannot control this menu.", ephemeral=True)
+
+        self.current_page += 1
+        self.update_buttons()
+        await i.response.edit_message(embed=self.get_embed(), view=self)
+
 # ================== ENV ==================
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
@@ -849,7 +917,7 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
         except Exception as e:
             await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
 
-# ================== ACCESS COMMAND (FIXED & STYLED) ==================
+# ================== ACCESS COMMAND (WITH PAGINATION) ==================
 @bot.tree.command(name="access", description="Manage Verification Access (Owner Only)")
 @app_commands.choices(mode=[
     app_commands.Choice(name="on", value="on"),
@@ -860,68 +928,49 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
 ])
 async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id: str = None):
     
-    # 1. OWNER CHECK
-    if i.user.id != 804687084249284618: 
+    # 1. OWNER CHECK (Database se)
+    if not owner(i): 
         await i.response.send_message("❌ Only Owner can use this.", ephemeral=True)
         return
 
-    # 2. PUBLIC LOAD (Sabko dikhega)
+    # 2. Defer (Loading...)
     await i.response.defer(ephemeral=False)
 
     try:
         # ================== ACCESS ON / OFF ==================
         if mode.value in ["on", "off"]:
-            # Database Update
             supabase.table("bot_settings").update(
                 {"value": "true" if mode.value == "on" else "false"}
             ).eq("key", "access_enabled").execute()
 
-            # Colors: Green for ON, Red for OFF
-            color = 0x2ecc71 if mode.value == "on" else 0xe74c3c
             status_emoji = "🟢" if mode.value == "on" else "🔴"
+            color = 0x2ecc71 if mode.value == "on" else 0xe74c3c
             
             embed = discord.Embed(
                 title=f"{status_emoji} Access System Updated",
-                description=f"**Verification Access is now:** `{mode.value.upper()}`",
+                description=f"Verification Access is now **{mode.value.upper()}**",
                 color=color
             )
-            embed.set_footer(text=f"Updated by {i.user.display_name}")
-            
-            # Log try/except
-            try: log_action(f"access_{mode.value}", "-", "-", "-", i.user.id)
-            except: pass
-
+            embed.set_footer(text=f"Executed by {i.user.display_name}", icon_url=i.user.display_avatar.url)
             await i.followup.send(embed=embed)
             return
 
         # ================== ACCESS ADD ==================
         if mode.value == "add":
             if not user_id:
-                await i.followup.send("❌ **Roblox ID required!**")
-                return
+                return await i.followup.send("❌ **Roblox ID required!**")
             
-            # Fetch Info (Await added for safety)
             u, d = await roblox_info(user_id)
 
-            # Database Update
             supabase.table("access_users").upsert({
-                "user_id": user_id,
-                "username": u,
-                "display_name": d,
-                "discord_id": str(i.user.id)
+                "user_id": user_id, "username": u, "display_name": d, "discord_id": str(i.user.id)
             }).execute()
 
-            try: log_action("access_add", user_id, u, d, i.user.id)
-            except: pass
-
-            embed = discord.Embed(
-                title="✅ Access Granted",
-                description=f"User has been whitelisted successfully.",
-                color=0x2ecc71
-            )
-            embed.add_field(name="👤 User Info", value=f"**Name:** {u}\n**Display:** {d}", inline=True)
-            embed.add_field(name="🆔 Roblox ID", value=f"`{user_id}`", inline=True)
+            embed = discord.Embed(title="✅ Access Granted", color=0x2ecc71)
+            embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
+            embed.add_field(name="🆔 ID", value=f"`{user_id}`", inline=True)
             embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+            embed.set_footer(text=f"Added by {i.user.display_name}", icon_url=i.user.display_avatar.url)
             
             await i.followup.send(embed=embed)
             return
@@ -929,61 +978,44 @@ async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id
         # ================== ACCESS REMOVE ==================
         if mode.value == "remove":
             if not user_id:
-                await i.followup.send("❌ **Roblox ID required!**")
-                return
+                return await i.followup.send("❌ **Roblox ID required!**")
 
-            # Info nikalo details ke liye
             u, d = await roblox_info(user_id)
-
-            # Phir Delete karo
             supabase.table("access_users").delete().eq("user_id", user_id).execute()
 
-            try: log_action("access_remove", user_id, u, d, i.user.id)
-            except: pass
-
-            embed = discord.Embed(
-                title="🗑️ Access Removed",
-                description=f"User has been removed from whitelist.",
-                color=0xff0000 
-            )
-            embed.add_field(name="👤 Removed User", value=f"**Name:** {u}\n**Display:** {d}", inline=True)
-            embed.add_field(name="🆔 Roblox ID", value=f"`{user_id}`", inline=True)
+            embed = discord.Embed(title="🗑️ Access Removed", color=0xff0000)
+            embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
+            embed.add_field(name="🆔 ID", value=f"`{user_id}`", inline=True)
             embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+            embed.set_footer(text=f"Removed by {i.user.display_name}", icon_url=i.user.display_avatar.url)
 
             await i.followup.send(embed=embed)
             return
 
-        # ================== ACCESS LIST ==================
+        # ================== ACCESS LIST (PAGINATION ADDED) ==================
         if mode.value == "list":
+            # Data fetch karo
             data = supabase.table("access_users").select("*").execute().data
 
             if not data:
-                embed = discord.Embed(title="📜 Access List", description="❌ **List is Empty.** No users verified.", color=0xffa500)
-                await i.followup.send(embed=embed)
-                return
+                return await i.followup.send(embed=discord.Embed(title="📜 Access List", description="❌ List is empty.", color=0xffa500))
 
-            # List format formatting
-            txt = ""
-            count = 1
-            for x in data:
-                r_name = x.get('username', 'Unknown')
-                r_disp = x.get('display_name', 'Unknown')
-                r_id = x.get('user_id', 'Unknown')
-                
-                txt += f"`{count}.` **{r_name}** ({r_disp})\n🆔 `{r_id}`\n\n"
-                count += 1
+            # View Class ko call karo (Jo upar banayi hai)
+            view = AccessPaginator(data, i.user)
             
-            # Agar list lambi ho
-            if len(txt) > 4000:
-                txt = txt[:3900] + "\n... (List truncated)"
+            # Agar 1 page se kam hai to buttons disable kar do
+            if view.total_pages <= 1:
+                view.children[0].disabled = True
+                view.children[1].disabled = True
+            else:
+                view.update_buttons()
 
-            embed = discord.Embed(title=f"📜 Access List ({len(data)} Users)", description=txt, color=0x3498db)
-            await i.followup.send(embed=embed)
+            await i.followup.send(embed=view.get_embed(), view=view)
             return
 
     except Exception as e:
         print(f"ERROR: {e}")
-        await i.followup.send(f"❌ **System Error:** `{e}`")
+        await i.followup.send(f"❌ System Error: `{e}`")
 
     
 from discord import ui
