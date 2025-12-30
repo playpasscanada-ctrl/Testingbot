@@ -3075,61 +3075,6 @@ async def on_member_remove(member):
     except Exception as e:
         print(f"LEAVE EVENT ERROR: {e}")
 
-# ================== SAY ACCESS MANAGER (NEW COMMAND) ==================
-@bot.tree.command(name="sayaccess", description="Manage who can use /say command (Owner Only)")
-@app_commands.choices(action=[
-    app_commands.Choice(name="add", value="add"),
-    app_commands.Choice(name="remove", value="remove"),
-    app_commands.Choice(name="list", value="list"),
-])
-async def sayaccess(i: discord.Interaction, action: app_commands.Choice[str], user: discord.User = None):
-    # Sirf Owner hi permission de sakta hai
-    if not owner(i):
-        await i.response.send_message("❌ Only Owner can manage permissions.", ephemeral=True)
-        return
-
-    # --- ADD USER ---
-    if action.value == "add":
-        if not user: return await i.response.send_message("❌ User select karna zaruri hai!", ephemeral=True)
-        
-        try:
-            supabase.table("say_access").upsert({
-                "user_id": str(user.id),
-                "added_by": str(i.user.id)
-            }).execute()
-            
-            await i.response.send_message(f"✅ **Permission Granted:** {user.mention} ab `/say` use kar sakta hai.", ephemeral=True)
-        except Exception as e:
-            await i.response.send_message(f"❌ Error: {e}", ephemeral=True)
-
-    # --- REMOVE USER ---
-    elif action.value == "remove":
-        if not user: return await i.response.send_message("❌ User select karna zaruri hai!", ephemeral=True)
-        
-        try:
-            supabase.table("say_access").delete().eq("user_id", str(user.id)).execute()
-            await i.response.send_message(f"🗑️ **Permission Revoked:** {user.mention} ab `/say` use nahi kar payega.", ephemeral=True)
-        except Exception as e:
-            await i.response.send_message(f"❌ Error: {e}", ephemeral=True)
-
-    # --- LIST USERS ---
-    elif action.value == "list":
-        try:
-            data = supabase.table("say_access").select("*").execute().data
-            if not data:
-                await i.response.send_message("📂 List is Empty. Sirf Owner use kar sakta hai.", ephemeral=True)
-                return
-
-            txt = ""
-            for x in data:
-                txt += f"• <@{x['user_id']}> (`{x['user_id']}`)\n"
-            
-            embed = discord.Embed(title="🗣️ Say Command Access List", description=txt, color=0x3498db)
-            await i.response.send_message(embed=embed, ephemeral=True)
-        except Exception as e:
-            await i.response.send_message(f"❌ Error: {e}", ephemeral=True)
-
-
 # ================== SAY ACCESS MANAGER (PREMIUM) ==================
 @bot.tree.command(name="sayaccess", description="Manage who can use /say command (Owner Only)")
 @app_commands.choices(action=[
