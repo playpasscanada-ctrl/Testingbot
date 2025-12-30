@@ -2128,84 +2128,100 @@ async def verifyhistory(i: discord.Interaction):
         view=view
     )
 
-@bot.tree.command(name="history", description="Full history of a Roblox user")
+# ================== HISTORY COMMAND (OPTIMIZED) ==================
+@bot.tree.command(name="history", description="📜 Check Roblox User History & Safety Status")
 async def history(i: discord.Interaction, user_id: str):
+    
+    # 1. OWNER/ADMIN CHECK (Database se)
     if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION","Owner Only"))
+        await i.response.send_message("❌ **Access Denied:** You are not an Admin.", ephemeral=True)
+        return
 
-    await i.response.defer()
+    # 2. Defer Response (Load kam karne ke liye)
+    await i.response.defer(ephemeral=False)
 
-    # Roblox Info
-    u, d = await roblox_info(user_id)
-
-    # ================= VERIFY LOGS =================
     try:
-        logs = supabase.table("verify_logs").select("*").eq("roblox_id", user_id).execute().data
-    except:
-        logs = []
+        # A. Roblox Info Fetch (Optimized)
+        username, display = await roblox_info(user_id)
+        
+        if username == "Invalid ID":
+             return await i.followup.send(embed=discord.Embed(title="❌ Error", description="Invalid Roblox ID", color=0xff0000))
 
-    verify = "❌ Never Verified"
-    if logs:
-        verify = ""
-        for x in logs[-5:]:
-            ts = x.get("timestamp", "Unknown")
+        # B. DATABASE FETCH (3 Tables)
+        # Hum 'verify_logs' ko ignore karke seedha 'access_users' check karenge (Fastest)
+        access_data = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
+        ban_data = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
+        blk_data = supabase.table("blacklist_users").select("*").eq("user_id", user_id).execute().data
 
+        # ================= LOGIC BUILDER =================
+        
+        # 1. Access Status (Kaun hai Discord Owner?)
+        if access_data:
+            row = access_data[0]
+            disc_id = row.get("discord_id", "Unknown")
+            
+            # Timestamp (agar table me added_at/created_at column hai to, warna skip)
             try:
-                t = ts.split("T")[0]
+                verified_at = row.get("created_at", "").split("T")[0]
+                date_str = f"on `{verified_at}`"
             except:
-                t = "Unknown"
+                date_str = ""
 
-            verify += f"• `{t}` — <@{x.get('discord_id','Unknown')}>\n"
-
-
-    # ================= BAN CHECK =================
-    try:
-        ban = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
-    except:
-        ban = []
-
-    if ban:
-        b = ban[0]
-        if b["perm"]:
-            ban_text = f"🔴 Permanent — `{b['reason']}`"
+            access_status = f"✅ **Whitelisted**\nLinked to: <@{disc_id}>\n🆔 `{disc_id}`"
+            color = 0x2ecc71 # Green
         else:
-            left = int(max((float(b["expire"]) - time.time())/60 , 0))
-            ban_text = f"⏱ Temp Ban ({left}m left)\nReason: `{b['reason']}`"
-    else:
-        ban_text = "🟢 Not Banned"
+            access_status = "⚠️ **Not Linked**\n(No active whitelist found)"
+            color = 0x3498db # Blue (Neutral)
 
+        # 2. Ban Status
+        if ban_data:
+            b = ban_data[0]
+            if b.get("perm"):
+                ban_status = f"🔴 **PERMANENT BAN**\nReason: `{b.get('reason')}`"
+                color = 0xff0000 # Red
+            else:
+                # Time Calculation
+                try:
+                    left = int(max((float(b["expire"]) - time.time())/60 , 0))
+                    ban_status = f"🟠 **TEMP BAN** ({left}m left)\nReason: `{b.get('reason')}`"
+                    color = 0xe67e22 # Orange
+                except:
+                    ban_status = "🟢 **Ban Expired**"
+        else:
+            ban_status = "🟢 **Clean** (No active bans)"
 
-    # ================= ACCESS CHECK =================
-    try:
-        ac = supabase.table("access_users").select("user_id").eq("user_id", user_id).execute().data
-        access = "✅ Whitelisted" if ac else "❌ Not Whitelisted"
-    except:
-        access = "⚠️ Error Checking"
+        # 3. Blacklist Status
+        if blk_data:
+            blk_status = "🚫 **YES (Blacklisted)**"
+            color = 0x2c3e50 # Dark (Danger)
+        else:
+            blk_status = "🟢 **NO**"
 
+        # ================= PREMIUM EMBED =================
+        embed = discord.Embed(title=f"📜 User History: {display}", color=color)
+        
+        # Top Section: User Identity
+        embed.add_field(name="👤 Identity", value=f"**User:** @{username}\n**ID:** `{user_id}`", inline=False)
+        
+        # Mid Section: Status Grid
+        embed.add_field(name="🔐 Whitelist Status", value=access_status, inline=True)
+        embed.add_field(name="🛡️ Ban Status", value=ban_status, inline=True)
+        embed.add_field(name="⛔ Blacklist", value=blk_status, inline=True)
 
-    # ================= BLACKLIST CHECK =================
-    try:
-        blk = supabase.table("blacklist_users").select("user_id").eq("user_id", user_id).execute().data
-        blk_text = "🚫 Blacklisted" if blk else "🟢 Not Blacklisted"
-    except:
-        blk_text = "⚠️ Error Checking"
+        # Avatar Thumbnail
+        embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+        
+        # Footer
+        embed.set_footer(text=f"Requested by {i.user.display_name} • Secure Lookup", icon_url=i.user.display_avatar.url)
+        embed.timestamp = datetime.utcnow()
 
+        await i.followup.send(embed=embed)
 
-    # ================= FINAL EMBED =================
-    desc = (
-        f"👤 **User Info**\n"
-        f"🆔 `{user_id}`\n"
-        f"👛 Username: **{u}**\n"
-        f"🎭 Display: **{d}**\n\n"
-        f"🚫 **Ban Status:** {ban_text}\n"
-        f"🔐 **Access:** {access}\n"
-        f"📛 **Blacklist:** {blk_text}\n\n"
-        f"📜 **Recent Verifications**\n{verify}"
-    )
-
-    await i.followup.send(embed=emb("📂 USER HISTORY", desc, 0x9b59b6))
-
-@bot.tree.command(name="profile", description="📂 View full Verification & Safety Profile")
+    except Exception as e:
+        print(f"HISTORY ERROR: {e}")
+        await i.followup.send(f"❌ **System Error:** `{e}`")
+        
+@botcommandommand(name="profile", description="📂 View full Verification & Safety Profile")
 async def profile(i: discord.Interaction, user_id: str):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION", "Owner only command"))
@@ -2220,8 +2236,7 @@ async def profile(i: discord.Interaction, user_id: str):
              return await i.followup.send(embed=discord.Embed(title="❌ Error", description="Invalid Roblox ID", color=0xff0000))
 
         # ===== FETCH DATA =====
-        # Access
-        access = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
+        # A        access = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
         is_verified = bool(access)
         
         # Logs (Last verification)
