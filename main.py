@@ -3177,7 +3177,7 @@ async def sayaccess(i: discord.Interaction, action: app_commands.Choice[str], us
     await i.response.defer(ephemeral=False)
 
     try:
-        # ================== ADD USER ==================
+                # ================== ADD USER ==================
         if action.value == "add":
             if not user:
                 return await i.followup.send("❌ **User select karna zaroori hai!**")
@@ -3188,7 +3188,8 @@ async def sayaccess(i: discord.Interaction, action: app_commands.Choice[str], us
                 "added_by": str(i.user.id)
             }).execute()
             
-            embed discord.Embed(title="✅ Access Granted", description=f"**{user.mention}** ab `/say` command use kar sakta hai.", color=0x2ecc71)
+            # 👇 YAHAN GALTI THI (Ab sahi hai)
+            embed = discord.Embed(title="✅ Access Granted", description=f"**{user.mention}** ab `/say` command use kar sakta hai.", color=0x2ecc71)
             embed.set_thumbnail(url=user.display_avatar.url)
             embed.add_field(name="👤 User Info", value=f"**Name:** {user.display_name}\n**ID:** `{user.id}`", inline=False)
             embed.set_footer(text=f"Added by {i.user.display_name}", icon_url=i.user.display_avatar.url)
