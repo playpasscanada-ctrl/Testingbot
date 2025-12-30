@@ -158,6 +158,69 @@ class AccessPaginator(discord.ui.View):
         self.update_buttons()
         await i.response.edit_message(embed=self.get_embed(), view=self)
 
+# ================== VIP PAGINATOR (FOR ATTITUDE LIST) ==================
+class VipPaginator(discord.ui.View):
+    def __init__(self, data, author, bot_ref):
+        super().__init__(timeout=60)
+        self.data = data
+        self.author = author
+        self.bot = bot_ref
+        self.per_page = 10
+        self.current_page = 0
+        self.total_pages = (len(data) + self.per_page - 1) // self.per_page
+
+    async def get_page_embed(self):
+        # 1. Page Calculation
+        start = self.current_page * self.per_page
+        end = start + self.per_page
+        page_data = self.data[start:end]
+
+        # 2. Embed Start
+        embed = discord.Embed(title=f"👑 VIP Users List (Total: {len(self.data)})", color=0xf1c40f)
+        desc = ""
+
+        # 3. Fetch User Details (Async - Isliye alag function banaya)
+        for index, row in enumerate(page_data):
+            uid = int(row['user_id'])
+            s_no = start + index + 1
+            
+            # Try getting user from cache first (Fast), else fetch (Slow)
+            user = self.bot.get_user(uid)
+            if not user:
+                try: user = await self.bot.fetch_user(uid)
+                except: user = None
+
+            if user:
+                desc += f"`{s_no:02d}.` **{user.display_name}** (@{user.name})\n🆔 `{uid}`\n\n"
+            else:
+                desc += f"`{s_no:02d}.` **Unknown User**\n🆔 `{uid}`\n\n"
+
+        embed.description = desc
+        embed.set_footer(text=f"Page {self.current_page + 1}/{self.total_pages} • VIP Access System")
+        return embed
+
+    def update_buttons(self):
+        self.children[0].disabled = (self.current_page == 0)
+        self.children[1].disabled = (self.current_page == self.total_pages - 1)
+
+    @discord.ui.button(label="◀️ Previous", style=discord.ButtonStyle.secondary)
+    async def prev_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id: return await i.response.send_message("❌ Not for you.", ephemeral=True)
+        
+        self.current_page -= 1
+        self.update_buttons()
+        embed = await self.get_page_embed()
+        await i.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Next ▶️", style=discord.ButtonStyle.primary)
+    async def next_btn(self, i: discord.Interaction, button: discord.ui.Button):
+        if i.user.id != self.author.id: return await i.response.send_message("❌ Not for you.", ephemeral=True)
+
+        self.current_page += 1
+        self.update_buttons()
+        embed = await self.get_page_embed()
+        await i.response.edit_message(embed=embed, view=self)
+
 # ================== ENV ==================
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
@@ -828,26 +891,77 @@ async def banclear(i: discord.Interaction):
         view=view
     )
 
-# ================== ATTITUDE CONTROL (VIP LIST) ==================
-@bot.tree.command(name="allow", description="Is user ko attitude mat dikhana (VIP List)")
-async def allow(i: discord.Interaction, user: discord.Member):
-    if not owner(i): return
+# ================== ATTITUDE CONTROL (VIP SYSTEM) ==================
+@bot.tree.command(name="vip", description="Manage Bot Attitude (Owner Only)")
+@app_commands.choices(mode=[
+    app_commands.Choice(name="allow", value="allow"),
+    app_commands.Choice(name="block", value="block"),
+    app_commands.Choice(name="list", value="list"),
+])
+async def vip(i: discord.Interaction, mode: app_commands.Choice[str], user: discord.User = None):
     
-    # Save to Database
-    supabase.table("attitude_bypass").upsert({"user_id": str(user.id)}).execute()
-    
-    # Maine 'ephemeral=True' hata diya hai. Ab sabko dikhega ✅
-    await i.response.send_message(f"✅ **{user.name}** ko VIP list me daal diya. Ab bot isse tameez se pesh aayega.")
+    # 1. OWNER CHECK (Database Logic)
+    if not owner(i):
+        return await i.response.send_message("❌ **Only Owner can manage VIPs.**", ephemeral=True)
 
-@bot.tree.command(name="block", description="Is user ko wapas attitude dikhana shuru karo")
-async def block(i: discord.Interaction, user: discord.Member):
-    if not owner(i): return
-    
-    # Remove from Database
-    supabase.table("attitude_bypass").delete().eq("user_id", str(user.id)).execute()
-    
-    # Maine 'ephemeral=True' hata diya hai. Ab sabko dikhega 😈
-    await i.response.send_message(f"😈 **{user.name}** ko VIP list se hata diya. Ab ye tag karega to poora attitude sunega!")
+    await i.response.defer(ephemeral=False)
+
+    try:
+        # ================== ALLOW (ADD VIP) ==================
+        if mode.value == "allow":
+            if not user:
+                return await i.followup.send("❌ **User select karna zaroori hai!**")
+
+            # Database Upsert
+            supabase.table("attitude_bypass").upsert({"user_id": str(user.id)}).execute()
+
+            embed = discord.Embed(title="👑 VIP Added", description=f"**{user.mention}** ab VIP list me hai.", color=0xf1c40f) # Gold Color
+            embed.add_field(name="😎 Effect", value="Bot ab isse tameez se baat karega.", inline=False)
+            embed.set_thumbnail(url=user.display_avatar.url)
+            embed.set_footer(text=f"Added by {i.user.display_name}")
+            
+            await i.followup.send(embed=embed)
+
+        # ================== BLOCK (REMOVE VIP) ==================
+        if mode.value == "block":
+            if not user:
+                return await i.followup.send("❌ **User select karna zaroori hai!**")
+
+            # Database Delete
+            supabase.table("attitude_bypass").delete().eq("user_id", str(user.id)).execute()
+
+            embed = discord.Embed(title="😈 VIP Removed", description=f"**{user.mention}** ko VIP list se nikaal diya.", color=0x2c3e50) # Dark Color
+            embed.add_field(name="💀 Effect", value="Ab ye tag karega to full attitude sunega!", inline=False)
+            embed.set_thumbnail(url=user.display_avatar.url)
+            embed.set_footer(text=f"Removed by {i.user.display_name}")
+
+            await i.followup.send(embed=embed)
+
+        # ================== LIST (SHOW ALL VIPs) ==================
+        if mode.value == "list":
+            # Fetch Data
+            data = supabase.table("attitude_bypass").select("user_id").execute().data
+
+            if not data:
+                return await i.followup.send(embed=discord.Embed(title="👑 VIP List", description="❌ List is empty. Sabke liye attitude ON hai!", color=0x95a5a6))
+
+            # Paginator Call
+            view = VipPaginator(data, i.user, bot)
+            
+            # Disable buttons if only 1 page
+            if view.total_pages <= 1:
+                view.children[0].disabled = True
+                view.children[1].disabled = True
+            else:
+                view.update_buttons()
+
+            # First Page Embed Generate
+            embed = await view.get_page_embed()
+            await i.followup.send(embed=embed, view=view)
+
+    except Exception as e:
+        print(f"VIP ERROR: {e}")
+        await i.followup.send(f"❌ System Error: `{e}`")
 
 # ================== MULTI-VERIFY MANAGEMENT ==================
 @bot.tree.command(name="multiaccess", description="Manage users who can verify UNLIMITED accounts")
