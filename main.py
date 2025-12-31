@@ -3446,27 +3446,32 @@ async def match(i: discord.Interaction, user1: discord.User, user2: discord.User
     
     await i.response.send_message(embed=embed)
 
-# ================== ROBLOX INFO COMMAND (GOD MODE 👑) ==================
-@bot.tree.command(name="robloxinfo", description="🔍 Get ABSOLUTE MAXIMUM details of a Roblox Account")
+# ================== ROBLOX INFO COMMAND (FINAL MEGA VERSION 👑) ==================
+@bot.tree.command(name="robloxinfo", description="🔍 Get MAXIMUM details (Socials, DevStats, Inv, Favs, History)")
 @app_commands.describe(identifier="Username or Roblox ID")
 async def robloxinfo(i: discord.Interaction, identifier: str):
     
     await i.response.defer()
 
     try:
-        # 1. ID RESOLVER
+        # 1. ID RESOLVER (SAFE)
         target_id = identifier
         if not identifier.isdigit():
             payload = {"usernames": [identifier], "excludeBannedUsers": False}
-            async with bot.session.post("https://users.roblox.com/v1/usernames/users", json=payload) as res:
-                data = await res.json()
-                if data["data"]: target_id = str(data["data"][0]["id"])
-                else: return await i.followup.send(embed=emb("❌ Not Found", f"User `{identifier}` nahi mila."))
+            try:
+                async with bot.session.post("https://users.roblox.com/v1/usernames/users", json=payload) as res:
+                    data = await res.json()
+                    if data and "data" in data and len(data["data"]) > 0:
+                        target_id = str(data["data"][0]["id"])
+                    else:
+                        return await i.followup.send(embed=emb("❌ Not Found", f"User `{identifier}` nahi mila."))
+            except:
+                return await i.followup.send(embed=emb("❌ API Error", "Roblox API down hai. ID use karein."))
 
-        # ================= 2. PARALLEL FETCHING (16 APIs!) 🚀 =================
-        # Ab hum 16 requests ek saath marenge. Server hila denge!
+        # ================= 2. PARALLEL FETCHING (15 APIs) =================
+        # Saari details ek saath nikalenge
         urls = [
-            f"https://users.roblox.com/v1/users/{target_id}",                                      # 0. Basic Info
+            f"https://users.roblox.com/v1/users/{target_id}",                                      # 0. Info
             f"https://friends.roblox.com/v1/users/{target_id}/friends/count",                       # 1. Friends
             f"https://friends.roblox.com/v1/users/{target_id}/followers/count",                     # 2. Followers
             f"https://friends.roblox.com/v1/users/{target_id}/followings/count",                    # 3. Following
@@ -3476,32 +3481,23 @@ async def robloxinfo(i: discord.Interaction, identifier: str):
             f"https://users.roblox.com/v1/users/{target_id}/username-history?limit=20&sortOrder=Desc", # 7. History
             f"https://groups.roblox.com/v1/users/{target_id}/groups/roles",                          # 8. Groups
             f"https://premiumfeatures.roblox.com/v1/users/{target_id}/validate-membership",         # 9. Premium
-            f"https://accountinformation.roblox.com/v1/users/{target_id}/roblox-badges",            # 10. Official Badges
-            
-            # --- NEW APIS ADDED ---
-            f"https://users.roblox.com/v1/users/{target_id}/promotion-channels",                    # 11. Social Media 🔗
-            f"https://games.roblox.com/v2/users/{target_id}/games?accessFilter=Public&limit=50",    # 12. Dev Stats (Games) 🛠️
-            f"https://inventory.roblox.com/v1/users/{target_id}/can-view-inventory",                # 13. Inventory Status 🎒
+            f"https://accountinformation.roblox.com/v1/users/{target_id}/roblox-badges",            # 10. Badges
+            f"https://users.roblox.com/v1/users/{target_id}/promotion-channels",                    # 11. Socials 🔗
+            f"https://games.roblox.com/v2/users/{target_id}/games?accessFilter=Public&limit=50",    # 12. Dev Stats 🛠️
+            f"https://inventory.roblox.com/v1/users/{target_id}/can-view-inventory",                # 13. Inventory 🎒
             f"https://games.roblox.com/v2/users/{target_id}/favorite/games?limit=1"                 # 14. Favorites ⭐
         ]
 
         presence_payload = {"userIds": [int(target_id)]}
 
-                # Helper function (Fixed Indentation)
         async def get_json(url, method="GET", json_body=None):
             try:
                 if method == "POST":
-                    # 👇 Ye nayi line me hona zaroori hai
-                    async with bot.session.post(url, json=json_body) as r:
-                        return await r.json()
+                    async with bot.session.post(url, json=json_body) as r: return await r.json()
                 else:
-                    # 👇 Ye bhi nayi line me
-                    async with bot.session.get(url) as r:
-                        return await r.json()
-            except:
-                return None
+                    async with bot.session.get(url) as r: return await r.json()
+            except: return None
 
-        # 🔥 FIRE EVERYTHING
         results = await asyncio.gather(
             get_json(urls[0]), get_json(urls[1]), get_json(urls[2]), get_json(urls[3]),
             get_json(urls[4], "POST", presence_payload), get_json(urls[5]), get_json(urls[6]),
@@ -3509,81 +3505,105 @@ async def robloxinfo(i: discord.Interaction, identifier: str):
             get_json(urls[11]), get_json(urls[12]), get_json(urls[13]), get_json(urls[14])
         )
 
+        # 🛡️ HELPER: Safe List Extractor (Crash Fix)
+        def get_d(res):
+            if res and isinstance(res, dict) and "data" in res: return res["data"]
+            return []
+
         user_data = results[0]
-        if not user_data or "id" not in user_data: return await i.followup.send(embed=emb("🚫 TERMINATED", "User Banned.", 0xff0000))
+        if not user_data or "id" not in user_data: 
+            return await i.followup.send(embed=emb("🚫 TERMINATED", "User Banned/Not Found.", 0xff0000))
 
-        # ================= 3. ADVANCED PARSING =================
+        # ================= 3. PARSING (ALL DETAILS) =================
         
-        # A. Identity
-        name_str = f"{user_data['displayName']} (@{user_data['name']})"
-        if user_data.get("hasVerifiedBadge"): name_str += " ☑️"
-        if results[9] and results[9].get("membershipValid"): name_str += " 💎"
+        # A. Identity (Verified & Premium)
+        display_name = user_data.get('displayName', 'Unknown')
+        username = user_data.get('name', 'Unknown')
+        
+        is_verified = user_data.get("hasVerifiedBadge", False)
+        is_premium = results[9].get("membershipValid", False) if results[9] else False
 
-        # B. Status
-        p_data = results[4]["userPresences"][0]
-        p_type = p_data.get("userPresenceType", 0)
+        name_str = f"{display_name} (@{username})"
+        if is_verified: name_str += " ☑️"
+        if is_premium: name_str += " 💎"
+
+        # B. Official Badges (Admin/Staff)
+        badges_list = get_d(results[10])
+        official_badges = []
+        for badge in badges_list:
+            b_name = badge.get("name")
+            if b_name == "Administrator": official_badges.append("🛡️ Admin")
+            elif b_name == "Creator": official_badges.append("🔨 Creator")
+            elif "Intern" in b_name: official_badges.append("🎓 Intern")
+            elif "Star" in b_name: official_badges.append("⭐ Star")
+            else: official_badges.append(f"🎖️ {b_name}")
+        
+        badges_str = " | ".join(official_badges) if official_badges else "None"
+
+        # C. Status & Last Seen (Game Link Included)
         status_str = "⚫ Offline"
+        last_seen_str = "Unknown"
         
-        # Last Seen Logic
-        last_seen = "Unknown"
-        if p_data.get("lastOnline"):
-             dt = datetime.strptime(p_data["lastOnline"].split(".")[0], "%Y-%m-%dT%H:%M:%S")
-             last_seen = f"<t:{int(dt.timestamp())}:R>"
+        if results[4] and "userPresences" in results[4]:
+            p_data = results[4]["userPresences"][0]
+            p_type = p_data.get("userPresenceType", 0)
+            
+            # Exact Last Seen Time
+            if p_data.get("lastOnline"):
+                try:
+                    dt = datetime.strptime(p_data["lastOnline"].split(".")[0], "%Y-%m-%dT%H:%M:%S")
+                    last_seen_str = f"<t:{int(dt.timestamp())}:f> (<t:{int(dt.timestamp())}:R>)"
+                except: pass
 
-        if p_type == 1: status_str = "🟢 **Online** (Web)"
-        elif p_type == 2:
-            gname = p_data.get("lastLocation", "Game")
-            pid = p_data.get("placeId")
-            status_str = f"🎮 Playing **[{gname}](https://www.roblox.com/games/{pid})**" if pid else f"🎮 Playing **{gname}**"
-        elif p_type == 3: status_str = "🔶 **In Studio**"
-        else: status_str = f"⚫ **Offline** (Seen: {last_seen})"
+            if p_type == 1: status_str = "🟢 **Online** (Web)"
+            elif p_type == 2:
+                gname = p_data.get("lastLocation", "Game")
+                pid = p_data.get("placeId")
+                # Game Link Logic 🎮
+                status_str = f"🎮 Playing **[{gname}](https://www.roblox.com/games/{pid})**" if pid else f"🎮 Playing **{gname}**"
+            elif p_type == 3: status_str = "🔶 **In Studio**"
+            else: status_str = f"⚫ **Offline**\nLast seen: {last_seen_str}"
 
-        # C. Socials & Groups
-        stats_txt = f"👥 Fr: `{results[1]['count']}` | 📡 Fl: `{results[2]['count']}` | 👀 Fw: `{results[3]['count']}` | 👕 Grp: `{len(results[8]['data']) if results[8] else 0}`"
+        # D. Socials & Groups
+        friends = results[1]['count'] if results[1] else 0
+        followers = results[2]['count'] if results[2] else 0
+        following = results[3]['count'] if results[3] else 0
+        groups_list = get_d(results[8])
+        group_count = len(groups_list)
 
-        # D. NEW FEATURES LOGIC ------------------------
-        
+        # ================= 4. EXTRA FEATURES (JO AAPNE MAANGI THI) =================
+
         # 1. Social Links 🔗
         socials = []
-        if results[11]:
+        if results[11] and isinstance(results[11], dict):
             for key, val in results[11].items():
-                if val: socials.append(f"[{key.capitalize()}]({val})")
-        social_str = " | ".join(socials) if socials else "None (Private/Hidden)"
+                if val and "http" in str(val): socials.append(f"[{key.capitalize()}]({val})")
+        social_str = " | ".join(socials) if socials else "None"
 
-        # 2. Developer Stats 🛠️
-        total_visits = 0
-        game_count = 0
-        if results[12] and "data" in results[12]:
-            games_list = results[12]["data"]
-            game_count = len(games_list)
-            for g in games_list:
-                total_visits += g.get("placeVisits", 0)
-        
-        dev_stat_str = f"🎮 **Games:** `{game_count}` | 👣 **Visits:** `{total_visits:,}`"
+        # 2. Dev Stats 🛠️
+        games_list = get_d(results[12])
+        total_visits = sum(g.get("placeVisits", 0) for g in games_list)
+        dev_stat_str = f"🎮 **Games:** `{len(games_list)}` | 👣 **Visits:** `{total_visits:,}`"
 
-        # 3. Inventory Status 🎒
+        # 3. Inventory 🎒
         inv_open = results[13].get("canView", False) if results[13] else False
         inv_str = "🔓 **Open**" if inv_open else "🔒 **Private**"
 
-        # 4. Group Rank (Owner Check) 🎖️
+        # 4. Group Owner 🎖️
         owned_groups = []
-        if results[8] and "data" in results[8]:
-            for g in results[8]["data"]:
-                if g["role"]["rank"] == 255: # 255 = Owner
-                    owned_groups.append(g["group"]["name"])
-        
+        for g in groups_list:
+            if g.get("role", {}).get("rank") == 255:
+                owned_groups.append(g.get("group", {}).get("name", "Unknown"))
         owner_str = ", ".join(owned_groups[:3]) if owned_groups else "None"
-        if len(owned_groups) > 3: owner_str += f" (+{len(owned_groups)-3} more)"
 
-        # 5. Last Favorite ⭐
+        # 5. Favorites ⭐
+        fav_list = get_d(results[14])
         fav_game = "None"
-        if results[14] and "data" in results[14] and results[14]["data"]:
-            fg = results[14]["data"][0]
-            fav_game = f"[{fg['name']}](https://www.roblox.com/games/{fg['id']})"
+        if fav_list:
+            fg = fav_list[0]
+            fav_game = f"[{fg.get('name','Game')}](https://www.roblox.com/games/{fg.get('id')})"
 
-        # ----------------------------------------------
-
-        # E. Bot DB Check
+        # ================= 5. DB CHECK (Internal) =================
         tid = str(target_id)
         local_access = await db_call(lambda: supabase.table("access_users").select("*").eq("user_id", tid).execute())
         local_ban = await db_call(lambda: supabase.table("bans").select("*").eq("user_id", tid).execute())
@@ -3597,58 +3617,69 @@ async def robloxinfo(i: discord.Interaction, identifier: str):
             db_txt = f"🔴 **BANNED** (`{local_ban.data[0]['reason']}`)"
             col = 0xff0000
 
-        # ================= 5. EMBED BUILD =================
+        # ================= 6. FINAL PREMIUM EMBED =================
         embed = discord.Embed(title=name_str, url=f"https://www.roblox.com/users/{target_id}/profile", color=col)
         
-        # Visuals
-        if results[5] and results[5]["data"]: embed.set_thumbnail(url=results[5]["data"][0]["imageUrl"])
-        if results[6] and results[6]["data"]: embed.set_image(url=results[6]["data"][0]["imageUrl"])
+        # Visuals (Thumbnail & Image)
+        head_list = get_d(results[5])
+        body_list = get_d(results[6])
+        if head_list: embed.set_thumbnail(url=head_list[0].get("imageUrl"))
+        if body_list: embed.set_image(url=body_list[0].get("imageUrl"))
 
-        # Row 1: Main
+        # --- SECTIONS ---
+
+        # Row 1: Identity & Bio
         bio = user_data.get('description', 'No Bio')
-        if len(bio) > 150: bio = bio[:150] + "..."
+        if len(bio) > 300: bio = bio[:300] + "..." # Limit badha di
         embed.add_field(name="🆔 Identity", value=f"**ID:** `{target_id}`\n**Bio:** {bio}", inline=False)
 
         # Row 2: Status & Age
-        created_ts = int(datetime.strptime(user_data["created"].split(".")[0], "%Y-%m-%dT%H:%M:%S").timestamp())
-        embed.add_field(name="📡 Status", value=status_str, inline=True)
-        embed.add_field(name="📅 Age", value=f"<t:{created_ts}:R>", inline=True)
+        try:
+            created_ts = int(datetime.strptime(user_data["created"].split(".")[0], "%Y-%m-%dT%H:%M:%S").timestamp())
+            age_str = f"<t:{created_ts}:D>\n(<t:{created_ts}:R>)"
+        except: age_str = "Unknown"
 
-        # Row 3: Extended Info (NEW)
+        embed.add_field(name="📡 Live Status", value=status_str, inline=True)
+        embed.add_field(name="📅 Account Age", value=age_str, inline=True)
+
+        # Row 3: Official Data
+        off_data = f"**Premium:** {'Yes 💎' if is_premium else 'No'}\n**Verified:** {'Yes ☑️' if is_verified else 'No'}\n**Badges:** {badges_str}"
+        embed.add_field(name="🏆 Official Status", value=off_data, inline=False)
+
+        # Row 4: THE EXTRAS (Aapki request)
         extra_info = (
             f"🎒 **Inventory:** {inv_str}\n"
             f"⭐ **Last Fav:** {fav_game}\n"
             f"🎖️ **Owns Groups:** {owner_str}"
         )
         embed.add_field(name="📂 Profile Extras", value=extra_info, inline=True)
-
-        # Row 4: Developer Stats (NEW)
-        embed.add_field(name="🛠️ Developer Stats", value=dev_stat_str, inline=False)
-
-        # Row 5: Social Links (NEW)
+        
+        # Row 5: Dev Stats
+        embed.add_field(name="🛠️ Dev Stats", value=dev_stat_str, inline=False)
+        
+        # Row 6: Social Links
         embed.add_field(name="🔗 Social Media", value=social_str, inline=False)
-
-        # Row 6: Socials
+        
+        # Row 7: Stats
+        stats_txt = f"👥 Fr: `{friends}` | 📡 Fl: `{followers}` | 👀 Fw: `{following}` | 👕 Grp: `{group_count}`"
         embed.add_field(name="📊 Roblox Stats", value=stats_txt, inline=False)
         
-        # Row 7: Bot DB
+        # Row 8: Bot Data
         embed.add_field(name="🤖 RoboPal Data", value=db_txt, inline=False)
 
-        # Footer (History)
-        hist = results[7]["data"]
-        past = ", ".join([f"`{x['name']}`" for x in hist]) if hist else "None"
-        if len(past) > 500: past = past[:500] + "..."
-        
-        if past != "None":
-            embed.add_field(name="🕰️ Aliases", value=past, inline=False)
+        # History
+        hist_list = get_d(results[7])
+        past = ", ".join([f"`{x['name']}`" for x in hist_list]) if hist_list else "None"
+        if len(past) > 600: past = past[:600] + "..."
+        if past != "None": embed.add_field(name="🕰️ Aliases", value=past, inline=False)
 
         embed.set_footer(text=f"Requested by {i.user.display_name}", icon_url=i.user.display_avatar.url)
-        
         await i.followup.send(embed=embed)
 
     except Exception as e:
-        print(f"GOD MODE ERROR: {e}")
-        await i.followup.send(embed=emb("❌ System Error", f"`{e}`"))
+        print(f"INFO ERROR: {e}")
+        try: await i.followup.send(embed=emb("❌ API Error", f"Details fetch failed.\nError: `{e}`"))
+        except: pass
              
 # ================== FUN: DESI THAPPAD (SLAP) ==================
 @bot.tree.command(name="slap", description="Slap someone nicely (Desi Style)")
