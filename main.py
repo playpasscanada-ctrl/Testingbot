@@ -3487,11 +3487,19 @@ async def robloxinfo(i: discord.Interaction, identifier: str):
 
         presence_payload = {"userIds": [int(target_id)]}
 
+                # Helper function (Fixed Indentation)
         async def get_json(url, method="GET", json_body=None):
             try:
-                if method == "POST": async with bot.session.post(url, json=json_body) as r: return await r.json()
-                else: async with bot.session.get(url) as r: return await r.json()
-            except: return None
+                if method == "POST":
+                    # 👇 Ye nayi line me hona zaroori hai
+                    async with bot.session.post(url, json=json_body) as r:
+                        return await r.json()
+                else:
+                    # 👇 Ye bhi nayi line me
+                    async with bot.session.get(url) as r:
+                        return await r.json()
+            except:
+                return None
 
         # 🔥 FIRE EVERYTHING
         results = await asyncio.gather(
