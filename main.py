@@ -3446,8 +3446,8 @@ async def match(i: discord.Interaction, user1: discord.User, user2: discord.User
     
     await i.response.send_message(embed=embed)
 
-# ================== ROBLOX INFO COMMAND (GAME LINK EDITION) ==================
-@bot.tree.command(name="robloxinfo", description="🔍 Get MAXIMUM details of a Roblox Account")
+# ================== ROBLOX INFO COMMAND (GOD MODE 👑) ==================
+@bot.tree.command(name="robloxinfo", description="🔍 Get ABSOLUTE MAXIMUM details of a Roblox Account")
 @app_commands.describe(identifier="Username or Roblox ID")
 async def robloxinfo(i: discord.Interaction, identifier: str):
     
@@ -3460,134 +3460,188 @@ async def robloxinfo(i: discord.Interaction, identifier: str):
             payload = {"usernames": [identifier], "excludeBannedUsers": False}
             async with bot.session.post("https://users.roblox.com/v1/usernames/users", json=payload) as res:
                 data = await res.json()
-                if data["data"]:
-                    target_id = str(data["data"][0]["id"])
-                else:
-                    return await i.followup.send(embed=emb("❌ Not Found", f"User `{identifier}` nahi mila."))
+                if data["data"]: target_id = str(data["data"][0]["id"])
+                else: return await i.followup.send(embed=emb("❌ Not Found", f"User `{identifier}` nahi mila."))
 
-        # ================= 2. PARALLEL FETCHING =================
+        # ================= 2. PARALLEL FETCHING (16 APIs!) 🚀 =================
+        # Ab hum 16 requests ek saath marenge. Server hila denge!
         urls = [
-            f"https://users.roblox.com/v1/users/{target_id}",                    # 0. Info
-            f"https://friends.roblox.com/v1/users/{target_id}/friends/count",     # 1. Friends
-            f"https://friends.roblox.com/v1/users/{target_id}/followers/count",   # 2. Followers
-            f"https://friends.roblox.com/v1/users/{target_id}/followings/count",  # 3. Following
-            f"https://presence.roblox.com/v1/presence/users",                     # 4. Presence
+            f"https://users.roblox.com/v1/users/{target_id}",                                      # 0. Basic Info
+            f"https://friends.roblox.com/v1/users/{target_id}/friends/count",                       # 1. Friends
+            f"https://friends.roblox.com/v1/users/{target_id}/followers/count",                     # 2. Followers
+            f"https://friends.roblox.com/v1/users/{target_id}/followings/count",                    # 3. Following
+            f"https://presence.roblox.com/v1/presence/users",                                       # 4. Presence
             f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={target_id}&size=420x420&format=Png&isCircular=false", # 5. Head
             f"https://thumbnails.roblox.com/v1/users/avatar?userIds={target_id}&size=420x420&format=Png&isCircular=false",          # 6. Body
-            f"https://users.roblox.com/v1/users/{target_id}/username-history?limit=10&sortOrder=Desc", # 7. History
-            f"https://groups.roblox.com/v1/users/{target_id}/groups/roles"        # 8. Groups
+            f"https://users.roblox.com/v1/users/{target_id}/username-history?limit=20&sortOrder=Desc", # 7. History
+            f"https://groups.roblox.com/v1/users/{target_id}/groups/roles",                          # 8. Groups
+            f"https://premiumfeatures.roblox.com/v1/users/{target_id}/validate-membership",         # 9. Premium
+            f"https://accountinformation.roblox.com/v1/users/{target_id}/roblox-badges",            # 10. Official Badges
+            
+            # --- NEW APIS ADDED ---
+            f"https://users.roblox.com/v1/users/{target_id}/promotion-channels",                    # 11. Social Media 🔗
+            f"https://games.roblox.com/v2/users/{target_id}/games?accessFilter=Public&limit=50",    # 12. Dev Stats (Games) 🛠️
+            f"https://inventory.roblox.com/v1/users/{target_id}/can-view-inventory",                # 13. Inventory Status 🎒
+            f"https://games.roblox.com/v2/users/{target_id}/favorite/games?limit=1"                 # 14. Favorites ⭐
         ]
 
         presence_payload = {"userIds": [int(target_id)]}
 
         async def get_json(url, method="GET", json_body=None):
             try:
-                if method == "POST":
-                    async with bot.session.post(url, json=json_body) as r: return await r.json()
-                else:
-                    async with bot.session.get(url) as r: return await r.json()
+                if method == "POST": async with bot.session.post(url, json=json_body) as r: return await r.json()
+                else: async with bot.session.get(url) as r: return await r.json()
             except: return None
 
+        # 🔥 FIRE EVERYTHING
         results = await asyncio.gather(
-            get_json(urls[0]), get_json(urls[1]), get_json(urls[2]), 
-            get_json(urls[3]), get_json(urls[4], "POST", presence_payload), 
-            get_json(urls[5]), get_json(urls[6]), get_json(urls[7]), get_json(urls[8])
+            get_json(urls[0]), get_json(urls[1]), get_json(urls[2]), get_json(urls[3]),
+            get_json(urls[4], "POST", presence_payload), get_json(urls[5]), get_json(urls[6]),
+            get_json(urls[7]), get_json(urls[8]), get_json(urls[9]), get_json(urls[10]),
+            get_json(urls[11]), get_json(urls[12]), get_json(urls[13]), get_json(urls[14])
         )
 
         user_data = results[0]
-        if not user_data or "id" not in user_data:
-            return await i.followup.send(embed=emb("🚫 TERMINATED", "User Banned or Not Found.", 0xff0000))
+        if not user_data or "id" not in user_data: return await i.followup.send(embed=emb("🚫 TERMINATED", "User Banned.", 0xff0000))
 
-        # ================= 3. DATA PARSING =================
+        # ================= 3. ADVANCED PARSING =================
         
-        # A. Status Logic (Game Name + Link) 🎮
-        presence_data = results[4]["userPresences"][0]
-        p_type = presence_data.get("userPresenceType", 0)
-        
-        # Default Status
+        # A. Identity
+        name_str = f"{user_data['displayName']} (@{user_data['name']})"
+        if user_data.get("hasVerifiedBadge"): name_str += " ☑️"
+        if results[9] and results[9].get("membershipValid"): name_str += " 💎"
+
+        # B. Status
+        p_data = results[4]["userPresences"][0]
+        p_type = p_data.get("userPresenceType", 0)
         status_str = "⚫ Offline"
         
-        if p_type == 1:
-            status_str = "🟢 **Online** (Website)"
+        # Last Seen Logic
+        last_seen = "Unknown"
+        if p_data.get("lastOnline"):
+             dt = datetime.strptime(p_data["lastOnline"].split(".")[0], "%Y-%m-%dT%H:%M:%S")
+             last_seen = f"<t:{int(dt.timestamp())}:R>"
+
+        if p_type == 1: status_str = "🟢 **Online** (Web)"
         elif p_type == 2:
-            # Game Detail Nikalo
-            game_name = presence_data.get("lastLocation", "Unknown Game")
-            place_id = presence_data.get("placeId")
-            
-            # Agar Place ID hai to Link banao
-            if place_id:
-                status_str = f"🎮 Playing **[{game_name}](https://www.roblox.com/games/{place_id})**"
-            else:
-                status_str = f"🎮 Playing **{game_name}**"
-                
-        elif p_type == 3:
-            status_str = "🔶 **In Studio** (Creating)"
+            gname = p_data.get("lastLocation", "Game")
+            pid = p_data.get("placeId")
+            status_str = f"🎮 Playing **[{gname}](https://www.roblox.com/games/{pid})**" if pid else f"🎮 Playing **{gname}**"
+        elif p_type == 3: status_str = "🔶 **In Studio**"
+        else: status_str = f"⚫ **Offline** (Seen: {last_seen})"
 
-        # B. Dates
-        dt_obj = datetime.strptime(user_data["created"].split(".")[0], "%Y-%m-%dT%H:%M:%S")
-        created_ts = int(dt_obj.timestamp())
+        # C. Socials & Groups
+        stats_txt = f"👥 Fr: `{results[1]['count']}` | 📡 Fl: `{results[2]['count']}` | 👀 Fw: `{results[3]['count']}` | 👕 Grp: `{len(results[8]['data']) if results[8] else 0}`"
 
-        # C. Socials
-        friends = results[1]["count"]
-        followers = results[2]["count"]
-        following = results[3]["count"]
-        group_count = len(results[8]["data"]) if results[8] else 0
-
-        # D. Visuals
-        head_url = results[5]["data"][0]["imageUrl"] if results[5] else None
-        body_url = results[6]["data"][0]["imageUrl"] if results[6] else None
-
-        # E. History
-        history_data = results[7]["data"]
-        past_names = ", ".join([f"`{x['name']}`" for x in history_data]) if history_data else "None"
-
-        # F. Bio
-        bio = user_data.get('description', 'No Bio')
-        if len(bio) > 100: bio = bio[:100] + "..."
-
-        # ================= 4. DB CHECK =================
-        target_id_str = str(target_id)
-        local_access = await db_call(lambda: supabase.table("access_users").select("*").eq("user_id", target_id_str).execute())
-        local_ban = await db_call(lambda: supabase.table("bans").select("*").eq("user_id", target_id_str).execute())
+        # D. NEW FEATURES LOGIC ------------------------
         
-        db_status = "🔒 Not Verified"
-        color = 0x3498db
+        # 1. Social Links 🔗
+        socials = []
+        if results[11]:
+            for key, val in results[11].items():
+                if val: socials.append(f"[{key.capitalize()}]({val})")
+        social_str = " | ".join(socials) if socials else "None (Private/Hidden)"
 
-        if local_access.data:
-            db_status = "✅ **Verified User**"
-            color = 0x2ecc71
+        # 2. Developer Stats 🛠️
+        total_visits = 0
+        game_count = 0
+        if results[12] and "data" in results[12]:
+            games_list = results[12]["data"]
+            game_count = len(games_list)
+            for g in games_list:
+                total_visits += g.get("placeVisits", 0)
+        
+        dev_stat_str = f"🎮 **Games:** `{game_count}` | 👣 **Visits:** `{total_visits:,}`"
+
+        # 3. Inventory Status 🎒
+        inv_open = results[13].get("canView", False) if results[13] else False
+        inv_str = "🔓 **Open**" if inv_open else "🔒 **Private**"
+
+        # 4. Group Rank (Owner Check) 🎖️
+        owned_groups = []
+        if results[8] and "data" in results[8]:
+            for g in results[8]["data"]:
+                if g["role"]["rank"] == 255: # 255 = Owner
+                    owned_groups.append(g["group"]["name"])
+        
+        owner_str = ", ".join(owned_groups[:3]) if owned_groups else "None"
+        if len(owned_groups) > 3: owner_str += f" (+{len(owned_groups)-3} more)"
+
+        # 5. Last Favorite ⭐
+        fav_game = "None"
+        if results[14] and "data" in results[14] and results[14]["data"]:
+            fg = results[14]["data"][0]
+            fav_game = f"[{fg['name']}](https://www.roblox.com/games/{fg['id']})"
+
+        # ----------------------------------------------
+
+        # E. Bot DB Check
+        tid = str(target_id)
+        local_access = await db_call(lambda: supabase.table("access_users").select("*").eq("user_id", tid).execute())
+        local_ban = await db_call(lambda: supabase.table("bans").select("*").eq("user_id", tid).execute())
+        
+        db_txt = "🔒 Not Verified"
+        col = 0x2f3136
+        if local_access.data: 
+            db_txt = f"✅ **Verified** (<@{local_access.data[0]['discord_id']}>)"
+            col = 0x2ecc71
         if local_ban.data:
-            db_status = f"🔴 **BANNED** (`{local_ban.data[0]['reason']}`)"
-            color = 0xff0000
+            db_txt = f"🔴 **BANNED** (`{local_ban.data[0]['reason']}`)"
+            col = 0xff0000
 
-        # ================= 5. EMBED =================
-        embed = discord.Embed(title=f"{user_data['displayName']} (@{user_data['name']})", url=f"https://www.roblox.com/users/{target_id}/profile", color=color)
+        # ================= 5. EMBED BUILD =================
+        embed = discord.Embed(title=name_str, url=f"https://www.roblox.com/users/{target_id}/profile", color=col)
         
-        if head_url: embed.set_thumbnail(url=head_url)
-        if body_url: embed.set_image(url=body_url)
+        # Visuals
+        if results[5] and results[5]["data"]: embed.set_thumbnail(url=results[5]["data"][0]["imageUrl"])
+        if results[6] and results[6]["data"]: embed.set_image(url=results[6]["data"][0]["imageUrl"])
 
+        # Row 1: Main
+        bio = user_data.get('description', 'No Bio')
+        if len(bio) > 150: bio = bio[:150] + "..."
         embed.add_field(name="🆔 Identity", value=f"**ID:** `{target_id}`\n**Bio:** {bio}", inline=False)
-        
-        # Yahan Status Dikhega (With Game Link)
-        embed.add_field(name="📡 Live Status", value=f"{status_str}", inline=True)
-        
-        embed.add_field(name="📅 Account Age", value=f"<t:{created_ts}:R>", inline=True)
-        
-        stats_text = f"👥 Fr: `{friends}` | 📡 Fl: `{followers}` | 👕 Grp: `{group_count}`"
-        embed.add_field(name="📊 Socials", value=stats_text, inline=False)
-        
-        embed.add_field(name="🤖 Bot Data", value=db_status, inline=True)
 
-        if past_names != "None":
-            embed.add_field(name="🕰️ Aliases", value=past_names, inline=False)
+        # Row 2: Status & Age
+        created_ts = int(datetime.strptime(user_data["created"].split(".")[0], "%Y-%m-%dT%H:%M:%S").timestamp())
+        embed.add_field(name="📡 Status", value=status_str, inline=True)
+        embed.add_field(name="📅 Age", value=f"<t:{created_ts}:R>", inline=True)
+
+        # Row 3: Extended Info (NEW)
+        extra_info = (
+            f"🎒 **Inventory:** {inv_str}\n"
+            f"⭐ **Last Fav:** {fav_game}\n"
+            f"🎖️ **Owns Groups:** {owner_str}"
+        )
+        embed.add_field(name="📂 Profile Extras", value=extra_info, inline=True)
+
+        # Row 4: Developer Stats (NEW)
+        embed.add_field(name="🛠️ Developer Stats", value=dev_stat_str, inline=False)
+
+        # Row 5: Social Links (NEW)
+        embed.add_field(name="🔗 Social Media", value=social_str, inline=False)
+
+        # Row 6: Socials
+        embed.add_field(name="📊 Roblox Stats", value=stats_txt, inline=False)
+        
+        # Row 7: Bot DB
+        embed.add_field(name="🤖 RoboPal Data", value=db_txt, inline=False)
+
+        # Footer (History)
+        hist = results[7]["data"]
+        past = ", ".join([f"`{x['name']}`" for x in hist]) if hist else "None"
+        if len(past) > 500: past = past[:500] + "..."
+        
+        if past != "None":
+            embed.add_field(name="🕰️ Aliases", value=past, inline=False)
 
         embed.set_footer(text=f"Requested by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+        
         await i.followup.send(embed=embed)
 
     except Exception as e:
-        print(f"INFO ERROR: {e}")
-        await i.followup.send(embed=emb("❌ Error", f"`{e}`"))
-
+        print(f"GOD MODE ERROR: {e}")
+        await i.followup.send(embed=emb("❌ System Error", f"`{e}`"))
+             
 # ================== FUN: DESI THAPPAD (SLAP) ==================
 @bot.tree.command(name="slap", description="Slap someone nicely (Desi Style)")
 async def slap(i: discord.Interaction, target: discord.User):
