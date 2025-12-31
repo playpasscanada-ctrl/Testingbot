@@ -1,4 +1,4 @@
-import os, json, time, threading, requests
+import os, json, time, threading, requests, asyncio
 from datetime import datetime
 import aiohttp
 
@@ -6,6 +6,11 @@ import discord
 from discord import app_commands
 from discord import ui   # ⬅️ ye add karo
 from discord.ext import commands
+
+# ================== ASYNC DB WRAPPER (SPEED BOOSTER) ==================
+# Is code ko imports ke neeche aur bot commands se upar rakhein
+async def db_call(func):
+    return await asyncio.to_thread(func)
 
 from flask import Flask, jsonify
 from supabase import create_client, Client
