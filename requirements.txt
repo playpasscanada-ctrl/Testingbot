@@ -3,4 +3,4 @@ flask
 requests
 supabase
 aiohttp
-
+deep-translator
