@@ -1,4 +1,4 @@
-import os, json, time, threading, requests, asyncio
+ import os, json, time, threading, requests, asyncio
 from datetime import datetime
 import aiohttp
 
@@ -6,6 +6,61 @@ import discord
 from discord import app_commands
 from discord import ui   # ⬅️ ye add karo
 from discord.ext import commands
+
+from deep_translator import GoogleTranslator
+from concurrent.futures import ThreadPoolExecutor
+
+# 🛡️ SYSTEM SAVER: Sirf 2 translation threads allow honge (Crash Fix)
+roast_executor = ThreadPoolExecutor(max_workers=2)
+
+# 💾 GLOBAL SETTINGS
+TRANSLATOR_ON = True          # Default ON (Hindi)
+ATTITUDE_BYPASS_CACHE = set() # VIP List Yahan Store Hogi (RAM me)
+MY_BOT_ID = 1451451135813746700 # Aapka Bot ID
+
+# ✅ 1. VIP List Loader (Supabase se)
+async def load_bypass_users():
+    global ATTITUDE_BYPASS_CACHE
+    try:
+        print("⏳ Loading VIP (Bypass) list...")
+        # Aapki table 'attitude_bypass' se data layega
+        response = await db_call(lambda: supabase.table("attitude_bypass").select("user_id").execute())
+        
+        if response.data:
+            ATTITUDE_BYPASS_CACHE = {int(row["user_id"]) for row in response.data}
+            print(f"✅ Loaded {len(ATTITUDE_BYPASS_CACHE)} VIP Users (Safe from Roast)")
+        else:
+            print("⚠️ VIP List is empty.")
+    except Exception as e:
+        print(f"❌ Error Loading VIPs: {e}")
+
+# ✅ 2. Roast Data Fetcher (Optimized)
+async def get_evil_roast_data():
+    try:
+        # A. English Roast API
+        url = "https://evilinsult.com/generate_insult.php?lang=en&type=json"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as res:
+                if res.status == 200:
+                    data = await res.json()
+                    eng = data.get('insult', 'You are stupid.')
+                else:
+                    return "Internet dead.", "Internet dead."
+
+        # B. Check Mode
+        if not TRANSLATOR_ON:
+            return eng, "Translator OFF"
+
+        # C. Translate (Safe Threading)
+        # Ye server pe load nahi padne dega
+        hin = await bot.loop.run_in_executor(
+            roast_executor,
+            lambda: GoogleTranslator(source='auto', target='hi').translate(eng)
+        )
+        return eng, hin
+
+    except Exception as e:
+        return f"Error: {e}", f"Error: {e}"
 
 # ================== ASYNC DB WRAPPER (SPEED BOOSTER) ==================
 # Is code ko imports ke neeche aur bot commands se upar rakhein
@@ -431,6 +486,7 @@ async def on_ready():
         print("✅ Shared Session Created")
 
     await load_banned_words()
+    await load_bypass_users()
     await bot.tree.sync()
     
 # ================== SAFE SEND ==================
@@ -454,6 +510,34 @@ async def on_message(msg):
         return
 
     OWNER_ID = 804687084249284618
+
+        # ... (Bot check ke baad) ...
+
+    # ================== 🔥 AUTO ROAST (TAG / REPLY) ==================
+    is_reply_to_bot = (msg.reference and msg.reference.resolved and msg.reference.resolved.author.id == MY_BOT_ID)
+    is_mention = (bot.user in msg.mentions)
+
+    if is_reply_to_bot or is_mention:
+        
+        # 🛡️ 1. VIP CHECK (Supabase Cache)
+        if msg.author.id in ATTITUDE_BYPASS_CACHE:
+            print(f"🛡️ Skipped Auto-Roast for VIP: {msg.author.name}")
+            return # Ignore karo, kuch mat bolo
+
+        # 🛡️ 2. OWNER CHECK (Optional)
+        if msg.author.id == OWNER_ID:
+            return
+
+        # 🔥 3. ROAST HIM!
+        async with msg.channel.typing():
+            eng, hin = await get_evil_roast_data()
+            text = hin if TRANSLATOR_ON else eng
+            
+            embed = discord.Embed(description=f"🔥 **Karwa li bezzati?**\n\n{text}", color=0xff0000)
+            if TRANSLATOR_ON: embed.set_footer(text=f"Original: {eng}")
+            
+            await msg.reply(embed=embed)
+            return
 
             # ---------------------------------------------------------
     # 🛡️ 1. SMART AI MOD SYSTEM (With VIP Bypass)
@@ -1652,6 +1736,52 @@ async def verifiedlist(i: discord.Interaction):
     )
 
     await i.followup.send(embed=first, view=view)
+
+# ================== 🔥 ROAST SYSTEM ==================
+
+# 1. 🗣️ TRANSLATOR TOGGLE (Owner Only)
+@bot.tree.command(name="translator", description="🔴/🟢 Turn Hindi Roast ON or OFF")
+@app_commands.describe(mode="Choose Mode")
+@app_commands.choices(mode=[
+    app_commands.Choice(name="🟢 ON (Hindi Translation)", value="on"),
+    app_commands.Choice(name="🔴 OFF (English Only - Fast)", value="off")
+])
+async def translator(i: discord.Interaction, mode: app_commands.Choice[str]):
+    # 🔒 OWNER CHECK
+    if i.user.id != OWNER_ID: 
+        return await i.response.send_message("❌ Abe nikal! Ye setting sirf Maalik ke liye hai.", ephemeral=True)
+
+    global TRANSLATOR_ON
+    if mode.value == "on":
+        TRANSLATOR_ON = True
+        await i.response.send_message("✅ **Translator ON!** Ab main Hindi me bezzati karunga. 🇮🇳")
+    else:
+        TRANSLATOR_ON = False
+        await i.response.send_message("❎ **Translator OFF!** English Mode Activated (Super Fast). 🇺🇸")
+
+# 2. 🔥 ROAST COMMAND (With VIP Check)
+@bot.tree.command(name="roast", description="Bezzati karein (VIP Safe)")
+async def roast(i: discord.Interaction, user: discord.Member):
+    # Basic Checks
+    if user.id == i.user.id: return await i.response.send_message("Khud ko kyu?", ephemeral=True)
+    
+    # 🛡️ VIP CHECK
+    if user.id in ATTITUDE_BYPASS_CACHE:
+        return await i.response.send_message(f"✋ **{user.display_name}** VIP List me hain. Inka mazaak allowed nahi hai!", ephemeral=True)
+    
+    if user.id == bot.user.id:
+        return await i.response.send_message("Baap pe haath uthayega? 🤖💢", ephemeral=True)
+
+    await i.response.defer()
+    
+    eng, hin = await get_evil_roast_data()
+    final_text = hin if TRANSLATOR_ON else eng
+    
+    embed = discord.Embed(description=f"🔥 **ROASTED!**\n\n{final_text}", color=0x2f3136)
+    if TRANSLATOR_ON: embed.add_field(name="Original", value=f"||{eng}||", inline=False)
+    
+    embed.set_thumbnail(url=user.display_avatar.url)
+    await i.followup.send(content=f"{user.mention}", embed=embed)
 
 # ================== USER INFO (GOD MODE) ==================
 @bot.tree.command(name="userinfo", description="Get MAXIMUM details of a Discord User (Discord + Roblox + DB)")
