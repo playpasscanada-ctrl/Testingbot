@@ -3441,6 +3441,148 @@ async def match(i: discord.Interaction, user1: discord.User, user2: discord.User
     
     await i.response.send_message(embed=embed)
 
+# ================== ROBLOX INFO COMMAND (GAME LINK EDITION) ==================
+@bot.tree.command(name="robloxinfo", description="🔍 Get MAXIMUM details of a Roblox Account")
+@app_commands.describe(identifier="Username or Roblox ID")
+async def robloxinfo(i: discord.Interaction, identifier: str):
+    
+    await i.response.defer()
+
+    try:
+        # 1. ID RESOLVER
+        target_id = identifier
+        if not identifier.isdigit():
+            payload = {"usernames": [identifier], "excludeBannedUsers": False}
+            async with bot.session.post("https://users.roblox.com/v1/usernames/users", json=payload) as res:
+                data = await res.json()
+                if data["data"]:
+                    target_id = str(data["data"][0]["id"])
+                else:
+                    return await i.followup.send(embed=emb("❌ Not Found", f"User `{identifier}` nahi mila."))
+
+        # ================= 2. PARALLEL FETCHING =================
+        urls = [
+            f"https://users.roblox.com/v1/users/{target_id}",                    # 0. Info
+            f"https://friends.roblox.com/v1/users/{target_id}/friends/count",     # 1. Friends
+            f"https://friends.roblox.com/v1/users/{target_id}/followers/count",   # 2. Followers
+            f"https://friends.roblox.com/v1/users/{target_id}/followings/count",  # 3. Following
+            f"https://presence.roblox.com/v1/presence/users",                     # 4. Presence
+            f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={target_id}&size=420x420&format=Png&isCircular=false", # 5. Head
+            f"https://thumbnails.roblox.com/v1/users/avatar?userIds={target_id}&size=420x420&format=Png&isCircular=false",          # 6. Body
+            f"https://users.roblox.com/v1/users/{target_id}/username-history?limit=10&sortOrder=Desc", # 7. History
+            f"https://groups.roblox.com/v1/users/{target_id}/groups/roles"        # 8. Groups
+        ]
+
+        presence_payload = {"userIds": [int(target_id)]}
+
+        async def get_json(url, method="GET", json_body=None):
+            try:
+                if method == "POST":
+                    async with bot.session.post(url, json=json_body) as r: return await r.json()
+                else:
+                    async with bot.session.get(url) as r: return await r.json()
+            except: return None
+
+        results = await asyncio.gather(
+            get_json(urls[0]), get_json(urls[1]), get_json(urls[2]), 
+            get_json(urls[3]), get_json(urls[4], "POST", presence_payload), 
+            get_json(urls[5]), get_json(urls[6]), get_json(urls[7]), get_json(urls[8])
+        )
+
+        user_data = results[0]
+        if not user_data or "id" not in user_data:
+            return await i.followup.send(embed=emb("🚫 TERMINATED", "User Banned or Not Found.", 0xff0000))
+
+        # ================= 3. DATA PARSING =================
+        
+        # A. Status Logic (Game Name + Link) 🎮
+        presence_data = results[4]["userPresences"][0]
+        p_type = presence_data.get("userPresenceType", 0)
+        
+        # Default Status
+        status_str = "⚫ Offline"
+        
+        if p_type == 1:
+            status_str = "🟢 **Online** (Website)"
+        elif p_type == 2:
+            # Game Detail Nikalo
+            game_name = presence_data.get("lastLocation", "Unknown Game")
+            place_id = presence_data.get("placeId")
+            
+            # Agar Place ID hai to Link banao
+            if place_id:
+                status_str = f"🎮 Playing **[{game_name}](https://www.roblox.com/games/{place_id})**"
+            else:
+                status_str = f"🎮 Playing **{game_name}**"
+                
+        elif p_type == 3:
+            status_str = "🔶 **In Studio** (Creating)"
+
+        # B. Dates
+        dt_obj = datetime.strptime(user_data["created"].split(".")[0], "%Y-%m-%dT%H:%M:%S")
+        created_ts = int(dt_obj.timestamp())
+
+        # C. Socials
+        friends = results[1]["count"]
+        followers = results[2]["count"]
+        following = results[3]["count"]
+        group_count = len(results[8]["data"]) if results[8] else 0
+
+        # D. Visuals
+        head_url = results[5]["data"][0]["imageUrl"] if results[5] else None
+        body_url = results[6]["data"][0]["imageUrl"] if results[6] else None
+
+        # E. History
+        history_data = results[7]["data"]
+        past_names = ", ".join([f"`{x['name']}`" for x in history_data]) if history_data else "None"
+
+        # F. Bio
+        bio = user_data.get('description', 'No Bio')
+        if len(bio) > 100: bio = bio[:100] + "..."
+
+        # ================= 4. DB CHECK =================
+        target_id_str = str(target_id)
+        local_access = await db_call(lambda: supabase.table("access_users").select("*").eq("user_id", target_id_str).execute())
+        local_ban = await db_call(lambda: supabase.table("bans").select("*").eq("user_id", target_id_str).execute())
+        
+        db_status = "🔒 Not Verified"
+        color = 0x3498db
+
+        if local_access.data:
+            db_status = "✅ **Verified User**"
+            color = 0x2ecc71
+        if local_ban.data:
+            db_status = f"🔴 **BANNED** (`{local_ban.data[0]['reason']}`)"
+            color = 0xff0000
+
+        # ================= 5. EMBED =================
+        embed = discord.Embed(title=f"{user_data['displayName']} (@{user_data['name']})", url=f"https://www.roblox.com/users/{target_id}/profile", color=color)
+        
+        if head_url: embed.set_thumbnail(url=head_url)
+        if body_url: embed.set_image(url=body_url)
+
+        embed.add_field(name="🆔 Identity", value=f"**ID:** `{target_id}`\n**Bio:** {bio}", inline=False)
+        
+        # Yahan Status Dikhega (With Game Link)
+        embed.add_field(name="📡 Live Status", value=f"{status_str}", inline=True)
+        
+        embed.add_field(name="📅 Account Age", value=f"<t:{created_ts}:R>", inline=True)
+        
+        stats_text = f"👥 Fr: `{friends}` | 📡 Fl: `{followers}` | 👕 Grp: `{group_count}`"
+        embed.add_field(name="📊 Socials", value=stats_text, inline=False)
+        
+        embed.add_field(name="🤖 Bot Data", value=db_status, inline=True)
+
+        if past_names != "None":
+            embed.add_field(name="🕰️ Aliases", value=past_names, inline=False)
+
+        embed.set_footer(text=f"Requested by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+        await i.followup.send(embed=embed)
+
+    except Exception as e:
+        print(f"INFO ERROR: {e}")
+        await i.followup.send(embed=emb("❌ Error", f"`{e}`"))
+
 # ================== FUN: DESI THAPPAD (SLAP) ==================
 @bot.tree.command(name="slap", description="Slap someone nicely (Desi Style)")
 async def slap(i: discord.Interaction, target: discord.User):
