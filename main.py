@@ -9,6 +9,7 @@ from discord.ext import commands
 
 from deep_translator import GoogleTranslator
 from concurrent.futures import ThreadPoolExecutor
+from roastedbyai import Conversation, Style
 
 # 🛡️ SYSTEM SAVER: Sirf 2 translation threads allow honge (Crash Fix)
 roast_executor = ThreadPoolExecutor(max_workers=2)
@@ -16,7 +17,6 @@ roast_executor = ThreadPoolExecutor(max_workers=2)
 # 💾 GLOBAL SETTINGS
 TRANSLATOR_ON = True          # Default ON (Hindi)
 ATTITUDE_BYPASS_CACHE = set() # VIP List Yahan Store Hogi (RAM me)
-MY_BOT_ID = 1451451135813746700 # Aapka Bot ID
 
 # ✅ 1. VIP List Loader (Supabase se)
 async def load_bypass_users():
@@ -61,6 +61,41 @@ async def get_evil_roast_data():
 
     except Exception as e:
         return f"Error: {e}", f"Error: {e}"
+
+# 🆔 Bot ID
+MY_BOT_ID = 1451451135813746700 
+
+# ❌ Maine LOCAL_ROASTS list hata di hai. Ab koi backup nahi.
+
+# ✅ Pure AI Function (Only Website)
+async def get_smart_roast(user_msg="Roast me"):
+    
+    def fetch_from_website():
+        # 1. 💀 UNHINGED MODE (18+)
+        convo = Conversation(Style.unhinged) 
+        
+        # 2. 🇮🇳 STRICT HINGLISH PROMPT
+        prompt = (f"You are a rude Indian roaster. Reply ONLY in Hinglish (Hindi words in English script). "
+                  f"Do not use pure English. Be savage, toxic and unhinged. "
+                  f"The user said: '{user_msg}'")
+        
+        return convo.send(prompt)
+
+    # 🔄 Retry Loop (3 Baar Try Karega - Ziddi Mode)
+    for attempt in range(1, 4):
+        try:
+            # Thread me run karo
+            roast_text = await bot.loop.run_in_executor(roast_executor, fetch_from_website)
+            
+            if roast_text:
+                return roast_text
+        except Exception as e:
+            print(f"⚠️ AI Attempt {attempt} Failed: {e}")
+            await asyncio.sleep(0.5)
+    
+    # 🛑 Agar 3 baar me bhi fail hua, to ab Local Roast nahi aayega.
+    # Bas ek error message aayega.
+    return "⚠️ **AI Server Error:** RoastedBy.AI is unreachable right now. Try again later."
 
 # ================== ASYNC DB WRAPPER (SPEED BOOSTER) ==================
 # Is code ko imports ke neeche aur bot commands se upar rakhein
@@ -511,33 +546,33 @@ async def on_message(msg):
 
     OWNER_ID = 804687084249284618
 
-    # ... (Bot check ke baad) ...
+        # ... (VIP Check ke baad) ...
 
-    # ================== 🔥 AUTO ROAST (TAG / REPLY) ==================
+    # ================== 🔥 PURE AI AUTO ROAST ==================
     is_reply_to_bot = (msg.reference and msg.reference.resolved and msg.reference.resolved.author.id == MY_BOT_ID)
     is_mention = (bot.user in msg.mentions)
 
     if is_reply_to_bot or is_mention:
         
-        # 🛡️ 1. VIP CHECK (Supabase Cache)
+        # 🛡️ VIP CHECK
         if msg.author.id in ATTITUDE_BYPASS_CACHE:
-            print(f"🛡️ Skipped Auto-Roast for VIP: {msg.author.name}")
-            return # Ignore karo, kuch mat bolo
+            return 
 
-        # 🛡️ 2. OWNER CHECK (Optional)
+        # 🛡️ OWNER CHECK
         if msg.author.id == OWNER_ID:
             return
 
-        # 🔥 3. ROAST HIM!
+        # 🔥 ACTION: SEND TO AI
         async with msg.channel.typing():
-            eng, hin = await get_evil_roast_data()
-            text = hin if TRANSLATOR_ON else eng
+            user_text = msg.clean_content.replace(f"@{bot.user.name}", "").strip()
+            if not user_text: user_text = "Roast me brutally"
             
-            embed = discord.Embed(description=f"🔥 **Karwa li bezzati?**\n\n{text}", color=0xff0000)
-            if TRANSLATOR_ON: embed.set_footer(text=f"Original: {eng}")
+            # Sirf AI se poocho
+            reply_text = await get_smart_roast(user_text)
             
-            await msg.reply(embed=embed)
-            return
+            # Reply kar do
+            await msg.reply(reply_text)
+            return 
 
             # ---------------------------------------------------------
     # 🛡️ 1. SMART AI MOD SYSTEM (With VIP Bypass)
