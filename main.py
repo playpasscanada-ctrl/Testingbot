@@ -528,15 +528,21 @@ async def on_message(msg):
         if msg.author.id == OWNER_ID:
             return
 
-        # 🔥 3. ROAST HIM!
+            # ... (VIP check aur Owner check waisa hi rahega) ...
+
+        # 🔥 3. ROAST HIM! (Plain Text Version)
         async with msg.channel.typing():
             eng, hin = await get_evil_roast_data()
-            text = hin if TRANSLATOR_ON else eng
             
-            embed = discord.Embed(description=f"🔥 **Karwa li bezzati?**\n\n{text}", color=0xff0000)
-            if TRANSLATOR_ON: embed.set_footer(text=f"Original: {eng}")
+            if TRANSLATOR_ON:
+                # Hindi + Spoiler
+                reply_text = f"{hin}\n||{eng}||"
+            else:
+                # English Only
+                reply_text = f"{eng}"
             
-            await msg.reply(embed=embed)
+            # Seedha reply (No Embed)
+            await msg.reply(reply_text)
             return
 
             # ---------------------------------------------------------
@@ -1760,28 +1766,29 @@ async def translator(i: discord.Interaction, mode: app_commands.Choice[str]):
         await i.response.send_message("❎ **Translator OFF!** English Mode Activated (Super Fast). 🇺🇸")
 
 # 2. 🔥 ROAST COMMAND (With VIP Check)
-@bot.tree.command(name="roast", description="Bezzati karein (VIP Safe)")
+@bot.tree.command(name="roast", description="Bezzati karein (Plain Text)")
 async def roast(i: discord.Interaction, user: discord.Member):
-    # Basic Checks
+    # Checks
     if user.id == i.user.id: return await i.response.send_message("Khud ko kyu?", ephemeral=True)
-    
-    # 🛡️ VIP CHECK
     if user.id in ATTITUDE_BYPASS_CACHE:
-        return await i.response.send_message(f"✋ **{user.display_name}** VIP List me hain. Inka mazaak allowed nahi hai!", ephemeral=True)
-    
+        return await i.response.send_message(f"✋ **{user.display_name}** VIP hain!", ephemeral=True)
     if user.id == bot.user.id:
-        return await i.response.send_message("Baap pe haath uthayega? 🤖💢", ephemeral=True)
+        return await i.response.send_message("Nikal yahan se! 🤖", ephemeral=True)
 
     await i.response.defer()
     
     eng, hin = await get_evil_roast_data()
-    final_text = hin if TRANSLATOR_ON else eng
     
-    embed = discord.Embed(description=f"🔥 **ROASTED!**\n\n{final_text}", color=0x2f3136)
-    if TRANSLATOR_ON: embed.add_field(name="Original", value=f"||{eng}||", inline=False)
+    # Logic: Agar Translator ON hai to Hindi, nahi to English
+    if TRANSLATOR_ON:
+        # Hindi Text + Original (Hidden in Spoiler)
+        msg_content = f"{user.mention} {hin}\n||{eng}||"
+    else:
+        # Sirf English
+        msg_content = f"{user.mention} {eng}"
     
-    embed.set_thumbnail(url=user.display_avatar.url)
-    await i.followup.send(content=f"{user.mention}", embed=embed)
+    # ❌ Embed hata diya, ab seedha message jayega
+    await i.followup.send(content=msg_content)
 
 # ================== USER INFO (GOD MODE) ==================
 @bot.tree.command(name="userinfo", description="Get MAXIMUM details of a Discord User (Discord + Roblox + DB)")
