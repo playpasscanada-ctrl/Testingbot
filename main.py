@@ -15,7 +15,7 @@ roast_executor = ThreadPoolExecutor(max_workers=2)
 
 # 💾 GLOBAL SETTINGS
 TRANSLATOR_ON = True          # Default ON (Hindi)
-BYPASS_USERS_CACHE = set() # VIP List Yahan Store Hogi (RAM me)
+ATTITUDE_BYPASS_CACHE = set() # VIP List Yahan Store Hogi (RAM me)
 MY_BOT_ID = 1451451135813746700 # Aapka Bot ID
 
 # ✅ 1. VIP List Loader (Supabase se)
@@ -27,8 +27,8 @@ async def load_bypass_users():
         response = await db_call(lambda: supabase.table("attitude_bypass").select("user_id").execute())
         
         if response.data:
-            BYPASS_USERS_CACHE = {int(row["user_id"]) for row in response.data}
-            print(f"✅ Loaded {len(BYPASS_USERS_CACHE)} VIP Users (Safe from Roast)")
+            ATTITUDE_BYPASS_CACHE = {int(row["user_id"]) for row in response.data}
+            print(f"✅ Loaded {len(ATTITUDE_BYPASS_CACHE)} VIP Users (Safe from Roast)")
         else:
             print("⚠️ VIP List is empty.")
     except Exception as e:
@@ -76,6 +76,7 @@ import re
 
 # ================== GLOBAL CACHES (RAM) ==================
 BANNED_WORDS_CACHE = set()
+BYPASS_USERS_CACHE = set()
 
 # 🌍 Online Lists (English + Hindi)
 BAD_WORDS_URL_EN = "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/master/en"
@@ -519,7 +520,7 @@ async def on_message(msg):
     if is_reply_to_bot or is_mention:
         
         # 🛡️ 1. VIP CHECK (Supabase Cache)
-        if msg.author.id in BYPASS_USERS_CACHE:
+        if msg.author.id in ATTITUDE_BYPASS_CACHE:
             print(f"🛡️ Skipped Auto-Roast for VIP: {msg.author.name}")
             return # Ignore karo, kuch mat bolo
 
@@ -1765,7 +1766,7 @@ async def roast(i: discord.Interaction, user: discord.Member):
     if user.id == i.user.id: return await i.response.send_message("Khud ko kyu?", ephemeral=True)
     
     # 🛡️ VIP CHECK
-    if user.id in BYPASS_USERS_CACHE:
+    if user.id in ATTITUDE_BYPASS_CACHE:
         return await i.response.send_message(f"✋ **{user.display_name}** VIP List me hain. Inka mazaak allowed nahi hai!", ephemeral=True)
     
     if user.id == bot.user.id:
