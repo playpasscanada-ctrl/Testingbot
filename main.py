@@ -745,36 +745,27 @@ async def safe_send(i, embed):
 @bot.event
 async def on_message(msg):
     
-    # 1. Bot khud ki baat na sune
+    # 1. Bot check
     if msg.author.bot:
         return
 
     # 2. Owner ID
     OWNER_ID = 804687084249284618 
 
-    # 3. Check: Kya reply hai ya mention hai?
+    # 3. Check: Reply ya Mention?
     is_reply_to_bot = (msg.reference and msg.reference.resolved and msg.reference.resolved.author.id == bot.user.id)
     is_mention = (bot.user in msg.mentions)
 
-    # 4. Agar Tag ya Reply hua hai TABHI aage badho:
     if is_reply_to_bot or is_mention:
-        
-        # A. VIP CHECK (VIP hai to ignore karo)
-        if msg.author.id in ATTITUDE_BYPASS_CACHE:
-            return 
 
-        # B. OWNER CHECK (Owner hai to ignore karo)
-        if msg.author.id == OWNER_ID:
-            return
-
-        # C. ACTION TIME!
-        async with msg.channel.typing():
-            
-            # ❤️ CRUSH CHECK (Girl Mode)
-            if msg.author.id in CRUSH_CACHE:
+        # =================================================================
+        # ❤️ 1. CRUSH SYSTEM (SEPARATE) - Sabse Pehle Check Hoga
+        # =================================================================
+        if msg.author.id in CRUSH_CACHE:
+            async with msg.channel.typing():
                 reply_text = await get_horny_data()
                 
-                # Pink Embed
+                # Pink Embed (Girl Mode)
                 embed = discord.Embed(
                     title="Your Naughty Girl 🎀", 
                     description=f"{reply_text}", 
@@ -784,23 +775,42 @@ async def on_message(msg):
                 await msg.reply(embed=embed)
                 return
 
-            # 🔥 ROAST MODE (Baaki sab ke liye)
-            abusive_text, _ = await get_evil_roast_data()
+
+        # =================================================================
+        # 🔥 2. ORIGINAL AUTO ROAST (FROM SCREENSHOT) - Agar Crush nahi hai
+        # =================================================================
+        
+        # 🛡️ VIP CHECK (Supabase Cache)
+        if msg.author.id in ATTITUDE_BYPASS_CACHE:
+            print(f"🛡️ Skipped Auto-Roast for VIP: {msg.author.name}")
+            return # Ignore karo
+
+        # 🛡️ OWNER CHECK
+        if msg.author.id == OWNER_ID:
+            return
+
+        # 🔥 ROAST HIM! (Old Logic with Translator)
+        async with msg.channel.typing():
+            # Yahan purana wala eng, hin unpack kar rahe hain
+            eng, hin = await get_evil_roast_data()
             
-            # Black Embed
-            embed = discord.Embed(
-                description=f"🔥 **Karwa li bezzati?**\n\n{abusive_text}", 
-                color=0x000000
-            )
+            # Check Translator setting (Make sure TRANSLATOR_ON variable upar defined ho)
+            text = hin if TRANSLATOR_ON else eng
+
+            embed = discord.Embed(description=f"🔥 **Karwa li bezzati?**\n\n{text}", color=0x000000)
+            
+            # Footer logic (Screenshot se)
+            if TRANSLATOR_ON: 
+                embed.set_footer(text=f"Original: {eng}")
+
             await msg.reply(embed=embed)
             return
-          
-            # ---------------------------------------------------------
-    # 🛡️ 1. SMART AI MOD SYSTEM (With VIP Bypass)
-    # ---------------------------------------------------------
-    # Check 1: Kya banned words loaded hain?
-    # Check 2: Kya message content hai?
-    # Check 3: Kya user VIP list mein hai? (Agar hai to ignore karo) 👑
+
+    # =================================================================
+    # 🛡️ 3. SMART AI MOD SYSTEM (Iske neeche wo banned words wala code)
+    # =================================================================
+    # (Yahan se neeche apka purana Mod code same rahega)
+
     if BANNED_WORDS_CACHE and msg.content and msg.author.id not in BYPASS_USERS_CACHE:
         
         msg_lower = msg.content.lower()
