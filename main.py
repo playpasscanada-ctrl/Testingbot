@@ -744,147 +744,64 @@ async def safe_send(i, embed):
 # ================== VERIFY + AUTO WHITELIST + LOGS ==================
 @bot.event
 async def on_message(msg):
-    
-    # 1. Bot check
-    if msg.author.bot:
-        return
+    if msg.author.bot: return
 
-    # 2. Owner ID
+    # 👇 YAHAN AAPKI ID FIX KAR DI HAI (Bar-bar change nahi hogi)
     OWNER_ID = 804687084249284618 
 
-    # 3. Check: Reply ya Mention?
-    is_reply_to_bot = (msg.reference and msg.reference.resolved and msg.reference.resolved.author.id == bot.user.id)
-    is_mention = (bot.user in msg.mentions)
-
-    if is_reply_to_bot or is_mention:
-
-        # =================================================================
-        # ❤️ 1. CRUSH SYSTEM (SEPARATE) - Sabse Pehle Check Hoga
-        # =================================================================
-        if msg.author.id in CRUSH_CACHE:
-            async with msg.channel.typing():
-                reply_text = await get_horny_data()
-                
-                # Pink Embed (Girl Mode)
-                embed = discord.Embed(
-                    title="Your Naughty Girl 🎀", 
-                    description=f"{reply_text}", 
-                    color=0xff69b4
-                )
-                embed.set_footer(text="Sirf tumhare liye... ❤️")
-                await msg.reply(embed=embed)
-                return
-
-
-        # =================================================================
-        # 🔥 2. ORIGINAL AUTO ROAST (FROM SCREENSHOT) - Agar Crush nahi hai
-        # =================================================================
-        
-        # 🛡️ VIP CHECK (Supabase Cache)
-        if msg.author.id in ATTITUDE_BYPASS_CACHE:
-            print(f"🛡️ Skipped Auto-Roast for VIP: {msg.author.name}")
-            return # Ignore karo
-
-        # 🛡️ OWNER CHECK
-        if msg.author.id == OWNER_ID:
-            return
-
-        # 🔥 ROAST HIM! (Old Logic with Translator)
-        async with msg.channel.typing():
-            # Yahan purana wala eng, hin unpack kar rahe hain
-            eng, hin = await get_evil_roast_data()
-            
-            # Check Translator setting (Make sure TRANSLATOR_ON variable upar defined ho)
-            text = hin if TRANSLATOR_ON else eng
-
-            embed = discord.Embed(description=f"🔥 **Karwa li bezzati?**\n\n{text}", color=0x000000)
-            
-            # Footer logic (Screenshot se)
-            if TRANSLATOR_ON: 
-                embed.set_footer(text=f"Original: {eng}")
-
-            await msg.reply(embed=embed)
-            return
-
-    # =================================================================
-    # 🛡️ 3. SMART AI MOD SYSTEM (Iske neeche wo banned words wala code)
-    # =================================================================
-    # (Yahan se neeche apka purana Mod code same rahega)
-
-    if BANNED_WORDS_CACHE and msg.content and msg.author.id not in BYPASS_USERS_CACHE:
-        
-        msg_lower = msg.content.lower()
-        msg_clean = re.sub(r'[^a-z0-9]', '', msg_lower) # Symbols hatao
-
-        found = False
-        
-        # Direct Check
-        if any(bad in msg_lower.split() for bad in BANNED_WORDS_CACHE):
-            found = True
-        
-        # Smart Hidden Check (Strict)
-        elif any(bad in msg_clean for bad in BANNED_WORDS_CACHE if len(bad) > 4):
-            found = True
-
-        if found:
+    # =====================================================
+    # 1. SMART AI MOD (Gali Galoch Check)
+    # =====================================================
+    if BANNED_WORDS_CACHE and msg.author.id not in BYPASS_USERS_CACHE:
+        msg_clean = re.sub(r'[^a-z0-9]', '', msg.content.lower())
+        if any(bad in msg_clean for bad in BANNED_WORDS_CACHE if len(bad) > 4):
             try:
                 await msg.delete()
-                
-                embed = discord.Embed(
-                    title="🛡️ Auto-Mod Detection",
-                    description=f"{msg.author.mention}, **Language Mind Karo!** 🚫",
-                    color=0xff0000
-                )
-                await msg.channel.send(embed=embed, delete_after=5)
-                return  # 🛑 STOP
-            except:
-                pass
+                return await msg.channel.send(f"{msg.author.mention}, **Language Mind Karo!** 🚫", delete_after=5)
+            except: pass
 
-            # ---------------------------------------------------------
-    # 🤫 OWNER SILENCE COMMAND (Maalik ka Darr)
-    # ---------------------------------------------------------
-    # Agar Owner bole "Chup" ya "Shant", toh bot maafi mangega
-    silence_triggers = ["chup", "shant", "keep quiet", "shut up", "muh band", "silence"]
-    
-    # Check: Message Owner ka hai + Inme se koi word hai
-    if msg.author.id == OWNER_ID and any(word in msg.content.lower() for word in silence_triggers):
-        
-        # Ek Sad/Apology Embed banayenge
-        embed = discord.Embed(
-            description="**Sorry Sir... 😔**\nAage se nahi bolungi. Galti ho gayi.",
-            color=0x2f3136 # Dark/Sad Color
-        )
-        embed.set_footer(text="System Muted 🤐")
-        
-        await msg.reply(embed=embed)
-        return  # 🛑 Yahi ruk jao (Taaki bot aage Attitude na dikhaye)
+    # =====================================================
+    # 2. OWNER SILENCE (Aapke liye)
+    # =====================================================
+    if msg.author.id == OWNER_ID and any(word in msg.content.lower() for word in ["chup", "shant", "shut up"]):
+        return await msg.reply(embed=discord.Embed(description="**Sorry Sir... 😔**\nAage se nahi bolungi.", color=0x2f3136))
 
-            # ==================================================
-    # 🔥 ULTIMATE ATTITUDE AUTO-REPLY (VIP + 100 ROASTS)
-    # ==================================================
-    OWNER_ID = 804687084249284618  # Tumhari ID
+    # =====================================================
+    # 3. BOT MENTION / REPLY (Crush & Roast Logic)
+    # =====================================================
+    is_tag = (bot.user in msg.mentions) or (msg.reference and msg.reference.resolved and msg.reference.resolved.author.id == bot.user.id)
     
-    # Check: Agar message me "Saksham" hai ya Tumhe Tag kiya hai
+    if is_tag:
+        # VIP/Owner ko Roast nahi karna
+        if msg.author.id in ATTITUDE_BYPASS_CACHE or msg.author.id == OWNER_ID: return
+
+        async with msg.channel.typing():
+            # 😍 Girl Mode (Agar Crush hai)
+            if msg.author.id in CRUSH_CACHE:
+                text = await get_horny_data()
+                return await msg.reply(embed=discord.Embed(title="Your Naughty Girl 🎀", description=text, color=0xff69b4))
+
+            # 🔥 Roast Mode (Normal Log)
+            eng, hin = await get_evil_roast_data()
+            text = hin if TRANSLATOR_ON else eng
+            embed = discord.Embed(description=f"🔥 **Karwa li bezzati?**\n\n{text}", color=0x000000)
+            if TRANSLATOR_ON: embed.set_footer(text=f"Original: {eng}")
+            return await msg.reply(embed=embed)
+
+    # =====================================================
+    # 4. SAKSHAM PROTECTION SYSTEM (ID Tag + Name Check) ✅
+    # =====================================================
+    # Check: Agar message me "saksham" hai YA apki ID tag hui hai
     if "saksham" in msg.content.lower() or str(OWNER_ID) in msg.content:
         
-        # 1. Khud ko reply nahi karna
-        if msg.author.id == OWNER_ID:
-            return
+        # 1. Khud Owner ko reply nahi karna
+        if msg.author.id == OWNER_ID: return
+        
+        # 2. VIP User check (RAM se - Fast)
+        if msg.author.id in ATTITUDE_BYPASS_CACHE: return 
 
-        # 2. VIP CHECK (Database Check)
-        # Agar banda '/allow' list me hai to ignore karo
-        try:
-            is_vip = supabase.table("attitude_bypass").select("*").eq("user_id", str(msg.author.id)).execute().data
-            if is_vip:
-                return  # 🟢 VIP User Detected - Silent Mode
-        except:
-            pass # DB Error aayi to bhi Attitude dikhayenge (Safety)
-
-        # 3. 😈 ATTITUDE REPLIES COLLECTION (Full Savage Mode)
-        import random
-                # 3. 😈 ATTITUDE REPLIES COLLECTION (Updated: 150+ Savage Dialogues)
-        import random
-        replies = [
+        # 🔥 ATTITUDE DIALOGUES
+        attitude_replies = [        
             # --- 🤬 DESI GALI & SLANG (Full Rude) ---
             f"Abe {msg.author.mention}, ch*tiya hai kya tu? Dimaag mat kha. 🧠",
             f"Sun be {msg.author.mention}, apni shakal dekhi hai aine mein? Ulti aa jayegi. 🤮",
