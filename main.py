@@ -1206,7 +1206,7 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
 ])
 async def vip(i: discord.Interaction, mode: app_commands.Choice[str], user: discord.User = None):
     
-    # 1. OWNER CHECK (Database Logic)
+    # 1. OWNER CHECK
     if not owner(i):
         return await i.response.send_message("❌ **Only Owner can manage VIPs.**", ephemeral=True)
 
@@ -1218,13 +1218,16 @@ async def vip(i: discord.Interaction, mode: app_commands.Choice[str], user: disc
             if not user:
                 return await i.followup.send("❌ **User select karna zaroori hai!**")
 
-            # Database Upsert
+            # 1. Database Update
             supabase.table("attitude_bypass").upsert({"user_id": str(user.id)}).execute()
+            
+            # 2. 🔥 RAM UPDATE (Ye line zaroori hai!)
+            await load_bypass_users()
 
-            embed = discord.Embed(title="👑 VIP Added", description=f"**{user.mention}** ab VIP list me hai.", color=0xf1c40f) # Gold Color
+            embed = discord.Embed(title="👑 VIP Added", description=f"**{user.mention}** ab VIP list me hai.", color=0xf1c40f)
             embed.add_field(name="😎 Effect", value="Bot ab isse tameez se baat karega.", inline=False)
             embed.set_thumbnail(url=user.display_avatar.url)
-            embed.set_footer(text=f"Added by {i.user.display_name}")
+            embed.set_footer(text=f"Added by {i.user.display_name} • RAM Updated ✅")
             
             await i.followup.send(embed=embed)
 
@@ -1233,13 +1236,16 @@ async def vip(i: discord.Interaction, mode: app_commands.Choice[str], user: disc
             if not user:
                 return await i.followup.send("❌ **User select karna zaroori hai!**")
 
-            # Database Delete
+            # 1. Database Delete
             supabase.table("attitude_bypass").delete().eq("user_id", str(user.id)).execute()
 
-            embed = discord.Embed(title="😈 VIP Removed", description=f"**{user.mention}** ko VIP list se nikaal diya.", color=0x2c3e50) # Dark Color
+            # 2. 🔥 RAM UPDATE (Ye line zaroori hai!)
+            await load_bypass_users()
+
+            embed = discord.Embed(title="😈 VIP Removed", description=f"**{user.mention}** ko VIP list se nikaal diya.", color=0x2c3e50)
             embed.add_field(name="💀 Effect", value="Ab ye tag karega to full attitude sunega!", inline=False)
             embed.set_thumbnail(url=user.display_avatar.url)
-            embed.set_footer(text=f"Removed by {i.user.display_name}")
+            embed.set_footer(text=f"Removed by {i.user.display_name} • RAM Updated ✅")
 
             await i.followup.send(embed=embed)
 
@@ -1254,14 +1260,12 @@ async def vip(i: discord.Interaction, mode: app_commands.Choice[str], user: disc
             # Paginator Call
             view = VipPaginator(data, i.user, bot)
             
-            # Disable buttons if only 1 page
             if view.total_pages <= 1:
                 view.children[0].disabled = True
                 view.children[1].disabled = True
             else:
                 view.update_buttons()
 
-            # First Page Embed Generate
             embed = await view.get_page_embed()
             await i.followup.send(embed=embed, view=view)
 
