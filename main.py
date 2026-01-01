@@ -20,7 +20,7 @@ MY_BOT_ID = 1451451135813746700 # Aapka Bot ID
 
 # ✅ 1. VIP List Loader (Supabase se)
 async def load_bypass_users():
-    global BYPASS_USERS_CACHE
+    global ATTITUDE_BYPASS_CACHE
     try:
         print("⏳ Loading VIP (Bypass) list...")
         # Aapki table 'attitude_bypass' se data layega
