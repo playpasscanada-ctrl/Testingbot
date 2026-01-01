@@ -4398,6 +4398,18 @@ async def on_command_error(ctx, error):
         return
     print(f"⚠️ Command Error: {error}")
 
+@bot.tree.error
+async def on_app_command_error(i: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.CommandInvokeError) and "10062" in str(error):
+        # 🤫 Unknown Interaction error ko ignore karo
+        return
+    
+    # Baaki errors ke liye message bhej do
+    if not i.response.is_done():
+        await i.response.send_message(f"❌ Error: {error}", ephemeral=True)
+    else:
+        await i.followup.send(f"❌ Error: {error}", ephemeral=True)
+
 # ================== OPTIMIZED KEEP ALIVE (RAM SAVER) ==================
 def keep_alive():
     while True:
