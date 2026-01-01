@@ -91,6 +91,227 @@ async def load_crush_users():
     except Exception as e:
         print(f"❌ Error Loading Crushes: {e}")
 
+import random
+
+# ✅ NAUGHTY / FLIRTY MODE (Ultimate Collection 100+)
+async def get_horny_data():
+    naughty_list = [
+        # --- LEVEL 1: CUTE & FLIRTY ---
+        "Akele ho? Ya main aajau saath dene? 😉",
+        "Uff! Teri DP dekh ke toh system hang ho gaya. 🔥",
+        "Bhai, tu itna hot kyu hai? AC chalana padega. ❄️",
+        "Man toh kar raha hai tujhe... text karu saari raat. 😘",
+        "Tujhe dekh ke toh bot ko bhi feelings aane lagi hain. ❤️",
+        "Suno, tum dictionary ho kya? Kyunki tumhare aane se meri life me 'Meaning' aa gaya. 📖",
+        "Kya tum magician ho? Kyunki jab bhi tumhe dekhta hu, baaki sab gayab ho jate hain. 🎩✨",
+        "Tum Google ho kya? Kyunki mujhe jo dhoondna tha, wo tum ho. 🔍",
+        "Arre doctor ko bulao, mera dil skip kar raha hai tumhe dekh ke. 🩺",
+        "Agar khubsurti crime hoti, toh tum ab tak jail mein hote. 🚓",
+        "Tum wifi signal ho kya? Kyunki connection strong feel ho raha hai. 📶",
+        "Excuse me, kya tumhare paas map hai? Main tumhari aankhon mein kho gaya hu. 🗺️",
+        "Tum camera ho kya? Kyunki tumhe dekhte hi smile aa jati hai. 📸",
+        "Kya main tumhari photo le sakta hu? Santa ko batana hai mujhe gift mein kya chahiye. 🎅",
+        "Tumhara naam 'WiFi' hai kya? Kyunki main connect hona chahta hu. 😜",
+        "Jitna gussa dikha rahi hai na, bistar pe utna hi maza aayega. 😈",
+        "Aaj tujhe chhodne ka man nahi hai, bas teri 'Chilaane' ki awaaz sunni hai. 🔊🥵",
+        "Sun, kapde utaarne me meri help chahiye ya akele kar legi? 😉",
+        "Tere badan ki garmi mujhe yahan tak feel ho rahi hai, aaja thanda kar du. 💦",
+        "Aaj raat tujhe sone nahi dunga, itna thaka dunga ki subah uth nahi payegi. 🛌🔥",
+        "Mujhe tujhe 'Taste' karna hai, bata kahan se shuru karu? 😋👅",
+        "Teri ye 'Attitude' tab kahan jati hai jab main tujhe deewar se laga deta hu? 🧱🫦",
+        "Mere niche let ke jo tu kaanpti hai na, wo mera favorite view hai. 🫠",
+        "Suna hai tu bahut 'Wild' hai, aaj dekh lete hain kisme kitna dum hai. 🐯😏",
+        "Lips toh sirf trailer hain, asli maza toh niche milega. 💋👇",
+        "Aaja, aaj tujhe dikhata hu ki asli 'Hardcore' kya hota hai. 🛠️😈",
+        "Tera badan mera wait kar raha hai, aur main tera... jaldi aa. 🏃‍♂️💨",
+        "Halka sa touch karne pe hi itni geeli (wet) ho gayi? Abhi toh party shuru hui hai. 💦😉",
+        "Aaj poori raat sirf main aur tu... aur tere badan ka har ek kona. 🌚",
+        "Control nahi ho raha ab, aake chup karwa de mujhe... apne hothon se. 💋",
+        "Mujhe teri 'Scream' pasand hai, chalo aaj use record karte hain. 🎙️🥵",
+        "Tu mere upar hogi, aur main tujhe poora control karunga. ⛓️",
+        "Itni sexy lag rahi hai ki man kar raha hai abhi kapde phaad du tere. 👗❌",
+        "Jaan, aaj 'Safe' nahi 'Savage' khelne ka man hai. 💀🔥",
+        "Tujhe itna tadpaunga ki tu khud hi bolegi 'Aur please...' 😈💦"
+
+        "Jaan, mera badan garam ho raha hai, aake thanda karoge ya main khud kuch karu? 🥵💦",
+        "Aaj mujhe bistar pe 'Rough' pasand hai, sambhal paoge mujhe? 😈🔥",
+        "Mere hothon ka swad kab chakhoge? Ya seedha niche jana hai? 💋👇",
+        "Aaj raat mujhe sulaana mat, bas poori raat meri cheekhein nikaalna. 🔊🫦",
+        "Itne hot lag rahe ho ki mera control kho raha hai, abhi ke abhi mujhe tum chahiye. 😤❤️",
+        "Kya dekh rahe ho? Kapde utaaro aur kaam pe lag jao. 👗❌",
+        "Mujhe pasand hai jab tum mujhe deewar se laga kar meri garden pe kiss karte ho. 🧱🫦",
+        "Aaj main tumhare upar rahungi aur tum wahi karoge jo main bolungi. ⛓️👸",
+        "Tumhari finger touch se hi main kitni geeli (wet) ho jati hu, socho aage kya hoga? 💦😉",
+        "Mujhe 'Gentleman' nahi, aaj raat ek 'Janwar' chahiye... kya tum banoge? 🐯😈",
+        "Mere baal pakad ke jab tum mujhe piche se pakadte ho na, mera system hil jata hai. 🫠🔥",
+        "Aaj 'Safe' rehne ka man nahi hai, mujhe tumhare andar mehsoos hona hai. 🔞",
+        "Suno, aaj main tumhari har ek baat manungi, bas mujhe satisfy kar do. 🤤💦",
+        "Mujhe 'Bed' pe dominate hona pasand hai, dikhao kitne mard ho tum. 💪🫦",
+        "Mera man kar raha hai tumhare har ek inch ko apne muh me bhar lu. 😋👅",
+        "Aaj raat itna thaka do mujhe ki subah uthne ki taqat na bache. 🛌🔥",
+        "Tumhare 'Hard' hone ka ehsaas mujhe pagal bana raha hai, ab ruka nahi jata. 🥵🍆",
+        "Mere badan ki pyaas sirf tum bujha sakte ho, aao na mere paas. 🌊🫦",
+        "Mujhe pata hai tum kya chahte ho, aur main wahi dene ke liye taiyaar hu... abhi. 😈",
+        "Aaj raat lights off nahi hongi, mujhe dekhna hai tum mere saath kya karte ho. 💡🚫🔞"
+        
+        # --- TYPE 1: TECH & BOT DOUBLE MEANING (Sabse Safe & Funny) ---
+        "Mera 'Software' ab 'Hardware' ban chuka hai tujhe dekh ke. 🤖🍆",
+        "Mere 'Port' mein apna 'Pendrive' kab daloge? Data transfer karna hai. 💾",
+        "Jaan, mere 'Joystick' ke saath khelna band kar, warna game start ho jayega. 🎮",
+        "System overheat ho raha hai, koi apne 'Liquid Cooling' se thanda kar do. 💦",
+        "Backup le lo, aaj raat system crash hone wala hai. 💥",
+        "Mera server down hai, par kuch aur 'Up' hai. 😉",
+        "Tere aane se meri 'Battery' full charge ho gayi, ab performance lambi chalegi. 🔋",
+        "Input device taiyaar hai, bas sahi Slot ka intezaar hai. 🔌",
+        "Virus mat ban, seedha system me ghus ja. 🦠❤️",
+        "Vibrate mode pe hu, call uthaogi ya main khud hi hil... I mean, ring karu? 📳",
+
+        # --- TYPE 2: PURE DOUBLE MEANING (Samajhne wale samajh gaye) ---
+        "Bhook lagi hai... khane me kya hai? Tu ya kuch aur? 🍽️😋",
+        "Size matter nahi karta, performance matter karti hai... aur main puri raat chalta hu. ⏱️",
+        "Thak gayi ho? Kaho toh daba du... paer? 🦶😉",
+        "Raat kaafi lambi hai, agar neend na aaye toh mujhe jaga dena. 😈",
+        "Bistar bada hai par main kone me sota hu... jagah chahiye toh aaja. 🛏️",
+        "Andhera hai, dar lag raha hai? Haath pakad lo... ya jo pakadna hai pakad lo. ✊",
+        "Garmi lag rahi hai? Main help karu button kholne me? 👕🥵",
+        "Suna hai tum achi 'Sawaari' karti ho... bike ki baat kar raha hu. 🏍️",
+        "Muh kholo... aa.. cake khilana hai baby. 🍰",
+        "Itna zor se mat cheekhna, padosi jag jayenge. 🤫",
+        "Aaj raat main upar, tum neeche... bunk bed ki baat kar raha hu gande log. 🛌",
+        "Mujhe gile (wet) log pasand hain... barish me bheegne wale. 🌧️",
+        "Dheere se karunga, dard nahi hoga... settings change. ⚙️",
+        "Mere paas ek bada sa... dil hai, dekhogi? ❤️",
+        "Zyaada mat hila, gir jayega... pani ka glass. 🥛",
+
+        # --- LEVEL: EXTREME BOLD ---
+        "Ghutno (knees) pe baith... mujhe wo view pasand hai. 🧎‍♀️👀",
+        "Itna mat akad, varna bistar pe cheekhne ki awaaz teri hi hogi. 😈",
+        "Saans rok le... abhi toh maine shuru bhi nahi kiya. 🤫",
+        "Mujhe 'Good Morning' nahi, 'Good Moaning' chahiye. 🌅🔊",
+        "Mere paas ek 'Kela' 🍌 hai, bhook lagi hai toh bol? (Fruit ki baat kar raha hu).",
+        "Doodh (Milk) peeyogi? Ya seedha source se chahiye? 🥛🐮",
+        "Paseena chhoot jayega agar maine shuru kiya toh... AC on kar le. 🥵",
+        "Raat ko darwaza khula rakhna, aaj 'Chor' aane wala hai... dil churane (aur kuch aur bhi). 🥷",
+        "Size dekh ke dar mat jana, adjust ho jayega... naya sofa laya hu. 🛋️🍆",
+        "Muh band rakh, varna main band karwa dunga... apne tareeke se. 🤐💋",
+        
+        # --- LEVEL: PSYCHO LOVER ---
+        "Tu meri hai, aur agar kisi ne touch kiya toh haath kaat dunga. 🔪❤️",
+        "Chilla mat, koi nahi aayega bachane... hum 'Ludo' khel rahe hain. 🎲😈",
+        "Mujhe tere jism se nahi, teri rooh se pyaar hai... par jism bhi chalega. 👻",
+        "Agar tu 'Exam' hoti, toh main tujhe poori raat 'Study' karta. 📖👓",
+        "Batti bujha de, mujhe andhere mein 'kaam' karna pasand hai. 💡🚫",
+        "Zyaada uchal mat, varna godi me utha ke le jaunga. 🏋️‍♂️",
+        "Tu chillayegi, main hasunga... Horror movie dekhne ki baat kar raha hu. 📺🧟‍♂️",
+        
+        # --- LEVEL: TECH DIRTY ---
+        "Mera 'Ram' toh khali hai, par 'Hard Disk' fulll load ho gaya hai. 💾",
+        "Tere 'Input' ke liye mera 'Output' taiyaar hai. 🔌",
+        "Server connect hone wala hai, firewall hata de baby. 🧱🔓",
+        "Apna 'Hotspot' on kar, mujhe connect hona hai... deeply. 📶",
+        "System update maang raha hai... 69% complete. 🔄",
+        
+        # --- LEVEL: UNHINGED HINGLISH ---
+        "Main vegetarian hu, par tujhe khane ka man kar raha hai. 🥩😋",
+        "Thak gayi? Aaja dabau... gala nahi pagli, paer. 🦶😉",
+        "Kapde utaar... mujhe dhone hain, washing machine khali hai. 🧺👚",
+        "Hilana band kar... table, chai gir jayegi. ☕🛑",
+        "Oye, neeche kya dekh rahi hai? Aankhein upar hain meri. 👀📏",
+        "Mere paas 'Cream' wala biscuit hai, khayegi? 🍪",
+        "Tujhe bistar pe baandh du? ...Mera matlab seat belt se, safety first. 🎗️🚗",
+        "Geela ho gaya... tera phone, paani me gir gaya tha na? 📱💦"
+
+        # --- TYPE 3: SAVAGE FLIRT ---
+        "Apni location bhej, mujhe 'Home Delivery' chahiye teri. 📍",
+        "Tu patakha hai, man kar raha hai tujhe jala du... I mean, light up my life. 🧨",
+        "Tere paas license hai? Kyunki itni tezi se dil ki dhadkan badhana illegal hai. 🚓",
+        "Test drive milegi? Ya seedha khareed lu? 🚗",
+        "Mujhe pasand hai jab tum ghutno pe... baith ke mujhse maafi mangti ho. 🧎‍♀️😜",
+        "Lips dry ho rahe hain, koi 'Lip Balm' milega ya natural tareeka apnau? 💋",
+        "Agar main Santa hota, toh aaj raat teri chimney se andar aata. 🎅",
+        "Tujhe dekh ke lagta hai aaj 'Exercise' heavy hone wali hai. 🏋️‍♂️",
+        "Tu agar exam paper hoti, toh main tujhe 'Cheat' karke top karta. 📝",
+        "Mere paas ek lamba sa... code hai, dikhau? 🐍"
+    
+        # --- LEVEL 2: BOLD & SUGGESTIVE ---
+        "Raat ko kya plan hai? Main free hu. 😈",
+        "Aisi baatein mat kar, control nahi hota. 🙈",
+        "Send nudes... mazak kar raha hu (unless? 😳)",
+        "Bata na, aaj raat sapne me aau ya haqeeqat me? 🛌",
+        "Tere hoth (lips) kaafi... *interesting* lag rahe hain. 💋",
+        "Jaan, gussa kyu ho rahe ho? Aa jao gale lag jao. 🤗",
+        "Aaj mood kuch zyada hi romantic ho raha hai, zimmedar tum ho. 🌹",
+        "Mujhe coffee nahi chahiye, teri baatein hi kaafi hain jagane ke liye. ☕",
+        "Agar main insaan hota, toh pakka tujhe date pe le jata. 🤖❤️",
+        "Sun, thoda kam hot laga kar, global warming badh rahi hai. 🌍🔥",
+        "Tera nasha aisa hai ki antivirus bhi kaam nahi kar raha. 🦠",
+        "Mere processor me sirf tera hi data process ho raha hai aajkal. 💻",
+        "Keyboard me 'U' aur 'I' kitne paas hain na? Hum bhi ho sakte hain. ⌨️",
+        "Tu wo notification hai jise main kabhi swipe clear nahi karta. 🔔",
+        "Aaj kal neend kam aur tere khayal zyada aa rahe hain. 💭",
+        
+        # --- LEVEL 3: NAUGHTY & UNHINGED (18+ Vibes) ---
+        "Daddy bolne ka man hai? Ya Mommy? 🥵",
+        "Bistar khali hai, bas teri kami hai. 🛏️",
+        "Thand lag rahi hai, aake warm kar de na. 🔥",
+        "Good boy/girl ban ne ka natak mat kar, mujhe pata hai tu kya chahta hai. 😈",
+        "Mere paas aa, sab bhula dunga. 😉",
+        "Lips dry ho rahe hain, koi moisturizer milega... ya kiss? 💋",
+        "Agar tu virus hai, toh main infected hone ko taiyaar hu. 🦠❤️",
+        "Raat kaafi rangeen ho sakti hai agar tu haan bol de toh. 🌈",
+        "Kapde pehen ke acchi lagti hai, par... khair chhod. 😶",
+        "Tu aag hai, main petrol... mil jayenge toh dhamaka hoga. 💥",
+        "Mujhe touch screen mat samajh, aise touch karegi toh current lagega. ⚡",
+        "Teri awaaz sunke kuch kuch hota hai... tum nahi samjhoge. 🫣",
+        "Aaj raat main aur tum... aur dher saari baatein (aur kuch bhi). 🌚",
+        "Puri duniya bhaad me jaye, mujhe bas tu chahiye... abhi ke abhi. 😤",
+        "Saans lene me takleef ho rahi hai, CPR de de apne hothon se. 💋🩺",
+        "Vibe check pass ho gaya, ab room number de de. 🏨",
+        "Tu drug hai kya? Lat lag gayi hai teri. 💉",
+        "Mera dimaag ganda nahi hai, bas khayal tere hain. 🧠💭",
+        "Shirt ki button khuli hai ya mujhe garmi lag rahi hai? 👕🥵",
+        "Nazrein mat mila, pyaar ho jayega... ya kuch aur. 😉",
+
+        # --- LEVEL 4: DESI FLIRT (Bollywood Style) ---
+        "Itni zor se mat has, dil phisal jayega. 😍",
+        "Chand sa roshan chehra... aage ka lyrics bhool gaya, bas tu hot hai. 🌙",
+        "Tujhe dekh ke toh Titanic bhi dubara doob jaye. 🚢",
+        "Kya maal... I mean, kya kamaal lag rahe ho aaj. 😅",
+        "Tujhme rab dikhta hai... aur thoda shaitaan bhi. 😈🙏",
+        "Hath de de mera hath mein, duniya jala denge saath mein. 🔥🤝",
+        "Oye beautiful, number de ya dil de... choice teri. 📱❤️",
+        "Tere chehre se nazar nahi hatti, nazare hum kya dekhein. 👀",
+        "Tu agar Pepsi hoti toh 'Youngistan' meri hoti. 🥤",
+        "Dil garden garden ho gaya tujhe dekh ke. 🌸",
+        "Chalti hai kya 9 se 12? 😉",
+        "Tu cheez badi hai mast mast. 🎶",
+        "Tera dhyaan kidhar hai? Tera hero idhar hai. 🦸‍♂️",
+        "Lagta hai barish hone wali hai, kyuki dharti pe pari/para gir gayi hai. 🧚‍♀️",
+        "Apne papa ko bolna, damad mil gaya unhe. 🤵",
+
+        # --- LEVEL 5: DARK/POSSESSIVE ---
+        "Sirf meri taraf dekh, warna aankhein nikaal lunga (pyaar se). 👀🔪",
+        "Tu meri property hai, kisi aur ne dekha toh taange tod dunga. ⛓️",
+        "Mujhse door rehne ka natak band kar, tu bhi chahta hai mujhe. 🖤",
+        "Block karegi? Dusri ID se aaunga, tu bach nahi sakti. 🕵️‍♂️",
+        "Jahan jayegi wahan main hounga, dar mat, pyaar hai. 👻",
+        "Mera obsession hai tu, shauk nahi jo badal jaye. 🔗",
+        "Agar tu meri nahi ho sakti, toh... main wait kar lunga, koi jaldi nahi. 😂",
+        
+        # --- LEVEL 6: RANDOM/FUNNY ---
+        "Tujhe dekh ke mere system ka fan speed badh gaya. 🚁",
+        "Error 404: Clothes not found... in my imagination. 🤖💭",
+        "Kya hum pehle mile hain? Ya mere sapne me aayi thi? 🤔",
+        "License dikha apna, itna hot hona illegal hai. 👮‍♂️",
+        "Oxygen ki zarurat kisko hai jab tu saamne ho? (Actually chahiye, mar jaunga). ⚰️",
+        "Tu chocolate hai kya? Khane ka man kar raha hai. 🍫",
+        "Aaj ka din kharab tha, par tujhe dekh ke set ho gaya. ✅",
+        "Mujhe teri smile se zyada kuch nahi chahiye... (jhoot). 🤥",
+        "Bhai/Behen, tu insaan hai ya painting? Itna perfect? 🎨",
+        "Chal bhaag chalte hain, bill tera baap bharega. 🏃‍♂️💨"
+    ]
+    return random.choice(naughty_list)
+
 # ================== GLOBAL CACHES (RAM) ==================
 BANNED_WORDS_CACHE = set()
 BYPASS_USERS_CACHE = set()
@@ -523,259 +744,57 @@ async def safe_send(i, embed):
 # ================== VERIFY + AUTO WHITELIST + LOGS ==================
 @bot.event
 async def on_message(msg):
-
+    
+    # 1. Bot khud ki baat na sune
     if msg.author.bot:
         return
 
-    OWNER_ID = 804687084249284618
+    # 2. Owner ID
+    OWNER_ID = 804687084249284618 
 
-import random
-
-# ✅ NAUGHTY / FLIRTY MODE (Ultimate Collection 100+)
-async def get_horny_data():
-    naughty_list = [
-        # --- LEVEL 1: CUTE & FLIRTY ---
-        "Akele ho? Ya main aajau saath dene? 😉",
-        "Uff! Teri DP dekh ke toh system hang ho gaya. 🔥",
-        "Bhai, tu itna hot kyu hai? AC chalana padega. ❄️",
-        "Man toh kar raha hai tujhe... text karu saari raat. 😘",
-        "Tujhe dekh ke toh bot ko bhi feelings aane lagi hain. ❤️",
-        "Suno, tum dictionary ho kya? Kyunki tumhare aane se meri life me 'Meaning' aa gaya. 📖",
-        "Kya tum magician ho? Kyunki jab bhi tumhe dekhta hu, baaki sab gayab ho jate hain. 🎩✨",
-        "Tum Google ho kya? Kyunki mujhe jo dhoondna tha, wo tum ho. 🔍",
-        "Arre doctor ko bulao, mera dil skip kar raha hai tumhe dekh ke. 🩺",
-        "Agar khubsurti crime hoti, toh tum ab tak jail mein hote. 🚓",
-        "Tum wifi signal ho kya? Kyunki connection strong feel ho raha hai. 📶",
-        "Excuse me, kya tumhare paas map hai? Main tumhari aankhon mein kho gaya hu. 🗺️",
-        "Tum camera ho kya? Kyunki tumhe dekhte hi smile aa jati hai. 📸",
-        "Kya main tumhari photo le sakta hu? Santa ko batana hai mujhe gift mein kya chahiye. 🎅",
-        "Tumhara naam 'WiFi' hai kya? Kyunki main connect hona chahta hu. 😜",
-        "Jitna gussa dikha rahi hai na, bistar pe utna hi maza aayega. 😈",
-        "Aaj tujhe chhodne ka man nahi hai, bas teri 'Chilaane' ki awaaz sunni hai. 🔊🥵",
-        "Sun, kapde utaarne me meri help chahiye ya akele kar legi? 😉",
-        "Tere badan ki garmi mujhe yahan tak feel ho rahi hai, aaja thanda kar du. 💦",
-        "Aaj raat tujhe sone nahi dunga, itna thaka dunga ki subah uth nahi payegi. 🛌🔥",
-        "Mujhe tujhe 'Taste' karna hai, bata kahan se shuru karu? 😋👅",
-        "Teri ye 'Attitude' tab kahan jati hai jab main tujhe deewar se laga deta hu? 🧱🫦",
-        "Mere niche let ke jo tu kaanpti hai na, wo mera favorite view hai. 🫠",
-        "Suna hai tu bahut 'Wild' hai, aaj dekh lete hain kisme kitna dum hai. 🐯😏",
-        "Lips toh sirf trailer hain, asli maza toh niche milega. 💋👇",
-        "Aaja, aaj tujhe dikhata hu ki asli 'Hardcore' kya hota hai. 🛠️😈",
-        "Tera badan mera wait kar raha hai, aur main tera... jaldi aa. 🏃‍♂️💨",
-        "Halka sa touch karne pe hi itni geeli (wet) ho gayi? Abhi toh party shuru hui hai. 💦😉",
-        "Aaj poori raat sirf main aur tu... aur tere badan ka har ek kona. 🌚",
-        "Control nahi ho raha ab, aake chup karwa de mujhe... apne hothon se. 💋",
-        "Mujhe teri 'Scream' pasand hai, chalo aaj use record karte hain. 🎙️🥵",
-        "Tu mere upar hogi, aur main tujhe poora control karunga. ⛓️",
-        "Itni sexy lag rahi hai ki man kar raha hai abhi kapde phaad du tere. 👗❌",
-        "Jaan, aaj 'Safe' nahi 'Savage' khelne ka man hai. 💀🔥",
-        "Tujhe itna tadpaunga ki tu khud hi bolegi 'Aur please...' 😈💦"
-
-        "Jaan, mera badan garam ho raha hai, aake thanda karoge ya main khud kuch karu? 🥵💦",
-        "Aaj mujhe bistar pe 'Rough' pasand hai, sambhal paoge mujhe? 😈🔥",
-        "Mere hothon ka swad kab chakhoge? Ya seedha niche jana hai? 💋👇",
-        "Aaj raat mujhe sulaana mat, bas poori raat meri cheekhein nikaalna. 🔊🫦",
-        "Itne hot lag rahe ho ki mera control kho raha hai, abhi ke abhi mujhe tum chahiye. 😤❤️",
-        "Kya dekh rahe ho? Kapde utaaro aur kaam pe lag jao. 👗❌",
-        "Mujhe pasand hai jab tum mujhe deewar se laga kar meri garden pe kiss karte ho. 🧱🫦",
-        "Aaj main tumhare upar rahungi aur tum wahi karoge jo main bolungi. ⛓️👸",
-        "Tumhari finger touch se hi main kitni geeli (wet) ho jati hu, socho aage kya hoga? 💦😉",
-        "Mujhe 'Gentleman' nahi, aaj raat ek 'Janwar' chahiye... kya tum banoge? 🐯😈",
-        "Mere baal pakad ke jab tum mujhe piche se pakadte ho na, mera system hil jata hai. 🫠🔥",
-        "Aaj 'Safe' rehne ka man nahi hai, mujhe tumhare andar mehsoos hona hai. 🔞",
-        "Suno, aaj main tumhari har ek baat manungi, bas mujhe satisfy kar do. 🤤💦",
-        "Mujhe 'Bed' pe dominate hona pasand hai, dikhao kitne mard ho tum. 💪🫦",
-        "Mera man kar raha hai tumhare har ek inch ko apne muh me bhar lu. 😋👅",
-        "Aaj raat itna thaka do mujhe ki subah uthne ki taqat na bache. 🛌🔥",
-        "Tumhare 'Hard' hone ka ehsaas mujhe pagal bana raha hai, ab ruka nahi jata. 🥵🍆",
-        "Mere badan ki pyaas sirf tum bujha sakte ho, aao na mere paas. 🌊🫦",
-        "Mujhe pata hai tum kya chahte ho, aur main wahi dene ke liye taiyaar hu... abhi. 😈",
-        "Aaj raat lights off nahi hongi, mujhe dekhna hai tum mere saath kya karte ho. 💡🚫🔞"
-        
-        # --- TYPE 1: TECH & BOT DOUBLE MEANING (Sabse Safe & Funny) ---
-        "Mera 'Software' ab 'Hardware' ban chuka hai tujhe dekh ke. 🤖🍆",
-        "Mere 'Port' mein apna 'Pendrive' kab daloge? Data transfer karna hai. 💾",
-        "Jaan, mere 'Joystick' ke saath khelna band kar, warna game start ho jayega. 🎮",
-        "System overheat ho raha hai, koi apne 'Liquid Cooling' se thanda kar do. 💦",
-        "Backup le lo, aaj raat system crash hone wala hai. 💥",
-        "Mera server down hai, par kuch aur 'Up' hai. 😉",
-        "Tere aane se meri 'Battery' full charge ho gayi, ab performance lambi chalegi. 🔋",
-        "Input device taiyaar hai, bas sahi Slot ka intezaar hai. 🔌",
-        "Virus mat ban, seedha system me ghus ja. 🦠❤️",
-        "Vibrate mode pe hu, call uthaogi ya main khud hi hil... I mean, ring karu? 📳",
-
-        # --- TYPE 2: PURE DOUBLE MEANING (Samajhne wale samajh gaye) ---
-        "Bhook lagi hai... khane me kya hai? Tu ya kuch aur? 🍽️😋",
-        "Size matter nahi karta, performance matter karti hai... aur main puri raat chalta hu. ⏱️",
-        "Thak gayi ho? Kaho toh daba du... paer? 🦶😉",
-        "Raat kaafi lambi hai, agar neend na aaye toh mujhe jaga dena. 😈",
-        "Bistar bada hai par main kone me sota hu... jagah chahiye toh aaja. 🛏️",
-        "Andhera hai, dar lag raha hai? Haath pakad lo... ya jo pakadna hai pakad lo. ✊",
-        "Garmi lag rahi hai? Main help karu button kholne me? 👕🥵",
-        "Suna hai tum achi 'Sawaari' karti ho... bike ki baat kar raha hu. 🏍️",
-        "Muh kholo... aa.. cake khilana hai baby. 🍰",
-        "Itna zor se mat cheekhna, padosi jag jayenge. 🤫",
-        "Aaj raat main upar, tum neeche... bunk bed ki baat kar raha hu gande log. 🛌",
-        "Mujhe gile (wet) log pasand hain... barish me bheegne wale. 🌧️",
-        "Dheere se karunga, dard nahi hoga... settings change. ⚙️",
-        "Mere paas ek bada sa... dil hai, dekhogi? ❤️",
-        "Zyaada mat hila, gir jayega... pani ka glass. 🥛",
-
-        # --- LEVEL: EXTREME BOLD ---
-        "Ghutno (knees) pe baith... mujhe wo view pasand hai. 🧎‍♀️👀",
-        "Itna mat akad, varna bistar pe cheekhne ki awaaz teri hi hogi. 😈",
-        "Saans rok le... abhi toh maine shuru bhi nahi kiya. 🤫",
-        "Mujhe 'Good Morning' nahi, 'Good Moaning' chahiye. 🌅🔊",
-        "Mere paas ek 'Kela' 🍌 hai, bhook lagi hai toh bol? (Fruit ki baat kar raha hu).",
-        "Doodh (Milk) peeyogi? Ya seedha source se chahiye? 🥛🐮",
-        "Paseena chhoot jayega agar maine shuru kiya toh... AC on kar le. 🥵",
-        "Raat ko darwaza khula rakhna, aaj 'Chor' aane wala hai... dil churane (aur kuch aur bhi). 🥷",
-        "Size dekh ke dar mat jana, adjust ho jayega... naya sofa laya hu. 🛋️🍆",
-        "Muh band rakh, varna main band karwa dunga... apne tareeke se. 🤐💋",
-        
-        # --- LEVEL: PSYCHO LOVER ---
-        "Tu meri hai, aur agar kisi ne touch kiya toh haath kaat dunga. 🔪❤️",
-        "Chilla mat, koi nahi aayega bachane... hum 'Ludo' khel rahe hain. 🎲😈",
-        "Mujhe tere jism se nahi, teri rooh se pyaar hai... par jism bhi chalega. 👻",
-        "Agar tu 'Exam' hoti, toh main tujhe poori raat 'Study' karta. 📖👓",
-        "Batti bujha de, mujhe andhere mein 'kaam' karna pasand hai. 💡🚫",
-        "Zyaada uchal mat, varna godi me utha ke le jaunga. 🏋️‍♂️",
-        "Tu chillayegi, main hasunga... Horror movie dekhne ki baat kar raha hu. 📺🧟‍♂️",
-        
-        # --- LEVEL: TECH DIRTY ---
-        "Mera 'Ram' toh khali hai, par 'Hard Disk' fulll load ho gaya hai. 💾",
-        "Tere 'Input' ke liye mera 'Output' taiyaar hai. 🔌",
-        "Server connect hone wala hai, firewall hata de baby. 🧱🔓",
-        "Apna 'Hotspot' on kar, mujhe connect hona hai... deeply. 📶",
-        "System update maang raha hai... 69% complete. 🔄",
-        
-        # --- LEVEL: UNHINGED HINGLISH ---
-        "Main vegetarian hu, par tujhe khane ka man kar raha hai. 🥩😋",
-        "Thak gayi? Aaja dabau... gala nahi pagli, paer. 🦶😉",
-        "Kapde utaar... mujhe dhone hain, washing machine khali hai. 🧺👚",
-        "Hilana band kar... table, chai gir jayegi. ☕🛑",
-        "Oye, neeche kya dekh rahi hai? Aankhein upar hain meri. 👀📏",
-        "Mere paas 'Cream' wala biscuit hai, khayegi? 🍪",
-        "Tujhe bistar pe baandh du? ...Mera matlab seat belt se, safety first. 🎗️🚗",
-        "Geela ho gaya... tera phone, paani me gir gaya tha na? 📱💦"
-
-        # --- TYPE 3: SAVAGE FLIRT ---
-        "Apni location bhej, mujhe 'Home Delivery' chahiye teri. 📍",
-        "Tu patakha hai, man kar raha hai tujhe jala du... I mean, light up my life. 🧨",
-        "Tere paas license hai? Kyunki itni tezi se dil ki dhadkan badhana illegal hai. 🚓",
-        "Test drive milegi? Ya seedha khareed lu? 🚗",
-        "Mujhe pasand hai jab tum ghutno pe... baith ke mujhse maafi mangti ho. 🧎‍♀️😜",
-        "Lips dry ho rahe hain, koi 'Lip Balm' milega ya natural tareeka apnau? 💋",
-        "Agar main Santa hota, toh aaj raat teri chimney se andar aata. 🎅",
-        "Tujhe dekh ke lagta hai aaj 'Exercise' heavy hone wali hai. 🏋️‍♂️",
-        "Tu agar exam paper hoti, toh main tujhe 'Cheat' karke top karta. 📝",
-        "Mere paas ek lamba sa... code hai, dikhau? 🐍"
-    
-        # --- LEVEL 2: BOLD & SUGGESTIVE ---
-        "Raat ko kya plan hai? Main free hu. 😈",
-        "Aisi baatein mat kar, control nahi hota. 🙈",
-        "Send nudes... mazak kar raha hu (unless? 😳)",
-        "Bata na, aaj raat sapne me aau ya haqeeqat me? 🛌",
-        "Tere hoth (lips) kaafi... *interesting* lag rahe hain. 💋",
-        "Jaan, gussa kyu ho rahe ho? Aa jao gale lag jao. 🤗",
-        "Aaj mood kuch zyada hi romantic ho raha hai, zimmedar tum ho. 🌹",
-        "Mujhe coffee nahi chahiye, teri baatein hi kaafi hain jagane ke liye. ☕",
-        "Agar main insaan hota, toh pakka tujhe date pe le jata. 🤖❤️",
-        "Sun, thoda kam hot laga kar, global warming badh rahi hai. 🌍🔥",
-        "Tera nasha aisa hai ki antivirus bhi kaam nahi kar raha. 🦠",
-        "Mere processor me sirf tera hi data process ho raha hai aajkal. 💻",
-        "Keyboard me 'U' aur 'I' kitne paas hain na? Hum bhi ho sakte hain. ⌨️",
-        "Tu wo notification hai jise main kabhi swipe clear nahi karta. 🔔",
-        "Aaj kal neend kam aur tere khayal zyada aa rahe hain. 💭",
-        
-        # --- LEVEL 3: NAUGHTY & UNHINGED (18+ Vibes) ---
-        "Daddy bolne ka man hai? Ya Mommy? 🥵",
-        "Bistar khali hai, bas teri kami hai. 🛏️",
-        "Thand lag rahi hai, aake warm kar de na. 🔥",
-        "Good boy/girl ban ne ka natak mat kar, mujhe pata hai tu kya chahta hai. 😈",
-        "Mere paas aa, sab bhula dunga. 😉",
-        "Lips dry ho rahe hain, koi moisturizer milega... ya kiss? 💋",
-        "Agar tu virus hai, toh main infected hone ko taiyaar hu. 🦠❤️",
-        "Raat kaafi rangeen ho sakti hai agar tu haan bol de toh. 🌈",
-        "Kapde pehen ke acchi lagti hai, par... khair chhod. 😶",
-        "Tu aag hai, main petrol... mil jayenge toh dhamaka hoga. 💥",
-        "Mujhe touch screen mat samajh, aise touch karegi toh current lagega. ⚡",
-        "Teri awaaz sunke kuch kuch hota hai... tum nahi samjhoge. 🫣",
-        "Aaj raat main aur tum... aur dher saari baatein (aur kuch bhi). 🌚",
-        "Puri duniya bhaad me jaye, mujhe bas tu chahiye... abhi ke abhi. 😤",
-        "Saans lene me takleef ho rahi hai, CPR de de apne hothon se. 💋🩺",
-        "Vibe check pass ho gaya, ab room number de de. 🏨",
-        "Tu drug hai kya? Lat lag gayi hai teri. 💉",
-        "Mera dimaag ganda nahi hai, bas khayal tere hain. 🧠💭",
-        "Shirt ki button khuli hai ya mujhe garmi lag rahi hai? 👕🥵",
-        "Nazrein mat mila, pyaar ho jayega... ya kuch aur. 😉",
-
-        # --- LEVEL 4: DESI FLIRT (Bollywood Style) ---
-        "Itni zor se mat has, dil phisal jayega. 😍",
-        "Chand sa roshan chehra... aage ka lyrics bhool gaya, bas tu hot hai. 🌙",
-        "Tujhe dekh ke toh Titanic bhi dubara doob jaye. 🚢",
-        "Kya maal... I mean, kya kamaal lag rahe ho aaj. 😅",
-        "Tujhme rab dikhta hai... aur thoda shaitaan bhi. 😈🙏",
-        "Hath de de mera hath mein, duniya jala denge saath mein. 🔥🤝",
-        "Oye beautiful, number de ya dil de... choice teri. 📱❤️",
-        "Tere chehre se nazar nahi hatti, nazare hum kya dekhein. 👀",
-        "Tu agar Pepsi hoti toh 'Youngistan' meri hoti. 🥤",
-        "Dil garden garden ho gaya tujhe dekh ke. 🌸",
-        "Chalti hai kya 9 se 12? 😉",
-        "Tu cheez badi hai mast mast. 🎶",
-        "Tera dhyaan kidhar hai? Tera hero idhar hai. 🦸‍♂️",
-        "Lagta hai barish hone wali hai, kyuki dharti pe pari/para gir gayi hai. 🧚‍♀️",
-        "Apne papa ko bolna, damad mil gaya unhe. 🤵",
-
-        # --- LEVEL 5: DARK/POSSESSIVE ---
-        "Sirf meri taraf dekh, warna aankhein nikaal lunga (pyaar se). 👀🔪",
-        "Tu meri property hai, kisi aur ne dekha toh taange tod dunga. ⛓️",
-        "Mujhse door rehne ka natak band kar, tu bhi chahta hai mujhe. 🖤",
-        "Block karegi? Dusri ID se aaunga, tu bach nahi sakti. 🕵️‍♂️",
-        "Jahan jayegi wahan main hounga, dar mat, pyaar hai. 👻",
-        "Mera obsession hai tu, shauk nahi jo badal jaye. 🔗",
-        "Agar tu meri nahi ho sakti, toh... main wait kar lunga, koi jaldi nahi. 😂",
-        
-        # --- LEVEL 6: RANDOM/FUNNY ---
-        "Tujhe dekh ke mere system ka fan speed badh gaya. 🚁",
-        "Error 404: Clothes not found... in my imagination. 🤖💭",
-        "Kya hum pehle mile hain? Ya mere sapne me aayi thi? 🤔",
-        "License dikha apna, itna hot hona illegal hai. 👮‍♂️",
-        "Oxygen ki zarurat kisko hai jab tu saamne ho? (Actually chahiye, mar jaunga). ⚰️",
-        "Tu chocolate hai kya? Khane ka man kar raha hai. 🍫",
-        "Aaj ka din kharab tha, par tujhe dekh ke set ho gaya. ✅",
-        "Mujhe teri smile se zyada kuch nahi chahiye... (jhoot). 🤥",
-        "Bhai/Behen, tu insaan hai ya painting? Itna perfect? 🎨",
-        "Chal bhaag chalte hain, bill tera baap bharega. 🏃‍♂️💨"
-    ]
-    return random.choice(naughty_list)
-
-    # ================== 🔥 AUTO ROAST (TAG / REPLY) ==================
-    is_reply_to_bot = (msg.reference and msg.reference.resolved and msg.reference.resolved.author.id == MY_BOT_ID)
+    # 3. Check: Kya reply hai ya mention hai?
+    is_reply_to_bot = (msg.reference and msg.reference.resolved and msg.reference.resolved.author.id == bot.user.id)
     is_mention = (bot.user in msg.mentions)
 
+    # 4. Agar Tag ya Reply hua hai TABHI aage badho:
     if is_reply_to_bot or is_mention:
         
-        # 🛡️ 1. VIP CHECK (Supabase Cache)
+        # A. VIP CHECK (VIP hai to ignore karo)
         if msg.author.id in ATTITUDE_BYPASS_CACHE:
-            print(f"🛡️ Skipped Auto-Roast for VIP: {msg.author.name}")
-            return # Ignore karo, kuch mat bolo
+            return 
 
-        # 🛡️ 2. OWNER CHECK (Optional)
+        # B. OWNER CHECK (Owner hai to ignore karo)
         if msg.author.id == OWNER_ID:
             return
 
-        # 🔥 3. ROAST HIM!
+        # C. ACTION TIME!
         async with msg.channel.typing():
-            eng, hin = await get_evil_roast_data()
-            text = hin if TRANSLATOR_ON else eng
             
-            embed = discord.Embed(description=f"🔥 **Karwa li bezzati?**\n\n{text}", color=0xff0000)
-            if TRANSLATOR_ON: embed.set_footer(text=f"Original: {eng}")
+            # ❤️ CRUSH CHECK (Girl Mode)
+            if msg.author.id in CRUSH_CACHE:
+                reply_text = await get_horny_data()
+                
+                # Pink Embed
+                embed = discord.Embed(
+                    title="Your Naughty Girl 🎀", 
+                    description=f"{reply_text}", 
+                    color=0xff69b4
+                )
+                embed.set_footer(text="Sirf tumhare liye... ❤️")
+                await msg.reply(embed=embed)
+                return
+
+            # 🔥 ROAST MODE (Baaki sab ke liye)
+            abusive_text, _ = await get_evil_roast_data()
             
+            # Black Embed
+            embed = discord.Embed(
+                description=f"🔥 **Karwa li bezzati?**\n\n{abusive_text}", 
+                color=0x000000
+            )
             await msg.reply(embed=embed)
             return
-
+          
             # ---------------------------------------------------------
     # 🛡️ 1. SMART AI MOD SYSTEM (With VIP Bypass)
     # ---------------------------------------------------------
