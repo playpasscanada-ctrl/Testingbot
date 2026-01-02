@@ -272,7 +272,7 @@ async def get_horny_data():
         "Apna lund mere muh se nikaal kar seedha meri gand mein ghusa de, mujhe aaj poora barbaad hona hai. 🔞🍑",
         "Aaj raat main teri har ek gandi fantasy poori karungi, bas tu mujhe bina ruke chodta reh. 🤤💦"
     ]
-    return random.choice(dark_raw_list)
+    return random.choice(naughty_list)
 
 # ================== GLOBAL CACHES (RAM) ==================
 BANNED_WORDS_CACHE = set()
