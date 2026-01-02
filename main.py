@@ -10,6 +10,70 @@ from discord.ext import commands
 from deep_translator import GoogleTranslator
 from concurrent.futures import ThreadPoolExecutor
 
+# 🛡️ SYSTEM SAVER: Sirf 2 translation threads allow honge (Crash Fix)
+roast_executor = ThreadPoolExecutor(max_workers=2)
+
+# 💾 GLOBAL SETTINGS
+TRANSLATOR_ON = True          # Default ON (Hindi)
+ATTITUDE_BYPASS_CACHE = set() # VIP List Yahan Store Hogi (RAM me)
+MY_BOT_ID = 1451451135813746700 # Aapka Bot ID
+
+# ✅ 1. VIP List Loader (Supabase se)
+async def load_bypass_users():
+    global ATTITUDE_BYPASS_CACHE
+    try:
+        print("⏳ Loading VIP (Bypass) list...")
+        # Aapki table 'attitude_bypass' se data layega
+        response = await db_call(lambda: supabase.table("attitude_bypass").select("user_id").execute())
+        
+        if response.data:
+            ATTITUDE_BYPASS_CACHE = {int(row["user_id"]) for row in response.data}
+            print(f"✅ Loaded {len(ATTITUDE_BYPASS_CACHE)} VIP Users (Safe from Roast)")
+        else:
+            print("⚠️ VIP List is empty.")
+    except Exception as e:
+        print(f"❌ Error Loading VIPs: {e}")
+
+# ✅ 2. Roast Data Fetcher (Optimized)
+async def get_evil_roast_data():
+    try:
+        # A. English Roast API
+        url = "https://evilinsult.com/generate_insult.php?lang=en&type=json"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as res:
+                if res.status == 200:
+                    data = await res.json()
+                    eng = data.get('insult', 'You are stupid.')
+                else:
+                    return "Internet dead.", "Internet dead."
+
+        # B. Check Mode
+        if not TRANSLATOR_ON:
+            return eng, "Translator OFF"
+
+        # C. Translate (Safe Threading)
+        # Ye server pe load nahi padne dega
+        hin = await bot.loop.run_in_executor(
+            roast_executor,
+            lambda: GoogleTranslator(source='auto', target='hi').translate(eng)
+        )
+        return eng, hin
+
+    except Exception as e:
+        return f"Error: {e}", f"Error: {e}"
+
+# ================== ASYNC DB WRAPPER (SPEED BOOSTER) ==================
+# Is code ko imports ke neeche aur bot commands se upar rakhein
+async def db_call(func):
+    return await asyncio.to_thread(func)
+
+from flask import Flask, jsonify
+from supabase import create_client, Client
+
+import re
+
+import re
+
 # 💾 GLOBAL CACHES
 ATTITUDE_BYPASS_CACHE = set() # VIP List
 CRUSH_CACHE = set()           # 😍 New Flirty List (Crushes)
@@ -247,70 +311,6 @@ async def get_horny_data():
         "Chal bhaag chalte hain, bill tera baap bharega. ðŸƒâ€â™‚ï¸ðŸ’¨"
     ]
     return random.choice(naughty_list)
-
-# 🛡️ SYSTEM SAVER: Sirf 2 translation threads allow honge (Crash Fix)
-roast_executor = ThreadPoolExecutor(max_workers=2)
-
-# 💾 GLOBAL SETTINGS
-TRANSLATOR_ON = True          # Default ON (Hindi)
-ATTITUDE_BYPASS_CACHE = set() # VIP List Yahan Store Hogi (RAM me)
-MY_BOT_ID = 1451451135813746700 # Aapka Bot ID
-
-# ✅ 1. VIP List Loader (Supabase se)
-async def load_bypass_users():
-    global ATTITUDE_BYPASS_CACHE
-    try:
-        print("⏳ Loading VIP (Bypass) list...")
-        # Aapki table 'attitude_bypass' se data layega
-        response = await db_call(lambda: supabase.table("attitude_bypass").select("user_id").execute())
-        
-        if response.data:
-            ATTITUDE_BYPASS_CACHE = {int(row["user_id"]) for row in response.data}
-            print(f"✅ Loaded {len(ATTITUDE_BYPASS_CACHE)} VIP Users (Safe from Roast)")
-        else:
-            print("⚠️ VIP List is empty.")
-    except Exception as e:
-        print(f"❌ Error Loading VIPs: {e}")
-
-# ✅ 2. Roast Data Fetcher (Optimized)
-async def get_evil_roast_data():
-    try:
-        # A. English Roast API
-        url = "https://evilinsult.com/generate_insult.php?lang=en&type=json"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as res:
-                if res.status == 200:
-                    data = await res.json()
-                    eng = data.get('insult', 'You are stupid.')
-                else:
-                    return "Internet dead.", "Internet dead."
-
-        # B. Check Mode
-        if not TRANSLATOR_ON:
-            return eng, "Translator OFF"
-
-        # C. Translate (Safe Threading)
-        # Ye server pe load nahi padne dega
-        hin = await bot.loop.run_in_executor(
-            roast_executor,
-            lambda: GoogleTranslator(source='auto', target='hi').translate(eng)
-        )
-        return eng, hin
-
-    except Exception as e:
-        return f"Error: {e}", f"Error: {e}"
-
-# ================== ASYNC DB WRAPPER (SPEED BOOSTER) ==================
-# Is code ko imports ke neeche aur bot commands se upar rakhein
-async def db_call(func):
-    return await asyncio.to_thread(func)
-
-from flask import Flask, jsonify
-from supabase import create_client, Client
-
-import re
-
-import re
 
 # ================== GLOBAL CACHES (RAM) ==================
 BANNED_WORDS_CACHE = set()
