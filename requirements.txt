@@ -5,3 +5,6 @@ supabase
 aiohttp
 deep-translator
 roastedbyai
+PyNaCl
+gTTS
+ffmpeg-python
