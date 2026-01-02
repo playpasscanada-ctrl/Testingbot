@@ -1591,25 +1591,38 @@ async def roast(i: discord.Interaction, user: discord.Member):
     embed.set_thumbnail(url=user.display_avatar.url)
     await i.followup.send(content=f"{user.mention}", embed=embed)
 
-# 🔥 CUSTOM SPEAK COMMAND: /bol (Database Owner Check)
-@bot.tree.command(name="bol", description="Jo aap likhoge bot VC mein aake wahi bolegi (Owner Only) 🔊")
-@app_commands.describe(text="Wo likho jo bot se bulwana hai")
-async def bol(interaction: discord.Interaction, text: str):
+# ==========================================
+# 🛠️ SECURITY & HELPER FUNCTIONS
+# ==========================================
+
+# 🔒 MASTER CHECK FUNCTION (Ye check karega ki banda Owner/Admin/VIP hai ya nahi)
+def has_voice_access(interaction):
+    user_id = str(interaction.user.id)
     
-    # 👑 DATABASE OWNER CHECK 👑
-    # Ye aapke 'def owner(i)' function ko call karega jo upar bana hua hai
-    if not owner(interaction):
-        await interaction.response.send_message("Teri aukaat nahi hai ye command chalane ki! 🖕 (Database Check: Failed)", ephemeral=True)
-        return
+    # 1. Check: Kya banda Main Owner hai?
+    if interaction.user.id == OWNER_ID:
+        return True
+        
+    # 2. Check: Kya banda 'bot_admins' (Phele wala table) mein hai? (Using your existing owner function)
+    if owner(interaction):
+        return True
+        
+    # 3. Check: Kya banda 'voice_vip' (Naya table) mein hai?
+    try:
+        data = supabase.table("voice_vip").select("user_id").eq("user_id", user_id).execute()
+        if data.data:
+            return True
+    except:
+        pass
+        
+    return False
 
-    # 1. VC Check
+# 🔊 AUDIO PLAYER FUNCTION
+async def play_audio(interaction, text, voice="hi-IN-SwaraNeural", rate="+10%", pitch="+5Hz"):
     if not interaction.user.voice:
-        await interaction.response.send_message("Abe pehle VC mein toh aa! 🖕", ephemeral=True)
+        await interaction.followup.send("Abe VC mein toh aaja pehle! 🖕", ephemeral=True)
         return
 
-    await interaction.response.send_message(f"Thik hai malik, abhi bolti hu: **{text}** 🎙️")
-
-    # 2. VC Connect Logic
     channel = interaction.user.voice.channel
     try:
         vc = await channel.connect()
@@ -1620,27 +1633,103 @@ async def bol(interaction: discord.Interaction, text: str):
         elif not vc:
             vc = await channel.connect()
 
-    # 3. 🗣️ VOICE SETTINGS (Swara - Female)
-    voice_option = "hi-IN-SwaraNeural"
-    output_file = "bol_command.mp3"
-    
-    # Text ko audio banayein (High Pitch + Fast)
-    communicate = edge_tts.Communicate(text, voice_option, rate="+5%", pitch="+2Hz")
+    output_file = f"audio_{interaction.id}.mp3"
+    communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
     await communicate.save(output_file)
 
-    # 4. Play Audio
     if not vc.is_playing():
         vc.play(discord.FFmpegPCMAudio(source=output_file, executable="./ffmpeg"))
-
         while vc.is_playing():
             await asyncio.sleep(1)
-        
         await vc.disconnect()
-        
         if os.path.exists(output_file):
             os.remove(output_file)
     else:
-        await interaction.followup.send("Ruk ja bhai, abhi bol hi rahi hu! (Busy)")
+        await interaction.followup.send("Ruk ja, abhi busy hu! 🚫")
+
+# ==========================================
+# 🔥 SECURE COMMANDS START HERE
+# ==========================================
+
+# 1️⃣ VC ROAST (PROTECTED: Owner + Admin + VIP)
+@bot.tree.command(name="vcroast", description="Swara aake brutal gaali degi (Access Required) 🔒💀")
+async def vcroast(interaction: discord.Interaction):
+    # 🛡️ SECURITY CHECK
+    if not has_voice_access(interaction):
+        await interaction.response.send_message("🚫 **Access Denied:** Teri aukaat nahi hai ye command chalane ki! (Only VIPs)", ephemeral=True)
+        return
+
+    await interaction.response.send_message("Ruk, Swara ko mood mein aane de... 😈")
+    
+    # ☢️ BRUTAL LIST
+    gaali_list = [
+        "Teri maa ki chut mein haathi ka lund, saale nalle tu paida hi galti se hua tha.",
+        "Teri maa ki chut mein JCB chala dungi, saari akad bahar nikal jayegi madarchod.",
+        "Bhosadike, teri bhen ko itna chodungi ki wo chalna bhool jayegi, sirf reng ke chalegi.",
+        "Saale suar ke pille, teri maa ki gaand mein cactus uga dungi, jab bhi hagegi mujhe yaad karegi.",
+        "Teri shakal dekh ke lagta hai bhagwan ne tatti ko insaan ka roop de diya hai.",
+        "Madarchod, tere khandan ki auratein mere lund ka wait karti hain, jaake pooch le.",
+        "Abe randi ke, teri gaand mein rod daal ke mooh se nikalungi, human kebab bana dungi tera.",
+        "Teri maa ka bhosada itna bada hai ki usme main apna poora ghar bana lu.",
+        "Chutiye, tujhe paida karke teri maa ne duniya pe bojh badha diya hai, jaake mar ja.",
+        "Teri bhen ki chut mein bomb laga ke uda dungi, chithade milenge seedha chand pe.",
+        "Saale hijde ki aulad, mere saamne aawaz mat nikalna warna wahi gaad dungi.",
+        "Teri maa ki chut mein itne lund daalungi ki wo traffic jam ho jayegi.",
+        "Bhosadike, tera baap bhi rota hoga ki kis manhoos ghadi mein tujhe paida kiya.",
+        "Randi ke pille, teri gaand mein mirchi ka powder bhar ke dande se andar kar dungi.",
+        "Teri bhen ki chut public toilet ban gayi hai, jo aata hai moot ke chala jata hai.",
+        "Madarchod, tujhe zinda jala ke teri raakh ko gutter mein bahana chahiye."
+        "Bhenchod, apni shakal dekhi hai? Aisa lagta hai gutter ke dhakkan pe kisi ne ulti kar di ho.",
+        "Madarchod, teri bhen ko kothe pe bitha dungi agar dubara yahan dikha toh, nikal yahan se!",
+        "Saale randi ke pille, tere khandan mein sabse bada chutiya tu hi hai, jaake doob mar.",
+        "Teri gaand mein itna danda daalungi ki muh se bahar niklega, bhosadike aukaat mein reh.",
+        "Sun be lodu, teri maa mere paas aayi thi, keh rahi thi galti ho gayi tujhe paida karke.",
+        "Abe suar ki aulad, tu wahi virus hai jise condom bhi rok nahi paaya tha.",
+        "Teri bhen ki chut mein cactus daal ke ghumungi, saale tatti khor insaan."
+    ]
+    
+    text = random.choice(gaali_list)
+    await play_audio(interaction, text, rate="+10%", pitch="+5Hz")
+
+
+# 2️⃣ BOL (PROTECTED: Owner + Admin + VIP)
+@bot.tree.command(name="bol", description="Bot se kuch bhi bulwao (Access Required) 🔒🎤")
+@app_commands.describe(text="Kya bulwana hai?")
+async def bol(interaction: discord.Interaction, text: str):
+    # 🛡️ SECURITY CHECK
+    if not has_voice_access(interaction):
+        await interaction.response.send_message("🚫 **Access Denied:** Teri aukaat nahi hai ye command chalane ki! (Only VIPs)", ephemeral=True)
+        return
+
+    await interaction.response.send_message(f"📢 **Bol rahi hu:** {text}")
+    await play_audio(interaction, text, rate="+5%", pitch="+2Hz")
+
+
+# 3️⃣ GIVE VIP (Sirf Owner Naye Log Add Karega)
+@bot.tree.command(name="give_vip", description="Kisi ko Voice Command ka Access do (Add to VIP) 👑")
+@app_commands.describe(user="Kis bande ko VIP banana hai?")
+async def give_vip(interaction: discord.Interaction, user: discord.Member):
+    
+    # 👑 Sirf Main Owner hi naye VIP bana sakta hai
+    if interaction.user.id != OWNER_ID:
+        await interaction.response.send_message("❌ **Sirf Owner hi naye VIP add kar sakta hai!**", ephemeral=True)
+        return
+
+    await interaction.response.defer(ephemeral=True)
+
+    try:
+        # Check karo banda pehle se hai ya nahi
+        check = supabase.table("voice_vip").select("user_id").eq("user_id", str(user.id)).execute()
+        
+        if check.data:
+            await interaction.followup.send(f"⚠️ **{user.name}** pehle se VIP list mein hai!")
+        else:
+            data = { "user_id": str(user.id), "added_by": str(interaction.user.name) }
+            supabase.table("voice_vip").insert(data).execute()
+            await interaction.followup.send(f"✅ **Success:** {user.mention} ab `/bol` aur `/vcroast` use kar sakta hai!")
+            
+    except Exception as e:
+        await interaction.followup.send(f"❌ **Error:** {e}")
 
 # ================== MULTI-VERIFY MANAGEMENT ==================
 @bot.tree.command(name="multiaccess", description="Manage users who can verify UNLIMITED accounts")
@@ -1834,80 +1923,6 @@ class AccessClearView(discord.ui.View):
         embed = discord.Embed(title="🛡️ Operation Cancelled", description="Access list safe hai.", color=0x2ecc71)
         await i.response.edit_message(embed=embed, view=None)
         self.stop()
-
-# 🔥 SLASH COMMAND: /vcroast
-@bot.tree.command(name="vcroast", description="Swara Voice mein gandi gaali sunne ke liye 🔊💀")
-async def vcroast(interaction: discord.Interaction):
-    # 1. VC Check
-    if not interaction.user.voice:
-        await interaction.response.send_message("Abe pehle kisi Voice Channel mein toh ghus ja! 🖕", ephemeral=True)
-        return
-
-    await interaction.response.send_message("Ruk, mic set karne de... Swara aa rahi hai tujhe pelne! 🎙️😈")
-
-    # 2. VC Connect Logic
-    channel = interaction.user.voice.channel
-    try:
-        vc = await channel.connect()
-    except:
-        vc = interaction.guild.voice_client
-        if vc.channel.id != channel.id:
-            await vc.move_to(channel)
-
-    # 3. ☢️ EXTREME UNCENSORED GAALI LIST (Maa-Bhen Level)
-    gaali_list = [
-        "Teri maa ki chut mein haathi ka lund, saale nalle tu paida hi galti se hua tha.",
-        "Teri maa ki chut mein JCB chala dungi, saari akad bahar nikal jayegi madarchod.",
-        "Bhosadike, teri bhen ko itna chodungi ki wo chalna bhool jayegi, sirf reng ke chalegi.",
-        "Saale suar ke pille, teri maa ki gaand mein cactus uga dungi, jab bhi hagegi mujhe yaad karegi.",
-        "Teri shakal dekh ke lagta hai bhagwan ne tatti ko insaan ka roop de diya hai.",
-        "Madarchod, tere khandan ki auratein mere lund ka wait karti hain, jaake pooch le.",
-        "Abe randi ke, teri gaand mein rod daal ke mooh se nikalungi, human kebab bana dungi tera.",
-        "Teri maa ka bhosada itna bada hai ki usme main apna poora ghar bana lu.",
-        "Chutiye, tujhe paida karke teri maa ne duniya pe bojh badha diya hai, jaake mar ja.",
-        "Teri bhen ki chut mein bomb laga ke uda dungi, chithade milenge seedha chand pe.",
-        "Saale hijde ki aulad, mere saamne aawaz mat nikalna warna wahi gaad dungi.",
-        "Teri maa ki chut mein itne lund daalungi ki wo traffic jam ho jayegi.",
-        "Bhosadike, tera baap bhi rota hoga ki kis manhoos ghadi mein tujhe paida kiya.",
-        "Randi ke pille, teri gaand mein mirchi ka powder bhar ke dande se andar kar dungi.",
-        "Teri bhen ki chut public toilet ban gayi hai, jo aata hai moot ke chala jata hai.",
-        "Madarchod, tujhe zinda jala ke teri raakh ko gutter mein bahana chahiye."
-        "Bhenchod, apni shakal dekhi hai? Aisa lagta hai gutter ke dhakkan pe kisi ne ulti kar di ho.",
-        "Madarchod, teri bhen ko kothe pe bitha dungi agar dubara yahan dikha toh, nikal yahan se!",
-        "Saale randi ke pille, tere khandan mein sabse bada chutiya tu hi hai, jaake doob mar.",
-        "Teri gaand mein itna danda daalungi ki muh se bahar niklega, bhosadike aukaat mein reh.",
-        "Sun be lodu, teri maa mere paas aayi thi, keh rahi thi galti ho gayi tujhe paida karke.",
-        "Abe suar ki aulad, tu wahi virus hai jise condom bhi rok nahi paaya tha.",
-        "Teri bhen ki chut mein cactus daal ke ghumungi, saale tatti khor insaan."
-    ]
-    
-    text = random.choice(gaali_list)
-
-    # 4. 🗣️ VOICE SETTINGS (Female + Fast)
-    voice_option = "hi-IN-SwaraNeural"  # Only Female Voice
-    
-    # Audio Banana (Rate +10% for Aggression)
-    output_file = "roast.mp3"
-    communicate = edge_tts.Communicate(text, voice_option, rate="+10%")
-    await communicate.save(output_file)
-
-    # 5. Play Audio
-    if not vc.is_playing():
-        # FFmpeg connect (Render path ke saath)
-        vc.play(discord.FFmpegPCMAudio(source=output_file, executable="./ffmpeg"))
-
-        # Jab tak bol rahi hai wait karo
-        while vc.is_playing():
-            await asyncio.sleep(1)
-        
-        # Bolne ke baad nikal jao
-        await vc.disconnect()
-        
-        # File delete (Safai)
-        if os.path.exists(output_file):
-            os.remove(output_file)
-    else:
-        await interaction.followup.send("Ruk ja bhai, Swara abhi kisi aur ki le rahi hai! (Busy)")
 
 # ================== 3. ULTIMATE ACCESS COMMAND ==================
 @bot.tree.command(name="access", description="⚙️ Manage Access, Maintenance, Whitelist & Blacklist (Owner Only)")
