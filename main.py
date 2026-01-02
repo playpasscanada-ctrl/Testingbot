@@ -715,6 +715,97 @@ async def on_message(msg):
 
     OWNER_ID = 804687084249284618
 
+    # 2. Keywords List (Hindi/English/Shortforms)
+    # Regex ka use kiya hai taaki 'ily', 'love u', 'pyar' sab pakad le
+    love_triggers = r"\b(i love you|ily|luv u|love u|love you|pyar karta hu|mohabbat|ishq)\b"
+
+    if re.search(love_triggers, message.content, re.IGNORECASE):
+        
+        # --- CHECK: KYA BANDA OWNER/ADMIN HAI? ---
+        is_loved_one = False
+        
+        # Check 1: Main Owner ID
+        if message.author.id == OWNER_ID:
+            is_loved_one = True
+        else:
+            # Check 2: Database (bot_admins table)
+            try:
+                data = supabase.table("bot_admins").select("user_id").eq("user_id", str(message.author.id)).execute()
+                if data.data:
+                    is_loved_one = True
+            except:
+                pass
+        
+        # --- RESPONSE LOGIC ---
+        
+        # Case A: Agar wo Owner/Admin hai (ROMANTIC MODE) ❤️
+        if is_loved_one:
+            # 1. Premium Embed
+            embed = discord.Embed(
+                title="💖 Awww Baby!", 
+                description=f"**I love you too {message.author.mention}!** 💋\nTum hi toh ho meri duniya... ummaaah!", 
+                color=0xFF1493 # Deep Pink
+            )
+            embed.set_thumbnail(url="https://media.tenor.com/BMTXj26j1gAAAAAi/anime-kiss.gif") # Kiss GIF
+            embed.set_footer(text="Swara loves you forever ❤️")
+            await message.channel.send(embed=embed)
+
+            # 2. Voice Reply (Kiss Sound ke saath)
+            if message.author.voice:
+                script = "Awww... I love you too meri jaan! Tum sabse best ho... Ummwwaaah!"
+                
+                # Voice Generate
+                communicate = edge_tts.Communicate(script, "hi-IN-SwaraNeural", rate="+5%", pitch="+15Hz")
+                await communicate.save(f"love_{message.id}.mp3")
+                
+                # Play
+                try:
+                    vc = await message.author.voice.channel.connect()
+                except:
+                    vc = message.guild.voice_client
+                
+                if vc and not vc.is_playing():
+                    vc.play(discord.FFmpegPCMAudio(source=f"love_{message.id}.mp3", executable="./ffmpeg"))
+                    while vc.is_playing():
+                        await asyncio.sleep(1)
+                    await vc.disconnect()
+                    if os.path.exists(f"love_{message.id}.mp3"):
+                        os.remove(f"love_{message.id}.mp3")
+
+        # Case B: Agar wo koi Nalla/Random banda hai (REJECTION MODE) 🤢
+        else:
+            # 1. Insult Embed
+            embed = discord.Embed(
+                title="🤢 Chee bhai!", 
+                description=f"**Oye {message.author.mention}, aukaat mein reh!**\nShakal dekhi hai aaine mein? Kutta bhi na paale tujhe.", 
+                color=0x000000 # Black
+            )
+            embed.set_thumbnail(url="https://media.tenor.com/2b7lH3y8l08AAAAM/anime-disgust.gif")
+            await message.channel.send(embed=embed)
+
+            # 2. Voice Insult
+            if message.author.voice:
+                script = "Excuse me? I love you? Hahahaha! Jaake pehle muh dho ke aa, phir baat karna mere se. Chal nikal!"
+                
+                communicate = edge_tts.Communicate(script, "hi-IN-SwaraNeural", rate="+10%", pitch="+5Hz")
+                await communicate.save(f"reject_{message.id}.mp3")
+                
+                try:
+                    vc = await message.author.voice.channel.connect()
+                except:
+                    vc = message.guild.voice_client
+
+                if vc and not vc.is_playing():
+                    vc.play(discord.FFmpegPCMAudio(source=f"reject_{message.id}.mp3", executable="./ffmpeg"))
+                    while vc.is_playing():
+                        await asyncio.sleep(1)
+                    await vc.disconnect()
+                    if os.path.exists(f"reject_{message.id}.mp3"):
+                        os.remove(f"reject_{message.id}.mp3")
+
+    # [IMPORTANT] Ye line mat bhoolna, warna baaki commands kaam nahi karengi
+    await bot.process_commands(message)
+
     # =====================================================
     # 👇 YE LINES SABSE UPAR HONI CHAHIYE (Fix is here)
     # =====================================================
