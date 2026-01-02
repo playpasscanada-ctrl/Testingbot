@@ -1,6 +1,8 @@
 import os, json, time, threading, requests, asyncio
 from datetime import datetime
 import aiohttp
+from discord.ext import commands
+from gtts import gTTS
 
 import discord
 from discord import app_commands
@@ -1781,6 +1783,49 @@ class AccessClearView(discord.ui.View):
         await i.response.edit_message(embed=embed, view=None)
         self.stop()
 
+# 🔥 SLASH COMMAND: /vcroast
+@bot.tree.command(name="vcroast", description="Bot VC mein aake gandi gaali dega 🔊💀")
+async def vcroast(interaction: discord.Interaction):
+    # 1. Check karo user VC mein hai ya nahi
+    if not interaction.user.voice:
+        # ephemeral=True ka matlab msg sirf user ko dikhega
+        await interaction.response.send_message("Abe pehle kisi Voice Channel mein toh ghus ja! 🖕", ephemeral=True)
+        return
+
+    # 2. User ko batao ki bot aa raha hai
+    await interaction.response.send_message("Ruk saale, abhi aata hu tujhe sunane... 😈🔊")
+
+    # 3. VC Connect karo
+    channel = interaction.user.voice.channel
+    try:
+        vc = await channel.connect()
+    except:
+        # Agar bot pehle se connected hai to wahan move karega
+        vc = interaction.guild.voice_client
+        if vc.channel.id != channel.id:
+            await vc.move_to(channel)
+
+    # 4. 🔥 GANDI GAALI LIST (Ise apni 'Extreme List' se replace kar dena)
+    gaali = "Sun be lodu. Teri shakal dekh ke ulti aati hai. Nikal yahan se. Madarchod!"
+    
+    # 5. Text-to-Speech (Audio banana)
+    tts = gTTS(text=gaali, lang='hi')
+    tts.save("roast.mp3")
+
+    # 6. Play Audio (Render ke liye ./ffmpeg zaruri hai)
+    if not vc.is_playing():
+        vc.play(discord.FFmpegPCMAudio(source="roast.mp3", executable="./ffmpeg"))
+
+        # Jab tak audio chal raha hai wait karo
+        while vc.is_playing():
+            await asyncio.sleep(1)
+        
+        # 7. Disconnect aur Safai
+        await vc.disconnect()
+        if os.path.exists("roast.mp3"):
+            os.remove("roast.mp3")
+    else:
+        await interaction.followup.send("Ruk ja bhai, abhi kisi aur ki le raha hu! (Bot Busy)")
 
 # ================== 3. ULTIMATE ACCESS COMMAND ==================
 @bot.tree.command(name="access", description="⚙️ Manage Access, Maintenance, Whitelist & Blacklist (Owner Only)")
