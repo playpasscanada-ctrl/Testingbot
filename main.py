@@ -744,11 +744,17 @@ async def safe_send(i, embed):
 # ================== VERIFY + AUTO WHITELIST + LOGS ==================
 @bot.event
 async def on_message(msg):
-
+    # 1. Bot Khud ko reply na kare
     if msg.author.bot:
         return
 
     OWNER_ID = 804687084249284618
+
+    # =====================================================
+    # 👇 YE LINES SABSE UPAR HONI CHAHIYE (Fix is here)
+    # =====================================================
+    is_reply_to_bot = (msg.reference and msg.reference.resolved and msg.reference.resolved.author.id == bot.user.id)
+    is_mention = (bot.user in msg.mentions)
 
     if is_reply_to_bot or is_mention:
         
