@@ -8,3 +8,4 @@ roastedbyai
 PyNaCl
 gTTS
 ffmpeg-python
+edge-tts
