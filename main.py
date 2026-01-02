@@ -1592,35 +1592,54 @@ async def roast(i: discord.Interaction, user: discord.Member):
     await i.followup.send(content=f"{user.mention}", embed=embed)
 
 # ==========================================
-# 🛠️ SECURITY & HELPER FUNCTIONS
+# ⚙️ GLOBAL VOICE SETTINGS (RAM Based)
 # ==========================================
 
-# 🔒 MASTER CHECK FUNCTION (Ye check karega ki banda Owner/Admin/VIP hai ya nahi)
+# Default Setting: Swara (Female)
+current_voice = {
+    "id": "hi-IN-SwaraNeural",
+    "name": "Swara (Female) 💃",
+    "pitch": "+5Hz",   # Ladki ke liye teekha
+    "rate": "+10%",    # Thoda fast (Aggressive)
+    "avatar": "https://cdn-icons-png.flaticon.com/512/6997/6997662.png", # Girl Icon
+    "color": 0xFF69B4  # Hot Pink Color
+}
+
+# ==========================================
+# 🛠️ HELPER FUNCTIONS
+# ==========================================
+
+# 1. PREMIUM EMBED BUILDER
+def create_premium_embed(title, description, color=None):
+    # Agar color nahi diya, toh current voice ka color use karo
+    if color is None:
+        color = current_voice["color"]
+        
+    embed = discord.Embed(title=title, description=description, color=color)
+    embed.set_footer(text=f"🔥 Voice Mode: {current_voice['name']} | Powered by Neural AI")
+    embed.set_thumbnail(url=current_voice["avatar"])
+    return embed
+
+# 2. SECURITY CHECK (Owner + Admin + VIP)
 def has_voice_access(interaction):
     user_id = str(interaction.user.id)
-    
-    # 1. Check: Kya banda Main Owner hai?
-    if interaction.user.id == OWNER_ID:
-        return True
-        
-    # 2. Check: Kya banda 'bot_admins' (Phele wala table) mein hai? (Using your existing owner function)
-    if owner(interaction):
-        return True
-        
-    # 3. Check: Kya banda 'voice_vip' (Naya table) mein hai?
+    # Check 1: Main Owner
+    if interaction.user.id == OWNER_ID: return True
+    # Check 2: Old Admin Table
+    if owner(interaction): return True
+    # Check 3: New VIP Table
     try:
         data = supabase.table("voice_vip").select("user_id").eq("user_id", user_id).execute()
-        if data.data:
-            return True
+        if data.data: return True
     except:
         pass
-        
     return False
 
-# 🔊 AUDIO PLAYER FUNCTION
-async def play_audio(interaction, text, voice="hi-IN-SwaraNeural", rate="+10%", pitch="+5Hz"):
+# 3. AUDIO PLAYER (Global Settings Use Karega)
+async def play_audio(interaction, text):
     if not interaction.user.voice:
-        await interaction.followup.send("Abe VC mein toh aaja pehle! 🖕", ephemeral=True)
+        embed = create_premium_embed("❌ Error", "Abe VC mein toh aaja pehle! 🖕", 0xFF0000)
+        await interaction.followup.send(embed=embed, ephemeral=True)
         return
 
     channel = interaction.user.voice.channel
@@ -1633,8 +1652,14 @@ async def play_audio(interaction, text, voice="hi-IN-SwaraNeural", rate="+10%", 
         elif not vc:
             vc = await channel.connect()
 
+    # Generate Audio using GLOBAL 'current_voice' settings
     output_file = f"audio_{interaction.id}.mp3"
-    communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
+    communicate = edge_tts.Communicate(
+        text, 
+        current_voice["id"], 
+        rate=current_voice["rate"], 
+        pitch=current_voice["pitch"]
+    )
     await communicate.save(output_file)
 
     if not vc.is_playing():
@@ -1645,23 +1670,65 @@ async def play_audio(interaction, text, voice="hi-IN-SwaraNeural", rate="+10%", 
         if os.path.exists(output_file):
             os.remove(output_file)
     else:
-        await interaction.followup.send("Ruk ja, abhi busy hu! 🚫")
+        embed = create_premium_embed("⚠️ Busy", "Ruk ja, abhi line busy hai! 🚫", 0xFFA500)
+        await interaction.followup.send(embed=embed)
 
 # ==========================================
-# 🔥 SECURE COMMANDS START HERE
+# 🔥 COMMANDS START HERE
 # ==========================================
 
-# 1️⃣ VC ROAST (PROTECTED: Owner + Admin + VIP)
-@bot.tree.command(name="vcroast", description="Swara aake brutal gaali degi (Access Required) 🔒💀")
-async def vcroast(interaction: discord.Interaction):
-    # 🛡️ SECURITY CHECK
+# 1️⃣ SWITCH VOICE (Male/Female Toggle)
+@bot.tree.command(name="switch_voice", description="Bot ki aawaz aur gender change karo 🎙️🔄")
+@app_commands.choices(gender=[
+    app_commands.Choice(name="Swara (Female) - Tikhi & Naughty 💃", value="female"),
+    app_commands.Choice(name="Madhur (Male) - Bhaari & Gangster 🗿", value="male")
+])
+async def switch_voice(interaction: discord.Interaction, gender: app_commands.Choice[str]):
+    
+    # Permission Check
     if not has_voice_access(interaction):
-        await interaction.response.send_message("🚫 **Access Denied:** Teri aukaat nahi hai ye command chalane ki! (Only VIPs)", ephemeral=True)
+        await interaction.response.send_message("🚫 **Access Denied:** Sirf Owner ye change kar sakta hai!", ephemeral=True)
         return
 
-    await interaction.response.send_message("Ruk, Swara ko mood mein aane de... 😈")
+    global current_voice
+
+    if gender.value == "female":
+        current_voice = {
+            "id": "hi-IN-SwaraNeural",
+            "name": "Swara (Female) 💃",
+            "pitch": "+5Hz",
+            "rate": "+10%",
+            "avatar": "https://cdn-icons-png.flaticon.com/512/6997/6997662.png",
+            "color": 0xFF69B4
+        }
+        desc = "**Swara Activated!** 💃\nBot ab *Teekhi Ladki* ki aawaz mein bolega."
+    else:
+        current_voice = {
+            "id": "hi-IN-MadhurNeural",
+            "name": "Madhur (Male) 🗿",
+            "pitch": "-5Hz", # Heavy Voice
+            "rate": "+5%",
+            "avatar": "https://cdn-icons-png.flaticon.com/512/236/236831.png",
+            "color": 0x2F3136
+        }
+        desc = "**Madhur Activated!** 🗿\nBot ab *Bhaari Gangster* aawaz mein bolega."
+
+    embed = create_premium_embed("🎙️ Voice System Updated", desc)
+    await interaction.response.send_message(embed=embed)
+
+
+# 2️⃣ VC ROAST (Premium Embed + Auto Voice)
+@bot.tree.command(name="vcroast", description="Brutal Gaali Mode 🔊💀")
+async def vcroast(interaction: discord.Interaction):
+    if not has_voice_access(interaction):
+        await interaction.response.send_message("🚫 **Access Denied:** Sirf VIP log chala sakte hain!", ephemeral=True)
+        return
+
+    # Premium Embed Response
+    embed = create_premium_embed("💀 Brutal Mode On", f"**{current_voice['name']}** is connecting to roast you... 🔥")
+    await interaction.response.send_message(embed=embed)
     
-    # ☢️ BRUTAL LIST
+    # ☢️ LIST
     gaali_list = [
         "Teri maa ki chut mein haathi ka lund, saale nalle tu paida hi galti se hua tha.",
         "Teri maa ki chut mein JCB chala dungi, saari akad bahar nikal jayegi madarchod.",
@@ -1689,28 +1756,26 @@ async def vcroast(interaction: discord.Interaction):
     ]
     
     text = random.choice(gaali_list)
-    await play_audio(interaction, text, rate="+10%", pitch="+5Hz")
+    await play_audio(interaction, text)
 
 
-# 2️⃣ BOL (PROTECTED: Owner + Admin + VIP)
-@bot.tree.command(name="bol", description="Bot se kuch bhi bulwao (Access Required) 🔒🎤")
+# 3️⃣ BOL (Premium Embed + Auto Voice)
+@bot.tree.command(name="bol", description="Bot se kuch bhi bulwao 🎤")
 @app_commands.describe(text="Kya bulwana hai?")
 async def bol(interaction: discord.Interaction, text: str):
-    # 🛡️ SECURITY CHECK
     if not has_voice_access(interaction):
-        await interaction.response.send_message("🚫 **Access Denied:** Teri aukaat nahi hai ye command chalane ki! (Only VIPs)", ephemeral=True)
+        await interaction.response.send_message("🚫 **Access Denied:** Sirf VIP log chala sakte hain!", ephemeral=True)
         return
 
-    await interaction.response.send_message(f"📢 **Bol rahi hu:** {text}")
-    await play_audio(interaction, text, rate="+5%", pitch="+2Hz")
-
-
-# 3️⃣ GIVE VIP (Sirf Owner Naye Log Add Karega)
-@bot.tree.command(name="give_vip", description="Kisi ko Voice Command ka Access do (Add to VIP) 👑")
-@app_commands.describe(user="Kis bande ko VIP banana hai?")
-async def give_vip(interaction: discord.Interaction, user: discord.Member):
+    embed = create_premium_embed("📢 Broadcasting", f"**Text:** {text}\n**Voice:** {current_voice['name']}")
+    await interaction.response.send_message(embed=embed)
     
-    # 👑 Sirf Main Owner hi naye VIP bana sakta hai
+    await play_audio(interaction, text)
+
+
+# 4️⃣ GIVE VIP (Database Update)
+@bot.tree.command(name="give_vip", description="Dosto ko VIP Access do 👑")
+async def give_vip(interaction: discord.Interaction, user: discord.Member):
     if interaction.user.id != OWNER_ID:
         await interaction.response.send_message("❌ **Sirf Owner hi naye VIP add kar sakta hai!**", ephemeral=True)
         return
@@ -1718,15 +1783,15 @@ async def give_vip(interaction: discord.Interaction, user: discord.Member):
     await interaction.response.defer(ephemeral=True)
 
     try:
-        # Check karo banda pehle se hai ya nahi
         check = supabase.table("voice_vip").select("user_id").eq("user_id", str(user.id)).execute()
-        
         if check.data:
-            await interaction.followup.send(f"⚠️ **{user.name}** pehle se VIP list mein hai!")
+            await interaction.followup.send(f"⚠️ **{user.name}** pehle se VIP hai!")
         else:
             data = { "user_id": str(user.id), "added_by": str(interaction.user.name) }
             supabase.table("voice_vip").insert(data).execute()
-            await interaction.followup.send(f"✅ **Success:** {user.mention} ab `/bol` aur `/vcroast` use kar sakta hai!")
+            
+            embed = create_premium_embed("✅ New VIP Added", f"{user.mention} ab `/bol` aur `/vcroast` use kar sakta hai!", 0x00FF00)
+            await interaction.followup.send(embed=embed)
             
     except Exception as e:
         await interaction.followup.send(f"❌ **Error:** {e}")
