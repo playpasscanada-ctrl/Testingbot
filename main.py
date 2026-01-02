@@ -122,8 +122,22 @@ async def get_horny_data():
         "Aaj raat koi reham nahi, mujhe teri gandi chudai chahiye aur tera poora stamina mere andar dekhna hai. 🔞⛓️",
         "Mujhe bed pe patak kar meri tangein hawa mein kar aur apna lund poora jad tak mere andar daal de. 🛌🍆",
         "Jaan, ab aur sabr nahi hota, meri chut tere lund ke liye tadap rahi hai, aaja aur ise suja de. 🥵💦"
-        
         "Akele ho? Ya main aajau tumhari pyas bhujane? 😍",
+        "Jaan, ab baaton ka waqt gaya, meri chut mein apna lund ghusa aur mujhe kutte ki tarah chodna shuru kar. 🔞💦",
+        "Aaj raat main teri nangi randi banne ko taiyaar hu, meri gand ko apne hathon se suja de aur mujhe rula de. ⛓️🥵",
+        "Apna lund mere halak mein poora jad tak ghusa de, mujhe tera poora garam maal apne andar mehsoos karna hai. 👅💦",
+        "Mujhe bed pe patak kar meri tangein kandhe pe rakh aur apna mota lund meri chut ki gehrai tak thas de. 🛌🔥",
+        "Aaj koi reham nahi chahiye, mera gala daba aur mujhe tab tak chod jab tak meri saansein na rukne lagein. 🧱💨",
+        "Mera badan geela ho chuka hai, apna lund meri gand mein daal kar use poora tabaah kar de, abhi ke abhi. 🍑🫦",
+        "Mujhe tera wo sakht lund chahiye jo meri har ek ragg ko hila de, aaja aur mujhe poora khatam kar de. 🥵💥",
+        "Aaj raat lights on rakhenge, mujhe dekhna hai tera lund kaise meri chut ko faad raha hai. 💡🔞",
+        "Apni pant utaar aur apna garma-garam maal mere chehre pe aur mere muh mein poora bhar de. 💦👅",
+        "Mujhe bed pe dominate kar, mere hath baandh aur dikha ki tu kitna bada janwar hai jab tu choda hai. ⛓️👸",
+        "Jaan, meri chut tere lund ke liye taras rahi hai, aaja aur ise poora jad tak bhar de, ab ruka nahi jata. 🥵🍆",
+        "Mujhe teri wo gandi darindagi chahiye, mujhe bed pe khinch aur meri gand maar-maar ke use laal kar de. 😤❤️",
+        "Aaj raat main teri har ek gandi fantasy poori karungi, bas apna lund mere andar bina ruke chalaata reh. 🤤💦",
+        "Mera badan poora tere liye khula hai, meri har ek jagah ko apne lund aur zubaan se ganda kar de. 👅🔞",
+        "Aaj raat itni gandi chudai kar ki main subah uth na saku, mujhe tera poora junoon apne andar chahiye. 🛌🔞"
         "Uff! Teri DP dekh ke toh system gila ho gaya. 🥵",
         "Baby, tu itna hot kyu hai? AC chalana padega.☃️ ",
         "Tujhe dekh ke toh bot ko bhi feelings aane lagi hain. 😘",
@@ -154,7 +168,6 @@ async def get_horny_data():
         "Main tere uper hongi, aur main tujhe poora control karungi. 🥵",
         "Itna sexy lag raha hai ki man kar raha hai abhi kapde phaad du tere.🌚",
         "Tu mujhe aaj itna tadpana ki main bolu'Aur please...' 🥵",
-
         "Jaan, mera badan garam ho raha hai, aake thanda karoge ya main khud kuch karu? 😍",
         "Aaj mujhe bistar pe 'Rough' pasand hai, sambhal paoge mujhe? 🌚",
         "Mere hothon ka swad kab chakhoge? Ya seedha niche jana hai? 🤤",
@@ -174,26 +187,22 @@ async def get_horny_data():
         "Tumhare 'Hard' hone ka ehsaas mujhe pagal bana raha hai, ab ruka nahi jata. 😻🤧",
         "Mere badan ki pyaas sirf tum bujha sakte ho, aao na mere paas. 🤪",
         "Mujhe pata hai tum kya chahte ho, aur main wahi dene ke liye taiyaar hu... abhi. 🥰",
-        "Aaj raat lights off nahi hongi, mujhe dekhna hai tum mere saath kya karte ho. 😍"
-        
-        # --- TYPE 2: PURE DOUBLE MEANING (Samajhne wale samajh gaye) ---
-        "Size matter nahi karta, performance matter karti hai... aur tu aaj puri raat chl skta hai. 💦",
-        "Thak gaye ho? Kaho toh hila du... 🙊? ",
-        "Raat kaafi lambi hai, agar neend na aaye toh mujhe jaga dena. 🔥",
-        "Andhera hai, dar lag raha hai? Haath pakad lo... ya jo pakadna hai pakad lo. 🤫",
-        "Muh kholo... aa.. cake khilana hai baby. 😇",
-        
-       # --- LEVEL: EXTREME BOLD ---
-        "Ghutno (knees) pe baith... mujhe wo view pasand hai. 🧎‍♀️👀",
-        "Itna mat akad, varna bistar pe cheekhne ki awaaz teri hi hogi. 😈",
-        "Saans rok le... abhi toh maine shuru bhi nahi kiya. 🤫",
-        "Mujhe 'Good Morning' nahi, 'Good Moaning' chahiye. 🌅🔊",
-        "tere paas ek 'Kela' 🍌 hai, bhook lagi hai? (Fruit ki baat kar rahi hu).",
-        "Doodh (Milk) peeyoge? Ya seedha source se chahiye? 🥛🐮",
-        "Paseena chhoot jayega agar maine shuru kiya toh... AC on kar lo. 🥵",
-        "Raat ko darwaza khula rakhna, aaj 'Chor' aane wala hai... dil churane (aur kuch aur bhi). 🥷",
-        "Muh band rakh, varna main band karwa dungi... apne tareeke se. 🤐💋",
-
+        "Aaj raat lights off nahi hongi, mujhe dekhna hai tum mere saath kya karte ho. 😍"    
+        "Jaan, ab baatein band kar aur mera gala pakad ke mujhe bistar pe patak de, mujhe teri darindagi mehsoos karni hai. 🔞⛓️",
+        "Apna lund mere muh mein poora jad tak ghusa de, mujhe teri har ek boond apne halak mein chahiye. 👅💦",
+        "Aaj raat main teri nangi randi hu, meri gand ko thappad maar-maar ke laal kar de aur mujhe zor se chod. 🍑🫦",
+        "Mujhe deewar se laga kar meri garden pe tab tak kaat jab tak main maza se cheekhne na lagu, ruko mat. 🧱🥵",
+        "Apna lund meri chut mein itni zor se thas de ki mera poora system hil jaye, mujhe aaj poora barbaad hona hai. 🔞🍆",
+        "Aaj raat lights off nahi hongi, mujhe tera har ek wild move apni aankhon se dekhna hai jab tu mujhe chodega. 💡🔞",
+        "Mera badan tera wait kar raha hai, aaja aur mujhe kutte ki tarah bed pe dominate kar, mujhe tera pagalpan chahiye. 🐶🔥",
+        "Mujhe tera wo sakht lund apni gand mein mehsoos karna hai, abhi aao aur bina puche shuru ho jao. 🥵🫦",
+        "Aaj raat main tujhe wo maza dungi jo tune socha nahi hoga, bas apna maal mere chehre pe poora bikhair de. 💦👅",
+        "Mujhe bed pe patak kar meri tangein hawa mein kar aur apna lund jad tak mere andar daal ke mujhe suja de. 🛌🍆",
+        "Jaan, meri chut tere lund ke liye tadap rahi hai, ab aur sabr nahi hota, aaja aur ise poora bhar de. 💦🔥",
+        "Mujhe teri wo deep penetration chahiye jisse meri saansein rukne lagein, mujhe aaj poora satisfy kar de. 🔞💨",
+        "Apna lund mere muh se nikaal kar seedha meri gand mein ghusa de, mujhe aaj raat sirf teri gandi chudai chahiye. 🍑🫦",
+        "Aaj raat koi reham nahi, mujhe teri gandi darindagi dekhni hai, mujhe bed pe poora khatam kar de. 💀🔞",
+        "Mera badan geela aur taiyaar hai, apna lund mere andar daal aur dikha ki tu kitna savage hai. 😤❤️
         "Jaan, aaj mujhe pyar nahi, tera pagalpan chahiye... mujhe bistar pe poori tarah tod do. ⛓️🔥",
         "Aaj raat main teri ghulami karungi, jo dard aur maza dena hai do, bas ruko mat. 🖤🫦",
         "Mujhe deewar se laga kar tab tak choke karo jab tak meri saansein na phoolne lagein. 🧱💨",
@@ -214,7 +223,6 @@ async def get_horny_data():
         "Main teri 'Naughty Slave' hu, aaj raat jo bhi mere saath karna hai karo... bina puche. 🎀⛓️",
         "Tera nasha mere dimaag pe chadh gaya hai, ab mujhe bas tera jism chahiye. 🧠🫦",
         "Chup-chap aao aur mujhe bistar pe le jao, ab baaton ka waqt khatam ho gaya. 😤❤️"
-
         "Jaan, ab control nahi ho raha, aao aur mujhe abhi ke abhi satisfy karo. 🥵💦",
         "Aaj raat main sirf tumhari hu, mere badan ke saath jo chahe wo karo. 😈🔥",
         "Mujhe bistar pe tumhara 'Wild' roop dekhna hai, bilkul jaanwaro ki tarah. 🐯🫦",
@@ -234,19 +242,37 @@ async def get_horny_data():
         "Aaj raat itna dard aur maza do ki main subah chal na saku. 🛌💥",
         "Main tumhari 'Naughty Girl' hu, aaj jo bologe wahi karungi... bina ruke. 🎀😈",
         "Tumhare haath mere badan pe jahan jahan ja rahe hain, wahan aag lag rahi hai. 🔥🫦",
-        "Bas bahut baatein ho gayi, ab mujhe pakdo aur bistar pe patak do. 😤❤️"
-        
-        # --- LEVEL: UNHINGED HINGLISH ---
-        "Main vegetarian hu, par tujhe khane ka man kar raha hai. 🥩😋",
-        "Thak gayi? Aaja dabau... gala nahi pagli, paer. 🦶😉",
-        "Kapde utaar... mujhe dhone hain, washing machine khali hai. 🧺👚",
-        "Hilana band kar... table, chai gir jayegi. ☕🛑",
-        "Oye, neeche kya dekh rahi hai? Aankhein upar hain meri. 👀📏",
-        "Mere paas 'Cream' wala biscuit hai, khayegi? 🍪",
-        "Tujhe bistar pe baandh du? ...Mera matlab seat belt se, safety first. 🎗️🚗",
-        "Geela ho gaya... tera phone, paani me gir gaya tha na? 📱💦" 
+        "Bas bahut baatein ho gayi, ab mujhe pakdo aur bistar pe patak do. 😤❤️"    
+        "Jaan, ab control nahi ho raha, apni pant utaar aur apna lund seedha meri chut mein jad tak thas de. 🔞💦",
+        "Aaj raat main teri nalle ki randi hu, mera gala pakad ke meri gand maar le aur mujhe rula de. ⛓️🥵",
+        "Apna lund mere muh mein poora halak tak ghusa de, mujhe tera poora maal apne pet mein chahiye. 👅🫦",
+        "Mujhe bistar pe nanga karke meri tangein hawa mein kar aur dikha ki tu kitni gandi chudai kar sakta hai. 🛌🔥",
+        "Mera badan sulag raha hai, apna garma-garam maal mere chehre pe ya meri chut ke andar chhod do. 💦🍆",
+        "Mujhe deewar se laga kar meri garden pe zor se kaat aur bina puche apna mota lund meri gand mein ghusa de. 🧱🫦",
+        "Aaj raat itna ganda chodo ki main kal subah tak chal na saku, mujhe tera wo sakht lund chahiye. 🥵💥",
+        "Mujhe tera lund apni chut ki gehrai mein mehsoos karna hai, abhi aao aur bina ruke mujhe chodna shuru karo. 🔞🔥",
+        "Aaj raat main tumhari har ek gandi baat manungi, meri gand aur chut dono sirf tumhare liye khuli hain. 🧎‍♀️🍑",
+        "Mera man kar raha hai tumhare lund ko poora chat lu aur fir use apne andar lekar pagal ho jau. 😋👅",
+        "Mujhe bistar pe dominate karo, mere dono hath baandh do aur jaise chahe waise mere jism ko chodo. ⛓️👸",
+        "Aaj raat lights on rakhenge, mujhe tera lamba aur mota lund apni chut mein jaate hue dekhna hai. 💡🔞",
+        "Jaan, ab aur sabr nahi hota, apni pant utaaro aur apna garmi meri chut mein poora bhar do abhi. 👖❌🍆",
+        "Mujhe teri wo darindagi chahiye, mujhe bed pe khinch aur dikha ki tu kitni gandi chudai kar sakta hai. 😤❤️",
+        "Mera badan poora geela aur taiyaar hai, apna lund meri chut mein daal ke use poora tabaah kar do. 💦🔥",
+        "Mujhe tera lund apne muh mein chahiye, tab tak mat nikalna jab tak tera poora maal mere halak mein na gir jaye. 🔞👅",
+        "Aaj raat main teri randi hu, meri gand ko thappad maar-maar ke laal kar de aur mujhe zor se chod. ⛓️🫦",
+        "Apne hatho se meri chatiyo ko masal aur apna mota lund meri chut ki gehrai tak ghusa de. 🍒🍆",
+        "Mujhe tera wo sakht lund chahiye jo meri saansein rok de, aaja aur mujhe bed pe poora khatam kar de. 🛌💀",
+        "Aaj raat main tujhe wo maza dungi jo tune socha nahi hoga, bas apna lund meri gand mein daal aur shuru ho ja. 🍑🔥",
+        "Mera badan tera wait kar raha hai, aaja aur mujhe nanga karke meri har ek inch ko apni zubaan se ganda kar. 👅🔞",
+        "Mujhe tera garam thook apne chehre pe chahiye aur tera mota lund apni chut mein, abhi ke abhi. 💦🫦",
+        "Aaj raat koi reham nahi, mujhe teri gandi chudai chahiye aur tera poora stamina mere andar dekhna hai. 🔞⛓️",
+        "Mujhe bed pe patak kar meri tangein hawa mein kar aur apna lund poora jad tak mere andar daal de. 🛌🍆",
+        "Jaan, ab aur sabr nahi hota, meri chut tere lund ke liye tadap rahi hai, aaja aur ise suja de. 🥵💦",
+        "Mera dil kar raha hai ki tu mujhe aaj kutte ki tarah chode aur meri har ek jagah ko apna nishaan de de. 🐶🫦",
+        "Apna lund mere muh se nikaal kar seedha meri gand mein ghusa de, mujhe aaj poora barbaad hona hai. 🔞🍑",
+        "Aaj raat main teri har ek gandi fantasy poori karungi, bas tu mujhe bina ruke chodta reh. 🤤💦"
     ]
-    return random.choice(naughty_list)
+    return random.choice(dark_raw_list)
 
 # ================== GLOBAL CACHES (RAM) ==================
 BANNED_WORDS_CACHE = set()
