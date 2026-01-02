@@ -1591,6 +1591,57 @@ async def roast(i: discord.Interaction, user: discord.Member):
     embed.set_thumbnail(url=user.display_avatar.url)
     await i.followup.send(content=f"{user.mention}", embed=embed)
 
+# 🔥 CUSTOM SPEAK COMMAND: /bol (Database Owner Check)
+@bot.tree.command(name="bol", description="Jo aap likhoge bot VC mein aake wahi bolegi (Owner Only) 🔊")
+@app_commands.describe(text="Wo likho jo bot se bulwana hai")
+async def bol(interaction: discord.Interaction, text: str):
+    
+    # 👑 DATABASE OWNER CHECK 👑
+    # Ye aapke 'def owner(i)' function ko call karega jo upar bana hua hai
+    if not owner(interaction):
+        await interaction.response.send_message("Teri aukaat nahi hai ye command chalane ki! 🖕 (Database Check: Failed)", ephemeral=True)
+        return
+
+    # 1. VC Check
+    if not interaction.user.voice:
+        await interaction.response.send_message("Abe pehle VC mein toh aa! 🖕", ephemeral=True)
+        return
+
+    await interaction.response.send_message(f"Thik hai malik, abhi bolti hu: **{text}** 🎙️")
+
+    # 2. VC Connect Logic
+    channel = interaction.user.voice.channel
+    try:
+        vc = await channel.connect()
+    except:
+        vc = interaction.guild.voice_client
+        if vc and vc.channel.id != channel.id:
+            await vc.move_to(channel)
+        elif not vc:
+            vc = await channel.connect()
+
+    # 3. 🗣️ VOICE SETTINGS (Swara - Female)
+    voice_option = "hi-IN-SwaraNeural"
+    output_file = "bol_command.mp3"
+    
+    # Text ko audio banayein (High Pitch + Fast)
+    communicate = edge_tts.Communicate(text, voice_option, rate="+5%", pitch="+2Hz")
+    await communicate.save(output_file)
+
+    # 4. Play Audio
+    if not vc.is_playing():
+        vc.play(discord.FFmpegPCMAudio(source=output_file, executable="./ffmpeg"))
+
+        while vc.is_playing():
+            await asyncio.sleep(1)
+        
+        await vc.disconnect()
+        
+        if os.path.exists(output_file):
+            os.remove(output_file)
+    else:
+        await interaction.followup.send("Ruk ja bhai, abhi bol hi rahi hu! (Busy)")
+
 # ================== MULTI-VERIFY MANAGEMENT ==================
 @bot.tree.command(name="multiaccess", description="Manage users who can verify UNLIMITED accounts")
 @app_commands.choices(mode=[
