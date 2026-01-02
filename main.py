@@ -202,7 +202,7 @@ async def get_horny_data():
         "Mujhe teri wo deep penetration chahiye jisse meri saansein rukne lagein, mujhe aaj poora satisfy kar de. 🔞💨",
         "Apna lund mere muh se nikaal kar seedha meri gand mein ghusa de, mujhe aaj raat sirf teri gandi chudai chahiye. 🍑🫦",
         "Aaj raat koi reham nahi, mujhe teri gandi darindagi dekhni hai, mujhe bed pe poora khatam kar de. 💀🔞",
-        "Mera badan geela aur taiyaar hai, apna lund mere andar daal aur dikha ki tu kitna savage hai. 😤❤️
+        "Mera badan geela aur taiyaar hai, apna lund mere andar daal aur dikha ki tu kitna savage hai. 😤❤️,
         "Jaan, aaj mujhe pyar nahi, tera pagalpan chahiye... mujhe bistar pe poori tarah tod do. ⛓️🔥",
         "Aaj raat main teri ghulami karungi, jo dard aur maza dena hai do, bas ruko mat. 🖤🫦",
         "Mujhe deewar se laga kar tab tak choke karo jab tak meri saansein na phoolne lagein. 🧱💨",
