@@ -3,6 +3,7 @@ from datetime import datetime
 import aiohttp
 from discord.ext import commands
 from gtts import gTTS
+import edge_tts
 
 import discord
 from discord import app_commands
@@ -1784,48 +1785,78 @@ class AccessClearView(discord.ui.View):
         self.stop()
 
 # 🔥 SLASH COMMAND: /vcroast
-@bot.tree.command(name="vcroast", description="Bot VC mein aake gandi gaali dega 🔊💀")
+@bot.tree.command(name="vcroast", description="Swara Voice mein gandi gaali sunne ke liye 🔊💀")
 async def vcroast(interaction: discord.Interaction):
-    # 1. Check karo user VC mein hai ya nahi
+    # 1. VC Check
     if not interaction.user.voice:
-        # ephemeral=True ka matlab msg sirf user ko dikhega
         await interaction.response.send_message("Abe pehle kisi Voice Channel mein toh ghus ja! 🖕", ephemeral=True)
         return
 
-    # 2. User ko batao ki bot aa raha hai
-    await interaction.response.send_message("Ruk saale, abhi aata hu tujhe sunane... 😈🔊")
+    await interaction.response.send_message("Ruk, mic set karne de... Swara aa rahi hai tujhe pelne! 🎙️😈")
 
-    # 3. VC Connect karo
+    # 2. VC Connect Logic
     channel = interaction.user.voice.channel
     try:
         vc = await channel.connect()
     except:
-        # Agar bot pehle se connected hai to wahan move karega
         vc = interaction.guild.voice_client
         if vc.channel.id != channel.id:
             await vc.move_to(channel)
 
-    # 4. 🔥 GANDI GAALI LIST (Ise apni 'Extreme List' se replace kar dena)
-    gaali = "Sun be lodu. Teri shakal dekh ke ulti aati hai. Nikal yahan se. Madarchod!"
+    # 3. ☢️ EXTREME UNCENSORED GAALI LIST (Maa-Bhen Level)
+    gaali_list = [
+        "Teri maa ki chut mein haathi ka lund, saale nalle tu paida hi galti se hua tha.",
+        "Teri maa ki chut mein JCB chala dungi, saari akad bahar nikal jayegi madarchod.",
+        "Bhosadike, teri bhen ko itna chodungi ki wo chalna bhool jayegi, sirf reng ke chalegi.",
+        "Saale suar ke pille, teri maa ki gaand mein cactus uga dungi, jab bhi hagegi mujhe yaad karegi.",
+        "Teri shakal dekh ke lagta hai bhagwan ne tatti ko insaan ka roop de diya hai.",
+        "Madarchod, tere khandan ki auratein mere lund ka wait karti hain, jaake pooch le.",
+        "Abe randi ke, teri gaand mein rod daal ke mooh se nikalungi, human kebab bana dungi tera.",
+        "Teri maa ka bhosada itna bada hai ki usme main apna poora ghar bana lu.",
+        "Chutiye, tujhe paida karke teri maa ne duniya pe bojh badha diya hai, jaake mar ja.",
+        "Teri bhen ki chut mein bomb laga ke uda dungi, chithade milenge seedha chand pe.",
+        "Saale hijde ki aulad, mere saamne aawaz mat nikalna warna wahi gaad dungi.",
+        "Teri maa ki chut mein itne lund daalungi ki wo traffic jam ho jayegi.",
+        "Bhosadike, tera baap bhi rota hoga ki kis manhoos ghadi mein tujhe paida kiya.",
+        "Randi ke pille, teri gaand mein mirchi ka powder bhar ke dande se andar kar dungi.",
+        "Teri bhen ki chut public toilet ban gayi hai, jo aata hai moot ke chala jata hai.",
+        "Madarchod, tujhe zinda jala ke teri raakh ko gutter mein bahana chahiye."
+        "Bhenchod, apni shakal dekhi hai? Aisa lagta hai gutter ke dhakkan pe kisi ne ulti kar di ho.",
+        "Madarchod, teri bhen ko kothe pe bitha dungi agar dubara yahan dikha toh, nikal yahan se!",
+        "Saale randi ke pille, tere khandan mein sabse bada chutiya tu hi hai, jaake doob mar.",
+        "Teri gaand mein itna danda daalungi ki muh se bahar niklega, bhosadike aukaat mein reh.",
+        "Sun be lodu, teri maa mere paas aayi thi, keh rahi thi galti ho gayi tujhe paida karke.",
+        "Abe suar ki aulad, tu wahi virus hai jise condom bhi rok nahi paaya tha.",
+        "Teri bhen ki chut mein cactus daal ke ghumungi, saale tatti khor insaan."
+    ]
     
-    # 5. Text-to-Speech (Audio banana)
-    tts = gTTS(text=gaali, lang='hi')
-    tts.save("roast.mp3")
+    text = random.choice(gaali_list)
 
-    # 6. Play Audio (Render ke liye ./ffmpeg zaruri hai)
+    # 4. 🗣️ VOICE SETTINGS (Female + Fast)
+    voice_option = "hi-IN-SwaraNeural"  # Only Female Voice
+    
+    # Audio Banana (Rate +10% for Aggression)
+    output_file = "roast.mp3"
+    communicate = edge_tts.Communicate(text, voice_option, rate="+10%")
+    await communicate.save(output_file)
+
+    # 5. Play Audio
     if not vc.is_playing():
-        vc.play(discord.FFmpegPCMAudio(source="roast.mp3", executable="./ffmpeg"))
+        # FFmpeg connect (Render path ke saath)
+        vc.play(discord.FFmpegPCMAudio(source=output_file, executable="./ffmpeg"))
 
-        # Jab tak audio chal raha hai wait karo
+        # Jab tak bol rahi hai wait karo
         while vc.is_playing():
             await asyncio.sleep(1)
         
-        # 7. Disconnect aur Safai
+        # Bolne ke baad nikal jao
         await vc.disconnect()
-        if os.path.exists("roast.mp3"):
-            os.remove("roast.mp3")
+        
+        # File delete (Safai)
+        if os.path.exists(output_file):
+            os.remove(output_file)
     else:
-        await interaction.followup.send("Ruk ja bhai, abhi kisi aur ki le raha hu! (Bot Busy)")
+        await interaction.followup.send("Ruk ja bhai, Swara abhi kisi aur ki le rahi hai! (Busy)")
 
 # ================== 3. ULTIMATE ACCESS COMMAND ==================
 @bot.tree.command(name="access", description="⚙️ Manage Access, Maintenance, Whitelist & Blacklist (Owner Only)")
