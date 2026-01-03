@@ -2589,10 +2589,6 @@ async def verifycheck(i: discord.Interaction, discord_id: str):
 
     await safe_send(i, emb("🔍 USER VERIFICATION HISTORY", txt[:4000], 0x9b59b6))
 
-import datetime
-import asyncio
-import random
-
 # ================== ULTRA PREMIUM GIVEAWAY (FULL FEATURES) ==================
 
 class GiveawayView(discord.ui.View):
@@ -2649,8 +2645,9 @@ class GiveawayView(discord.ui.View):
         await interaction.message.edit(embed=embed)
         await interaction.response.send_message(msg, ephemeral=True)
 
+# ================== FIX: GSTART (NO IMPORT ERROR) ==================
 
-@bot.tree.command(name="gstart", description="💎 Start an Ultra-Premium Giveaway with Restrictions")
+@bot.tree.command(name="gstart", description="💎 Start an Ultra-Premium Giveaway")
 @app_commands.describe(
     prize="Kya inaam dena hai?",
     duration="Time (e.g., 10m, 1h, 2d)",
@@ -2661,11 +2658,14 @@ class GiveawayView(discord.ui.View):
 )
 async def gstart(i: discord.Interaction, prize: str, duration: str, winners: int, image_url: str = None, block_staff: bool = False, blacklist_role: discord.Role = None):
     
-    # Permission Check
+    # 1. Permission Check
     if not i.user.guild_permissions.manage_guild:
         return await i.response.send_message("❌ Sirf Managers/Admins giveaway start kar sakte hain!", ephemeral=True)
 
-    # --- TIME CALCULATION ---
+    # 🔥 FIX: Import datetime as 'dt' taaki koi conflict na ho
+    import datetime as dt 
+
+    # 2. Time Calculation
     unit = duration[-1].lower()
     try:
         val = int(duration[:-1])
@@ -2678,11 +2678,11 @@ async def gstart(i: discord.Interaction, prize: str, duration: str, winners: int
     elif unit == 'd': seconds = val * 86400
     else: return await i.response.send_message("❌ Invalid Unit! Use m, h, or d.", ephemeral=True)
 
-    end_time_dt = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
+    # Ab ye 'dt' use karega, jo 100% chalega
+    end_time_dt = dt.datetime.now() + dt.timedelta(seconds=seconds)
     timestamp = int(end_time_dt.timestamp())
 
     # --- PREMIUM EMBED ---
-    # Default Premium GIF (Agar user image na de)
     default_img = "https://media1.tenor.com/m/XZThisaqECAAAAAC/giveaway-giveaway-alert.gif"
     final_image = image_url if image_url else default_img
 
@@ -2691,26 +2691,23 @@ async def gstart(i: discord.Interaction, prize: str, duration: str, winners: int
     embed.add_field(name="👥 Entries", value="**0** Users", inline=True)
     embed.add_field(name="🏆 Winners", value=f"{winners}", inline=True)
     
-    # Restriction Info in Embed
     rest_text = "None"
     if block_staff: rest_text = "🚫 No Staff"
     if blacklist_role: rest_text += f", 🚫 No {blacklist_role.mention}"
-    
     embed.add_field(name="🔒 Restrictions", value=rest_text, inline=False)
     
-    embed.set_image(url=final_image) # Big Image
+    embed.set_image(url=final_image)
     embed.set_thumbnail(url=i.guild.icon.url if i.guild.icon else None)
     embed.set_footer(text=f"Hosted by: {i.user.display_name} • Starting...", icon_url=i.user.display_avatar.url)
 
     await i.response.send_message("✅ Giveaway setup complete!", ephemeral=True)
     msg = await i.channel.send(embed=embed)
 
-    # View Attach
     view = GiveawayView(msg.id)
     embed.set_footer(text=f"Hosted by: {i.user.display_name} • ID: {msg.id}", icon_url=i.user.display_avatar.url)
     await msg.edit(embed=embed, view=view)
 
-    # 🔥 SAVE TO DB (With Restrictions)
+    # 🔥 SAVE TO DB (Fixed dt usage)
     db_data = {
         "message_id": str(msg.id),
         "channel_id": str(i.channel.id),
@@ -2726,11 +2723,9 @@ async def gstart(i: discord.Interaction, prize: str, duration: str, winners: int
     }
     supabase.table("giveaways").insert(db_data).execute()
 
-    # Wait logic
     await asyncio.sleep(seconds)
 
     # --- ENDING LOGIC ---
-    # Fetch fresh data (in case people joined)
     res = supabase.table("giveaways").select("*").eq("message_id", str(msg.id)).execute()
     if res.data and not res.data[0]['ended']:
         data = res.data[0]
@@ -2743,16 +2738,14 @@ async def gstart(i: discord.Interaction, prize: str, duration: str, winners: int
             winner_text = ", ".join([f"<@{uid}>" for uid in winners_list])
             await i.channel.send(f"🎉 **CONGRATULATIONS!** {winner_text} won **{prize}**! 🎁")
 
-        # End Embed
         embed.color = 0x2B2D31
         embed.title = "🎊 GIVEAWAY ENDED 🎊"
         embed.description = f"### 🎁 Prize: {prize}\n\n👑 **Winner(s):** {winner_text}"
         embed.set_field_at(0, name="⏰ Status", value="Ended", inline=True)
-        embed.set_image(url=None) # Image hata do ya winner ki laga do
+        embed.set_image(url=None)
         
         await msg.edit(embed=embed, view=None)
         supabase.table("giveaways").update({"ended": True}).eq("message_id", str(msg.id)).execute()
-
 
 @bot.tree.command(name="gcheck", description="🕵️ Check who joined (With Full Details)")
 async def gcheck(i: discord.Interaction, giveaway_id: str):
