@@ -2153,8 +2153,6 @@ class GiveawayView(discord.ui.View):
         await interaction.message.edit(embed=embed)
         await interaction.response.send_message(msg, ephemeral=True)
 
-
-@bot.tree.command(name="gstart", description="💎 Start a Permanent Giveaway (Database)")
 # ================== PREMIUM GSTART (UPDATED BIG GIF) ==================
 
 @bot.tree.command(name="gstart", description="💎 Start a Permanent Giveaway (Database)")
