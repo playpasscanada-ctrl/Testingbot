@@ -713,7 +713,6 @@ async def on_message(msg):
     if msg.author.bot:
         return
 
-    OWNER_ID = 804687084249284618
 
     # 2. Keywords List (Hindi/English/Shortforms)
     # Regex ka use kiya hai taaki 'ily', 'love u', 'pyar' sab pakad le
@@ -908,12 +907,6 @@ async def on_message(msg):
         await msg.reply(embed=embed)
         return  # 🛑 Yahi ruk jao (Taaki bot aage Attitude na dikhaye)
 
-            # ==================================================
-    # 🔥 ULTIMATE ATTITUDE AUTO-REPLY (VIP + 100 ROASTS)
-    # ==================================================
-    OWNER_ID = 804687084249284618  # Tumhari ID
-    
-    # Check: Agar message me "Saksham" hai ya Tumhe Tag kiya hai
     if "saksham" in msg.content.lower() or str(OWNER_ID) in msg.content:
         
         # 1. Khud ko reply nahi karna
@@ -1106,7 +1099,6 @@ async def on_message(msg):
 
     # Settings
     REVIEW_CHANNEL_ID = 1450514760276774967
-    OWNER_ID = 804687084249284618
     user_id = msg.content.strip()
 
     # 2. VALIDATION
@@ -4670,24 +4662,14 @@ threading.Thread(target=keep_alive, daemon=True).start()
 async def roblox_info(uid):
     url = f"https://users.roblox.com/v1/users/{uid}"
     try:
-        # 👇 DHYAN DEIN: Yahan hum 'bot.session' use kar rahe hain
+        # Bot ka internal session use karega (Fast)
         async with bot.session.get(url) as response:
             if response.status == 200:
                 data = await response.json()
                 return data.get("name", "Unknown"), data.get("displayName", "Unknown")
             else:
                 return "Invalid ID", "Invalid ID"
-    except Exception as e:
-        print(f"API Error: {e}")
-        # Agar bot.session fail ho jaye to backup (Safety)
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
-                     if response.status == 200:
-                        data = await response.json()
-                        return data.get("name", "Unknown"), data.get("displayName", "Unknown")
-        except:
-            pass
+    except:
         return "Unknown", "Unknown"
 
 bot.run(DISCORD_TOKEN)
