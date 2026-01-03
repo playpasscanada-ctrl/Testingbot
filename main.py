@@ -1829,19 +1829,23 @@ async def vcroast(interaction: discord.Interaction):
     await play_audio(interaction, text)
 
 
-# 3️⃣ BOL (Premium Embed + Auto Voice)
-@bot.tree.command(name="bol", description="Bot se kuch bhi bulwao 🎤")
+# 3️⃣ BOL (Premium Embed + Auto Voice - EPHEMERAL)
+@bot.tree.command(name="bol", description="Bot se kuch bhi bulwao 🎤 (Only you can see this)")
 @app_commands.describe(text="Kya bulwana hai?")
 async def bol(interaction: discord.Interaction, text: str):
+    # 1. Access Check
     if not has_voice_access(interaction):
         await interaction.response.send_message("🚫 **Access Denied:** Sirf VIP log chala sakte hain!", ephemeral=True)
         return
 
+    # 2. Premium Embed taiyar karo
     embed = create_premium_embed("📢 Broadcasting", f"**Text:** {text}\n**Voice:** {current_voice['name']}")
-    await interaction.response.send_message(embed=embed)
     
+    # ✅ FIX: Yahan 'ephemeral=True' dala hai taaki sirf aapko dikhe
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+    
+    # 3. Audio play karo (VC me awaz sabko aayegi, message sirf aapko dikhega)
     await play_audio(interaction, text)
-
 
 # 4️⃣ GIVE VIP (Database Update)
 @bot.tree.command(name="give_vip", description="Dosto ko VIP Access do 👑")
