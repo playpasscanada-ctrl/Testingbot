@@ -2635,61 +2635,76 @@ class GiveawayView(discord.ui.View):
         await interaction.response.send_message(msg, ephemeral=True)
 
 
+# ================== FIX: GSTART WITH CORRECT DATETIME ==================
+
 @bot.tree.command(name="gstart", description="💎 Start a Permanent Giveaway (Database)")
-@app_commands.describe(prize="Prize name", duration="Time (10m, 1h, 1d)", winners="Winner count")
+@app_commands.describe(prize="Prize name", duration="Time (10m, 1h, 1d)", winners="Winner count", image_url="Custom image link (Optional)")
 async def gstart(i: discord.Interaction, prize: str, duration: str, winners: int, image_url: str = None):
     
     # Permission Check
     if not i.user.guild_permissions.manage_guild:
-        return await i.response.send_message("❌ Managers only!", ephemeral=True)
+        return await i.response.send_message("❌ Sirf Managers giveaway start kar sakte hain!", ephemeral=True)
 
-    # Time Logic
+    # --- TIME LOGIC (FIXED) ---
+    import datetime  # ✅ Yahan fresh import kiya hai taaki error na aaye
+    
     unit = duration[-1].lower()
-    time_val = int(duration[:-1])
+    try:
+        time_val = int(duration[:-1])
+    except:
+        return await i.response.send_message("❌ Time format galat hai! Example: 10m, 1h", ephemeral=True)
+
     seconds = 0
     if unit == 'm': seconds = time_val * 60
     elif unit == 'h': seconds = time_val * 3600
     elif unit == 'd': seconds = time_val * 86400
     else: return await i.response.send_message("❌ Invalid Time! Use 10m, 1h, 1d", ephemeral=True)
 
+    # Ab ye line perfectly chalegi
     end_time_dt = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
     timestamp = int(end_time_dt.timestamp())
 
-    # Initial Embed
-    embed = discord.Embed(title="🎉 **PREMIUM GIVEAWAY** 🎉", description=f"### 🎁 Prize: {prize}\n\n👇 **Click to Join!**", color=0xFFD700)
+    # --- PREMIUM EMBED ---
+    embed = discord.Embed(title="🎉 **ULTRA PREMIUM GIVEAWAY** 🎉", description=f"### 🎁 Prize: {prize}\n\n👇 **Click the button below to Join!**", color=0xFFD700)
     embed.add_field(name="⏰ Ends In", value=f"<t:{timestamp}:R>", inline=True)
     embed.add_field(name="👥 Entries", value="**0** Users", inline=True)
     embed.add_field(name="🏆 Winners", value=f"{winners}", inline=True)
-    embed.set_footer(text=f"Hosted by: {i.user.display_name} • Saving...", icon_url=i.user.display_avatar.url)
     
-    default_img = "https://media1.tenor.com/m/Jpj0mfa0A8MAAAAC/giveaway-giveaway-time.gif"
+    embed.set_footer(text=f"Hosted by: {i.user.display_name} • Starting...", icon_url=i.user.display_avatar.url)
+    
+    default_img = "https://media1.tenor.com/m/XZThisaqECAAAAAC/giveaway-giveaway-alert.gif"
     embed.set_image(url=image_url if image_url else default_img)
+    
+    if i.guild.icon:
+        embed.set_thumbnail(url=i.guild.icon.url)
 
-    await i.response.send_message("✅ Database entry ban rahi hai...", ephemeral=True)
+    await i.response.send_message("✅ Setting up giveaway...", ephemeral=True)
     msg = await i.channel.send(embed=embed)
 
-    # Update View & Footer
     view = GiveawayView(msg.id)
     embed.set_footer(text=f"Hosted by: {i.user.display_name} • ID: {msg.id}", icon_url=i.user.display_avatar.url)
     await msg.edit(embed=embed, view=view)
 
-    # 🔥 SAVE TO SUPABASE (Permanent Storage) 🔥
-    db_data = {
-        "message_id": str(msg.id),
-        "channel_id": str(i.channel.id),
-        "prize": prize,
-        "winners_count": winners,
-        "end_time": str(end_time_dt),
-        "host_id": str(i.user.id),
-        "participants": [], # Empty list start me
-        "ended": False
-    }
-    supabase.table("giveaways").insert(db_data).execute()
+    # 🔥 SAVE TO SUPABASE 🔥
+    try:
+        db_data = {
+            "message_id": str(msg.id),
+            "channel_id": str(i.channel.id),
+            "prize": prize,
+            "winners_count": winners,
+            "end_time": str(end_time_dt),
+            "host_id": str(i.user.id),
+            "participants": [],
+            "ended": False
+        }
+        supabase.table("giveaways").insert(db_data).execute()
+    except Exception as e:
+        await i.channel.send(f"⚠️ **Database Error:** {e}")
 
-    # Wait for end
     await asyncio.sleep(seconds)
 
-    # --- ENDING LOGIC (Fetch fresh data from DB) ---
+    # --- ENDING LOGIC ---
+    # Yahan wapas import ki zarurat nahi, upar wala hi chalega
     res = supabase.table("giveaways").select("*").eq("message_id", str(msg.id)).execute()
     if res.data:
         data = res.data[0]
@@ -2699,11 +2714,9 @@ async def gstart(i: discord.Interaction, prize: str, duration: str, winners: int
             winner_text = "No one joined! 😢"
         else:
             winners_list = random.sample(users, data['winners_count'])
-            winner_mentions = [f"<@{uid}>" for uid in winners_list]
-            winner_text = ", ".join(winner_mentions)
+            winner_text = ", ".join([f"<@{uid}>" for uid in winners_list])
             await i.channel.send(f"🎉 **CONGRATULATIONS!** {winner_text} won **{prize}**! 🎁")
 
-        # Update Embed & Mark Ended in DB
         embed.color = 0x2B2D31
         embed.title = "🎊 GIVEAWAY ENDED 🎊"
         embed.description = f"### 🎁 Prize: {prize}\n\n👑 **Winner(s):** {winner_text}"
@@ -2711,8 +2724,6 @@ async def gstart(i: discord.Interaction, prize: str, duration: str, winners: int
         embed.set_image(url=None)
         
         await msg.edit(embed=embed, view=None)
-        
-        # Mark as ended in DB
         supabase.table("giveaways").update({"ended": True}).eq("message_id", str(msg.id)).execute()
 
 
