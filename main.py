@@ -2100,214 +2100,6 @@ class AccessClearView(discord.ui.View):
         await i.response.edit_message(embed=embed, view=None)
         self.stop()
 
-    @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.secondary)
-    async def cancel(self, i: discord.Interaction, button: discord.ui.Button):
-        if i.user.id != self.author_id: return await i.response.send_message("❌ You cannot use this button.", ephemeral=True)
-
-        embed = discord.Embed(title="🛡️ Operation Cancelled", description="Access list safe hai.", color=0x2ecc71)
-        await i.response.edit_message(embed=embed, view=None)
-        self.stop()
-
-# ================== PERMANENT GIVEAWAY SYSTEM (SUPABASE) ==================
-
-class GiveawayView(discord.ui.View):
-    def __init__(self, message_id):
-        super().__init__(timeout=None)
-        self.message_id = str(message_id)
-
-    @discord.ui.button(label="🎉 Join Giveaway", style=discord.ButtonStyle.blurple, custom_id="join_giveaway_btn")
-    async def join_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        
-        msg_id = str(interaction.message.id)
-        user_id = interaction.user.id
-
-        # 1. DATABASE FETCH (Live Data)
-        try:
-            res = supabase.table("giveaways").select("*").eq("message_id", msg_id).execute()
-            if not res.data:
-                return await interaction.response.send_message("❌ Yeh giveaway database me nahi mila (Shayad delete ho gaya).", ephemeral=True)
-            
-            data = res.data[0]
-            participants = data['participants'] # JSON List
-            
-        except Exception as e:
-            return await interaction.response.send_message(f"⚠️ Database Error: {e}", ephemeral=True)
-
-        # 2. 🛑 CHECKS (Already Joined?)
-        if user_id in participants:
-            # Leave Logic
-            participants.remove(user_id)
-            msg = "💔 Aapne giveaway leave kar diya."
-        else:
-            # Join Logic
-            participants.append(user_id)
-            msg = "✅ **Success:** Entry Confirmed! Good Luck! 🍀"
-
-        # 3. DATABASE UPDATE (Save immediately)
-        supabase.table("giveaways").update({"participants": participants}).eq("message_id", msg_id).execute()
-
-        # 4. EMBED UPDATE (Show new count)
-        embed = interaction.message.embeds[0]
-        embed.set_field_at(1, name="👥 Entries", value=f"**{len(participants)}** Users", inline=True)
-        
-        await interaction.message.edit(embed=embed)
-        await interaction.response.send_message(msg, ephemeral=True)
-
-# ================== PREMIUM GSTART (UPDATED BIG GIF) ==================
-
-@bot.tree.command(name="gstart", description="💎 Start a Permanent Giveaway (Database)")
-@app_commands.describe(prize="Prize name", duration="Time (10m, 1h, 1d)", winners="Winner count", image_url="Custom image link (Optional)")
-async def gstart(i: discord.Interaction, prize: str, duration: str, winners: int, image_url: str = None):
-    
-    # Permission Check (Managers Only)
-    # Agar sirf owner ke liye karna hai to yahan 'if not owner(i):' laga dena
-    if not i.user.guild_permissions.manage_guild:
-        return await i.response.send_message("❌ Sirf Managers giveaway start kar sakte hain!", ephemeral=True)
-
-    # Time Logic
-    unit = duration[-1].lower()
-    time_val = int(duration[:-1])
-    seconds = 0
-    if unit == 'm': seconds = time_val * 60
-    elif unit == 'h': seconds = time_val * 3600
-    elif unit == 'd': seconds = time_val * 86400
-    else: return await i.response.send_message("❌ Invalid Time! Use 10m, 1h, 1d (e.g., 10m)", ephemeral=True)
-
-    end_time_dt = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
-    timestamp = int(end_time_dt.timestamp())
-
-    # --- PREMIUM EMBED CREATION ---
-    embed = discord.Embed(title="🎉 **ULTRA PREMIUM GIVEAWAY** 🎉", description=f"### 🎁 Prize: {prize}\n\n👇 **Click the button below to Join!**", color=0xFFD700)
-    embed.add_field(name="⏰ Ends In", value=f"<t:{timestamp}:R>", inline=True)
-    embed.add_field(name="👥 Entries", value="**0** Users", inline=True)
-    embed.add_field(name="🏆 Winners", value=f"{winners}", inline=True)
-    
-    # Host info footer me
-    embed.set_footer(text=f"Hosted by: {i.user.display_name} • Starting...", icon_url=i.user.display_avatar.url)
-    
-    # 🔥 NEW DEFAULT PREMIUM GIF (Big Banner Style) 🔥
-    # Agar user ne apni image nahi di, to ye wali chalegi.
-    default_img = "https://media1.tenor.com/m/XZThisaqECAAAAAC/giveaway-giveaway-alert.gif" 
-    
-    # `set_image` use karne se embed automatically BADA (Long) banta hai.
-    embed.set_image(url=image_url if image_url else default_img)
-    
-    # Thumbnail option (Agar server ka icon lagana ho side me chota sa)
-    if i.guild.icon:
-        embed.set_thumbnail(url=i.guild.icon.url)
-
-    await i.response.send_message("✅ Setting up giveaway...", ephemeral=True)
-    msg = await i.channel.send(embed=embed)
-
-    # Update View & Footer with ID
-    view = GiveawayView(msg.id)
-    embed.set_footer(text=f"Hosted by: {i.user.display_name} • ID: {msg.id}", icon_url=i.user.display_avatar.url)
-    await msg.edit(embed=embed, view=view)
-
-    # 🔥 SAVE TO SUPABASE (Permanent Storage) 🔥
-    try:
-        db_data = {
-            "message_id": str(msg.id),
-            "channel_id": str(i.channel.id),
-            "prize": prize,
-            "winners_count": winners,
-            "end_time": str(end_time_dt),
-            "host_id": str(i.user.id),
-            "participants": [], # Empty list start me
-            "ended": False
-        }
-        supabase.table("giveaways").insert(db_data).execute()
-    except Exception as e:
-        await i.channel.send(f"⚠️ **Database Error:** Giveaway start ho gaya, par database me save nahi hua! Reroll nahi chalega. Error: `{e}`")
-
-    # Wait for end
-    await asyncio.sleep(seconds)
-
-    # --- ENDING LOGIC (Fetch fresh data from DB) ---
-    res = supabase.table("giveaways").select("*").eq("message_id", str(msg.id)).execute()
-    if res.data:
-        data = res.data[0]
-        users = data['participants']
-        
-        if len(users) < data['winners_count']:
-            winner_text = "No one joined! 😢"
-        else:
-            winners_list = random.sample(users, data['winners_count'])
-            winner_mentions = [f"<@{uid}>" for uid in winners_list]
-            winner_text = ", ".join(winner_mentions)
-            await i.channel.send(f"🎉 **CONGRATULATIONS!** {winner_text} won **{prize}**! 🎁")
-
-        # Update Embed & Mark Ended in DB
-        embed.color = 0x2B2D31
-        embed.title = "🎊 GIVEAWAY ENDED 🎊"
-        embed.description = f"### 🎁 Prize: {prize}\n\n👑 **Winner(s):** {winner_text}"
-        embed.set_field_at(0, name="⏰ Status", value="Ended", inline=True)
-        embed.set_image(url=None)
-        
-        await msg.edit(embed=embed, view=None)
-        
-        # Mark as ended in DB
-        supabase.table("giveaways").update({"ended": True}).eq("message_id", str(msg.id)).execute()
-
-
-@bot.tree.command(name="greroll", description="🔄 Reroll winner from Database (Restart Proof)")
-async def greroll(i: discord.Interaction, giveaway_id: str, winners: int = 1):
-    
-    if not i.user.guild_permissions.manage_guild:
-        return await i.response.send_message("❌ Managers only!", ephemeral=True)
-
-    # 🔥 FETCH FROM DB (Restart hone ke baad bhi chalega)
-    res = supabase.table("giveaways").select("*").eq("message_id", giveaway_id).execute()
-    
-    if not res.data:
-        return await i.response.send_message("❌ Database me ye ID nahi mili!", ephemeral=True)
-
-    data = res.data[0]
-    participants = data['participants']
-
-    if len(participants) < winners:
-        return await i.response.send_message("❌ Not enough participants to reroll.", ephemeral=True)
-
-    new_winners = random.sample(participants, winners)
-    winner_text = ", ".join([f"<@{uid}>" for uid in new_winners])
-
-    # Announce
-    embed = discord.Embed(title="🔄 **REROLL RESULT**", description=f"### 🎁 Prize: {data['prize']}\n\n👑 **New Winner:** {winner_text}", color=0xFF0055)
-    embed.set_footer(text=f"Rerolled by {i.user.display_name}")
-    
-    await i.response.send_message(f"🎉 **NEW WINNER:** {winner_text}", embed=embed)
-
-
-@bot.tree.command(name="gcheck", description="🕵️ Check participants list from Database")
-async def gcheck(i: discord.Interaction, giveaway_id: str):
-    
-    # 🔥 FETCH FROM DB
-    res = supabase.table("giveaways").select("*").eq("message_id", giveaway_id).execute()
-    
-    if not res.data:
-        return await i.response.send_message("❌ Invalid ID or Data deleted.", ephemeral=True)
-
-    participants = res.data[0]['participants']
-    
-    if not participants:
-        return await i.response.send_message("❌ Koi participants nahi hain.", ephemeral=True)
-
-    # List banana
-    names = []
-    for uid in participants:
-        names.append(f"<@{uid}> (`{uid}`)")
-
-    desc = "\n".join(names)
-    if len(desc) > 4000: # Agar list bahut lambi hai
-        with open("list.txt", "w") as f: f.write("\n".join(names))
-        await i.response.send_message(file=discord.File("list.txt"), ephemeral=True)
-        os.remove("list.txt")
-    else:
-        embed = discord.Embed(title=f"👥 Participants ({len(names)})", description=desc, color=0x00ffea)
-        await i.response.send_message(embed=embed, ephemeral=True)
-
-
-
 # ================== 3. ULTIMATE ACCESS COMMAND (FIXED: Non-Blocking) ==================
 @bot.tree.command(name="access", description="⚙️ Manage Access, Maintenance, Whitelist & Blacklist (Fixed)")
 @app_commands.choices(mode=[
@@ -2796,6 +2588,189 @@ async def verifycheck(i: discord.Interaction, discord_id: str):
         )
 
     await safe_send(i, emb("🔍 USER VERIFICATION HISTORY", txt[:4000], 0x9b59b6))
+
+# ================== PERMANENT GIVEAWAY SYSTEM (SUPABASE) ==================
+
+class GiveawayView(discord.ui.View):
+    def __init__(self, message_id):
+        super().__init__(timeout=None)
+        self.message_id = str(message_id)
+
+    @discord.ui.button(label="🎉 Join Giveaway", style=discord.ButtonStyle.blurple, custom_id="join_giveaway_btn")
+    async def join_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        
+        msg_id = str(interaction.message.id)
+        user_id = interaction.user.id
+
+        # 1. DATABASE FETCH (Live Data)
+        try:
+            res = supabase.table("giveaways").select("*").eq("message_id", msg_id).execute()
+            if not res.data:
+                return await interaction.response.send_message("❌ Yeh giveaway database me nahi mila (Shayad delete ho gaya).", ephemeral=True)
+            
+            data = res.data[0]
+            participants = data['participants'] # JSON List
+            
+        except Exception as e:
+            return await interaction.response.send_message(f"⚠️ Database Error: {e}", ephemeral=True)
+
+        # 2. 🛑 CHECKS (Already Joined?)
+        if user_id in participants:
+            # Leave Logic
+            participants.remove(user_id)
+            msg = "💔 Aapne giveaway leave kar diya."
+        else:
+            # Join Logic
+            participants.append(user_id)
+            msg = "✅ **Success:** Entry Confirmed! Good Luck! 🍀"
+
+        # 3. DATABASE UPDATE (Save immediately)
+        supabase.table("giveaways").update({"participants": participants}).eq("message_id", msg_id).execute()
+
+        # 4. EMBED UPDATE (Show new count)
+        embed = interaction.message.embeds[0]
+        embed.set_field_at(1, name="👥 Entries", value=f"**{len(participants)}** Users", inline=True)
+        
+        await interaction.message.edit(embed=embed)
+        await interaction.response.send_message(msg, ephemeral=True)
+
+
+@bot.tree.command(name="gstart", description="💎 Start a Permanent Giveaway (Database)")
+@app_commands.describe(prize="Prize name", duration="Time (10m, 1h, 1d)", winners="Winner count")
+async def gstart(i: discord.Interaction, prize: str, duration: str, winners: int, image_url: str = None):
+    
+    # Permission Check
+    if not i.user.guild_permissions.manage_guild:
+        return await i.response.send_message("❌ Managers only!", ephemeral=True)
+
+    # Time Logic
+    unit = duration[-1].lower()
+    time_val = int(duration[:-1])
+    seconds = 0
+    if unit == 'm': seconds = time_val * 60
+    elif unit == 'h': seconds = time_val * 3600
+    elif unit == 'd': seconds = time_val * 86400
+    else: return await i.response.send_message("❌ Invalid Time! Use 10m, 1h, 1d", ephemeral=True)
+
+    end_time_dt = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
+    timestamp = int(end_time_dt.timestamp())
+
+    # Initial Embed
+    embed = discord.Embed(title="🎉 **PREMIUM GIVEAWAY** 🎉", description=f"### 🎁 Prize: {prize}\n\n👇 **Click to Join!**", color=0xFFD700)
+    embed.add_field(name="⏰ Ends In", value=f"<t:{timestamp}:R>", inline=True)
+    embed.add_field(name="👥 Entries", value="**0** Users", inline=True)
+    embed.add_field(name="🏆 Winners", value=f"{winners}", inline=True)
+    embed.set_footer(text=f"Hosted by: {i.user.display_name} • Saving...", icon_url=i.user.display_avatar.url)
+    
+    default_img = "https://media1.tenor.com/m/Jpj0mfa0A8MAAAAC/giveaway-giveaway-time.gif"
+    embed.set_image(url=image_url if image_url else default_img)
+
+    await i.response.send_message("✅ Database entry ban rahi hai...", ephemeral=True)
+    msg = await i.channel.send(embed=embed)
+
+    # Update View & Footer
+    view = GiveawayView(msg.id)
+    embed.set_footer(text=f"Hosted by: {i.user.display_name} • ID: {msg.id}", icon_url=i.user.display_avatar.url)
+    await msg.edit(embed=embed, view=view)
+
+    # 🔥 SAVE TO SUPABASE (Permanent Storage) 🔥
+    db_data = {
+        "message_id": str(msg.id),
+        "channel_id": str(i.channel.id),
+        "prize": prize,
+        "winners_count": winners,
+        "end_time": str(end_time_dt),
+        "host_id": str(i.user.id),
+        "participants": [], # Empty list start me
+        "ended": False
+    }
+    supabase.table("giveaways").insert(db_data).execute()
+
+    # Wait for end
+    await asyncio.sleep(seconds)
+
+    # --- ENDING LOGIC (Fetch fresh data from DB) ---
+    res = supabase.table("giveaways").select("*").eq("message_id", str(msg.id)).execute()
+    if res.data:
+        data = res.data[0]
+        users = data['participants']
+        
+        if len(users) < data['winners_count']:
+            winner_text = "No one joined! 😢"
+        else:
+            winners_list = random.sample(users, data['winners_count'])
+            winner_mentions = [f"<@{uid}>" for uid in winners_list]
+            winner_text = ", ".join(winner_mentions)
+            await i.channel.send(f"🎉 **CONGRATULATIONS!** {winner_text} won **{prize}**! 🎁")
+
+        # Update Embed & Mark Ended in DB
+        embed.color = 0x2B2D31
+        embed.title = "🎊 GIVEAWAY ENDED 🎊"
+        embed.description = f"### 🎁 Prize: {prize}\n\n👑 **Winner(s):** {winner_text}"
+        embed.set_field_at(0, name="⏰ Status", value="Ended", inline=True)
+        embed.set_image(url=None)
+        
+        await msg.edit(embed=embed, view=None)
+        
+        # Mark as ended in DB
+        supabase.table("giveaways").update({"ended": True}).eq("message_id", str(msg.id)).execute()
+
+
+@bot.tree.command(name="greroll", description="🔄 Reroll winner from Database (Restart Proof)")
+async def greroll(i: discord.Interaction, giveaway_id: str, winners: int = 1):
+    
+    if not i.user.guild_permissions.manage_guild:
+        return await i.response.send_message("❌ Managers only!", ephemeral=True)
+
+    # 🔥 FETCH FROM DB (Restart hone ke baad bhi chalega)
+    res = supabase.table("giveaways").select("*").eq("message_id", giveaway_id).execute()
+    
+    if not res.data:
+        return await i.response.send_message("❌ Database me ye ID nahi mili!", ephemeral=True)
+
+    data = res.data[0]
+    participants = data['participants']
+
+    if len(participants) < winners:
+        return await i.response.send_message("❌ Not enough participants to reroll.", ephemeral=True)
+
+    new_winners = random.sample(participants, winners)
+    winner_text = ", ".join([f"<@{uid}>" for uid in new_winners])
+
+    # Announce
+    embed = discord.Embed(title="🔄 **REROLL RESULT**", description=f"### 🎁 Prize: {data['prize']}\n\n👑 **New Winner:** {winner_text}", color=0xFF0055)
+    embed.set_footer(text=f"Rerolled by {i.user.display_name}")
+    
+    await i.response.send_message(f"🎉 **NEW WINNER:** {winner_text}", embed=embed)
+
+
+@bot.tree.command(name="gcheck", description="🕵️ Check participants list from Database")
+async def gcheck(i: discord.Interaction, giveaway_id: str):
+    
+    # 🔥 FETCH FROM DB
+    res = supabase.table("giveaways").select("*").eq("message_id", giveaway_id).execute()
+    
+    if not res.data:
+        return await i.response.send_message("❌ Invalid ID or Data deleted.", ephemeral=True)
+
+    participants = res.data[0]['participants']
+    
+    if not participants:
+        return await i.response.send_message("❌ Koi participants nahi hain.", ephemeral=True)
+
+    # List banana
+    names = []
+    for uid in participants:
+        names.append(f"<@{uid}> (`{uid}`)")
+
+    desc = "\n".join(names)
+    if len(desc) > 4000: # Agar list bahut lambi hai
+        with open("list.txt", "w") as f: f.write("\n".join(names))
+        await i.response.send_message(file=discord.File("list.txt"), ephemeral=True)
+        os.remove("list.txt")
+    else:
+        embed = discord.Embed(title=f"👥 Participants ({len(names)})", description=desc, color=0x00ffea)
+        await i.response.send_message(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="whois", description="🕵️ Get detailed status of a Roblox User")
 async def whois(i: discord.Interaction, user_id: str):
