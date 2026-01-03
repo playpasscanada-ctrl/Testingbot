@@ -1490,7 +1490,9 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
         except:
             await i.response.send_message(f"❌ **System Error:** `{e}`", ephemeral=True)         
 
-# 1. Autocomplete (Taaki MP3 ki list dikhe)
+# ================== FINAL PLAYSOUND (SIMPLE OWNER CHECK) ==================
+
+# 1. Autocomplete (List dikhane ke liye)
 async def sound_autocomplete(i: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     folder_path = "./sounds"
     if not os.path.exists(folder_path): return []
@@ -1498,21 +1500,26 @@ async def sound_autocomplete(i: discord.Interaction, current: str) -> list[app_c
     return [app_commands.Choice(name=f, value=f) for f in files if current.lower() in f.lower()][:25]
 
 # 2. Command
-@bot.tree.command(name="playsound", description="📂 GitHub sounds play karo")
+@bot.tree.command(name="playsound", description="📂 GitHub sounds play karo (Owner Only)")
 @app_commands.describe(filename="Sound select karo")
 @app_commands.autocomplete(filename=sound_autocomplete)
 async def playsound(i: discord.Interaction, filename: str):
-    # Owner Check
-    if i.user.id != 1210837901306368041: 
-        return await i.response.send_message("❌ Chal nikal!", ephemeral=True)
+    
+    # 🔥 Waisa check jaisa tum chahte the 🔥
+    if not owner(i):
+        return await i.response.send_message("❌ **Access Denied:** Sirf Owner allowed hai!", ephemeral=True)
+
+    # --- Iske aage VC aur Play logic ---
 
     if not i.user.voice:
-        return await i.response.send_message("⚠️ VC join kar pehle!", ephemeral=True)
+        return await i.response.send_message("⚠️ Pehle VC join kar bhai!", ephemeral=True)
 
     await i.response.defer()
 
     try:
         file_path = f"./sounds/{filename}"
+        
+        # VC Connect Logic
         try:
             vc = await i.user.voice.channel.connect()
         except:
@@ -1520,8 +1527,9 @@ async def playsound(i: discord.Interaction, filename: str):
 
         if vc.is_playing(): vc.stop()
 
-        # Render setup ke hisaab se FFmpeg path
+        # Play Audio
         vc.play(discord.FFmpegPCMAudio(source=file_path, executable="./ffmpeg"))
+        
         await i.followup.send(f"🎶 **Playing:** `{filename}` 🌚")
 
     except Exception as e:
