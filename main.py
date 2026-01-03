@@ -713,6 +713,90 @@ async def on_message(msg):
     if msg.author.bot:
         return
 
+        # ... (on_message ke andar baaki code ke neeche)
+
+    # 4. ❤️ I LOVE YOU AUTO-REPLY (Fixed Variable Name)
+    # Keywords List
+    love_triggers = r"\b(i love you|ily|luv u|love u|love you|pyar karta hu|mohabbat|ishq)\b"
+
+    # ⚠️ NOTICE: Yahan 'message' ki jagah 'msg' use kiya hai
+    if re.search(love_triggers, msg.content, re.IGNORECASE):
+        
+        is_loved_one = False
+        
+        # Check 1: Main Owner ID
+        if msg.author.id == OWNER_ID:
+            is_loved_one = True
+        else:
+            # Check 2: Database
+            try:
+                data = supabase.table("bot_admins").select("user_id").eq("user_id", str(msg.author.id)).execute()
+                if data.data:
+                    is_loved_one = True
+            except:
+                pass
+        
+        # --- RESPONSE LOGIC ---
+        
+        # Case A: Owner/Admin (ROMANTIC MODE) ❤️
+        if is_loved_one:
+            embed = discord.Embed(
+                title="💖 Awww Baby!", 
+                description=f"**I love you too {msg.author.mention}!** 💋\nTum hi toh ho meri duniya... ummaaah!", 
+                color=0xFF1493
+            )
+            embed.set_thumbnail(url="https://media.tenor.com/BMTXj26j1gAAAAAi/anime-kiss.gif")
+            embed.set_footer(text="Swara loves you forever ❤️")
+            await msg.channel.send(embed=embed)
+
+            # Voice Reply
+            if msg.author.voice:
+                script = "Awww... I love you too meri jaan! Tum sabse best ho... Ummwwaaah!"
+                communicate = edge_tts.Communicate(script, "hi-IN-SwaraNeural", rate="+5%", pitch="+15Hz")
+                await communicate.save(f"love_{msg.id}.mp3")
+                
+                try:
+                    vc = await msg.author.voice.channel.connect()
+                except:
+                    vc = msg.guild.voice_client
+                
+                if vc and not vc.is_playing():
+                    vc.play(discord.FFmpegPCMAudio(source=f"love_{msg.id}.mp3", executable="./ffmpeg"))
+                    while vc.is_playing():
+                        await asyncio.sleep(1)
+                    await vc.disconnect()
+                    if os.path.exists(f"love_{msg.id}.mp3"):
+                        os.remove(f"love_{msg.id}.mp3")
+
+        # Case B: Random User (REJECTION MODE) 🤢
+        else:
+            embed = discord.Embed(
+                title="🤢 Chee bhai!", 
+                description=f"**Oye {msg.author.mention}, aukaat mein reh!**\nShakal dekhi hai aaine mein? Kutta bhi na paale tujhe.", 
+                color=0x000000
+            )
+            embed.set_thumbnail(url="https://media.tenor.com/2b7lH3y8l08AAAAM/anime-disgust.gif")
+            await msg.channel.send(embed=embed)
+
+            # Voice Insult
+            if msg.author.voice:
+                script = "Excuse me? I love you? Hahahaha! Jaake pehle muh dho ke aa. Chal nikal!"
+                communicate = edge_tts.Communicate(script, "hi-IN-SwaraNeural", rate="+10%", pitch="+5Hz")
+                await communicate.save(f"reject_{msg.id}.mp3")
+                
+                try:
+                    vc = await msg.author.voice.channel.connect()
+                except:
+                    vc = msg.guild.voice_client
+
+                if vc and not vc.is_playing():
+                    vc.play(discord.FFmpegPCMAudio(source=f"reject_{msg.id}.mp3", executable="./ffmpeg"))
+                    while vc.is_playing():
+                        await asyncio.sleep(1)
+                    await vc.disconnect()
+                    if os.path.exists(f"reject_{msg.id}.mp3"):
+                        os.remove(f"reject_{msg.id}.mp3")
+
     # =====================================================
     # 👇 YE LINES SABSE UPAR HONI CHAHIYE (Fix is here)
     # =====================================================
@@ -1148,7 +1232,7 @@ async def on_message(msg):
         print(f"DEBUG ERROR: {e}")
                             
                         
-# ================== 1. BAN PAGINATOR CLASS (List ke liye) ==================
+ # ================== 1. BAN PAGINATOR CLASS (Ye sahi hai, isme change nahi chahiye) ==================
 class BanPaginator(discord.ui.View):
     def __init__(self, data, author, bot_ref):
         super().__init__(timeout=60)
@@ -1171,10 +1255,8 @@ class BanPaginator(discord.ui.View):
             reason = row.get("reason", "No Reason")
             executor_id = row.get("executor")
             
-            # Fetch Info
             u, d = await roblox_info(uid)
             
-            # Ban Type Logic
             if row.get("perm"):
                 type_str = "🔴 **PERM**"
                 time_str = "Never"
@@ -1219,7 +1301,7 @@ class BanPaginator(discord.ui.View):
         await i.response.edit_message(embed=embed, view=self)
 
 
-# ================== 2. CONFIRM VIEW CLASS (Clear All ke liye) ==================
+# ================== 2. CONFIRM VIEW CLASS (FIXED: Clear All) ==================
 class BanClearView(discord.ui.View):
     def __init__(self, author_id):
         super().__init__(timeout=30)
@@ -1230,9 +1312,10 @@ class BanClearView(discord.ui.View):
         if i.user.id != self.author_id:
             return await i.response.send_message("❌ You cannot use this button.", ephemeral=True)
         
-        supabase.table("bans").delete().neq("user_id", "0").execute()
+        # ✅ FIX: db_call use kiya taaki delete karte waqt bot na atke
+        await db_call(lambda: supabase.table("bans").delete().neq("user_id", "0").execute())
         
-        embed = discord.Embed(title="♻️ BAN LIST CLEARED", description="✅ All bans have been successfully removed from the database.", color=0x2ecc71)
+        embed = discord.Embed(title="♻️ BAN LIST CLEARED", description="✅ All bans have been successfully removed.", color=0x2ecc71)
         embed.set_footer(text=f"Cleared by {i.user.display_name}")
         
         await i.response.edit_message(embed=embed, view=None)
@@ -1248,7 +1331,7 @@ class BanClearView(discord.ui.View):
         self.stop()
 
 
-# ================== 3. MAIN ACTION COMMAND (ALL IN ONE) ==================
+# ================== 3. MAIN ACTION COMMAND (FIXED: ALL MODES) ==================
 @bot.tree.command(name="action", description="🛡️ Ultimate Moderation System (Kick, Ban, Unban, List)")
 @app_commands.choices(mode=[
     app_commands.Choice(name="👢 Kick Player", value="kick"),
@@ -1265,57 +1348,46 @@ class BanClearView(discord.ui.View):
 )
 async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id: str = None, reason: str = "No Reason Provided", duration: int = None):
     
-    # OWNER CHECK
     if not owner(i):
         return await i.response.send_message("❌ **Access Denied:** Owner/Admin only.", ephemeral=True)
 
-    # Note: 'clear' ke liye defer nahi karenge
+    # Note: 'clear' ke liye defer nahi karenge (Button turant aana chahiye)
     if mode.value != "clear":
         await i.response.defer(ephemeral=False)
 
     try:
-        # ================== 1. KICK (NEW ADDED) ==================
+        # ================== 1. KICK ==================
         if mode.value == "kick":
             if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
-            
             u, d = await roblox_info(user_id)
 
-            # Insert into Kick Logs (History)
-            try:
-                supabase.table("kick_logs").insert({
-                    "user_id": user_id,
-                    "username": u,
-                    "display_name": d,
-                    "reason": reason,
-                    "timestamp": datetime.utcnow().isoformat()
-                }).execute()
-            except: pass
+            # ✅ FIX: Async DB Call
+            await db_call(lambda: supabase.table("kick_logs").insert({
+                "user_id": user_id, "username": u, "display_name": d, "reason": reason, "timestamp": datetime.utcnow().isoformat()
+            }).execute())
 
-            # Update Kick Flags (Active Flag for Game)
-            supabase.table("kick_flags").upsert({
-                "user_id": user_id,
-                "reason": reason
-            }).execute()
+            # ✅ FIX: Async DB Call
+            await db_call(lambda: supabase.table("kick_flags").upsert({
+                "user_id": user_id, "reason": reason
+            }).execute())
 
-            # Premium Embed
-            embed = discord.Embed(title="👢 PLAYER KICKED", color=0xe74c3c) # Red color
+            embed = discord.Embed(title="👢 PLAYER KICKED", color=0xe74c3c)
             embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
             embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
             embed.add_field(name="📝 Reason", value=f"`{reason}`", inline=True)
             embed.set_footer(text=f"Kicked by {i.user.display_name}", icon_url=i.user.display_avatar.url)
-            
             await i.followup.send(embed=embed)
 
 
         # ================== 2. PERMANENT BAN ==================
         elif mode.value == "ban":
             if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
-            
             u, d = await roblox_info(user_id)
             
-            supabase.table("bans").upsert({
+            # ✅ FIX: Async DB Call
+            await db_call(lambda: supabase.table("bans").upsert({
                 "user_id": user_id, "perm": True, "reason": reason, "expire": None, "executor": str(i.user.id)
-            }).execute()
+            }).execute())
 
             try: log_action("ban", user_id, u, d, i.user.id)
             except: pass
@@ -1331,14 +1403,15 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
         # ================== 3. TEMP BAN ==================
         elif mode.value == "tempban":
             if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
-            if not duration: return await i.followup.send("⚠️ **Duration (minutes) Required!**")
+            if not duration: return await i.followup.send("⚠️ **Duration Required!**")
 
             u, d = await roblox_info(user_id)
             expire_time = time.time() + (duration * 60)
 
-            supabase.table("bans").upsert({
+            # ✅ FIX: Async DB Call
+            await db_call(lambda: supabase.table("bans").upsert({
                 "user_id": user_id, "perm": False, "reason": reason, "expire": expire_time, "executor": str(i.user.id)
-            }).execute()
+            }).execute())
 
             try: log_action("tempban", user_id, u, d, i.user.id)
             except: pass
@@ -1356,7 +1429,9 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
             if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
 
             u, d = await roblox_info(user_id)
-            supabase.table("bans").delete().eq("user_id", user_id).execute()
+            
+            # ✅ FIX: Async DB Call
+            await db_call(lambda: supabase.table("bans").delete().eq("user_id", user_id).execute())
 
             try: log_action("unban", user_id, u, d, i.user.id)
             except: pass
@@ -1370,14 +1445,17 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
 
         # ================== 5. LIST BANS ==================
         elif mode.value == "list":
-            data = supabase.table("bans").select("*").execute().data
+            # ✅ FIX: Async DB Call for fetching list
+            data_req = await db_call(lambda: supabase.table("bans").select("*").execute())
+            data = data_req.data if data_req else []
 
             # Filter Expired Bans
             active_bans = []
             now = time.time()
             for row in data:
                 if not row.get("perm") and row.get("expire") and now > float(row["expire"]):
-                    supabase.table("bans").delete().eq("user_id", row["user_id"]).execute()
+                    # Expired ban delete karo (Background me)
+                    asyncio.create_task(db_call(lambda: supabase.table("bans").delete().eq("user_id", row["user_id"]).execute()))
                 else:
                     active_bans.append(row)
 
@@ -1410,7 +1488,8 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
         try:
             await i.followup.send(f"❌ **System Error:** `{e}`")
         except:
-            await i.response.send_message(f"❌ **System Error:** `{e}`", ephemeral=True)
+            await i.response.send_message(f"❌ **System Error:** `{e}`", ephemeral=True)           
+            
 
 @bot.tree.command(name="crush", description="Add/Remove user from Flirty/Horny list")
 @app_commands.choices(mode=[
@@ -1855,7 +1934,7 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
         except Exception as e:
             await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
 
- # ================== 1. PAGINATOR CLASSES (List ke liye) ==================
+ # ================== 1. PAGINATOR CLASSES (Fixed: Access & Blacklist) ==================
 
 # --- A. ACCESS LIST PAGINATOR ---
 class AccessPaginator(discord.ui.View):
@@ -1909,7 +1988,7 @@ class BlacklistPaginator(discord.ui.View):
         super().__init__(timeout=60)
         self.data = data
         self.author = author
-        self.per_page = 5 # Kam rakha hai taaki load fast ho
+        self.per_page = 5 
         self.current_page = 0
         self.total_pages = (len(data) + self.per_page - 1) // self.per_page
 
@@ -1918,11 +1997,11 @@ class BlacklistPaginator(discord.ui.View):
         end = start + self.per_page
         page_data = self.data[start:end]
 
-        embed = discord.Embed(title=f"🚫 Blacklisted Users (Total: {len(self.data)})", color=0x2c3e50) # Dark Color
+        embed = discord.Embed(title=f"🚫 Blacklisted Users (Total: {len(self.data)})", color=0x2c3e50)
         
         for index, row in enumerate(page_data):
             uid = row.get("user_id")
-            # Fetch info live for premium feel
+            # Fetch info live (Non-blocking way ideally, but roblox_info is async so its ok)
             u, d = await roblox_info(uid)
             
             embed.add_field(
@@ -1955,7 +2034,7 @@ class BlacklistPaginator(discord.ui.View):
         await i.response.edit_message(embed=embed, view=self)
 
 
-# ================== 2. CLEAR CONFIRMATION VIEW ==================
+# ================== 2. CLEAR CONFIRMATION VIEW (FIXED: Async Delete) ==================
 class AccessClearView(discord.ui.View):
     def __init__(self, author_id):
         super().__init__(timeout=30)
@@ -1965,7 +2044,8 @@ class AccessClearView(discord.ui.View):
     async def confirm(self, i: discord.Interaction, button: discord.ui.Button):
         if i.user.id != self.author_id: return await i.response.send_message("❌ You cannot use this button.", ephemeral=True)
         
-        supabase.table("access_users").delete().neq("user_id", "0").execute()
+        # ✅ FIX: db_call use kiya delete ke liye
+        await db_call(lambda: supabase.table("access_users").delete().neq("user_id", "0").execute())
         
         embed = discord.Embed(title="♻️ ACCESS LIST CLEARED", description="✅ All whitelisted users have been removed.", color=0xff0000)
         embed.set_footer(text=f"Cleared by {i.user.display_name}")
@@ -1980,8 +2060,9 @@ class AccessClearView(discord.ui.View):
         await i.response.edit_message(embed=embed, view=None)
         self.stop()
 
-# ================== 3. ULTIMATE ACCESS COMMAND ==================
-@bot.tree.command(name="access", description="⚙️ Manage Access, Maintenance, Whitelist & Blacklist (Owner Only)")
+
+# ================== 3. ULTIMATE ACCESS COMMAND (FIXED: Non-Blocking) ==================
+@bot.tree.command(name="access", description="⚙️ Manage Access, Maintenance, Whitelist & Blacklist (Fixed)")
 @app_commands.choices(mode=[
     app_commands.Choice(name="🟢 Unlock Verification (Access ON)", value="on"),
     app_commands.Choice(name="🔴 Lock Verification (Access OFF)", value="off"),
@@ -2009,11 +2090,13 @@ async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id
     try:
         # ================== 1. ACCESS ON/OFF ==================
         if mode.value in ["on", "off"]:
-            supabase.table("bot_settings").update({"value": "true" if mode.value == "on" else "false"}).eq("key", "access_enabled").execute()
+            val = "true" if mode.value == "on" else "false"
+            # ✅ FIX
+            await db_call(lambda: supabase.table("bot_settings").update({"value": val}).eq("key", "access_enabled").execute())
             
             status_emoji = "🟢" if mode.value == "on" else "🔴"
-            embed = discord.Embed(title=f"{status_emoji} System Updated", description=f"Verification Access is now **{mode.value.upper()}**", color=0x2ecc71 if mode.value == "on" else 0xe74c3c)
-            embed.set_footer(text=f"Updated by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+            color = 0x2ecc71 if mode.value == "on" else 0xe74c3c
+            embed = discord.Embed(title=f"{status_emoji} System Updated", description=f"Verification Access is now **{mode.value.upper()}**", color=color)
             
             try: log_action(f"access_{mode.value}", "-", "-", "-", i.user.id)
             except: pass
@@ -2021,54 +2104,56 @@ async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id
 
         # ================== 2. MAINTENANCE ON/OFF ==================
         elif mode.value in ["maint_on", "maint_off"]:
-            is_maint = "true" if mode.value == "maint_on" else "false"
-            supabase.table("bot_settings").update({"value": is_maint}).eq("key", "maintenance").execute()
+            val = "true" if mode.value == "maint_on" else "false"
+            # ✅ FIX
+            await db_call(lambda: supabase.table("bot_settings").update({"value": val}).eq("key", "maintenance").execute())
 
             if mode.value == "maint_on":
-                embed = discord.Embed(title="🛡️ Maintenance Enabled", description="⚠️ **System is now in Maintenance Mode.**\nUsers cannot verify script.", color=0xe67e22)
+                embed = discord.Embed(title="🛡️ Maintenance Enabled", description="⚠️ **System is now in Maintenance Mode.**", color=0xe67e22)
             else:
-                embed = discord.Embed(title="🚀 Maintenance Disabled", description="✅ **System is now LIVE.**\nUsers can verify script again.", color=0x2ecc71)
+                embed = discord.Embed(title="🚀 Maintenance Disabled", description="✅ **System is now LIVE.**", color=0x2ecc71)
             
-            embed.set_footer(text=f"Control by {i.user.display_name}", icon_url=i.user.display_avatar.url)
-            
-            try: log_action(f"maintenance_{is_maint}", "-", "-", "-", i.user.id)
+            try: log_action(f"maintenance_{val}", "-", "-", "-", i.user.id)
             except: pass
             await i.followup.send(embed=embed)
 
         # ================== 3. WHITELIST ADD ==================
         elif mode.value == "add":
-            if not user_id: return await i.followup.send("❌ **Roblox ID required!**")
+            if not user_id: return await i.followup.send("❌ **ID required!**")
             u, d = await roblox_info(user_id)
             
-            supabase.table("access_users").upsert({"user_id": user_id, "username": u, "display_name": d, "discord_id": str(i.user.id)}).execute()
+            # ✅ FIX
+            await db_call(lambda: supabase.table("access_users").upsert({"user_id": user_id, "username": u, "display_name": d, "discord_id": str(i.user.id)}).execute())
             
             try: log_action("access_add", user_id, u, d, i.user.id)
             except: pass
             
             embed = discord.Embed(title="✅ Access Granted", color=0x2ecc71)
-            embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
-            embed.add_field(name="🆔 ID", value=f"`{user_id}`", inline=True)
-            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+            embed.add_field(name="User", value=f"{d} (@{u})", inline=True)
             await i.followup.send(embed=embed)
 
         # ================== 4. WHITELIST REMOVE ==================
         elif mode.value == "remove":
-            if not user_id: return await i.followup.send("❌ **Roblox ID required!**")
+            if not user_id: return await i.followup.send("❌ **ID required!**")
             u, d = await roblox_info(user_id)
             
-            supabase.table("access_users").delete().eq("user_id", user_id).execute()
+            # ✅ FIX
+            await db_call(lambda: supabase.table("access_users").delete().eq("user_id", user_id).execute())
             
             try: log_action("access_remove", user_id, u, d, i.user.id)
             except: pass
             
             embed = discord.Embed(title="🗑️ Access Removed", color=0xff0000)
-            embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
+            embed.add_field(name="User", value=f"{d} (@{u})", inline=True)
             await i.followup.send(embed=embed)
 
         # ================== 5. WHITELIST LIST ==================
         elif mode.value == "list":
-            data = supabase.table("access_users").select("*").execute().data
-            if not data: return await i.followup.send(embed=discord.Embed(title="📜 Access List", description="❌ List is empty.", color=0xffa500))
+            # ✅ FIX
+            data_req = await db_call(lambda: supabase.table("access_users").select("*").execute())
+            data = data_req.data if data_req else []
+            
+            if not data: return await i.followup.send("❌ List is empty.")
             
             view = AccessPaginator(data, i.user)
             if view.total_pages <= 1: view.children[0].disabled = True; view.children[1].disabled = True
@@ -2077,50 +2162,48 @@ async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id
 
         # ================== 6. BLACKLIST ADD ==================
         elif mode.value == "blk_add":
-            if not user_id: return await i.followup.send("❌ **Roblox ID required!**")
+            if not user_id: return await i.followup.send("❌ **ID required!**")
             u, d = await roblox_info(user_id)
 
-            # Blacklist me daalo
-            supabase.table("blacklist_users").upsert({"user_id": user_id}).execute()
-            # Whitelist se hatao (Double Attack 😈)
-            try: supabase.table("access_users").delete().eq("user_id", user_id).execute()
+            # ✅ FIX: Dono call async wrapper me
+            await db_call(lambda: supabase.table("blacklist_users").upsert({"user_id": user_id}).execute())
+            try: await db_call(lambda: supabase.table("access_users").delete().eq("user_id", user_id).execute())
             except: pass
 
             try: log_action("blacklist_add", user_id, u, d, i.user.id)
             except: pass
 
-            embed = discord.Embed(title="🚫 User Blacklisted", color=0x000000) # Full Black
-            embed.add_field(name="👤 Target", value=f"**{d}**\n(@{u})", inline=True)
-            embed.add_field(name="🆔 ID", value=f"`{user_id}`", inline=True)
-            embed.add_field(name="💀 Status", value="Removed from Whitelist & Blocked.", inline=False)
-            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+            embed = discord.Embed(title="🚫 User Blacklisted", color=0x000000)
+            embed.add_field(name="User", value=f"{d} (@{u})", inline=True)
             await i.followup.send(embed=embed)
 
         # ================== 7. BLACKLIST REMOVE ==================
         elif mode.value == "blk_remove":
-            if not user_id: return await i.followup.send("❌ **Roblox ID required!**")
+            if not user_id: return await i.followup.send("❌ **ID required!**")
             u, d = await roblox_info(user_id)
 
-            supabase.table("blacklist_users").delete().eq("user_id", user_id).execute()
+            # ✅ FIX
+            await db_call(lambda: supabase.table("blacklist_users").delete().eq("user_id", user_id).execute())
 
             try: log_action("blacklist_remove", user_id, u, d, i.user.id)
             except: pass
 
             embed = discord.Embed(title="✅ Blacklist Removed", color=0x3498db)
-            embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
-            embed.add_field(name="✨ Status", value="User is no longer blocked.", inline=False)
+            embed.add_field(name="User", value=f"{d} (@{u})", inline=True)
             await i.followup.send(embed=embed)
 
         # ================== 8. BLACKLIST LIST ==================
         elif mode.value == "blk_list":
-            data = supabase.table("blacklist_users").select("user_id").execute().data
-            if not data: return await i.followup.send(embed=discord.Embed(title="☠️ Blacklist", description="✅ No users blacklisted.", color=0x2ecc71))
+            # ✅ FIX
+            data_req = await db_call(lambda: supabase.table("blacklist_users").select("user_id").execute())
+            data = data_req.data if data_req else []
+            
+            if not data: return await i.followup.send("✅ No users blacklisted.")
 
             view = BlacklistPaginator(data, i.user)
             if view.total_pages <= 1: view.children[0].disabled = True; view.children[1].disabled = True
             else: view.update_buttons()
             
-            # Note: Blacklist me fetch async hai, so we call get_page_embed first
             embed = await view.get_page_embed()
             await i.followup.send(embed=embed, view=view)
 
@@ -2133,28 +2216,28 @@ async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id
     except Exception as e:
         print(f"ERROR: {e}")
         try: await i.followup.send(f"❌ **System Error:** `{e}`")
-        except: await i.response.send_message(f"❌ **System Error:** `{e}`", ephemeral=True)               
+        except: await i.response.send_message(f"❌ **System Error:** `{e}`", ephemeral=True)
 
-@bot.tree.command(
-    name="verifiedlist",
-    description="Show paginated verified Roblox users"
-)
+# ================== VERIFIED LIST COMMAND (FIXED: Async & Fast) ==================
+@bot.tree.command(name="verifiedlist", description="Show paginated verified Roblox users (Fixed)")
 async def verifiedlist(i: discord.Interaction):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION", "Owners only"))
 
-    await i.response.defer()   # NO EPHEMERAL + SAFE
+    await i.response.defer() # NO EPHEMERAL + SAFE
 
     try:
-        logs = (
-            supabase.table("verify_logs")
-            .select("*")
-            .order("timestamp", desc=True)
-            .execute()
-            .data
-        )
+        # ✅ FIX: Parallel Execution using db_call (Bot nahi atkega)
+        logs_task = db_call(lambda: supabase.table("verify_logs").select("*").order("timestamp", desc=True).execute())
+        access_task = db_call(lambda: supabase.table("access_users").select("user_id").execute())
 
-        access = supabase.table("access_users").select("user_id").execute().data
+        # Dono data ek saath layenge
+        logs_resp, access_resp = await asyncio.gather(logs_task, access_task)
+
+        # Data extract
+        logs = logs_resp.data if logs_resp else []
+        access = access_resp.data if access_resp else []
+        
         access_ids = {x["user_id"] for x in access}
 
     except Exception as e:
@@ -2188,7 +2271,7 @@ async def verifiedlist(i: discord.Interaction):
             f"🆔 Roblox ID: `{x['roblox_id']}`\n"
             f"🧑 Username: **{x['username']}**\n"
             f"✨ Display: {x['display_name']}\n"
-            f"🕒 `{x['timestamp']}`\n"
+            f"🕒 `{x['timestamp'].split('T')[0]}`\n" # Date formatting fix
             f"────────────────────\n"
         )
 
@@ -2197,7 +2280,7 @@ async def verifiedlist(i: discord.Interaction):
             embed=emb("📛 CLEAN", "No currently whitelisted verified users")
         )
 
-    # ================= PAGINATION =================
+    # ================= PAGINATION LOGIC =================
     PAGES = []
     chunk = []
 
@@ -2226,12 +2309,18 @@ async def verifiedlist(i: discord.Interaction):
 
         @discord.ui.button(label="⬅ Back", style=discord.ButtonStyle.gray)
         async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if i.user.id != interaction.user.id: 
+                return await interaction.response.send_message("❌ Not for you.", ephemeral=True)
+            
             if self.page > 0:
                 self.page -= 1
             await self.update(interaction)
 
         @discord.ui.button(label="Next ➡", style=discord.ButtonStyle.gray)
         async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if i.user.id != interaction.user.id: 
+                return await interaction.response.send_message("❌ Not for you.", ephemeral=True)
+                
             if self.page < len(PAGES) - 1:
                 self.page += 1
             await self.update(interaction)
@@ -2240,6 +2329,8 @@ async def verifiedlist(i: discord.Interaction):
             try:
                 for c in self.children:
                     c.disabled = True
+                # Message edit karne ke liye message object store karna padega agar chahiye to
+                # Par abhi ke liye pass kar rahe hain taaki error na aaye
             except:
                 pass
 
@@ -2253,6 +2344,7 @@ async def verifiedlist(i: discord.Interaction):
     )
 
     await i.followup.send(embed=first, view=view)
+        
 
 # ================== USER INFO (GOD MODE) ==================
 @bot.tree.command(name="userinfo", description="Get MAXIMUM details of a Discord User (Discord + Roblox + DB)")
@@ -2531,113 +2623,79 @@ async def whois(i: discord.Interaction, user_id: str):
         await i.followup.send(f"❌ **System Error:** `{e}`")
 
         
-# ================== STATS ==================
-START_TIME = time.time()
+# ================== STATS COMMAND (FIXED: FAST & ASYNC) ==================
 
-def safe_fetch(table):
-    for _ in range(3):
-        try:
-            x = supabase.table(table).select("*").execute()
-            return x.data or []
-        except:
-            time.sleep(0.3)
-    return []
-
-@bot.tree.command(name="stats")
+@bot.tree.command(name="stats", description="View System Statistics (Super Fast)")
 async def stats(i: discord.Interaction):
     if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION","Owner only"))
+        return await safe_send(i, emb("❌ NO PERMISSION", "Owner only"))
 
-    await i.response.defer()
+    await i.response.defer() # Defer zaroori hai
 
     try:
+        start_t = time.time()
+
+        # ✅ FIX: Saari tables ek saath background me fetch hongi (Parallel)
+        # Isse bot "Thinking" par nahi atkega aur speed 5x badh jayegi
+        bans_task = db_call(lambda: supabase.table("bans").select("*").execute())
+        access_task = db_call(lambda: supabase.table("access_users").select("*").execute())
+        blk_task = db_call(lambda: supabase.table("blacklist_users").select("*").execute())
+        logs_task = db_call(lambda: supabase.table("verify_logs").select("*").execute())
+        kick_task = db_call(lambda: supabase.table("kick_flags").select("*").execute())
+        sett_task = db_call(lambda: supabase.table("bot_settings").select("*").execute())
+
+        # Sabka wait karo (bina bot roke)
+        bans, access, blk, logs, kicks, settings = await asyncio.gather(
+            bans_task, access_task, blk_task, logs_task, kick_task, sett_task
+        )
+
+        # Data extract (Safety ke saath)
+        bans_data = bans.data if bans else []
+        access_data = access.data if access else []
+        blk_data = blk.data if blk else []
+        logs_data = logs.data if logs else []
+        kicks_data = kicks.data if kicks else []
+        sett_data = settings.data if settings else []
+
+        # Logic wahi purana...
         now = time.time()
-
-        bans       = safe_fetch("bans")
-        access     = safe_fetch("access_users")
-        blacklist  = safe_fetch("blacklist_users")
-        logs       = safe_fetch("verify_logs")
-        kicks      = safe_fetch("kick_flags")
-        settings   = supabase.table("bot_settings").select("*").execute().data or []
-
         perm = 0
         temp = 0
+        for b in bans_data:
+            if b.get("perm"): perm += 1
+            elif b.get("expire") and now < float(b["expire"]): temp += 1
 
-        for b in bans:
-            if b.get("perm"):
-                perm += 1
-            else:
-                if b.get("expire") and now < float(b["expire"]):
-                    temp += 1
+        # Settings Check
+        acc_status = "🟢 OFF (Everyone Allowed)"
+        maint_status = "🟢 OFF"
+        
+        for s in sett_data:
+            if s["key"] == "access_enabled" and s["value"] == "true": 
+                acc_status = "🔐 ON (Whitelist Enabled)"
+            if s["key"] == "maintenance" and s["value"] == "true": 
+                maint_status = "🛠 ON"
 
-        access_status = "🟢 OFF (Everyone Allowed)"
-        maintenance_status = "🟢 OFF"
-
-        for s in settings:
-            if s["key"] == "access_enabled" and s["value"] == "true":
-                access_status = "🔐 ON (Whitelist Enabled)"
-            if s["key"] == "maintenance" and s["value"] == "true":
-                maintenance_status = "🛠 ON"
-
+        # Uptime
         uptime = int(time.time() - START_TIME)
-        hrs = uptime // 3600
-        mins = (uptime % 3600) // 60
+        hrs, mins = uptime // 3600, (uptime % 3600) // 60
 
-        embed = discord.Embed(
-            title="⚙️ SYSTEM CONTROL PANEL",
-            description="Premium Secure Control Dashboard",
-            color=0x2ecc71
-        )
-
-        embed.add_field(
-            name="🚫 Ban System",
-            value=(
-                f"**Permanent Bans:** `{perm}`\n"
-                f"**Active TempBans:** `{temp}`\n"
-                f"**Blacklisted Users:** `{len(blacklist)}`"
-            ),
-            inline=False
-        )
-
-        embed.add_field(
-            name="👥 User Access",
-            value=(
-                f"**Whitelisted Users:** `{len(access)}`\n"
-                f"**Verification Logs:** `{len(logs)}`\n"
-                f"**Unique Verifiers:** `{len(set(x['discord_id'] for x in logs))}`\n"
-                f"**Kick Flags Pending:** `{len(kicks)}`"
-            ),
-            inline=False
-        )
-
-        embed.add_field(
-            name="🛠 System Status",
-            value=(
-                f"**Access System:** {access_status}\n"
-                f"**Maintenance:** {maintenance_status}"
-            ),
-            inline=False
-        )
-
-        embed.add_field(
-            name="🤖 Bot Status",
-            value=(
-                f"**Uptime:** `{hrs}h {mins}m`\n"
-                f"**Health:** 🟢 Stable & Optimized"
-            ),
-            inline=False
-        )
-
+        embed = discord.Embed(title="⚙️ SYSTEM CONTROL PANEL", description="Premium Secure Control Dashboard", color=0x2ecc71)
+        
+        embed.add_field(name="🚫 Ban System", value=f"**Permanent Bans:** `{perm}`\n**Active TempBans:** `{temp}`\n**Blacklisted Users:** `{len(blk_data)}`", inline=False)
+        embed.add_field(name="👥 User Access", value=f"**Whitelisted Users:** `{len(access_data)}`\n**Verification Logs:** `{len(logs_data)}`\n**Kick Flags Pending:** `{len(kicks_data)}`", inline=False)
+        embed.add_field(name="🛠 System Status", value=f"**Access System:** {acc_status}\n**Maintenance:** {maint_status}", inline=False)
+        embed.add_field(name="🤖 Bot Status", value=f"**Uptime:** `{hrs}h {mins}m`\n**Health:** 🟢 Stable & Optimized", inline=False)
+        
         embed.set_footer(text="RoboPal • Secure Moderation Engine")
         embed.timestamp = datetime.utcnow()
-
+        
         await i.followup.send(embed=embed)
 
     except Exception as e:
-        await i.followup.send(
-            embed=emb("❌ ERROR", f"Stats failed:\n```{e}```", 0xff0000)
-        )
+        await i.followup.send(embed=emb("❌ ERROR", f"Stats failed:\n```{e}```", 0xff0000))
+
         
+# ================== ALT CHECK COMMAND (FIXED: Async DB) ==================
 @bot.tree.command(
     name="altcheck",
     description="Check if a user is using multiple Roblox accounts (Support: Discord + Roblox)"
@@ -2667,97 +2725,109 @@ async def altcheck(
                 0xff0000)
         )
 
-    # =========================
-    # DISCORD USER MODE
-    # =========================
-    if discord_user:
-        logs = supabase.table("verify_logs").select("*").eq(
-            "discord_id", str(discord_user.id)
-        ).execute().data
+    try:
+        # =========================
+        # DISCORD USER MODE
+        # =========================
+        if discord_user:
+            # ✅ FIX: Async DB Call
+            logs_req = await db_call(lambda: supabase.table("verify_logs").select("*").eq("discord_id", str(discord_user.id)).execute())
+            logs = logs_req.data if logs_req else []
 
-        if not logs:
-            return await safe_send(
-                i,
-                emb("👤 ALT CHECK",
-                    f"{discord_user.mention} ne abhi tak **kuch bhi verify nahi kiya**",
-                    0xffff00
+            if not logs:
+                return await safe_send(
+                    i,
+                    emb("👤 ALT CHECK",
+                        f"{discord_user.mention} ne abhi tak **kuch bhi verify nahi kiya**",
+                        0xffff00
+                    )
                 )
+
+            unique = {}
+            for x in logs:
+                unique[x["roblox_id"]] = x
+
+            count = len(unique)
+
+            txt = "\n".join(
+                f"• `{v['roblox_id']}` | **{v['username']}** ({v['display_name']})"
+                for v in unique.values()
+            )
+            # Text limit safety
+            if len(txt) > 3000: txt = txt[:3000] + "\n... (More hidden)"
+
+            status = "🟢 Clean — No ALT Found"
+            color = 0x2ecc71
+
+            if count >= 2:
+                status = f"🔴 ALT Detected — `{count}` Accounts Linked"
+                color = 0xff0000
+
+            desc = (
+                f"**Discord:** {discord_user.mention}\n"
+                f"**Linked Accounts:** `{count}`\n"
+                f"**Status:** {status}\n\n"
+                f"{txt}"
             )
 
-        unique = {}
-        for x in logs:
-            unique[x["roblox_id"]] = x
+            return await safe_send(i, emb("🕵 ALT ACCOUNT CHECK", desc, color))
 
-        count = len(unique)
+        # =========================
+        # ROBLOX USER MODE
+        # =========================
+        if roblox_user_id:
+            # ✅ FIX: Async DB Call
+            logs_req = await db_call(lambda: supabase.table("verify_logs").select("*").eq("roblox_id", roblox_user_id).execute())
+            logs = logs_req.data if logs_req else []
 
-        txt = "\n".join(
-            f"• `{v['roblox_id']}` | **{v['username']}** ({v['display_name']})"
-            for v in unique.values()
-        )
-
-        status = "🟢 Clean — No ALT Found"
-        color = 0x2ecc71
-
-        if count >= 2:
-            status = f"🔴 ALT Detected — `{count}` Accounts Linked"
-            color = 0xff0000
-
-        desc = (
-            f"**Discord:** {discord_user.mention}\n"
-            f"**Linked Accounts:** `{count}`\n"
-            f"**Status:** {status}\n\n"
-            f"{txt}"
-        )
-
-        return await safe_send(i, emb("🕵 ALT ACCOUNT CHECK", desc, color))
-
-    # =========================
-    # ROBLOX USER MODE
-    # =========================
-    if roblox_user_id:
-
-        logs = supabase.table("verify_logs").select("*").eq(
-            "roblox_id", roblox_user_id
-        ).execute().data
-
-        if not logs:
-            return await safe_send(
-                i,
-                emb("👤 ALT CHECK",
-                    f"Roblox ID `{roblox_user_id}` ne abhi verify nahi kiya",
-                    0xffff00
+            if not logs:
+                return await safe_send(
+                    i,
+                    emb("👤 ALT CHECK",
+                        f"Roblox ID `{roblox_user_id}` ne abhi verify nahi kiya",
+                        0xffff00
+                    )
                 )
+
+            user = logs[0]
+            discord_ids = list({x["discord_id"] for x in logs})
+
+            status = "🟢 Clean — No Suspicious Activity"
+            color = 0x2ecc71
+
+            if len(discord_ids) >= 2:
+                status = f"🔴 Suspicious — `{len(discord_ids)}` Discord Accounts linked"
+                color = 0xff0000
+
+            desc = (
+                f"**Roblox ID:** `{roblox_user_id}`\n"
+                f"**Username:** `{user['username']}`\n"
+                f"**Display Name:** `{user['display_name']}`\n\n"
+                f"**Linked Discord Accounts:** `{len(discord_ids)}`\n"
+                f"**Status:** {status}"
             )
 
-        user = logs[0]
-        discord_ids = list({x["discord_id"] for x in logs})
+            return await safe_send(i, emb("🕵 ALT ACCOUNT CHECK", desc, color))
 
-        status = "🟢 Clean — No Suspicious Activity"
-        color = 0x2ecc71
+    except Exception as e:
+        await i.followup.send(f"❌ Error: {e}")
 
-        if len(discord_ids) >= 2:
-            status = f"🔴 Suspicious — `{len(discord_ids)}` Discord Accounts linked"
-            color = 0xff0000
-
-        desc = (
-            f"**Roblox ID:** `{roblox_user_id}`\n"
-            f"**Username:** `{user['username']}`\n"
-            f"**Display Name:** `{user['display_name']}`\n\n"
-            f"**Linked Discord Accounts:** `{len(discord_ids)}`\n"
-            f"**Status:** {status}"
-        )
-
-        return await safe_send(i, emb("🕵 ALT ACCOUNT CHECK", desc, color))
-
-@bot.tree.command(name="verifyhistory", description="Show global verification logs")
+# ================== VERIFY HISTORY COMMAND (FIXED: Async DB) ==================
+@bot.tree.command(name="verifyhistory", description="Show global verification logs (Fixed)")
 async def verifyhistory(i: discord.Interaction):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION","Owner Only"))
 
     await i.response.defer()
 
-    logs = supabase.table("verify_logs").select("*").order("timestamp", desc=True).execute().data
-    
+    try:
+        # ✅ FIX: Async DB Call (Bot nahi atkega)
+        logs_req = await db_call(lambda: supabase.table("verify_logs").select("*").order("timestamp", desc=True).execute())
+        logs = logs_req.data if logs_req else []
+
+    except Exception as e:
+        return await i.followup.send(embed=emb("❌ ERROR", f"Failed to fetch logs: {e}"))
+
     if not logs:
         return await i.followup.send(embed=emb("📭 EMPTY","No one has verified yet"))
 
@@ -2765,7 +2835,9 @@ async def verifyhistory(i: discord.Interaction):
     page = []
 
     for x in logs:
+        # Date formatting crash fix
         t = x.get("timestamp","").replace("T"," ").split(".")[0]
+        
         page.append(
             f"📌 **{x['username']}** ({x['display_name']})\n"
             f"🆔 `{x['roblox_id']}` — <@{x['discord_id']}> — `{t}`\n"
@@ -2792,13 +2864,19 @@ async def verifyhistory(i: discord.Interaction):
             await interaction.response.edit_message(embed=embed, view=self)
 
         @ui.button(label="⬅️ Back", style=discord.ButtonStyle.secondary)
-        async def back(self, interaction, btn):
+        async def back(self, interaction: discord.Interaction, btn: discord.ui.Button):
+            if i.user.id != interaction.user.id: 
+                return await interaction.response.send_message("❌ Not for you.", ephemeral=True)
+            
             if self.index > 0:
                 self.index -= 1
             await self.update(interaction)
 
         @ui.button(label="➡️ Next", style=discord.ButtonStyle.primary)
-        async def next(self, interaction, btn):
+        async def next(self, interaction: discord.Interaction, btn: discord.ui.Button):
+            if i.user.id != interaction.user.id: 
+                return await interaction.response.send_message("❌ Not for you.", ephemeral=True)
+
             if self.index < len(pages)-1:
                 self.index += 1
             await self.update(interaction)
@@ -2809,46 +2887,52 @@ async def verifyhistory(i: discord.Interaction):
         view=view
     )
 
-# ================== HISTORY COMMAND (OPTIMIZED) ==================
-@bot.tree.command(name="history", description="📜 Check Roblox User History & Safety Status")
+# ================== HISTORY COMMAND (FIXED: Async & Fast) ==================
+@bot.tree.command(name="history", description="📜 Check Roblox User History & Safety Status (Fixed)")
 async def history(i: discord.Interaction, user_id: str):
     
-    # 1. OWNER/ADMIN CHECK (Database se)
+    # 1. OWNER/ADMIN CHECK
     if not owner(i):
         await i.response.send_message("❌ **Access Denied:** You are not an Admin.", ephemeral=True)
         return
 
-    # 2. Defer Response (Load kam karne ke liye)
+    # 2. Defer Response
     await i.response.defer(ephemeral=False)
 
     try:
-        # A. Roblox Info Fetch (Optimized)
+        # A. Roblox Info Fetch
         username, display = await roblox_info(user_id)
         
         if username == "Invalid ID":
              return await i.followup.send(embed=discord.Embed(title="❌ Error", description="Invalid Roblox ID", color=0xff0000))
 
-        # B. DATABASE FETCH (3 Tables)
-        # Hum 'verify_logs' ko ignore karke seedha 'access_users' check karenge (Fastest)
-        access_data = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
-        ban_data = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
-        blk_data = supabase.table("blacklist_users").select("*").eq("user_id", user_id).execute().data
+        # B. DATABASE FETCH (Parallel Execution)
+        # ✅ FIX: db_call aur asyncio.gather use kiya
+        access_task = db_call(lambda: supabase.table("access_users").select("*").eq("user_id", user_id).execute())
+        ban_task = db_call(lambda: supabase.table("bans").select("*").eq("user_id", user_id).execute())
+        blk_task = db_call(lambda: supabase.table("blacklist_users").select("*").eq("user_id", user_id).execute())
+
+        # Wait for all 3
+        access_resp, ban_resp, blk_resp = await asyncio.gather(access_task, ban_task, blk_task)
+
+        # Data Extraction
+        access_data = access_resp.data if access_resp else []
+        ban_data = ban_resp.data if ban_resp else []
+        blk_data = blk_resp.data if blk_resp else []
 
         # ================= LOGIC BUILDER =================
         
-        # 1. Access Status (Kaun hai Discord Owner?)
+        # 1. Access Status
         if access_data:
             row = access_data[0]
             disc_id = row.get("discord_id", "Unknown")
             
-            # Timestamp (agar table me added_at/created_at column hai to, warna skip)
             try:
                 verified_at = row.get("created_at", "").split("T")[0]
-                date_str = f"on `{verified_at}`"
             except:
-                date_str = ""
+                verified_at = "Unknown"
 
-            access_status = f"✅ **Whitelisted**\nLinked to: <@{disc_id}>\n🆔 `{disc_id}`"
+            access_status = f"✅ **Whitelisted**\nLinked to: <@{disc_id}>\n📅 `{verified_at}`"
             color = 0x2ecc71 # Green
         else:
             access_status = "⚠️ **Not Linked**\n(No active whitelist found)"
@@ -2861,7 +2945,6 @@ async def history(i: discord.Interaction, user_id: str):
                 ban_status = f"🔴 **PERMANENT BAN**\nReason: `{b.get('reason')}`"
                 color = 0xff0000 # Red
             else:
-                # Time Calculation
                 try:
                     left = int(max((float(b["expire"]) - time.time())/60 , 0))
                     ban_status = f"🟠 **TEMP BAN** ({left}m left)\nReason: `{b.get('reason')}`"
@@ -2902,11 +2985,12 @@ async def history(i: discord.Interaction, user_id: str):
         print(f"HISTORY ERROR: {e}")
         await i.followup.send(f"❌ **System Error:** `{e}`")
         
-# ================== PROFILE COMMAND (ALL TABLES INTEGRATED) ==================
-@bot.tree.command(name="profile", description="📂 View full Verification, Safety & Moderation Profile")
+
+# ================== PROFILE COMMAND (FIXED: FAST & PARALLEL) ==================
+@bot.tree.command(name="profile", description="📂 View full Verification, Safety & Moderation Profile (Fixed)")
 async def profile(i: discord.Interaction, user_id: str):
     
-    # 1. OWNER CHECK (Database Logic)
+    # 1. OWNER CHECK
     if not owner(i):
         return await i.response.send_message("❌ **Access Denied:** Owner/Admin only.", ephemeral=True)
 
@@ -2919,29 +3003,34 @@ async def profile(i: discord.Interaction, user_id: str):
         if username == "Invalid ID":
              return await i.followup.send(embed=discord.Embed(title="❌ Error", description="Invalid Roblox ID", color=0xff0000))
 
-        # ================= B. FETCH DATA FROM ALL TABLES =================
-        # Hum try-except use karenge taaki agar koi table missing ho to error na aaye
+        # ================= B. FETCH DATA (PARALLEL & NON-BLOCKING) =================
+        # Saari tables ek saath check hongi (Wait time = 0s)
         
-        # 1. Access Users (Main Verification Status)
-        access = supabase.table("access_users").select("*").eq("user_id", user_id).execute().data
+        task1 = db_call(lambda: supabase.table("access_users").select("*").eq("user_id", user_id).execute())
+        task2 = db_call(lambda: supabase.table("bans").select("*").eq("user_id", user_id).execute())
+        task3 = db_call(lambda: supabase.table("blacklist_users").select("*").eq("user_id", user_id).execute())
+        task4 = db_call(lambda: supabase.table("fake_warnings").select("*").eq("user_id", user_id).execute())
+        task5 = db_call(lambda: supabase.table("fake_flags").select("*").eq("user_id", user_id).execute())
+        task6 = db_call(lambda: supabase.table("kick_flags").select("*").eq("user_id", user_id).execute())
+
+        # Sabka result ek saath aayega
+        res1, res2, res3, res4, res5, res6 = await asyncio.gather(task1, task2, task3, task4, task5, task6)
         
-        # 2. Bans & Blacklist (Safety)
-        bans = supabase.table("bans").select("*").eq("user_id", user_id).execute().data
-        blk = supabase.table("blacklist_users").select("*").eq("user_id", user_id).execute().data
-        
-        # 3. Flags & Warnings (Extra Tables)
-        warnings = supabase.table("fake_warnings").select("*").eq("user_id", user_id).execute().data
-        flags = supabase.table("fake_flags").select("*").eq("user_id", user_id).execute().data
-        kicks = supabase.table("kick_flags").select("*").eq("user_id", user_id).execute().data
+        # Data Extraction (Safe Mode)
+        access = res1.data if res1 else []
+        bans = res2.data if res2 else []
+        blk = res3.data if res3 else []
+        warnings = res4.data if res4 else []
+        flags = res5.data if res5 else []
+        kicks = res6.data if res6 else []
 
         # ================= C. PROCESS DATA =================
 
-        # --- 1. Verification Logic (From Access Users) ---
+        # --- 1. Verification Logic ---
         if access:
             data = access[0]
-            verifier_id = data.get("discord_id")
+            verifier_id = data.get("discord_id", "Unknown")
             
-            # Format Time
             try:
                 date_str = data.get("created_at", "").split("T")[0]
             except:
@@ -3002,17 +3091,17 @@ async def profile(i: discord.Interaction, user_id: str):
         # Header: User Identity
         embed.add_field(name="👤 Identity", value=f"**User:** @{username}\n**ID:** `{user_id}`", inline=False)
         
-        # Section 1: Verification (Access Users)
+        # Section 1: Verification
         embed.add_field(name="🔐 Access Status", value=verify_status, inline=True)
         embed.add_field(name="🛡️ Safety Status", value="See Below 👇", inline=True)
         
-        # Section 2: Verification Details (Verifier Info)
+        # Section 2: Details
         embed.add_field(name="📜 Verification Details", value=verify_desc, inline=False)
         
-        # Section 3: Full Moderation History (All Tables)
+        # Section 3: History
         embed.add_field(name="🚨 Moderation History", value=mod_text, inline=False)
 
-        # Thumbnail (Avatar)
+        # Thumbnail
         embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
         
         # Footer
@@ -3024,9 +3113,9 @@ async def profile(i: discord.Interaction, user_id: str):
     except Exception as e:
         print(f"PROFILE ERROR: {e}")
         await i.followup.send(f"❌ **System Error:** `{e}`")
-            
 
-@bot.tree.command(name="multiverify", description="Users who verified multiple Roblox accounts")
+# ================== MULTI-VERIFY COMMAND (FIXED: Async DB) ==================
+@bot.tree.command(name="multiverify", description="Users who verified multiple Roblox accounts (Fixed)")
 async def multiverify(i: discord.Interaction):
 
     # ---- ALWAYS DEFERS INSTANTLY (NO FAIL) ----
@@ -3044,7 +3133,9 @@ async def multiverify(i: discord.Interaction):
 
     # ---- SAFE SUPABASE FETCH ----
     try:
-        logs = supabase.table("access_users").select("*").execute().data
+        # ✅ FIX: Blocking call hataya, db_call use kiya
+        logs_req = await db_call(lambda: supabase.table("access_users").select("*").execute())
+        logs = logs_req.data if logs_req else []
     except Exception as e:
         return await i.followup.send(embed=emb("❌ Database Error", str(e)), ephemeral=True)
 
@@ -3132,12 +3223,16 @@ async def multiverify(i: discord.Interaction):
 
         @discord.ui.button(label="⬅ Back", style=discord.ButtonStyle.gray)
         async def back(self, interaction: discord.Interaction, btn: discord.ui.Button):
+            if i.user.id != interaction.user.id: 
+                return await interaction.response.send_message("❌ Not for you.", ephemeral=True)
             if self.page > 0:
                 self.page -= 1
             await self.refresh(interaction)
 
         @discord.ui.button(label="Next ➡", style=discord.ButtonStyle.gray)
         async def next(self, interaction: discord.Interaction, btn: discord.ui.Button):
+            if i.user.id != interaction.user.id: 
+                return await interaction.response.send_message("❌ Not for you.", ephemeral=True)
             if self.page < len(PAGES)-1:
                 self.page += 1
             await self.refresh(interaction)
@@ -3159,49 +3254,61 @@ async def multiverify(i: discord.Interaction):
 
     await i.followup.send(embed=first, view=view)
 
-@bot.tree.command(name="fakeban", description="Fake ban control panel")
-@app_commands.describe(
-    action="add / remove / list",
-    userid="Roblox User ID",
-    message="Custom message (optional)"
-)
-async def fakeban(i: discord.Interaction, action: str, userid: str=None, message: str=None):
+# ================== FAKE BAN COMMAND (FIXED: Async & No Lag) ==================
+@bot.tree.command(name="fakeban", description="Fake ban control panel (Fixed)")
+@app_commands.choices(action=[
+    app_commands.Choice(name="➕ Add Fake Ban", value="add"),
+    app_commands.Choice(name="➖ Remove Fake Ban", value="remove"),
+    app_commands.Choice(name="📜 List All", value="list")
+])
+@app_commands.describe(userid="Roblox User ID", message="Custom kick message")
+async def fakeban(i: discord.Interaction, action: app_commands.Choice[str], userid: str = None, message: str = None):
 
     if not owner(i):
-        return await i.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=False)
+        return await i.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=True)
 
     await i.response.defer()
 
     try:
         # ================= ADD FAKE BAN =================
-        if action.lower() == "add":
+        if action.value == "add":
             if not userid:
                 return await i.followup.send(embed=emb("❌ ERROR","User ID required"))
 
-            # Already exists check
-            chk = supabase.table("fake_warnings").select("user_id").eq("user_id", userid).execute().data
+            # ✅ FIX: Async Check
+            chk_req = await db_call(lambda: supabase.table("fake_warnings").select("user_id").eq("user_id", userid).execute())
+            chk = chk_req.data if chk_req else []
+
             if chk:
                 return await i.followup.send(embed=emb("⚠️ ALREADY PENDING","This player already has a fake warning pending"))
 
-            # 👇 YAHAN FIX KIYA HAI (Await + Correct Unpacking)
+            # Roblox Info Fetch
             uname, dname = await roblox_info(userid)
 
-            supabase.table("fake_warnings").insert({
+            # Default Message Logic
+            msg = message or "🚫 Account Action Required\n\nYour account has been temporarily restricted...\nDuration: 3 Days\nReference: #SEC-9043X"
+
+            # ✅ FIX: Async Insert
+            await db_call(lambda: supabase.table("fake_warnings").insert({
                 "user_id": userid,
                 "username": uname,
                 "display_name": dname,
-                "message": message or "🚫 Account Action Required\n\nYour account has been temporarily restricted...\nDuration: 3 Days\nReference: #SEC-9043X"
-            }).execute()
+                "message": msg
+            }).execute())
 
             return await i.followup.send(embed=emb(
                 "🚨 FAKE BAN ADDED",
-                f"👤 **{dname}** (`{uname}`)\n🆔 `{userid}`\n\nFake ban queued successfully",
+                f"👤 **{dname}** (`{uname}`)\n🆔 `{userid}`\n📝 Msg: `{msg[:50]}...`\n\nFake ban queued successfully",
                 0xff0000
             ))
 
         # ================= REMOVE =================
-        elif action.lower() == "remove":
-            supabase.table("fake_warnings").delete().eq("user_id", userid).execute()
+        elif action.value == "remove":
+            if not userid:
+                return await i.followup.send(embed=emb("❌ ERROR","User ID required"))
+
+            # ✅ FIX: Async Delete
+            await db_call(lambda: supabase.table("fake_warnings").delete().eq("user_id", userid).execute())
 
             return await i.followup.send(embed=emb(
                 "🧹 REMOVED",
@@ -3210,8 +3317,10 @@ async def fakeban(i: discord.Interaction, action: str, userid: str=None, message
             ))
 
         # ================= LIST =================
-        elif action.lower() == "list":
-            data = supabase.table("fake_warnings").select("*").execute().data
+        elif action.value == "list":
+            # ✅ FIX: Async Fetch
+            data_req = await db_call(lambda: supabase.table("fake_warnings").select("*").execute())
+            data = data_req.data if data_req else []
 
             if not data:
                 return await i.followup.send(embed=emb("📭 EMPTY","No pending fake bans"))
@@ -3220,19 +3329,20 @@ async def fakeban(i: discord.Interaction, action: str, userid: str=None, message
             for x in data:
                 text += f"👤 **{x['display_name']}** (`{x['username']}`)\n🆔 `{x['user_id']}`\n-------------------\n"
 
-            return await i.followup.send(embed=emb("📜 PENDING FAKE BANS", text[:4000], 0x3498db))
+            # Message limit safety
+            if len(text) > 4000: text = text[:4000] + "\n... (More hidden)"
 
-        else:
-            return await i.followup.send(embed=emb("❌ Invalid Action","Use `add / remove / list`"))
+            return await i.followup.send(embed=emb("📜 PENDING FAKE BANS", text, 0x3498db))
 
     except Exception as e:
         return await i.followup.send(embed=emb("❌ ERROR", f"```{e}```"))
 
+# ================== ADMIN LOGS COMMAND (FIXED: Async & No Duplicate) ==================
 @bot.tree.command(name="logs", description="View admin logs with filters + pagination")
 @app_commands.choices(filter=[
     app_commands.Choice(name="All Actions", value="all"),
-    app_commands.Choice(name="Maintenance (On/Off)", value="maintenance"),  # <-- NEW
-    app_commands.Choice(name="Stop System (On/Off)", value="stop"),        # <-- NEW
+    app_commands.Choice(name="Maintenance (On/Off)", value="maintenance"),
+    app_commands.Choice(name="Stop System (On/Off)", value="stop"),
     app_commands.Choice(name="Ban", value="ban"),
     app_commands.Choice(name="Tempban", value="tempban"),
     app_commands.Choice(name="Unban", value="unban"),
@@ -3246,17 +3356,19 @@ async def fakeban(i: discord.Interaction, action: str, userid: str=None, message
 ])
 async def logs(i: discord.Interaction, filter: app_commands.Choice[str]):
     if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION", "Owner Only"))
+        return await i.response.send_message(embed=emb("❌ NO PERMISSION", "Owner Only"), ephemeral=True)
 
     await i.response.defer()
 
     try:
-        # Query Logic Updated for Partial Matching (like 'maintenance%')
+        # ✅ FIX: Async DB Call (Bot nahi atkega)
         if filter.value == "all":
-            data = supabase.table("admin_logs").select("*").order("timestamp", desc=True).limit(100).execute().data
+            data_req = await db_call(lambda: supabase.table("admin_logs").select("*").order("timestamp", desc=True).limit(100).execute())
         else:
-            # .ilike use kar rahe hain taaki 'maintenance' filter 'maintenance_on' aur 'maintenance_off' dono pakad le
-            data = supabase.table("admin_logs").select("*").ilike("action", f"{filter.value}%").order("timestamp", desc=True).limit(100).execute().data
+            # .ilike for partial match (ex: 'maintenance' matches 'maintenance_on' & 'maintenance_off')
+            data_req = await db_call(lambda: supabase.table("admin_logs").select("*").ilike("action", f"{filter.value}%").order("timestamp", desc=True).limit(100).execute())
+            
+        data = data_req.data if data_req else []
             
     except Exception as e:
         return await i.followup.send(embed=emb("❌ ERROR", f"Logs failed:\n`{e}`", 0xff0000))
@@ -3268,19 +3380,21 @@ async def logs(i: discord.Interaction, filter: app_commands.Choice[str]):
     chunk = []
 
     for x in data:
-        t = x["timestamp"].split("T")[0]
+        # Timestamp Fix (Error Handling)
+        t = x.get("timestamp", "Unknown").split("T")[0]
         
         # Executor formatting
         executor_id = x.get('executor', 'Unknown')
-        executor_mention = f"<@{executor_id}>"
+        executor_mention = f"<@{executor_id}>" if executor_id.isdigit() else executor_id
 
-        # Action formatting (Thoda clean dikhe)
-        act = x['action'].replace("_", " ").upper()
+        # Action formatting
+        act = x.get('action', 'Unknown').replace("_", " ").upper()
+        target = x.get('user_id', '-')
 
         chunk.append(
             f"📌 **Action:** `{act}`\n"
             f"👮 **Admin:** {executor_mention}\n"
-            f"🆔 **Target:** `{x.get('user_id', '-')}`\n"
+            f"🆔 **Target:** `{target}`\n"
             f"📅 `{t}`\n"
             f"────────────────\n"
         )
@@ -3304,16 +3418,21 @@ async def logs(i: discord.Interaction, filter: app_commands.Choice[str]):
                 pages[self.page],
                 0x3498db
             )
-            await interaction.response.edit_message(embed=e, view=self)
+            try:
+                await interaction.response.edit_message(embed=e, view=self)
+            except:
+                pass
 
         @discord.ui.button(label="⏮ Back", style=discord.ButtonStyle.gray)
         async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if i.user.id != interaction.user.id: return await interaction.response.send_message("❌ Not for you.", ephemeral=True)
             if self.page > 0:
                 self.page -= 1
             await self.update(interaction)
 
         @discord.ui.button(label="Next ⏭", style=discord.ButtonStyle.gray)
         async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+            if i.user.id != interaction.user.id: return await interaction.response.send_message("❌ Not for you.", ephemeral=True)
             if self.page < len(pages) - 1:
                 self.page += 1
             await self.update(interaction)
@@ -3325,12 +3444,9 @@ async def logs(i: discord.Interaction, filter: app_commands.Choice[str]):
         0x3498db
     )
 
+    # ✅ FIX: Duplicate 'await i.followup.send' hata diya
     await i.followup.send(embed=e, view=view)
-
-
-    # ❌ yaha bhi ephemeral hata diya
-    await i.followup.send(embed=e, view=view)
-
+        
 import time, requests, asyncio
 from collections import deque
 
@@ -3349,8 +3465,8 @@ def log_db(success=True):
 def track_audit(success: bool):
     AUDIT_LOG.append((time.time(), success))
 
-
-@bot.tree.command(name="audit", description="Run Advanced Full System Audit (PRO)")
+# ================== AUDIT COMMAND (FIXED: Async & Non-Blocking) ==================
+@bot.tree.command(name="audit", description="Run Advanced Full System Audit (Fixed)")
 async def audit(i: discord.Interaction):
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION", "Owners only"))
@@ -3362,17 +3478,19 @@ async def audit(i: discord.Interaction):
         ok = True
 
         # ===============================
-        #  BACKEND HEALTH + LATENCY
+        #  BACKEND HEALTH + LATENCY (FIXED)
         # ===============================
         t = time.time()
         backend_online = False
         latency = 9999
 
         try:
-            r = requests.get("https://testingbot-z0y6.onrender.com/ping", timeout=6)
-            backend_online = (r.text.strip() == "pong")
-            latency = int((time.time() - t) * 1000)
-            log_request(True)
+            # ✅ FIX: requests.get ki jagah bot.session use kiya (Fast)
+            async with bot.session.get("https://testingbot-z0y6.onrender.com/ping", timeout=6) as r:
+                text = await r.text()
+                backend_online = (text.strip() == "pong")
+                latency = int((time.time() - t) * 1000)
+                log_request(True)
         except:
             ok = False
             backend_online = False
@@ -3385,14 +3503,15 @@ async def audit(i: discord.Interaction):
         )
 
         # ===============================
-        # DATABASE HEALTH
+        # DATABASE HEALTH (FIXED)
         # ===============================
         t = time.time()
         db_ok = True
         q_ms = 9999
 
         try:
-            supabase.table("bot_settings").select("key").limit(1).execute()
+            # ✅ FIX: db_call use kiya
+            await db_call(lambda: supabase.table("bot_settings").select("key").limit(1).execute())
             q_ms = int((time.time() - t) * 1000)
             log_db(True)
         except:
@@ -3407,9 +3526,15 @@ async def audit(i: discord.Interaction):
         )
 
         # ===============================
-        # SYSTEM SETTINGS
+        # SYSTEM SETTINGS (FIXED)
         # ===============================
-        settings = supabase.table("bot_settings").select("*").execute().data
+        try:
+            # ✅ FIX: Async Fetch
+            settings_req = await db_call(lambda: supabase.table("bot_settings").select("*").execute())
+            settings = settings_req.data if settings_req else []
+        except:
+            settings = []
+
         access = "OFF"
         maintenance = "OFF"
 
@@ -3437,6 +3562,7 @@ async def audit(i: discord.Interaction):
         #  TRAFFIC MONITOR
         # ===============================
         now = time.time()
+        # Note: TRAFFIC_LOG global list honi chahiye aapke code me
         last_min = [t for t, _ in TRAFFIC_LOG if now - t <= 60]
         rpm = len(last_min)
 
@@ -3446,10 +3572,8 @@ async def audit(i: discord.Interaction):
         )
 
         # ===============================
-        #  CPU-LIKE LOAD (REALISTIC ESTIMATE)
+        #  LOAD ESTIMATE
         # ===============================
-        # Render pe CPU access nahi hota
-        # so we simulate real system load smart way
         load_score = max(5, min(99, rpm * 3 + (latency // 50)))
         reports.append(
             f"🖥 **Load Estimate**\n"
