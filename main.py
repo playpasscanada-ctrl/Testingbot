@@ -1488,8 +1488,44 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
         try:
             await i.followup.send(f"❌ **System Error:** `{e}`")
         except:
-            await i.response.send_message(f"❌ **System Error:** `{e}`", ephemeral=True)           
-            
+            await i.response.send_message(f"❌ **System Error:** `{e}`", ephemeral=True)         
+
+# 1. Autocomplete (Taaki MP3 ki list dikhe)
+async def sound_autocomplete(i: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    folder_path = "./sounds"
+    if not os.path.exists(folder_path): return []
+    files = [f for f in os.listdir(folder_path) if f.endswith('.mp3')]
+    return [app_commands.Choice(name=f, value=f) for f in files if current.lower() in f.lower()][:25]
+
+# 2. Command
+@bot.tree.command(name="playsound", description="📂 GitHub sounds play karo")
+@app_commands.describe(filename="Sound select karo")
+@app_commands.autocomplete(filename=sound_autocomplete)
+async def playsound(i: discord.Interaction, filename: str):
+    # Owner Check
+    if i.user.id != 1210837901306368041: 
+        return await i.response.send_message("❌ Chal nikal!", ephemeral=True)
+
+    if not i.user.voice:
+        return await i.response.send_message("⚠️ VC join kar pehle!", ephemeral=True)
+
+    await i.response.defer()
+
+    try:
+        file_path = f"./sounds/{filename}"
+        try:
+            vc = await i.user.voice.channel.connect()
+        except:
+            vc = i.guild.voice_client
+
+        if vc.is_playing(): vc.stop()
+
+        # Render setup ke hisaab se FFmpeg path
+        vc.play(discord.FFmpegPCMAudio(source=file_path, executable="./ffmpeg"))
+        await i.followup.send(f"🎶 **Playing:** `{filename}` 🌚")
+
+    except Exception as e:
+        await i.followup.send(f"❌ Error: {e}")            
 
 @bot.tree.command(name="crush", description="Add/Remove user from Flirty/Horny list")
 @app_commands.choices(mode=[
