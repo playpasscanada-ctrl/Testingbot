@@ -1489,32 +1489,32 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
             await i.followup.send(f"❌ **System Error:** `{e}`")
         except:
             await i.response.send_message(f"❌ **System Error:** `{e}`", ephemeral=True)         
+            
+# ================== PREMIUM PLAYSOUND (Embed + Hidden) ==================
 
-# ================== FINAL PLAYSOUND (SIMPLE OWNER CHECK) ==================
-
-# 1. Autocomplete (List dikhane ke liye)
+# 1. Autocomplete (Same rahega)
 async def sound_autocomplete(i: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     folder_path = "./sounds"
     if not os.path.exists(folder_path): return []
     files = [f for f in os.listdir(folder_path) if f.endswith('.mp3')]
     return [app_commands.Choice(name=f, value=f) for f in files if current.lower() in f.lower()][:25]
 
-# 2. Command
+# 2. Main Command
 @bot.tree.command(name="playsound", description="📂 GitHub sounds play karo (Owner Only)")
 @app_commands.describe(filename="Sound select karo")
 @app_commands.autocomplete(filename=sound_autocomplete)
 async def playsound(i: discord.Interaction, filename: str):
     
-    # 🔥 Waisa check jaisa tum chahte the 🔥
+    # 🔒 OWNER CHECK
     if not owner(i):
         return await i.response.send_message("❌ **Access Denied:** Sirf Owner allowed hai!", ephemeral=True)
 
-    # --- Iske aage VC aur Play logic ---
-
+    # 🎤 VC CHECK
     if not i.user.voice:
         return await i.response.send_message("⚠️ Pehle VC join kar bhai!", ephemeral=True)
 
-    await i.response.defer()
+    # ⏳ DEFER (Ephemeral=True matlab sirf aapko dikhega)
+    await i.response.defer(ephemeral=True)
 
     try:
         file_path = f"./sounds/{filename}"
@@ -1527,13 +1527,23 @@ async def playsound(i: discord.Interaction, filename: str):
 
         if vc.is_playing(): vc.stop()
 
-        # Play Audio
+        # 🚀 PLAY AUDIO
         vc.play(discord.FFmpegPCMAudio(source=file_path, executable="./ffmpeg"))
         
-        await i.followup.send(f"🎶 **Playing:** `{filename}` 🌚")
+        # 💎 PREMIUM EMBED
+        embed = discord.Embed(
+            title="🔊 **Audio Streaming**",
+            description=f"### 💿 Now Playing:\n> `{filename}`\n\n**Channel:** `{i.user.voice.channel.name}`\n**Status:** `Active` 🟢",
+            color=0x00ffea # Neon Cyan Color
+        )
+        embed.set_thumbnail(url="https://media.tenor.com/On7kvXhzml4AAAAi/loading-gif.gif") # Audio visualizer GIF
+        embed.set_footer(text=f"Requested by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+
+        # Message bhejo (Sirf aapko dikhega)
+        await i.followup.send(embed=embed)
 
     except Exception as e:
-        await i.followup.send(f"❌ Error: {e}")            
+        await i.followup.send(f"❌ **Error:** `{e}`")
 
 @bot.tree.command(name="crush", description="Add/Remove user from Flirty/Horny list")
 @app_commands.choices(mode=[
@@ -1831,42 +1841,61 @@ async def switch_voice(interaction: discord.Interaction, gender: app_commands.Ch
     await interaction.response.send_message(embed=embed)
 
 
-# 2️⃣ VC ROAST (Premium Embed + Auto Voice)
-@bot.tree.command(name="vcroast", description="Brutal Gaali Mode 🔊💀")
+# 2️⃣ VC ROAST (Premium Embed + Auto Voice + Hindi Brutal Mode)
+@bot.tree.command(name="vcroast", description="Brutal Gaali Mode 🔊💀 (Only you can see)")
 async def vcroast(interaction: discord.Interaction):
+    
+    # 1. Access Check
     if not has_voice_access(interaction):
-        await interaction.response.send_message("🚫 **Access Denied:** Sirf VIP log chala sakte hain!", ephemeral=True)
+        await interaction.response.send_message("🚫 **Access Denied:** सिर्फ VIP लोग चला सकते हैं!", ephemeral=True)
         return
 
-    # Premium Embed Response
-    embed = create_premium_embed("💀 Brutal Mode On", f"**{current_voice['name']}** is connecting to roast you... 🔥")
-    await interaction.response.send_message(embed=embed)
+    # 2. Premium Embed (Ephemeral = True matlab sirf aapko dikhega)
+    embed = create_premium_embed("💀 Brutal Mode On", f"**{current_voice['name']}** is connecting to roast... 🔥")
     
-    # ☢️ LIST
+    # ✅ Yahan 'ephemeral=True' joda hai
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+    
+    # ☢️ PURE HINDI GAALI LIST (For Swara)
     gaali_list = [
-        "Teri maa ki chut mein haathi ka lund, saale nalle tu paida hi galti se hua tha.",
-        "Teri maa ki chut mein JCB chala dungi, saari akad bahar nikal jayegi madarchod.",
-        "Bhosadike, teri bhen ko itna chodungi ki wo chalna bhool jayegi, sirf reng ke chalegi.",
-        "Saale suar ke pille, teri maa ki gaand mein cactus uga dungi, jab bhi hagegi mujhe yaad karegi.",
-        "Teri shakal dekh ke lagta hai bhagwan ne tatti ko insaan ka roop de diya hai.",
-        "Madarchod, tere khandan ki auratein mere lund ka wait karti hain, jaake pooch le.",
-        "Abe randi ke, teri gaand mein rod daal ke mooh se nikalungi, human kebab bana dungi tera.",
-        "Teri maa ka bhosada itna bada hai ki usme main apna poora ghar bana lu.",
-        "Chutiye, tujhe paida karke teri maa ne duniya pe bojh badha diya hai, jaake mar ja.",
-        "Teri bhen ki chut mein bomb laga ke uda dungi, chithade milenge seedha chand pe.",
-        "Saale hijde ki aulad, mere saamne aawaz mat nikalna warna wahi gaad dungi.",
-        "Teri maa ki chut mein itne lund daalungi ki wo traffic jam ho jayegi.",
-        "Bhosadike, tera baap bhi rota hoga ki kis manhoos ghadi mein tujhe paida kiya.",
-        "Randi ke pille, teri gaand mein mirchi ka powder bhar ke dande se andar kar dungi.",
-        "Teri bhen ki chut public toilet ban gayi hai, jo aata hai moot ke chala jata hai.",
-        "Madarchod, tujhe zinda jala ke teri raakh ko gutter mein bahana chahiye."
-        "Bhenchod, apni shakal dekhi hai? Aisa lagta hai gutter ke dhakkan pe kisi ne ulti kar di ho.",
-        "Madarchod, teri bhen ko kothe pe bitha dungi agar dubara yahan dikha toh, nikal yahan se!",
-        "Saale randi ke pille, tere khandan mein sabse bada chutiya tu hi hai, jaake doob mar.",
-        "Teri gaand mein itna danda daalungi ki muh se bahar niklega, bhosadike aukaat mein reh.",
-        "Sun be lodu, teri maa mere paas aayi thi, keh rahi thi galti ho gayi tujhe paida karke.",
-        "Abe suar ki aulad, tu wahi virus hai jise condom bhi rok nahi paaya tha.",
-        "Teri bhen ki chut mein cactus daal ke ghumungi, saale tatti khor insaan."
+        "तेरी माँ की चूत में हाथी का लंड, साले नल्ले तू पैदा ही गलती से हुआ था।",
+        "तेरी माँ की चूत में जेसीबी चला दूँगी, सारी अकड़ बाहर निकल जाएगी मादरचोद।",
+        "भोसड़ीके, तेरी बहन को इतना चोदूँगी कि वो चलना भूल जाएगी, सिर्फ रेंग के चलेगी।",
+        "साले सूअर के पिल्ले, तेरी माँ की गांड में कैक्टस उगा दूँगी, जब भी हगेगी मुझे याद करेगी।",
+        "तेरी शकल देख के लगता है भगवान ने टट्टी को इंसान का रूप दे दिया है।",
+        "सुन बे झांटू, तेरी शकल देख के तो वायरस भी क्वारंटाइन में चला गया।",
+        "अबे लौड़े, अगर अपना दिमाग बेचने जाएगा तो 'अनयूज़्ड' कंडीशन में बिकेगा, क्योंकि कभी यूज़ तो किया नहीं।",
+        "तेरी औकात मेरे झांट के बाल बराबर भी नहीं है, निकल यहाँ से वरना गाड़ दूँगी।",
+        "भोसड़ीके, तुझे देख के लगता है कि कंडोम का विज्ञापन कितना ज़रूरी है।",
+        "अपनी ये सड़ी हुई आवाज़ बंद कर, वरना कान के नीचे ऐसा बजाऊँगी कि अगली 7 पुश्तें बहरी पैदा होंगी।",
+        "साले सुअर, तू वो गलती है जिसे डॉक्टर भी रबर से मिटाना चाहता था पर मिटा नहीं पाया।",
+        "तेरी माँ ने तुझे पैदा नहीं किया, तुझे बस दुनिया को सज़ा देने के लिए हगा है।",
+        "अबे चूतिये, तेरे खानदान में सब इंजीनियर हैं क्या? क्योंकि तू एक बहुत बड़ा 'प्रोजेक्ट फेलियर' लगता है।",
+        "सुन मादरचोद, तेरे मुँह से बास आती है या तू गटर का ढक्कन खोल के बात करता है?",
+        "तेरी गांड में इतना बारूद भरूँगी कि दिवाली का रॉकेट भी तुझे देख के शरमा जाएगा।",
+        "भोसड़ीके, इतना मत उछल, वरना तेरी आंतें बाहर निकाल के उसी से तुझे फाँसी लगा दूँगी।",
+        "अबे रंडी के, तू धरती पे बोझ है, पेड़-पौधे भी तुझे ऑक्सीजन देकर पछता रहे होंगे।",
+        "तेरी शकल देख के तो आईना भी खुदकुशी कर लेता है, तू क्या चीज़ है बे?",
+        "साले छक्के, मेरे सामने मर्दानगी मत दिखा, वरना वो हाल करूँगी कि हिजड़े भी तुझे अपनी बिरादरी में नहीं लेंगे।",
+        "मादरचोद, तुझे देख के लगता है कि भगवान ने मिट्टी गूंथते वक़्त उसमें गटर का पानी मिला दिया था।"
+        "मादरचोद, तेरे खानदान की औरतें मेरे लंड का वेट करती हैं, जाके पूछ ले।",
+        "अबे रंडी के, तेरी गांड में रॉड डाल के मुँह से निकालूँगी, ह्यूमन कबाब बना दूँगी तेरा।",
+        "तेरी माँ का भोसड़ा इतना बड़ा है कि उसमे मैं अपना पूरा घर बना लूँ।",
+        "चूतिये, तुझे पैदा करके तेरी माँ ने दुनिया पे बोझ बढ़ा दिया है, जाके मर जा।",
+        "तेरी बहन की चूत में बम लगा के उड़ा दूँगी, चिथड़े मिलेंगे सीधा चाँद पे।",
+        "साले हिजड़े की औलाद, मेरे सामने आवाज़ मत निकालना वरना वही गाड़ दूँगी।",
+        "तेरी माँ की चूत में इतने लंड डालूँगी कि वो ट्रैफिक जाम हो जाएगी।",
+        "भोसड़ीके, तेरा बाप भी रोता होगा कि किस मनहूस घड़ी में तुझे पैदा किया।",
+        "रंडी के पिल्ले, तेरी गांड में मिर्ची का पाउडर भर के डंडे से अंदर कर दूँगी।",
+        "तेरी बहन की चूत पब्लिक टॉयलेट बन गयी है, जो आता है मूत के चला जाता है।",
+        "मादरचोद, तुझे ज़िंदा जला के तेरी राख को गटर में बहाना चाहिए।",
+        "बहनचोद, अपनी शकल देखी है? ऐसा लगता है गटर के ढक्कन पे किसी ने उल्टी कर दी हो।",
+        "मादरचोद, तेरी बहन को कोठे पे बिठा दूँगी अगर दोबारा यहाँ दिखा तो, निकल यहाँ से!",
+        "साले रंडी के पिल्ले, तेरे खानदान में सबसे बड़ा चूतिया तू ही है, जाके डूब मर।",
+        "तेरी गांड में इतना डंडा डालूँगी कि मुँह से बाहर निकलेगा, भोसड़ीके औकात में रह।",
+        "सुन बे लोडू, तेरी माँ मेरे पास आयी थी, कह रही थी गलती हो गयी तुझे पैदा करके।",
+        "अबे सूअर की औलाद, तू वही वायरस है जिसे कंडोम भी रोक नहीं पाया था।",
+        "तेरी बहन की चूत में कैक्टस डाल के घूमुँगी, साले टट्टी खोर इंसान।"
     ]
     
     text = random.choice(gaali_list)
