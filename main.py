@@ -4716,6 +4716,56 @@ async def slap(i: discord.Interaction, target: discord.User):
     
     await i.response.send_message(embed=embed)
 
+# ================== 🔫 RUSSIAN ROULETTE (PREMIUM) ==================
+
+@bot.tree.command(name="roulette", description="💀 Maut ka khel: Jeete to Hero, Haare to Mute! (1/6 Chance)")
+async def roulette(i: discord.Interaction):
+    
+    # 1. Bot Permission Check (Kya bot ke paas Mute karne ki taakat hai?)
+    if not i.guild.me.guild_permissions.moderate_members:
+        return await i.response.send_message("❌ Mere paas 'Timeout' dene ki power nahi hai! Role check karo.", ephemeral=True)
+
+    # 2. Suspense Phase (Spinning)
+    embed = discord.Embed(title="🔫 Loading Revolver...", description="### 😰 Cylinder is spinning...\n**1 Bullet, 5 Empty Slots.**", color=0xFFD700)
+    embed.set_image(url="https://media1.tenor.com/m/Y8U9D1xJg8AAAAAC/gun-reload.gif") # Spinning GIF
+    embed.set_footer(text=f"Player: {i.user.display_name} • Dhadkane tez...", icon_url=i.user.display_avatar.url)
+    
+    await i.response.send_message(embed=embed)
+    
+    # Thoda intezaar (Suspense badhane ke liye)
+    await asyncio.sleep(3)
+    
+    # 3. Decision Logic (1/6 Chance to Die)
+    # List: [Safe, Safe, Safe, Safe, Safe, DEAD]
+    bullet = random.randint(1, 6)
+    
+    original_msg = await i.original_response()
+
+    if bullet == 1: # 💀 MAUT (16.6% Chance)
+        try:
+            # User ko 1 Minute ke liye Timeout (Mute) karo
+            duration = datetime.timedelta(minutes=1)
+            await i.user.timeout(duration, reason="Russian Roulette Death 💀")
+            
+            # Dead Embed
+            dead_embed = discord.Embed(title="💥 BANG! You Died! 💀", description=f"### 🪦 R.I.P {i.user.mention}\n\n🔫 **Goli seedha bheje me lagi!**\n🚫 **Saza:** 1 Minute Mute.", color=0x880808) # Blood Red
+            dead_embed.set_image(url="https://media1.tenor.com/m/d3a5Z4TqQp0AAAAi/wasted-gta.gif") # GTA Wasted GIF
+            dead_embed.set_footer(text="Khel khatam, paisa hazam.", icon_url="https://cdn-icons-png.flaticon.com/512/2996/2996395.png")
+            
+            await original_msg.edit(embed=dead_embed)
+            
+        except discord.Forbidden:
+            # Agar user Admin/Owner hai to Bot unhe mute nahi kar payega
+            safe_embed = discord.Embed(title="💥 BANG! ... Lekin tu bach gaya!", description=f"### 🛡️ **Immortal:**\nGoli lagi par tu **Admin/Mod** hai isliye Mute nahi hua.\n(Cheating karta hai saale!)", color=0xFF5500)
+            await original_msg.edit(embed=safe_embed)
+            
+    else: # 😌 SAFE
+        safe_embed = discord.Embed(title="😌 *Click*... Empty Slot!", description=f"### 🎉 **You Survived!**\n\nNaseeb achha hai tera {i.user.mention}.\nAgli baar shayad na bache... 😈", color=0x00FF00) # Green
+        safe_embed.set_image(url="https://media1.tenor.com/m/t1Xg-vVqB6QAAAAC/sweat-nervous.gif") # Relief GIF
+        safe_embed.set_footer(text="Aaj yamraj chutti pe the.", icon_url=i.user.display_avatar.url)
+        
+        await original_msg.edit(embed=safe_embed)
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
