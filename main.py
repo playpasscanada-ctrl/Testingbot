@@ -664,27 +664,23 @@ intents.message_content = True
 intents.members = True  # <--- YE LINE ADD KARNA ZAROORI HAI
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ================== 🔒 PRIVATE SERVER LOCK ==================
+# ================== 🔒 MULTI-SERVER LOCK ==================
 
-# 1. Aapka Server ID
-ALLOWED_GUILD_ID = 1257403231127076915
+# 1. Yahan un sabhi Servers ki ID daal do jahan bot chalna chahiye
+ALLOWED_SERVERS = [1257403231127076915, 1431694952080871566] # Dusra ID yahan add karo
 
-# 2. Security Check Function
 async def global_server_check(interaction: discord.Interaction) -> bool:
-    # Agar command aapke server se aayi hai, to chalne do
-    if interaction.guild_id == ALLOWED_GUILD_ID:
+    # Check karega ki kya current server ID list mein hai?
+    if interaction.guild_id in ALLOWED_SERVERS:
         return True
     
-    # Agar kisi aur server se aayi hai, to block kar do
     else:
         await interaction.response.send_message(
-            "🚫 **Access Denied:** Ye bot Private hai aur sirf Authorised Server me chalta hai!", 
+            "🚫 **Access Denied:** Ye bot sirf authorized servers me hi kaam karta hai!", 
             ephemeral=True
         )
         return False
 
-# 3. Guard ko Bot ke Tree par laga do (Sab commands pe lagu hoga)
-# 'bot' variable define hone ke baad hi ye line likhna
 bot.tree.interaction_check = global_server_check
  
 def owner(i):
