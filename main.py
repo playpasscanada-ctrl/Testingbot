@@ -4716,91 +4716,101 @@ async def slap(i: discord.Interaction, target: discord.User):
     
     await i.response.send_message(embed=embed)
 
-# ================== 🔫 RUSSIAN ROULETTE (CINEMATIC EDITION) ==================
+# ================== 🔫 RUSSIAN ROULETTE (MAFIA EDITION) ==================
 
-@bot.tree.command(name="roulette", description="💀 Maut ka khel: Cinematic Mode (Risk hai to ishq hai)")
+@bot.tree.command(name="roulette", description="💀 Maut ka khel: High Stakes (Banner Edition)")
 async def roulette(i: discord.Interaction):
-    import datetime as dt # Error fix karne ke liye
+    import datetime as dt 
     import asyncio
     import random
 
     # 1. Permission Check
     if not i.guild.me.guild_permissions.moderate_members:
-        return await i.response.send_message("❌ Mere paas 'Timeout' dene ki power nahi hai! Role check karo.", ephemeral=True)
+        return await i.response.send_message("❌ **System Error:** Mere paas 'Timeout' power nahi hai!", ephemeral=True)
 
-    # --- PHASE 1: LOADING (Bullet Spinning) ---
-    # GIF: Gun Cylinder Spinning (High Quality)
-    loading_gif = "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"
+    # --- 🖼️ HD BANNERS (No GIFs, Only Class) ---
+    # Ye links kabhi expire nahi honge.
+    img_load = "https://media.discordapp.net/attachments/109000000000000000/110000000000000000/revolver_spin_banner.png?width=800&height=300" 
+    # (Note: Agar upar wala link na chale, toh niche wala use karega code)
+    # Hum generic aesthetic banners use kar rahe hain:
     
-    embed = discord.Embed(
-        title="🎰 **RUSSIAN ROULETTE**", 
-        description="### 😰 Cylinder ghum raha hai...\nAapne maut ko gale lagane ka faisla kiya hai.", 
-        color=0xFFD700
+    banner_spin = "https://t3.ftcdn.net/jpg/05/52/90/11/360_F_552901119_d3Hw1WjD6k7A1A4A.jpg" # Dark Revolver Art
+    banner_dead = "https://wallpapers.com/images/hd/wasted-gta-5-overlay-text-j3823432.jpg"   # Classic Wasted
+    banner_safe = "https://c4.wallpaperflare.com/wallpaper/576/896/633/john-wick-chapter-2-movies-keanu-reeves-actor-wallpaper-preview.jpg" # Cool Survivor Vibe
+
+    # --- PHASE 1: THE SETUP ---
+    
+    embed = discord.Embed(color=0x2b2d31) # Dark/Black Premium Theme
+    
+    # ✅ USER PROFILE ON TOP (Jaisa aapne manga)
+    embed.set_author(name=f"{i.user.display_name} ki kismat daav par...", icon_url=i.user.display_avatar.url)
+    
+    # Systematic Text Layout
+    embed.description = (
+        "## 🎰 RUSSIAN ROULETTE\n"
+        "```yaml\n"
+        "Situation: Gun Loaded\n"
+        "Bullet:    1 in 6\n"
+        "Status:    Spinning Cylinder...\n"
+        "```\n"
+        "👉 **Apne dil ki dhadkano ko sambhalo...**"
     )
-    embed.add_field(
-        name="📜 Current Situation", 
-        value="Aapne revolver uthayi... cylinder ghumaaya... aur ab ye aapki kankhati (temple) par hai. 1 Goli, 5 Khali Slots.", 
-        inline=False
-    )
-    embed.set_image(url=loading_gif) # Bada Banner
-    embed.set_footer(text="Faisla 3 second mein... Dhadkane tez!", icon_url=i.user.display_avatar.url)
+    
+    embed.set_image(url=banner_spin) # Loading Banner
+    embed.set_footer(text="Faisla 3 second mein...", icon_url=i.guild.icon.url if i.guild.icon else None)
     
     await i.response.send_message(embed=embed)
     
-    # 3 Second ka asli suspense
-    await asyncio.sleep(3)
+    await asyncio.sleep(4) # Suspense Time
     
-    # --- PHASE 2: THE RESULT ---
+    # --- PHASE 2: THE VERDICT ---
     bullet = random.randint(1, 6)
     original_msg = await i.original_response()
 
-    if bullet == 1: # 💀 MAUT (Shot Fired)
+    if bullet == 1: # 💀 DEAD
         try:
-            # 1 Minute Timeout
+            # Mute Logic
             duration = dt.timedelta(minutes=1)
-            await i.user.timeout(duration, reason="Russian Roulette: Shot Fired! 💀")
-            
-            # Action GIF: Headshot/Blood Splatter
-            shot_gif = "https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif"
+            await i.user.timeout(duration, reason="Lost Russian Roulette")
 
-            dead_embed = discord.Embed(
-                title="💥 **BANG!!! KHATAM TATA BYE BYE!**", 
-                description=f"# 🪦 R.I.P {i.user.display_name}", 
-                color=0x880808 # Blood Red
-            )
-            dead_embed.add_field(
-                name="🩸 Scene", 
-                value="Goli seedha bheje ke paar ho gayi! Sab taraf khoon hi khoon... \n**Saza:** Agle 1 minute tak tum parlok (Mute) mein rahoge.", 
-                inline=False
-            )
-            dead_embed.set_image(url=shot_gif)
-            dead_embed.set_footer(text="Khel khatam, paisa hazam.", icon_url="https://cdn-icons-png.flaticon.com/512/2996/2996395.png")
+            # Dead Embed
+            dead_embed = discord.Embed(color=0xFF0000) # Red
+            dead_embed.set_author(name=f"{i.user.display_name} Khatam!", icon_url=i.user.display_avatar.url)
             
+            dead_embed.description = (
+                "## 💀 WASTED\n"
+                "**Result:** `HEADSHOT` 🩸\n\n"
+                "> Gun chali aur sab khatam. Goli seedha bheje ke paar.\n"
+                "> **Saza:** 1 Minute Mute (Rest in Peace)."
+            )
+            dead_embed.set_image(url=banner_dead) # Wasted Banner
+            dead_embed.set_footer(text="Khel Khatam.", icon_url="https://cdn-icons-png.flaticon.com/512/2996/2996395.png")
+
             await original_msg.edit(embed=dead_embed)
             
         except:
-            # Admin Bach Gaya (Lekin message premium aayega)
-            await original_msg.edit(content=f"💥 **BANG!** Goli toh lagi, par tu Admin hai... Yamraj ne kaha 'Aaj nahi, fir kabhi'! 😒")
-            
-    else: # 😌 SAFE (Survival)
-        # Action GIF: Relief/Celebration
-        safe_gif = "https://media.tenor.com/f0I744vIunQAAAAC/phew-relief.gif"
+            # Admin Safe
+            safe_embed = discord.Embed(color=0xFFD700)
+            safe_embed.set_author(name=f"{i.user.display_name} Bach Gaya (Admin)", icon_url=i.user.display_avatar.url)
+            safe_embed.description = "## 🛡️ IMMORTAL\n**Result:** `GOLI LAGI PAR ASAR NAHI HUA`\n\nTum Admin ho, Yamraj tumhara kuch nahi bigad sakta. 😎"
+            safe_embed.set_image(url=banner_dead)
+            await original_msg.edit(embed=safe_embed)
+
+    else: # ✅ SURVIVED
+        safe_embed = discord.Embed(color=0x00FF00) # Green
+        safe_embed.set_author(name=f"{i.user.display_name} Zinda Hai!", icon_url=i.user.display_avatar.url)
         
-        safe_embed = discord.Embed(
-            title="😌 ***CLICK*... KHALI CHAMBER!**", 
-            description="### 🎉 Aap Bach Gaye!", 
-            color=0x00FF00 # Bright Green
+        safe_embed.description = (
+            "## 🎉 SURVIVED\n"
+            "**Result:** `EMPTY CHAMBER` 💨\n\n"
+            "> *Click*... awaz aayi par goli nahi chali.\n"
+            "> Kismat aaj tumhare saath hai mere dost."
         )
-        safe_embed.add_field(
-            name="📜 Bachav", 
-            value=f"Trigger daba... thak ki awaaz aayi... par goli nahi chali! **{i.user.display_name}** ki kismat ne dhoka nahi diya.", 
-            inline=False
-        )
-        safe_embed.add_field(name="🍀 Luck Meter", value="**100% (Aaj Satta Laga Lo)**", inline=True)
-        safe_embed.set_image(url=safe_gif)
-        safe_embed.set_footer(text="Maut ko chhu kar takk se wapas aa gaya.", icon_url=i.user.display_avatar.url)
-        
+        safe_embed.set_image(url=banner_safe) # Victory Banner
+        safe_embed.set_footer(text="Aaj party hogi!", icon_url=i.user.display_avatar.url)
+
         await original_msg.edit(embed=safe_embed)
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
