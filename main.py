@@ -4163,6 +4163,280 @@ async def on_member_remove(member):
     except Exception as e:
         print(f"LEAVE EVENT ERROR: {e}")
 
+# ================== 🦑 SQUID GAME ROULETTE (RPS EVERY ROUND) ==================
+
+import discord
+from discord import app_commands
+import random
+import datetime
+import asyncio
+
+# --- 1. THE MASTER VIEW (Handles RPS & Shooting) ---
+
+class SquidGameMaster(discord.ui.View):
+    def __init__(self, p1, p2, bullets, punishment_level, cylinder=None, slot_index=0):
+        super().__init__(timeout=300)
+        self.p1 = p1
+        self.p2 = p2
+        self.bullets = bullets
+        self.punishment_level = punishment_level
+        
+        # Game State
+        self.p1_choice = None
+        self.p2_choice = None
+        self.round_loser = None # Jo RPS haarega
+        
+        # Cylinder Logic (No Reset)
+        if cylinder is None:
+            self.cylinder = [1] * bullets + [0] * (6 - bullets)
+            random.shuffle(self.cylinder)
+        else:
+            self.cylinder = cylinder
+            
+        self.slot_index = slot_index
+        
+        # Start in RPS Mode
+        self.setup_rps_buttons()
+        self.update_embed(mode="RPS")
+
+    def setup_rps_buttons(self):
+        self.clear_items()
+        # Add RPS Buttons
+        btn_rock = discord.ui.Button(emoji="🪨", style=discord.ButtonStyle.secondary, custom_id="rock")
+        btn_paper = discord.ui.Button(emoji="📄", style=discord.ButtonStyle.secondary, custom_id="paper")
+        btn_scissor = discord.ui.Button(emoji="✂️", style=discord.ButtonStyle.secondary, custom_id="scissor")
+        
+        btn_rock.callback = self.rps_callback
+        btn_paper.callback = self.rps_callback
+        btn_scissor.callback = self.rps_callback
+        
+        self.add_item(btn_rock)
+        self.add_item(btn_paper)
+        self.add_item(btn_scissor)
+
+    def setup_trigger_button(self):
+        self.clear_items()
+        # Add ONLY Trigger Button
+        btn_trigger = discord.ui.Button(label="😨 PULL TRIGGER (Maut ka Button)", style=discord.ButtonStyle.danger, emoji="🔫")
+        btn_trigger.callback = self.trigger_callback
+        self.add_item(btn_trigger)
+
+    def update_embed(self, mode="RPS", extra_text=""):
+        color = 0x00FFFF if mode == "RPS" else 0xFF00E6
+        
+        desc = f"### 💀 Round {self.slot_index + 1}/6\n"
+        
+        if mode == "RPS":
+            desc += f"👉 **Toss Time:** Dono apna move chuno!\n" \
+                    f"**{self.p1.name}:** {'✅ Ready' if self.p1_choice else '⏳ Waiting...'}\n" \
+                    f"**{self.p2.name}:** {'✅ Ready' if self.p2_choice else '⏳ Waiting...'}\n\n" \
+                    f"⚠️ **Note:** Jo haarega, wo agle slot ki goli apne upar chalayega!"
+            image = "https://media.tenor.com/BfRK3aY2Nn4AAAAC/squid-game.gif" # RPS vibe
+            
+        elif mode == "TRIGGER":
+            desc += f"🩸 **RPS Result:** {self.round_loser.mention} haar gaya!\n" \
+                    f"👉 Ab isko **Trigger** dabana padega.\n\n" \
+                    f"Target: **Slot #{self.slot_index + 1}**"
+            image = "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif" # Gun logic
+
+        self.embed = discord.Embed(title="🦑 SQUID GAME: DEATH MATCH", description=desc + f"\n\n{extra_text}", color=color)
+        self.embed.add_field(name="🔫 Gun State", value=f"Live Bullets: `{self.bullets}` remaining", inline=True)
+        self.embed.add_field(name="⚖️ Punishment", value=f"**Level {self.punishment_level}**", inline=True)
+        self.embed.set_image(url=image)
+
+    # --- CALLBACKS ---
+
+    async def rps_callback(self, interaction: discord.Interaction):
+        # Check if user is player
+        if interaction.user.id not in [self.p1.id, self.p2.id]:
+            return await interaction.response.send_message("❌ Tu audience hai, shant baith!", ephemeral=True)
+        
+        # Store Choice
+        choice = interaction.custom_id # rock, paper, scissor
+        if interaction.user.id == self.p1.id:
+            self.p1_choice = choice
+        else:
+            self.p2_choice = choice
+            
+        # Update Embed (Show waiting status)
+        self.update_embed(mode="RPS")
+        await interaction.response.edit_message(embed=self.embed, view=self)
+        
+        # Check Winner if both ready
+        if self.p1_choice and self.p2_choice:
+            await self.resolve_rps(interaction)
+
+    async def resolve_rps(self, interaction):
+        choices_map = {'rock': 0, 'paper': 1, 'scissor': 2}
+        v1 = choices_map[self.p1_choice]
+        v2 = choices_map[self.p2_choice]
+        
+        # Logic
+        if v1 == v2:
+            # Draw
+            self.p1_choice = None
+            self.p2_choice = None
+            self.update_embed(mode="RPS", extra_text="🤝 **DRAW!** Phir se khelo.")
+            await interaction.edit_original_response(embed=self.embed, view=self)
+            return
+            
+        elif (v1 == 0 and v2 == 2) or (v1 == 1 and v2 == 0) or (v1 == 2 and v2 == 1):
+            # P1 Wins, P2 Loses
+            self.round_loser = self.p2
+        else:
+            # P2 Wins, P1 Loses
+            self.round_loser = self.p1
+            
+        # Switch to Trigger Mode
+        self.setup_trigger_button() # Change buttons
+        self.update_embed(mode="TRIGGER")
+        await interaction.edit_original_response(embed=self.embed, view=self)
+
+    async def trigger_callback(self, interaction: discord.Interaction):
+        # Sirf loser daba sakta hai
+        if interaction.user.id != self.round_loser.id:
+            return await interaction.response.send_message(f"❌ Ruk ja bhai! Ye saza {self.round_loser.name} ke liye hai.", ephemeral=True)
+            
+        # 🔫 SHOOT LOGIC
+        is_bullet = self.cylinder[self.slot_index] == 1
+        
+        if is_bullet:
+            # 💀 DEAD
+            self.stop() # Disable buttons
+            punishment_msg = await self.apply_punishment(self.round_loser)
+            
+            dead_embed = discord.Embed(title="💥 BANG! KHEL KHATAM!", color=0x880808)
+            dead_embed.description = f"**{self.round_loser.mention}** ne RPS hara aur apni jaan bhi gawa di.\n# 🩸 HEADSHOT (Slot #{self.slot_index + 1})\n\n{punishment_msg}"
+            dead_embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+            dead_embed.set_footer(text="Winner: The other guy (obviously)")
+            
+            await interaction.response.edit_message(embed=dead_embed, view=None)
+            
+        else:
+            # 😌 SAFE - Reset for next round
+            self.slot_index += 1
+            if self.slot_index >= 6:
+                await interaction.response.edit_message(content="Gun khali ho gayi? Kya kismat hai! Draw.", view=None)
+                return
+                
+            # Reset Game State for Next Round
+            self.p1_choice = None
+            self.p2_choice = None
+            self.round_loser = None
+            
+            self.setup_rps_buttons() # Wapas RPS buttons lao
+            self.update_embed(mode="RPS", extra_text=f"😌 *Click*... **{interaction.user.name}** bach gaya!\nNext Round shuru...")
+            
+            await interaction.response.edit_message(embed=self.embed, view=self)
+
+
+    async def apply_punishment(self, loser):
+        level = self.punishment_level
+        reason = "Lost Squid Game Roulette 💀"
+        msg = ""
+
+        try:
+            # LEVEL 1: 1 Min Timeout
+            if level == 1:
+                await loser.timeout(datetime.timedelta(minutes=1), reason=reason)
+                msg = "🚫 **Saza (L1):** 1 Minute Timeout."
+
+            # LEVEL 2: Level Deduction (XP Logic)
+            elif level == 2:
+                msg = "📉 **Saza (L2):** Level/XP Ghat gaya (Database update pending)."
+
+            # LEVEL 3: Script Access Off (3 Hours)
+            elif level == 3:
+                ban_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)
+                data = {"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}
+                supabase.table("script_bans").upsert(data).execute()
+                msg = "🔒 **Saza (L3):** Script Access Blocked for **3 Hours**."
+
+            # LEVEL 4: 3Hr Timeout + 3Hr Script Ban
+            elif level == 4:
+                await loser.timeout(datetime.timedelta(hours=3), reason=reason)
+                ban_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)
+                data = {"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}
+                supabase.table("script_bans").upsert(data).execute()
+                msg = "⛔ **Saza (L4):** 3 Hours Mute + 3 Hours Script Ban."
+
+            # LEVEL 5: 1 Day Timeout + 1 Day Script Ban (BRUTAL)
+            elif level == 5:
+                await loser.timeout(datetime.timedelta(days=1), reason=reason)
+                ban_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+                data = {"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}
+                supabase.table("script_bans").upsert(data).execute()
+                msg = "💀 **Saza (L5 - BRUTAL):** 1 Day Mute + 1 Day Script Ban."
+
+        except Exception as e:
+            msg += f"\n(Error applying punishment: {e})"
+        return msg
+
+
+# --- 2. INVITE VIEW (Starting Point) ---
+
+class DuelInviteView(discord.ui.View):
+    def __init__(self, challenger, opponent, bullets, punishment_level):
+        super().__init__(timeout=60)
+        self.challenger = challenger
+        self.opponent = opponent
+        self.bullets = bullets
+        self.punishment_level = punishment_level
+
+    @discord.ui.button(label="✅ Accept Challenge", style=discord.ButtonStyle.success)
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.opponent.id:
+            return await interaction.response.send_message("❌ Ye invite tere liye nahi hai!", ephemeral=True)
+        
+        # Start The Master Game Loop
+        game_view = SquidGameMaster(self.challenger, self.opponent, self.bullets, self.punishment_level)
+        await interaction.response.edit_message(view=game_view) # Embed game_view ke init me update hoga, lekin yahan edit karna padega
+        # Hack: Game view ka embed turant bhejte hain
+        await interaction.edit_original_response(embed=game_view.embed, view=game_view)
+
+    @discord.ui.button(label="🏃 Bhaag Jao", style=discord.ButtonStyle.danger)
+    async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.opponent.id:
+            return await interaction.response.send_message("❌ Tu decision nahi le sakta.", ephemeral=True)
+        await interaction.response.edit_message(content=f"🚫 **{interaction.user.name}** ne dar ke maare mana kar diya.", view=None, embed=None)
+
+
+# --- 3. SLASH COMMAND ---
+
+@bot.tree.command(name="squid_duel", description="🦑 Round-by-Round RPS & Russian Roulette")
+@app_commands.describe(
+    opponent="Kisko challenge karna hai?",
+    bullets="Kitni goli bharni hai? (1-5)",
+    punishment="Saza ka level (1-5)"
+)
+@app_commands.choices(punishment=[
+    app_commands.Choice(name="Level 1: 1 Min Timeout", value=1),
+    app_commands.Choice(name="Level 2: XP/Level Deduction", value=2),
+    app_commands.Choice(name="Level 3: Script Ban (3 Hrs)", value=3),
+    app_commands.Choice(name="Level 4: 3Hr Timeout + 3Hr Ban", value=4),
+    app_commands.Choice(name="Level 5: 1 Day Timeout + 1 Day Ban (BRUTAL)", value=5),
+])
+async def squid_duel(i: discord.Interaction, opponent: discord.Member, bullets: int, punishment: int):
+    
+    # Permissions & Validations
+    if not i.guild.me.guild_permissions.moderate_members:
+        return await i.response.send_message("❌ Bot ke paas Admin/Timeout power nahi hai!", ephemeral=True)
+    if opponent.id == i.user.id or opponent.bot:
+        return await i.response.send_message("❌ Khud se ya Bot se nahi khel sakte.", ephemeral=True)
+    if bullets < 1 or bullets > 5:
+        return await i.response.send_message("❌ Bullets 1 se 5 ke beech honi chahiye.", ephemeral=True)
+
+    # Send Invite
+    embed = discord.Embed(
+        title="🦑 SQUID GAME CHALLENGE", 
+        description=f"**{i.user.mention}** ne **{opponent.mention}** ko Maut ka Challenge diya hai!", 
+        color=0xFF00E6
+    )
+    embed.add_field(name="📜 New Rules", value="1. Har round se pehle **RPS** (Rock Paper Scissors) hoga.\n2. Jo RPS haarega, **Goli usipar chalegi**.\n3. Agar goli nahi chali, to agla round phir se RPS se shuru hoga.", inline=False)
+    embed.add_field(name="⚖️ Punishment", value=f"**Level {punishment}**", inline=False)
+    
+    await i.response.send_message(f"{opponent.mention}, kya tum taiyar ho?", embed=embed, view=DuelInviteView(i.user, opponent, bullets, punishment))
+
 # ================== SAY COMMAND (WITH IMAGE & LOGS) ==================
 
 # 👇 Apki di hui Log Channel ID set kar di hai
