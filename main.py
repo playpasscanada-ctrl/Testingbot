@@ -1920,28 +1920,92 @@ async def bol(interaction: discord.Interaction, text: str):
     # 3. Audio play karo (VC me awaz sabko aayegi, message sirf aapko dikhega)
     await play_audio(interaction, text)
 
-# 4️⃣ GIVE VIP (Database Update)
-@bot.tree.command(name="give_vip", description="Dosto ko VIP Access do 👑")
-async def give_vip(interaction: discord.Interaction, user: discord.Member):
+# ================== 👑 VIP MANAGEMENT SYSTEM (RENAMED) ==================
+vip_group = app_commands.Group(name="trust", description="👑 Shahi Log (VIP Access Management)")
+
+# --- 🟢 ADD VIP ---
+@vip_group.command(name="add", description="Kisi ko Shahi (VIP) banayo 👑")
+async def vip_add(interaction: discord.Interaction, user: discord.Member):
+    # Owner Check
     if interaction.user.id != OWNER_ID:
-        await interaction.response.send_message("❌ **Sirf Owner hi naye VIP add kar sakta hai!**", ephemeral=True)
-        return
+        return await interaction.response.send_message("❌ **Access Denied:** Ye kaam sirf Malik (Owner) kar sakta hai!", ephemeral=True)
 
     await interaction.response.defer(ephemeral=True)
 
     try:
+        # Check if already exists
         check = supabase.table("voice_vip").select("user_id").eq("user_id", str(user.id)).execute()
         if check.data:
-            await interaction.followup.send(f"⚠️ **{user.name}** pehle se VIP hai!")
+            await interaction.followup.send(f"⚠️ **{user.name}** pehle se Shahi List mein hai!")
         else:
+            # Insert Data
             data = { "user_id": str(user.id), "added_by": str(interaction.user.name) }
             supabase.table("voice_vip").insert(data).execute()
             
-            embed = create_premium_embed("✅ New VIP Added", f"{user.mention} ab `/bol` aur `/vcroast` use kar sakta hai!", 0x00FF00)
+            embed = create_premium_embed("✅ New VIP Added", f"👑 **{user.mention}** ab Shahi Member ban gaya hai!\nAb ye `/bol` aur `/vcroast` use kar sakta hai.", 0x00FF00)
             await interaction.followup.send(embed=embed)
             
     except Exception as e:
         await interaction.followup.send(f"❌ **Error:** {e}")
+
+
+# --- 🔴 REMOVE VIP ---
+@vip_group.command(name="remove", description="Kisi se Shahi Darja cheen lo 💀")
+async def vip_remove(interaction: discord.Interaction, user: discord.User):
+    # Owner Check
+    if interaction.user.id != OWNER_ID:
+        return await interaction.response.send_message("❌ **Sirf Owner hi remove kar sakta hai!**", ephemeral=True)
+
+    await interaction.response.defer(ephemeral=True)
+
+    try:
+        # Check if exists
+        check = supabase.table("voice_vip").select("user_id").eq("user_id", str(user.id)).execute()
+        if not check.data:
+            await interaction.followup.send(f"⚠️ **{user.name}** VIP hai hi nahi, remove kya karu?")
+        else:
+            # Delete Data
+            supabase.table("voice_vip").delete().eq("user_id", str(user.id)).execute()
+            
+            embed = create_premium_embed("🚫 VIP Removed", f"💀 **{user.mention}** ab wapas aam aadmi ban gaya hai.", 0xFF0000)
+            await interaction.followup.send(embed=embed)
+            
+    except Exception as e:
+        await interaction.followup.send(f"❌ **Error:** {e}")
+
+
+# --- 📜 LIST VIPS ---
+@vip_group.command(name="list", description="Dekho kon kon Shahi log hain 🧐")
+async def vip_list(interaction: discord.Interaction):
+    # Owner Check
+    if interaction.user.id != OWNER_ID:
+        return await interaction.response.send_message("❌ **Sirf Owner list dekh sakta hai!**", ephemeral=True)
+
+    await interaction.response.defer(ephemeral=True)
+
+    try:
+        # Fetch All Data
+        res = supabase.table("voice_vip").select("*").execute()
+        vip_users = res.data 
+
+        if not vip_users:
+            await interaction.followup.send("📂 **List Empty:** Filhal koi VIP nahi hai.")
+            return
+
+        # List Format Karna
+        description = ""
+        for index, item in enumerate(vip_users, 1):
+            user_id = item['user_id']
+            description += f"**{index}.** <@{user_id}> (`{user_id}`)\n"
+
+        embed = create_premium_embed("👑 Shahi Member List", f"Total VIPs: **{len(vip_users)}**\n\n{description}", 0xFFD700)
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"❌ **Error:** {e}")
+
+# 🔥 IMPORTANT:
+bot.tree.add_command(vip_group)
 
 # ================== MULTI-VERIFY MANAGEMENT ==================
 @bot.tree.command(name="multiaccess", description="Manage users who can verify UNLIMITED accounts")
