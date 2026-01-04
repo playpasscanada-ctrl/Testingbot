@@ -4716,85 +4716,89 @@ async def slap(i: discord.Interaction, target: discord.User):
     
     await i.response.send_message(embed=embed)
 
-# ================== 🔫 RUSSIAN ROULETTE (CINEMATIC ULTRA PREMIUM) ==================
+# ================== 🔫 RUSSIAN ROULETTE (FINAL FIXED VERSION) ==================
 
 @bot.tree.command(name="roulette", description="💀 Maut ka khel: Cinematic Mode (Risk hai to ishq hai)")
 async def roulette(i: discord.Interaction):
     
-    # 1. Permission Check (Bot ke paas timeout power honi chahiye)
+    # 🔥 FIX 1: Import datetime as 'dt' taaki wo error na aaye
+    import datetime as dt 
+
+    # 1. Permission Check
     if not i.guild.me.guild_permissions.moderate_members:
         return await i.response.send_message("❌ Mere paas 'Timeout' dene ki power nahi hai! Role check karo.", ephemeral=True)
 
-    # --- PHASE 1: SUSPENSE (Spinning the Cylinder) ---
-    # GIF: Gun Cylinder Spinning (Reliable link from Giphy)
-    spin_gif = "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExaWg5eW14a3V4a3V4a3V4a3V4a3V4a3V4a3V4/26tP3M3i03qBO/giphy.gif"
+    # --- PHASE 1: SUSPENSE (Spinning) ---
+    # 🔥 FIX 2: New Reliable GIF Link (Tenor)
+    spin_gif = "https://media1.tenor.com/m/Y8U9D1xJg8AAAAAC/gun-reload.gif"
     
     embed = discord.Embed(
-        title="🎰 **RUSSIAN ROULETTE**",
-        description="### 😰 Cylinder is spinning...",
-        color=0xFFD700 # Gold Color
+        title="🎰 **RUSSIAN ROULETTE**", 
+        description="### 😰 Cylinder is spinning...", 
+        color=0xFFD700
     )
     embed.add_field(
-        name="📜 Situation",
-        value="Aapne gun uthai hai... thande lohe ko apne sir pe lagaya hai... Saansein tham chuki hain... **1 Bullet, 5 Empty Slots.**",
+        name="📜 Situation", 
+        value="Aapne gun uthai hai... thande lohe ko apne sir pe lagaya hai... Saansein tham chuki hain... **1 Bullet, 5 Empty Slots.**", 
         inline=False
     )
-    embed.set_image(url=spin_gif) # Big Banner Image
+    embed.set_image(url=spin_gif) 
     embed.set_thumbnail(url=i.user.display_avatar.url)
     embed.set_footer(text="Trigger dabne wala hai... 3 seconds...", icon_url="https://cdn-icons-png.flaticon.com/512/2996/2996395.png")
     
     await i.response.send_message(embed=embed)
     
-    # Suspense build karne ke liye wait
+    # Suspense Wait
     await asyncio.sleep(3)
     
-    # --- PHASE 2: THE RESULT ---
+    # --- PHASE 2: RESULT ---
     bullet = random.randint(1, 6)
+    
+    # Original message ko fetch karna zaroori hai edit karne ke liye
     original_msg = await i.original_response()
 
-    if bullet == 1: # 💀 MAUT (DEAD) - 16.6% Chance
+    if bullet == 1: # 💀 MAUT (DEAD)
         try:
-            # 1 Minute Timeout (Saza)
-            duration = datetime.timedelta(minutes=1)
+            # 🔥 FIX 3: Use 'dt.timedelta' (Ab crash nahi hoga)
+            duration = dt.timedelta(minutes=1)
             await i.user.timeout(duration, reason="Russian Roulette Death 💀")
             
-            # Dead GIF (GTA Wasted Style)
+            # Dead GIF (GTA Wasted)
             die_gif = "https://media1.tenor.com/m/d3a5Z4TqQp0AAAAi/wasted-gta.gif"
 
             dead_embed = discord.Embed(
-                title="💀 **BHAAGO! LAASH GIRI HAI!**",
-                description=f"# 💥 BANG!!!",
-                color=0x880808 # Blood Red Color
+                title="💀 **BHAAGO! LAASH GIRI HAI!**", 
+                description=f"# 💥 BANG!!!", 
+                color=0x880808
             )
             dead_embed.add_field(
-                name="🩸 The Aftermath",
-                value=f"Goli seedha **{i.user.display_name}** ke bheje me lagi! 🧠\nDeewarein laal ho gayi hain. Sab sann reh gaye hain.",
+                name="🩸 The Aftermath", 
+                value=f"Goli seedha **{i.user.display_name}** ke bheje me lagi! 🧠\nDeewarein laal ho gayi hain. Sab sann reh gaye hain.", 
                 inline=False
             )
             dead_embed.add_field(
-                name="🚫 Punishment",
-                value="**1 Minute Mute** (Hospital me ilaaj chal raha hai).",
+                name="🚫 Punishment", 
+                value="**1 Minute Mute** (Hospital me ilaaj chal raha hai).", 
                 inline=False
             )
-            dead_embed.set_image(url=die_gif) # Big Death GIF
+            dead_embed.set_image(url=die_gif)
             dead_embed.set_footer(text="Khel khatam, paisa hazam.", icon_url=i.user.display_avatar.url)
             
             await original_msg.edit(embed=dead_embed)
             
         except discord.Forbidden:
-            # Agar user Admin/Mod hai aur bot use mute nahi kar sakta
+            # Admin Bach Gaya
             safe_embed = discord.Embed(
-                title="💥 BANG! ... Lekin tu bach gaya!",
-                description=f"### 🛡️ **Immortal:**\nGoli lagi par tu **Admin/Mod** hai isliye Mute nahi hua.\n(Cheating karta hai saale! 😒)",
+                title="💥 BANG! ... Lekin tu bach gaya!", 
+                description=f"### 🛡️ **Immortal:**\nGoli lagi par tu **Admin/Mod** hai isliye Mute nahi hua.\n(Cheating karta hai saale! 😒)", 
                 color=0xFF5500
             )
             await original_msg.edit(embed=safe_embed)
             
-    else: # 😌 SAFE (SURVIVED) - 83.3% Chance
-        # Relief GIF (Sweating / Sigh of relief)
+    else: # 😌 SAFE (SURVIVED)
+        # Relief GIF (Sweat)
         safe_gif = "https://media1.tenor.com/m/t1Xg-vVqB6QAAAAC/sweat-nervous.gif"
         
-        # Long Story Text for Survival
         story_text = (
             f"Trigger daba... **CLICK!** 😶\n\n"
             f"Ek pal ke liye laga ki sab khatam.\n"
@@ -4803,18 +4807,17 @@ async def roulette(i: discord.Interaction):
         )
 
         safe_embed = discord.Embed(
-            title="😌 **CLICK... EMPTY CHAMBER!**",
-            description="### 🎉 You Survived!",
-            color=0x00FF00 # Bright Green Color
+            title="😌 **CLICK... EMPTY CHAMBER!**", 
+            description="### 🎉 You Survived!", 
+            color=0x00FF00
         )
         safe_embed.add_field(name="📜 The Moment", value=story_text, inline=False)
         safe_embed.add_field(name="🍀 Luck Level", value="**100% (Aaj Satta Laga Le)**", inline=True)
-        safe_embed.set_image(url=safe_gif) # Big Relief GIF
+        safe_embed.set_image(url=safe_gif)
         safe_embed.set_thumbnail(url=i.user.display_avatar.url)
         safe_embed.set_footer(text="Aaj Yamraj chutti pe the.", icon_url=i.user.display_avatar.url)
         
         await original_msg.edit(embed=safe_embed)
-
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
