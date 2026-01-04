@@ -353,29 +353,6 @@ def log_action(action, user_id, username, display, executor):
     
     print("⚠️ Failed to save log after retries")
 
-# ================== 🔒 PRIVATE SERVER LOCK ==================
-
-# 1. Aapka Server ID
-ALLOWED_GUILD_ID = 1257403231127076915
-
-# 2. Security Check Function
-async def global_server_check(interaction: discord.Interaction) -> bool:
-    # Agar command aapke server se aayi hai, to chalne do
-    if interaction.guild_id == ALLOWED_GUILD_ID:
-        return True
-    
-    # Agar kisi aur server se aayi hai, to block kar do
-    else:
-        await interaction.response.send_message(
-            "🚫 **Access Denied:** Ye bot Private hai aur sirf Authorised Server me chalta hai!", 
-            ephemeral=True
-        )
-        return False
-
-# 3. Guard ko Bot ke Tree par laga do (Sab commands pe lagu hoga)
-# 'bot' variable define hone ke baad hi ye line likhna
-bot.tree.interaction_check = global_server_check
-
 # ================== PAGINATION CLASS (PREMIUM LIST) ==================
 class AccessPaginator(discord.ui.View):
     def __init__(self, data, author):
@@ -686,6 +663,29 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True  # <--- YE LINE ADD KARNA ZAROORI HAI
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+# ================== 🔒 PRIVATE SERVER LOCK ==================
+
+# 1. Aapka Server ID
+ALLOWED_GUILD_ID = 1257403231127076915
+
+# 2. Security Check Function
+async def global_server_check(interaction: discord.Interaction) -> bool:
+    # Agar command aapke server se aayi hai, to chalne do
+    if interaction.guild_id == ALLOWED_GUILD_ID:
+        return True
+    
+    # Agar kisi aur server se aayi hai, to block kar do
+    else:
+        await interaction.response.send_message(
+            "🚫 **Access Denied:** Ye bot Private hai aur sirf Authorised Server me chalta hai!", 
+            ephemeral=True
+        )
+        return False
+
+# 3. Guard ko Bot ke Tree par laga do (Sab commands pe lagu hoga)
+# 'bot' variable define hone ke baad hi ye line likhna
+bot.tree.interaction_check = global_server_check
  
 def owner(i):
     if i.user.id == OWNER_ID:
