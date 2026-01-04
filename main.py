@@ -4716,106 +4716,89 @@ async def slap(i: discord.Interaction, target: discord.User):
     
     await i.response.send_message(embed=embed)
 
-# ================== 🔫 RUSSIAN ROULETTE (FINAL FIXED VERSION) ==================
+# ================== 🔫 RUSSIAN ROULETTE (CINEMATIC EDITION) ==================
 
 @bot.tree.command(name="roulette", description="💀 Maut ka khel: Cinematic Mode (Risk hai to ishq hai)")
 async def roulette(i: discord.Interaction):
-    
-    # 🔥 FIX 1: Import datetime as 'dt' taaki wo error na aaye
-    import datetime as dt 
+    import datetime as dt # Error fix karne ke liye
+    import asyncio
+    import random
 
     # 1. Permission Check
     if not i.guild.me.guild_permissions.moderate_members:
         return await i.response.send_message("❌ Mere paas 'Timeout' dene ki power nahi hai! Role check karo.", ephemeral=True)
 
-    # --- PHASE 1: SUSPENSE (Spinning) ---
-    # 🔥 FIX 2: New Reliable GIF Link (Tenor)
-    spin_gif = "https://media1.tenor.com/m/Y8U9D1xJg8AAAAAC/gun-reload.gif"
+    # --- PHASE 1: LOADING (Bullet Spinning) ---
+    # GIF: Gun Cylinder Spinning (High Quality)
+    loading_gif = "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"
     
     embed = discord.Embed(
         title="🎰 **RUSSIAN ROULETTE**", 
-        description="### 😰 Cylinder is spinning...", 
+        description="### 😰 Cylinder ghum raha hai...\nAapne maut ko gale lagane ka faisla kiya hai.", 
         color=0xFFD700
     )
     embed.add_field(
-        name="📜 Situation", 
-        value="Aapne gun uthai hai... thande lohe ko apne sir pe lagaya hai... Saansein tham chuki hain... **1 Bullet, 5 Empty Slots.**", 
+        name="📜 Current Situation", 
+        value="Aapne revolver uthayi... cylinder ghumaaya... aur ab ye aapki kankhati (temple) par hai. 1 Goli, 5 Khali Slots.", 
         inline=False
     )
-    embed.set_image(url=spin_gif) 
-    embed.set_thumbnail(url=i.user.display_avatar.url)
-    embed.set_footer(text="Trigger dabne wala hai... 3 seconds...", icon_url="https://cdn-icons-png.flaticon.com/512/2996/2996395.png")
+    embed.set_image(url=loading_gif) # Bada Banner
+    embed.set_footer(text="Faisla 3 second mein... Dhadkane tez!", icon_url=i.user.display_avatar.url)
     
     await i.response.send_message(embed=embed)
     
-    # Suspense Wait
+    # 3 Second ka asli suspense
     await asyncio.sleep(3)
     
-    # --- PHASE 2: RESULT ---
+    # --- PHASE 2: THE RESULT ---
     bullet = random.randint(1, 6)
-    
-    # Original message ko fetch karna zaroori hai edit karne ke liye
     original_msg = await i.original_response()
 
-    if bullet == 1: # 💀 MAUT (DEAD)
+    if bullet == 1: # 💀 MAUT (Shot Fired)
         try:
-            # 🔥 FIX 3: Use 'dt.timedelta' (Ab crash nahi hoga)
+            # 1 Minute Timeout
             duration = dt.timedelta(minutes=1)
-            await i.user.timeout(duration, reason="Russian Roulette Death 💀")
+            await i.user.timeout(duration, reason="Russian Roulette: Shot Fired! 💀")
             
-            # Dead GIF (GTA Wasted)
-            die_gif = "https://media1.tenor.com/m/d3a5Z4TqQp0AAAAi/wasted-gta.gif"
+            # Action GIF: Headshot/Blood Splatter
+            shot_gif = "https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif"
 
             dead_embed = discord.Embed(
-                title="💀 **BHAAGO! LAASH GIRI HAI!**", 
-                description=f"# 💥 BANG!!!", 
-                color=0x880808
+                title="💥 **BANG!!! KHATAM TATA BYE BYE!**", 
+                description=f"# 🪦 R.I.P {i.user.display_name}", 
+                color=0x880808 # Blood Red
             )
             dead_embed.add_field(
-                name="🩸 The Aftermath", 
-                value=f"Goli seedha **{i.user.display_name}** ke bheje me lagi! 🧠\nDeewarein laal ho gayi hain. Sab sann reh gaye hain.", 
+                name="🩸 Scene", 
+                value="Goli seedha bheje ke paar ho gayi! Sab taraf khoon hi khoon... \n**Saza:** Agle 1 minute tak tum parlok (Mute) mein rahoge.", 
                 inline=False
             )
-            dead_embed.add_field(
-                name="🚫 Punishment", 
-                value="**1 Minute Mute** (Hospital me ilaaj chal raha hai).", 
-                inline=False
-            )
-            dead_embed.set_image(url=die_gif)
-            dead_embed.set_footer(text="Khel khatam, paisa hazam.", icon_url=i.user.display_avatar.url)
+            dead_embed.set_image(url=shot_gif)
+            dead_embed.set_footer(text="Khel khatam, paisa hazam.", icon_url="https://cdn-icons-png.flaticon.com/512/2996/2996395.png")
             
             await original_msg.edit(embed=dead_embed)
             
-        except discord.Forbidden:
-            # Admin Bach Gaya
-            safe_embed = discord.Embed(
-                title="💥 BANG! ... Lekin tu bach gaya!", 
-                description=f"### 🛡️ **Immortal:**\nGoli lagi par tu **Admin/Mod** hai isliye Mute nahi hua.\n(Cheating karta hai saale! 😒)", 
-                color=0xFF5500
-            )
-            await original_msg.edit(embed=safe_embed)
+        except:
+            # Admin Bach Gaya (Lekin message premium aayega)
+            await original_msg.edit(content=f"💥 **BANG!** Goli toh lagi, par tu Admin hai... Yamraj ne kaha 'Aaj nahi, fir kabhi'! 😒")
             
-    else: # 😌 SAFE (SURVIVED)
-        # Relief GIF (Sweat)
-        safe_gif = "https://media1.tenor.com/m/t1Xg-vVqB6QAAAAC/sweat-nervous.gif"
+    else: # 😌 SAFE (Survival)
+        # Action GIF: Relief/Celebration
+        safe_gif = "https://media.tenor.com/f0I744vIunQAAAAC/phew-relief.gif"
         
-        story_text = (
-            f"Trigger daba... **CLICK!** 😶\n\n"
-            f"Ek pal ke liye laga ki sab khatam.\n"
-            f"Lekin kismat ne aaj **{i.user.display_name}** ka saath diya.\n"
-            f"Empty slot tha! Pasina pocho aur ghar jao."
-        )
-
         safe_embed = discord.Embed(
-            title="😌 **CLICK... EMPTY CHAMBER!**", 
-            description="### 🎉 You Survived!", 
-            color=0x00FF00
+            title="😌 ***CLICK*... KHALI CHAMBER!**", 
+            description="### 🎉 Aap Bach Gaye!", 
+            color=0x00FF00 # Bright Green
         )
-        safe_embed.add_field(name="📜 The Moment", value=story_text, inline=False)
-        safe_embed.add_field(name="🍀 Luck Level", value="**100% (Aaj Satta Laga Le)**", inline=True)
+        safe_embed.add_field(
+            name="📜 Bachav", 
+            value=f"Trigger daba... thak ki awaaz aayi... par goli nahi chali! **{i.user.display_name}** ki kismat ne dhoka nahi diya.", 
+            inline=False
+        )
+        safe_embed.add_field(name="🍀 Luck Meter", value="**100% (Aaj Satta Laga Lo)**", inline=True)
         safe_embed.set_image(url=safe_gif)
-        safe_embed.set_thumbnail(url=i.user.display_avatar.url)
-        safe_embed.set_footer(text="Aaj Yamraj chutti pe the.", icon_url=i.user.display_avatar.url)
+        safe_embed.set_footer(text="Maut ko chhu kar takk se wapas aa gaya.", icon_url=i.user.display_avatar.url)
         
         await original_msg.edit(embed=safe_embed)
 
