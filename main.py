@@ -4138,8 +4138,7 @@ async def on_member_remove(member):
             # (Optional) Multi-Access bhi hata do agar hai to
             try:
                 supabase.table("multi_access").delete().eq("discord_id", str(member.id)).execute()
-            except:
-                pass
+            except:                pass
 
             print(f"AUTO-REMOVE: User {member.name} left. Whitelist removed.")
 
@@ -4163,7 +4162,8 @@ async def on_member_remove(member):
     except Exception as e:
         print(f"LEAVE EVENT ERROR: {e}")
 
-# ================== 🦑 SQUID GAME ROULETTE (RPS EVERY ROUND) ==========
+# ================== 🎬 PREMIUM CINEMATIC SQUID GAME ==================
+
 class SquidGameMaster(discord.ui.View):
     def __init__(self, p1, p2, bullets, punishment_level, cylinder=None, slot_index=0):
         super().__init__(timeout=300)
@@ -4192,7 +4192,6 @@ class SquidGameMaster(discord.ui.View):
 
     def setup_rps_buttons(self):
         self.clear_items()
-        # Custom IDs dena zaroori hai taaki hum pehchan sake
         btn_rock = discord.ui.Button(emoji="🪨", style=discord.ButtonStyle.secondary, custom_id="rock")
         btn_paper = discord.ui.Button(emoji="📄", style=discord.ButtonStyle.secondary, custom_id="paper")
         btn_scissor = discord.ui.Button(emoji="✂️", style=discord.ButtonStyle.secondary, custom_id="scissor")
@@ -4212,35 +4211,53 @@ class SquidGameMaster(discord.ui.View):
         self.add_item(btn_trigger)
 
     def update_embed(self, mode="RPS", extra_text=""):
-        color = 0x00FFFF if mode == "RPS" else 0xFF00E6
+        # 🎨 PREMIUM COLOR PALETTE
+        color = 0x00FFFF if mode == "RPS" else 0xFF00E6 # Cyan for RPS, Hot Pink for Gun
         
-        desc = f"### 💀 Round {self.slot_index + 1}/6\n"
+        desc = f"### 💀 ROUND {self.slot_index + 1} / 6\n"
         
+        # --- 🎬 VISUALS (GIFs) ---
+        gifs = {
+            "rps": "https://media.tenor.com/BfRK3aY2Nn4AAAAC/squid-game.gif", # Squid game guards
+            "gun": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif", # Spinning Gun
+            "safe": "https://media.tenor.com/5yXk8QoZzBkAAAAC/sweating-nervous.gif", # Sweating anime
+            "wasted": "https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif" # GTA Wasted
+        }
+
+        image_url = gifs["rps"]
+
         if mode == "RPS":
-            desc += f"👉 **Toss Time:** Dono apna move chuno!\n" \
-                    f"**{self.p1.name}:** {'✅ Ready' if self.p1_choice else '⏳ Waiting...'}\n" \
-                    f"**{self.p2.name}:** {'✅ Ready' if self.p2_choice else '⏳ Waiting...'}\n\n" \
-                    f"⚠️ **Note:** Jo haarega, wo agle slot ki goli apne upar chalayega!"
-            image = "https://media.tenor.com/BfRK3aY2Nn4AAAAC/squid-game.gif"
+            desc += f"👉 **Toss Time:** Dono apna move chuno!\n\n" \
+                    f"🧑‍🚀 **{self.p1.name}:** {'✅ READY' if self.p1_choice else '⏳ Thinking...'}\n" \
+                    f"🧑‍🚀 **{self.p2.name}:** {'✅ READY' if self.p2_choice else '⏳ Thinking...'}\n\n" \
+                    f"⚠️ *Jo haarega, wo agle slot ki goli apne bheje me utarega!*"
+            image_url = gifs["rps"]
             
         elif mode == "TRIGGER":
             desc += f"🩸 **RPS Result:** {self.round_loser.mention} haar gaya!\n" \
                     f"👉 Ab isko **Trigger** dabana padega.\n\n" \
-                    f"Target: **Slot #{self.slot_index + 1}**"
-            image = "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"
+                    f"🎯 Target: **Slot #{self.slot_index + 1}**"
+            image_url = gifs["gun"]
+        
+        elif mode == "SAFE":
+             desc += f"😌 **BACH GAYA!**\n" \
+                     f"Gun se sirf *Click* ki aawaz aayi.\n\n" \
+                     f"{extra_text}"
+             image_url = gifs["safe"]
+             color = 0x00FF00 # Green for safe
 
-        self.embed = discord.Embed(title="🦑 SQUID GAME: DEATH MATCH", description=desc + f"\n\n{extra_text}", color=color)
-        self.embed.add_field(name="🔫 Gun State", value=f"Live Bullets: `{self.bullets}` remaining", inline=True)
+        # Embed Build
+        self.embed = discord.Embed(title="🦑 SQUID GAME: DEATH MATCH", description=desc, color=color)
+        self.embed.add_field(name="🔫 Ammo Left", value=f"`{self.bullets}` Bullets", inline=True)
         self.embed.add_field(name="⚖️ Punishment", value=f"**Level {self.punishment_level}**", inline=True)
-        self.embed.set_image(url=image)
+        self.embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2822/2822506.png") # Revolver Icon
+        self.embed.set_image(url=image_url)
+        self.embed.set_footer(text="Powered by Russian Roulette System", icon_url="https://cdn-icons-png.flaticon.com/512/9249/9249309.png")
 
-    # --- 🔥 FIXED CALLBACK HERE ---
     async def rps_callback(self, interaction: discord.Interaction):
-        # Check if user is player
         if interaction.user.id not in [self.p1.id, self.p2.id]:
             return await interaction.response.send_message("❌ Tu audience hai, shant baith!", ephemeral=True)
         
-        # ✅ FIX: interaction.data se custom_id nikalna padta hai
         choice = interaction.data["custom_id"] 
         
         if interaction.user.id == self.p1.id:
@@ -4262,7 +4279,9 @@ class SquidGameMaster(discord.ui.View):
         if v1 == v2:
             self.p1_choice = None
             self.p2_choice = None
-            self.update_embed(mode="RPS", extra_text="🤝 **DRAW!** Phir se khelo.")
+            self.update_embed(mode="RPS")
+            # Update description for Draw
+            self.embed.description = "### 🤝 DRAW! Dobara Khelo!\nDono ne same choose kiya."
             await interaction.edit_original_response(embed=self.embed, view=self)
             return
             
@@ -4285,16 +4304,18 @@ class SquidGameMaster(discord.ui.View):
             self.stop()
             punishment_msg = await self.apply_punishment(self.round_loser)
             
-            dead_embed = discord.Embed(title="💥 BANG! KHEL KHATAM!", color=0x880808)
-            dead_embed.description = f"**{self.round_loser.mention}** ne RPS hara aur apni jaan bhi gawa di.\n# 🩸 HEADSHOT (Slot #{self.slot_index + 1})\n\n{punishment_msg}"
+            # 💀 WASTED EMBED
+            dead_embed = discord.Embed(title="💀 WASTED!", color=0x880808)
+            dead_embed.description = f"# 💥 BANG!\n**{self.round_loser.mention}** ka bheja uda diya gaya.\n(Slot #{self.slot_index + 1})\n\n{punishment_msg}"
             dead_embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+            dead_embed.set_footer(text="Game Over.")
             
             await interaction.response.edit_message(embed=dead_embed, view=None)
             
         else:
             self.slot_index += 1
             if self.slot_index >= 6:
-                await interaction.response.edit_message(content="Gun khali ho gayi? Kya kismat hai! Draw.", view=None)
+                await interaction.response.edit_message(content="🧊 **Gun Empty!** Kya kismat hai! Game Draw.", view=None)
                 return
                 
             self.p1_choice = None
@@ -4302,56 +4323,48 @@ class SquidGameMaster(discord.ui.View):
             self.round_loser = None
             
             self.setup_rps_buttons()
-            self.update_embed(mode="RPS", extra_text=f"😌 *Click*... **{interaction.user.name}** bach gaya!\nNext Round shuru...")
-            
+            # Show SAFE animation first
+            self.update_embed(mode="SAFE", extra_text=f"**{interaction.user.name}** bach gaya! Ab Next Round.")
             await interaction.response.edit_message(embed=self.embed, view=self)
+            
+            # 2 Second baad wapas RPS mode
+            await asyncio.sleep(2) 
+            self.update_embed(mode="RPS")
+            await interaction.edit_original_response(embed=self.embed, view=self)
 
-     async def apply_punishment(self, loser):
-        # 🔥 FIX: Import 'datetime' as 'dt' to avoid conflicts
+    async def apply_punishment(self, loser):
         import datetime as dt
-        
         level = self.punishment_level
         reason = "Lost Squid Game Roulette 💀"
         msg = ""
 
         try:
-            # LEVEL 1: 1 Min Timeout
             if level == 1:
                 await loser.timeout(dt.timedelta(minutes=1), reason=reason)
                 msg = "🚫 **Saza (L1):** 1 Minute Timeout."
-
-            # LEVEL 2: Level Deduction (XP Logic)
             elif level == 2:
                 msg = "📉 **Saza (L2):** Level/XP Ghat gaya."
-
-            # LEVEL 3: Script Access Off (3 Hours)
             elif level == 3:
-                # dt.datetime.now aur dt.timedelta use karein
                 ban_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=3)
                 data = {"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}
                 supabase.table("script_bans").upsert(data).execute()
                 msg = "🔒 **Saza (L3):** Script Access Blocked for **3 Hours**."
-
-            # LEVEL 4: 3Hr Timeout + 3Hr Script Ban
             elif level == 4:
                 await loser.timeout(dt.timedelta(hours=3), reason=reason)
                 ban_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=3)
                 data = {"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}
                 supabase.table("script_bans").upsert(data).execute()
                 msg = "⛔ **Saza (L4):** 3 Hours Mute + 3 Hours Script Ban."
-
-            # LEVEL 5: 1 Day Timeout + 1 Day Script Ban (BRUTAL)
             elif level == 5:
                 await loser.timeout(dt.timedelta(days=1), reason=reason)
                 ban_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=1)
                 data = {"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}
                 supabase.table("script_bans").upsert(data).execute()
                 msg = "💀 **Saza (L5 - BRUTAL):** 1 Day Mute + 1 Day Script Ban."
-
         except Exception as e:
             msg += f"\n(Error applying punishment: {e})"
-            
         return msg
+        
 
 # --- 2. INVITE VIEW (Starting Point) ---
 
@@ -4381,11 +4394,11 @@ class DuelInviteView(discord.ui.View):
         await interaction.response.edit_message(content=f"🚫 **{interaction.user.name}** ne dar ke maare mana kar diya.", view=None, embed=None)
 
 
-# --- 3. SLASH COMMAND ---
+# ================== 🎮 PUBLIC SQUID GAME COMMAND ==================
 
-@bot.tree.command(name="squid_duel", description="🦑 Round-by-Round RPS & Russian Roulette")
+@bot.tree.command(name="squid_duel", description="🦑 Kisi ko bhi maut ka challenge do (Public)")
 @app_commands.describe(
-    opponent="Kisko challenge karna hai?",
+    opponent="Kisko maut ka challenge dena hai?",
     bullets="Kitni goli bharni hai? (1-5)",
     punishment="Saza ka level (1-5)"
 )
@@ -4398,24 +4411,45 @@ class DuelInviteView(discord.ui.View):
 ])
 async def squid_duel(i: discord.Interaction, opponent: discord.Member, bullets: int, punishment: int):
     
-    # Permissions & Validations
+    # 1. Check: Kya Bot ke paas power hai?
     if not i.guild.me.guild_permissions.moderate_members:
-        return await i.response.send_message("❌ Bot ke paas Admin/Timeout power nahi hai!", ephemeral=True)
-    if opponent.id == i.user.id or opponent.bot:
-        return await i.response.send_message("❌ Khud se ya Bot se nahi khel sakte.", ephemeral=True)
+        return await i.response.send_message("❌ **Bot Error:** Mere paas Logon ko Timeout karne ki power nahi hai! (Give me 'Timeout Members' permission)", ephemeral=True)
+    
+    # 2. Check: Khud se nahi khel sakte
+    if opponent.id == i.user.id:
+        return await i.response.send_message("❌ Khud ko goli kyu maar rahe ho bhai? Kisi aur ko challenge karo!", ephemeral=True)
+
+    # 3. Check: Bot ko challenge nahi kar sakte
+    if opponent.bot:
+        return await i.response.send_message("❌ Main immortal hu! Bots ko challenge nahi kar sakte.", ephemeral=True)
+
+    # 4. Check: OWNER ko challenge nahi kar sakte (Optional Safety)
+    # Agar aap chahte ho log aapko bhi challenge karein, to ye niche ki 2 line hata dena
+    if opponent.id == OWNER_ID:
+        return await i.response.send_message("❌ **Malik (Owner)** ko challenge karne ki aukaat nahi hai teri! 💀", ephemeral=True)
+
+    # 5. Bullet Validation
     if bullets < 1 or bullets > 5:
         return await i.response.send_message("❌ Bullets 1 se 5 ke beech honi chahiye.", ephemeral=True)
 
-    # Send Invite
+    # --- 📨 SEND PUBLIC INVITE ---
+    
     embed = discord.Embed(
-        title="🦑 SQUID GAME CHALLENGE", 
-        description=f"**{i.user.mention}** ne **{opponent.mention}** ko Maut ka Challenge diya hai!", 
+        title="🔺🟥🟢 SQUID GAME CHALLENGE", 
+        description=f"📢 **SUNO SAB LOG!**\n\n**{i.user.mention}** ne **{opponent.mention}** ko Maut ka Challenge diya hai!", 
         color=0xFF00E6
     )
-    embed.add_field(name="📜 New Rules", value="1. Har round se pehle **RPS** (Rock Paper Scissors) hoga.\n2. Jo RPS haarega, **Goli usipar chalegi**.\n3. Agar goli nahi chali, to agla round phir se RPS se shuru hoga.", inline=False)
-    embed.add_field(name="⚖️ Punishment", value=f"**Level {punishment}**", inline=False)
+    embed.add_field(name="📜 Shartein (Rules)", value="• **RPS:** Pehle Toss hoga.\n• **Gun:** Jo hara, wo Trigger dabayega.\n• **Result:** Ya to Maut, ya Zindagi.", inline=False)
+    embed.add_field(name="💣 Risk Info", value=f"🔫 Bullets: `{bullets}/6`\n⚖️ Saza Level: **{punishment}**", inline=False)
     
-    await i.response.send_message(f"{opponent.mention}, kya tum taiyar ho?", embed=embed, view=DuelInviteView(i.user, opponent, bullets, punishment))
+    # Squid Game Card GIF
+    embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
+    embed.set_thumbnail(url=i.user.display_avatar.url)
+    embed.set_footer(text="Accept karo ya Darpok kehlao! 🤡")
+    
+    # View Bhejo
+    await i.response.send_message(f"{opponent.mention}, pure server ke samne izzat ka sawal hai!", embed=embed, view=DuelInviteView(i.user, opponent, bullets, punishment))
+
 
 # ================== SAY COMMAND (WITH IMAGE & LOGS) ==================
 
