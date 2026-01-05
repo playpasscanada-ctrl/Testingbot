@@ -6401,6 +6401,137 @@ async def marbles(i: discord.Interaction, opponent: discord.Member):
     view.add_item(btn)
     
     await i.response.send_message(embed=embed, view=view)
+
+# ================== 🎲 EVIL SATTA (0.1% WIN RATE) ==================
+
+class EvilSattaView(discord.ui.View):
+    def __init__(self, user, bet_amount):
+        super().__init__(timeout=60)
+        self.user = user
+        self.bet = bet_amount
+
+    async def run_evil_satta(self, interaction, multiplier, risk_level):
+        if interaction.user.id != self.user.id: 
+            return await interaction.response.send_message("❌ Apna paisa lagao!", ephemeral=True)
+        
+        # 1. Disable & Animate
+        for child in self.children: child.disabled = True
+        
+        # Fake Rolling Animation
+        embed = discord.Embed(title="🎲 SATTA SPINNING...", color=0xFFFF00)
+        embed.description = f"💰 **Bet:** `${self.bet:,}`\n🚀 **Target:** {multiplier}x Payout\n🍀 **Win Chance:** 0.1% (Impossible)\n\n**🤞 Dua karo...**"
+        embed.set_image(url="https://media.tenor.com/GoMvLaZs8KkAAAAC/slot-machine-casino.gif")
+        await interaction.response.edit_message(embed=embed, view=self)
+        
+        await asyncio.sleep(4) # Thoda lamba suspense
+
+        # 2. LOGIC (The Trap)
+        # 0.1% Chance matlab: Random number between 0 and 100 should be <= 0.1
+        roll = random.uniform(0, 100)
+        is_win = roll <= 0.1 
+        
+        final_embed = discord.Embed()
+
+        if is_win:
+            # --- 🏆 JACKPOT (1 in 1000) ---
+            winnings = self.bet * multiplier
+            await update_balance(self.user.id, winnings)
+            
+            final_embed.title = "🚨 IMPOSSIBLE! JACKPOT HIT! 🚨"
+            final_embed.color = 0xFFD700 # Gold
+            final_embed.description = (
+                f"### 🛐 SERVER GOD!\n"
+                f"Tumne **0.1%** chance ko hara diya!\n\n"
+                f"🎲 **Multiplier:** {multiplier}x\n"
+                f"💸 **WINNINGS:** `${winnings:,}`\n"
+                f"**System Hang kar diya bhai ne!** 🤯"
+            )
+            final_embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
+            
+            # Global Announcement (Optional)
+            try: await interaction.channel.send(f"📢 **BIG NEWS:** {self.user.mention} ne SATTA mein **${winnings:,}** jeet liye! (0.1% Chance)")
+            except: pass
+
+        else:
+            # --- 💀 LOSS (The Likely Outcome) ---
+            punish_msg = ""
+            roast_msg = random.choice([
+                "Ghar jayega isme tera! 😂",
+                "Lalach buri bala hai babu bhaiya!",
+                "System ke neeche rehna padega! 📉",
+                "Khatam. Tata. Bye Bye.",
+                "Ab rone se kuch nahi hoga."
+            ])
+            
+            # Fake "Near Miss" to trigger them (Troll)
+            if roll <= 1.0: 
+                roast_msg = f"😱 **ARRE YAAR!** Sirf {roll:.2f}% aaya! (Needed 0.1%)\nBas thoda sa reh gaya!"
+
+            if risk_level == "LOW": # 10x
+                loss = self.bet
+                await update_balance(self.user.id, -loss)
+                desc = f"💸 **Loss:** -${loss:,}\n📉 **Wallet:** Halka ho gaya."
+
+            elif risk_level == "MID": # 50x (Balance Wipe)
+                data = await get_data(self.user.id)
+                current_bal = data["balance"] # Note: Bet pehle hi nahi kati thi, ab sab jayega
+                loss = current_bal
+                await update_balance(self.user.id, -current_bal)
+                desc = f"💸 **Loss:** YOUR ENTIRE BANK ACCOUNT!\n💀 **Balance:** $0\n*Sadak pe aa gaye bhai tum to.*"
+
+            elif risk_level == "HIGH": # 100x (Wipe + Mute)
+                data = await get_data(self.user.id)
+                current_bal = data["balance"]
+                await update_balance(self.user.id, -current_bal)
+                
+                # Mute Logic
+                punish_msg = await smart_timeout(interaction, self.user, 3600, "Greedy Satta Loss")
+                desc = f"💸 **Loss:** EVERYTHING ($0)\n🤐 **Izzat:** Nil\n{punish_msg}"
+
+            final_embed.title = "❌ HAAR GAYE LOL!"
+            final_embed.color = 0xFF0000
+            final_embed.description = f"### {roast_msg}\n\n{desc}"
+            final_embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+
+        await interaction.edit_original_response(embed=final_embed, view=None)
+
+
+    @discord.ui.button(label="LALCHI (10x Payout)", style=discord.ButtonStyle.primary)
+    async def bet_10x(self, i, b):
+        await self.run_evil_satta(i, 10, "LOW")
+
+    @discord.ui.button(label="BARBAAD (50x Payout)", style=discord.ButtonStyle.danger)
+    async def bet_50x(self, i, b):
+        await self.run_evil_satta(i, 50, "MID") # Wipes Balance
+
+    @discord.ui.button(label="SUICIDE (100x Payout)", style=discord.ButtonStyle.secondary)
+    async def bet_100x(self, i, b):
+        await self.run_evil_satta(i, 100, "HIGH") # Wipes + Mute
+
+
+@bot.tree.command(name="satta", description="🎲 0.1% Win Chance. 99.9% Maut.")
+async def satta(i: discord.Interaction, amount: int):
+    data = await get_data(i.user.id)
+    
+    if amount <= 0:
+        return await i.response.send_message("❌ Positive number daal!", ephemeral=True)
+    
+    if data["balance"] < amount:
+        return await i.response.send_message(f"❌ **Bhikari!** Tere paas `${data['balance']:,}` hain bas.", ephemeral=True)
+
+    embed = discord.Embed(title="🎲 THE IMPOSSIBLE SATTA", color=0x000000)
+    embed.description = (
+        f"💰 **Bet Amount:** `${amount:,}`\n"
+        f"⚠️ **WIN CHANCE:** `0.1%` (Sabmein Same)\n\n"
+        f"🔵 **Lalchi (10x):** Haare to sirf Bet jayegi.\n"
+        f"🔴 **Barbaad (50x):** Haare to **PURA BANK BALANCE 0**.\n"
+        f"⚫ **Suicide (100x):** Haare to **BALANCE 0 + 1 Hr MUTE**.\n\n"
+        f"👇 **Himmat hai to dabao!**"
+    )
+    embed.set_thumbnail(url=i.user.display_avatar.url)
+    
+    view = EvilSattaView(i.user, amount)
+    await i.response.send_message(embed=embed, view=view)
             
 
 # ================== 🦑 SQUID GAME: GLASS BRIDGE (ECONOMY + VIP) ==================
