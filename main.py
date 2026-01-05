@@ -4546,6 +4546,155 @@ async def say(i: discord.Interaction, message: str, mode: app_commands.Choice[st
     except Exception as e:
         await i.followup.send(f"❌ **System Error:** `{e}`")
 
+# ================== 🧠 FLIP & PAIR MEMORY GAME (PREMIUM) ==================
+
+class MemoryGameView(discord.ui.View):
+    def __init__(self, user, level):
+        super().__init__(timeout=120)
+        self.user = user
+        self.level = level
+        self.moves = 0
+        self.pairs_found = 0
+        
+        # 1. Level Config (Discord Limit: Max 25 buttons)
+        # Format: (Rows, Cols) -> Total Cards must be even (except 5x5 joker)
+        configs = {
+            1: (2, 2), # 4 Cards
+            2: (2, 3), # 6 Cards
+            3: (2, 4), # 8 Cards
+            4: (3, 4), # 12 Cards
+            5: (4, 4), # 16 Cards
+            6: (4, 5), # 20 Cards (Max Safe Limit)
+        }
+        
+        self.rows, self.cols = configs.get(level, (2, 2))
+        self.total_pairs = (self.rows * self.cols) // 2
+        
+        # 2. Emojis Load Karna
+        all_emojis = ["🍎", "🍌", "🍒", "🍇", "🍉", "🍓", "🍍", "🥝", "🥑", "🌽", "🥕", "🥦", "🍄", "🥜", "🥐", "🥨", "🍔", "🍕", "🌭", "🌮"]
+        
+        # Select emojis for this game
+        game_emojis = all_emojis[:self.total_pairs]
+        self.deck = game_emojis * 2 # Pairs banana
+        random.shuffle(self.deck)   # Shuffle karna
+        
+        # 3. Game State
+        self.board_state = [False] * len(self.deck) # False = Hidden, True = Revealed
+        self.matched_indices = [] # Jo mil gaye
+        self.flipped = [] # Abhi jo 2 cards open kiye hain
+        
+        # 4. Buttons Create Karna
+        self.create_grid()
+
+    def create_grid(self):
+        self.clear_items()
+        for i in range(len(self.deck)):
+            # Determine Row/Col logic for button placement
+            # Discord buttons flow automatically, but we can style them
+            
+            if i in self.matched_indices:
+                # Already Matched (Show Emoji + Disabled)
+                btn = discord.ui.Button(label=self.deck[i], style=discord.ButtonStyle.success, disabled=True, row=i // 5)
+            elif i in self.flipped:
+                # Currently Flipped (Show Emoji + Primary Color)
+                btn = discord.ui.Button(label=self.deck[i], style=discord.ButtonStyle.primary, disabled=False, row=i // 5)
+            else:
+                # Hidden (Show Question Mark + Secondary Color)
+                btn = discord.ui.Button(label="❓", style=discord.ButtonStyle.secondary, custom_id=f"card_{i}", row=i // 5)
+                btn.callback = self.card_callback # Connect logic
+            
+            self.add_item(btn)
+
+    async def get_embed(self):
+        embed = discord.Embed(title=f"🧩 Memory Puzzle: Level {self.level}", color=0xFFA500)
+        embed.description = f"Cards Match karo aur jeeto!\n\n**📊 Stats:**\n🎯 Pairs Found: `{self.pairs_found}/{self.total_pairs}`\n🔄 Moves: `{self.moves}`"
+        
+        # User Profile on Top Corner
+        embed.set_thumbnail(url=self.user.display_avatar.url)
+        embed.set_footer(text=f"Player: {self.user.name} | Premium Games 🎮")
+        return embed
+
+    async def card_callback(self, interaction: discord.Interaction):
+        # 1. Owner Check
+        if interaction.user.id != self.user.id:
+            return await interaction.response.send_message("❌ Apna game khud start karo! (/memory)", ephemeral=True)
+
+        # 2. Get Card Index from custom_id ("card_5" -> 5)
+        idx = int(interaction.data["custom_id"].split("_")[1])
+        
+        # Agar card pehle se revealed hai ya 2 cards khule hain, ignore karo
+        if idx in self.flipped or idx in self.matched_indices or len(self.flipped) >= 2:
+            return await interaction.response.defer()
+
+        # 3. Flip Logic
+        self.flipped.append(idx)
+        self.create_grid() # Update buttons visual
+        await interaction.response.edit_message(embed=await self.get_embed(), view=self)
+        
+        # 4. Check Match Logic (Jab 2 cards khul jayein)
+        if len(self.flipped) == 2:
+            self.moves += 1
+            idx1, idx2 = self.flipped
+            
+            if self.deck[idx1] == self.deck[idx2]:
+                # ✅ MATCH FOUND!
+                self.matched_indices.extend(self.flipped)
+                self.pairs_found += 1
+                self.flipped = [] # Reset flipped
+                
+                # Check Win
+                if self.pairs_found == self.total_pairs:
+                    self.create_grid() # Final state show karo
+                    embed = await self.get_embed()
+                    embed.title = "🏆 VICTORY! Puzzle Solved!"
+                    embed.color = 0x00FF00
+                    embed.description = f"**Badhai ho {self.user.mention}!** 🎉\nAapne Level {self.level} complete kar liya.\n\n🔥 **Total Moves:** `{self.moves}`"
+                    embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
+                    
+                    # Stop game
+                    for child in self.children:
+                        child.disabled = True
+                    await interaction.edit_original_response(embed=embed, view=self)
+                    return
+                
+                # Update for match
+                self.create_grid()
+                await interaction.edit_original_response(embed=await self.get_embed(), view=self)
+            
+            else:
+                # ❌ NO MATCH (Wait and Hide)
+                # Buttons ko disable karo taaki user beech me click na kare
+                for item in self.children:
+                    item.disabled = True
+                await interaction.edit_original_response(view=self)
+                
+                await asyncio.sleep(1.5) # 1.5 second dikhao
+                
+                self.flipped = [] # Hide wapas
+                self.create_grid() # Rebuild hidden grid
+                await interaction.edit_original_response(embed=await self.get_embed(), view=self)
+
+
+# ================== 🎮 COMMAND: /memory ==================
+
+@bot.tree.command(name="memory", description="🧠 Play Flip & Pair Memory Game (Levels 1-6)")
+@app_commands.describe(level="Difficulty Level chuno (1-6)")
+@app_commands.choices(level=[
+    app_commands.Choice(name="Level 1: Beginner (2x2)", value=1),
+    app_commands.Choice(name="Level 2: Easy (2x3)", value=2),
+    app_commands.Choice(name="Level 3: Medium (2x4)", value=3),
+    app_commands.Choice(name="Level 4: Hard (3x4)", value=4),
+    app_commands.Choice(name="Level 5: Expert (4x4)", value=5),
+    app_commands.Choice(name="Level 6: Master (4x5)", value=6),
+])
+async def memory_game(interaction: discord.Interaction, level: int):
+    # Public Command (Koi bhi khel sakta hai)
+    
+    view = MemoryGameView(interaction.user, level)
+    embed = await view.get_embed()
+    
+    await interaction.response.send_message(embed=embed, view=view)
+
 # ================== SAY ACCESS MANAGER (PREMIUM) ==================
 @bot.tree.command(name="sayaccess", description="Manage who can use /say command (Owner Only)")
 @app_commands.choices(action=[
