@@ -5833,8 +5833,7 @@ class TugLobbyView(discord.ui.View):
 
     @discord.ui.button(label="Join BLUE 🔵", style=discord.ButtonStyle.primary)
     async def join_blue(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user in self.red_team or interaction.user in self.blue_team:
-            return await interaction.response.send_message("Already joined a team!", ephemeral=True)
+        if interaction.user in self.red_team or interaction.user in self.blue_team:            return await interaction.response.send_message("Already joined a team!", ephemeral=True)
         self.blue_team.append(interaction.user)
         await interaction.response.edit_message(embed=self.get_embed(), view=self)
 
@@ -5857,9 +5856,9 @@ async def tug_of_war(i: discord.Interaction):
     view = TugLobbyView(i.user)
     await i.response.send_message(embed=view.get_embed(), view=view)
 
-# ================== 🔮 SQUID GAME: MARBLES (ODD/EVEN) ==================
+# ================== 🔮 SQUID GAME: MARBLES (FIXED & STABLE) ==================
 
-# --- 1. HIDDEN INPUT MODAL (Chupke se number daalne ke liye) ---
+# --- 1. HIDDEN INPUT MODAL ---
 class MarblesHideModal(discord.ui.Modal, title="Hide Your Marbles"):
     number = discord.ui.TextInput(
         label="Kitne kanche chipane hain? (1-10)",
@@ -5886,7 +5885,9 @@ class MarblesHideModal(discord.ui.Modal, title="Hide Your Marbles"):
             self.view_obj.hidden_number = val
             self.view_obj.state = "GUESSING"
             
-            await interaction.response.send_message(f"🤐 **{interaction.user.name}** ne kanche chupa liye hain!", ephemeral=True)
+            # Modal submit ho gaya, ab interaction done hai.
+            # Hamein message edit karna hai.
+            await interaction.response.defer() # Acknowledge
             await self.view_obj.update_board(interaction, f"👀 **{self.view_obj.p2.mention}**, Ab guess karo! Odd ya Even?")
             
         except ValueError:
@@ -5915,12 +5916,10 @@ class MarblesGameView(discord.ui.View):
         self.clear_items()
         
         if self.state == "HIDING":
-            # Button to open Modal
             btn = discord.ui.Button(label="🖐️ HIDE MARBLES", style=discord.ButtonStyle.primary, custom_id="hide_btn")
             btn.callback = self.hide_callback
             self.add_item(btn)
         else:
-            # Buttons to Guess
             btn_odd = discord.ui.Button(label="ODD (1, 3, 5...)", style=discord.ButtonStyle.secondary, custom_id="odd")
             btn_even = discord.ui.Button(label="EVEN (2, 4, 6...)", style=discord.ButtonStyle.secondary, custom_id="even")
             btn_odd.callback = self.guess_callback
@@ -5952,17 +5951,26 @@ class MarblesGameView(discord.ui.View):
             
         embed.set_image(url="https://media.tenor.com/yA0wXCoqQJAAAAAC/squid-game-marbles.gif")
         
+        # ✅ SMART EDIT LOGIC (Ye Crash Fix Karega)
         try:
-            await interaction.edit_original_response(content=None, embed=embed, view=self)
-        except:
-            await interaction.response.edit_message(content=None, embed=embed, view=self)
+            if interaction.response.is_done():
+                # Agar defer ya reply ho chuka hai, to edit_original_response use karo
+                await interaction.edit_original_response(content=None, embed=embed, view=self)
+            else:
+                # Agar fresh interaction hai (button click), to response.edit_message use karo
+                await interaction.response.edit_message(content=None, embed=embed, view=self)
+        except Exception as e:
+            print(f"MARBLES UPDATE ERROR: {e}")
+            # Fallback
+            try: await interaction.followup.send(embed=embed, view=self)
+            except: pass
 
     # --- CALLBACKS ---
     async def hide_callback(self, interaction: discord.Interaction):
         if interaction.user.id != self.turn_hider.id:
             return await interaction.response.send_message("❌ Abhi tumhari baari nahi hai!", ephemeral=True)
         
-        # Open Modal
+        # Modal open karte waqt defer nahi karte
         modal = MarblesHideModal(self, self.marbles[self.turn_hider.id])
         await interaction.response.send_modal(modal)
 
@@ -5970,7 +5978,7 @@ class MarblesGameView(discord.ui.View):
         if interaction.user.id != self.turn_guesser.id:
             return await interaction.response.send_message("❌ Tumhe guess nahi karna hai!", ephemeral=True)
         
-        guess = interaction.data["custom_id"].upper() # ODD or EVEN
+        guess = interaction.data["custom_id"].upper()
         actual_is_odd = (self.hidden_number % 2 != 0)
         
         win = False
@@ -5981,17 +5989,12 @@ class MarblesGameView(discord.ui.View):
         msg = ""
         
         if win:
-            # Guesser Wins -> Takes marbles from Hider
             self.marbles[self.turn_guesser.id] += amount
             self.marbles[self.turn_hider.id] -= amount
             msg = f"🎉 **CORRECT!** ({self.hidden_number})\n**{self.turn_guesser.name}** ne {amount} marbles jeet liye!"
         else:
-            # Guesser Loses -> Gives marbles to Hider
-            # (Rule: You lose the amount equal to what was bet)
-            # Check if guesser has enough
             if self.marbles[self.turn_guesser.id] < amount:
-                amount = self.marbles[self.turn_guesser.id] # Take all if less
-            
+                amount = self.marbles[self.turn_guesser.id]
             self.marbles[self.turn_guesser.id] -= amount
             self.marbles[self.turn_hider.id] += amount
             msg = f"❌ **WRONG!** ({self.hidden_number})\n**{self.turn_guesser.name}** ne {amount} marbles kho diye!"
@@ -6011,7 +6014,7 @@ class MarblesGameView(discord.ui.View):
     async def end_game(self, interaction, winner, loser):
         self.stop()
         
-        # Mute Logic
+        # Mute Logic (Safe)
         try:
             if loser.top_role < interaction.guild.me.top_role:
                 await loser.timeout(dt.timedelta(minutes=10), reason="Lost Marbles Game")
@@ -6027,7 +6030,11 @@ class MarblesGameView(discord.ui.View):
         embed.set_thumbnail(url=winner.display_avatar.url)
         embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
         
-        await interaction.response.edit_message(embed=embed, view=None)
+        # End Game me bhi smart edit check
+        if interaction.response.is_done():
+            await interaction.edit_original_response(embed=embed, view=None)
+        else:
+            await interaction.response.edit_message(embed=embed, view=None)
 
 
 # --- COMMAND ---
@@ -6041,19 +6048,38 @@ async def marbles(i: discord.Interaction, opponent: discord.Member):
 
     embed = discord.Embed(title="🔮 MARBLES CHALLENGE", description=f"**{i.user.mention}** vs **{opponent.mention}**\n\nRule: 10-10 Marbles start.\nJo 0 pe aaya wo Mute hoga!\n\n**Accept Challenge?**", color=0xE91E63)
     
-    view = discord.ui.View()
+    view = discord.ui.View(timeout=60) # Timeout zaroori hai
     btn = discord.ui.Button(label="✅ ACCEPT", style=discord.ButtonStyle.success)
     
     async def accept_callback(itx):
         if itx.user.id != opponent.id: return await itx.response.send_message("Ye tumhare liye nahi hai!", ephemeral=True)
+        
+        # Initialize Game
         game_view = MarblesGameView(i.user, opponent)
-        await game_view.update_board(itx, "Game Start! Player 1 hiding marbles...")
+        
+        # Manually Setup First Screen (Crash Fix)
+        # Hum seedha edit_message karenge "ACCEPT" button wale interaction pe
+        game_view.setup_buttons()
+        
+        p1_m = "🔮" * 10
+        p2_m = "🔮" * 10
+        start_embed = discord.Embed(title="🔮 MARBLES GAME (Gaddari)", color=0xE91E63)
+        start_embed.description = (
+            f"**{game_view.p1.name}:** 10\n{p1_m}\n\n"
+            f"**{game_view.p2.name}:** 10\n{p2_m}\n\n"
+            f"-----------------------------\n"
+            f"Game Start! Player 1 hiding marbles..."
+        )
+        start_embed.set_footer(text=f"Turn: {game_view.turn_hider.name} chupa raha hai...")
+        start_embed.set_thumbnail(url=game_view.turn_hider.display_avatar.url)
+        start_embed.set_image(url="https://media.tenor.com/yA0wXCoqQJAAAAAC/squid-game-marbles.gif")
+        
+        await itx.response.edit_message(embed=start_embed, view=game_view)
         
     btn.callback = accept_callback
     view.add_item(btn)
     
     await i.response.send_message(embed=embed, view=view)
-
 
 # ================== 🦑 SQUID GAME: GLASS BRIDGE ==================
 
