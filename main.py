@@ -7785,7 +7785,7 @@ iq_questions = [
     {"q": "Python language kab release hui thi?", "a": "1991", "opts": ["1991", "1995", "2000"]},
     {"q": "Harry Potter mein total kitni books hain?", "a": "7", "opts": ["7", "8", "6"]},
     {"q": "Spider-Man ka asli naam kya hai?", "a": "PETER PARKER", "opts": ["BRUCE WAYNE", "PETER PARKER", "TONY STARK"]},
-    {"q": "Youtube par sabse pehli video kisne dali?", "a": "JAWED", "opts": ["PEWDIEPIE", "JAWED", "GOOGLE"]}
+    {"q": "Youtube par sabse pehli video kisne dali?", "a": "JAWED", "opts": ["PEWDIEPIE", "JAWED", "GOOGLE"]},
     {"q": "Triangle ki kitni sides hoti hain?", "a": "3", "opts": ["3", "4", "5"]},
     {"q": "Cricket team mein kitne players hote hain?", "a": "11", "opts": ["10", "11", "12"]},
     {"q": "Facebook ka malik kaun hai?", "a": "MARK ZUCKERBERG", "opts": ["ELON MUSK", "MARK ZUCKERBERG", "BILL GATES"]},
