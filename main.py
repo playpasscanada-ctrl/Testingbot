@@ -4710,6 +4710,161 @@ async def memory_game(interaction: discord.Interaction, level: int):
     embed = await view.get_embed()
     await interaction.response.send_message(embed=embed, view=view)
 
+# ================== 🏦 THE GREAT SERVER HEIST (TEAM CRIME) ==================
+
+class HeistLobbyView(discord.ui.View):
+    def __init__(self, leader):
+        super().__init__(timeout=120)
+        self.leader = leader
+        self.crew = [leader] # Leader is automatically in
+        self.is_started = False
+
+    def update_embed(self):
+        # Premium Lobby UI
+        crew_list = "\n".join([f"👤 **{m.name}**" for m in self.crew])
+        
+        embed = discord.Embed(title="🏦 PREPARING FOR HEIST", description="Humein Bank lootne ke liye **Specialists** ki zarurat hai.", color=0x2b2d31)
+        embed.add_field(name=f"👥 The Crew ({len(self.crew)}/4)", value=crew_list if crew_list else "Waiting...", inline=False)
+        embed.add_field(name="📜 Plan", value="1. **Hacker** vault kholega.\n2. **Shooter** guards ko sambhalega.\n3. **Driver** gaadi bhagayega.", inline=False)
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/1785/1785117.png") # Mask Icon
+        embed.set_image(url="https://media.tenor.com/Sco_12f0q8kAAAAC/gta-v-heist.gif") # Heist Setup GIF
+        embed.set_footer(text="Sirf himmat wale join karein. Pakde gaye to Jail (Mute) hogi.")
+        return embed
+
+    @discord.ui.button(label="✋ Join Gang", style=discord.ButtonStyle.success)
+    async def join_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.is_started: return
+        
+        if interaction.user in self.crew:
+            return await interaction.response.send_message("❌ Tu pehle se gang mein hai!", ephemeral=True)
+        
+        if len(self.crew) >= 4:
+            return await interaction.response.send_message("❌ Gang full ho gayi hai!", ephemeral=True)
+            
+        self.crew.append(interaction.user)
+        await interaction.response.edit_message(embed=self.update_embed(), view=self)
+
+    @discord.ui.button(label="🚀 Start Heist", style=discord.ButtonStyle.danger)
+    async def start_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.leader.id:
+            return await interaction.response.send_message("❌ Sirf Mastermind (Leader) heist shuru kar sakta hai.", ephemeral=True)
+        
+        if len(self.crew) < 2: # Testing ke liye 2 log minimum, waise 3 hona chahiye
+            return await interaction.response.send_message("❌ Akele bank lootne jaoge? Kam se kam 2 log chahiye!", ephemeral=True)
+
+        self.is_started = True
+        # Disable buttons
+        for child in self.children: child.disabled = True
+        await interaction.response.edit_message(view=self)
+        
+        # Start the Cinematic Logic
+        await run_heist_simulation(interaction, self.crew)
+
+
+async def run_heist_simulation(interaction, crew):
+    # 1. ASSIGN ROLES
+    random.shuffle(crew)
+    roles = {}
+    
+    # Dynamic Role Assignment
+    role_names = ["💻 Hacker", "🔫 Shooter", "🚗 Driver", "💣 Demolition"]
+    
+    assigned_text = ""
+    for i, member in enumerate(crew):
+        role = role_names[i] if i < len(role_names) else "📦 Mule"
+        roles[role] = member
+        assigned_text += f"**{role}:** {member.mention}\n"
+
+    # Intro Embed
+    embed = discord.Embed(title="🎭 ROLES ASSIGNED", description=assigned_text + "\n\n🚀 **Mission Start!**", color=0xFFA500)
+    await interaction.followup.send(embed=embed)
+    await asyncio.sleep(3)
+
+    # --- STAGE 1: THE HACK (Hacker's Job) ---
+    hacker = roles.get("💻 Hacker", crew[0])
+    
+    embed = discord.Embed(title="💻 STAGE 1: THE FIREWALL", description=f"**{hacker.name}** security system hack kar raha hai...", color=0x00FFFF)
+    embed.set_image(url="https://media.tenor.com/G52K9fCqVzAAAAAC/hacker-typing.gif")
+    await interaction.edit_original_response(embed=embed, view=None)
+    await asyncio.sleep(4)
+
+    # Hack Result (70% Success Rate)
+    if random.random() > 0.7: 
+        await fail_heist(interaction, crew, "Hacker se galti ho gayi! Alarm baj gaya! 🚨", "💻 Hacker")
+        return
+
+    # --- STAGE 2: THE VAULT (Money) ---
+    embed = discord.Embed(title="💰 STAGE 2: THE VAULT", description="System Down! Vault khul gaya hai!\n**Paisa bharo jaldi!** 💸", color=0xFFD700)
+    embed.set_image(url="https://media.tenor.com/W6yM2gM1bQ8AAAAC/money-heist-lacasadepapel.gif")
+    await interaction.edit_original_response(embed=embed)
+    await asyncio.sleep(4)
+
+    # --- STAGE 3: THE SHOOTOUT (Shooter's Job) ---
+    shooter = roles.get("🔫 Shooter", crew[1] if len(crew) > 1 else crew[0])
+    
+    embed = discord.Embed(title="🔫 STAGE 3: POLICE ASSAULT", description=f"Police aa gayi! **{shooter.name}** cover fire de raha hai!", color=0xFF0000)
+    embed.set_image(url="https://media.tenor.com/CM0y-QjXyKkAAAAC/pubg-firing.gif")
+    await interaction.edit_original_response(embed=embed)
+    await asyncio.sleep(4)
+    
+    # Shootout Result (60% Success Rate)
+    if random.random() > 0.6:
+        await fail_heist(interaction, crew, "Shooter ki goli khatam ho gayi! Police ne gher liya.", "🔫 Shooter")
+        return
+
+    # --- STAGE 4: THE GETAWAY (Driver's Job) ---
+    driver = roles.get("🚗 Driver", crew[-1])
+    
+    embed = discord.Embed(title="🚗 STAGE 4: THE ESCAPE", description=f"Sab gaadi mein baitho! **{driver.name}** engine start kar raha hai!", color=0x808080)
+    embed.set_image(url="https://media.tenor.com/Glq54Jba3o8AAAAC/driving-fast.gif")
+    await interaction.edit_original_response(embed=embed)
+    await asyncio.sleep(4)
+
+    # Drive Result (50% Success Rate - High Risk)
+    if random.random() > 0.5:
+        await fail_heist(interaction, crew, "Driver ne gaadi thok di! Wasted.", "🚗 Driver")
+        return
+
+    # --- 🎉 MISSION SUCCESS ---
+    payout = random.randint(500000, 10000000)
+    formatted_payout = "{:,}".format(payout)
+    
+    win_embed = discord.Embed(title="🏆 MISSION PASSED!", color=0x00FF00)
+    win_embed.description = f"# 💵 {formatted_payout} $\n\n**Team:** {', '.join([m.name for m in crew])}\n\nSab ameeri ki zindagi jiyo! 😎"
+    win_embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
+    win_embed.set_footer(text="The Great Server Heist | Clean Job")
+    
+    await interaction.edit_original_response(embed=win_embed)
+
+
+async def fail_heist(interaction, crew, reason, culprit_role):
+    # 🚨 MISSION FAILED SCREEN
+    fail_embed = discord.Embed(title="🚨 BUSTED!", color=0x000000)
+    fail_embed.description = f"# {reason}\n\n**Blame:** {culprit_role}\n\n### ⚖️ SENTENCE: 5 Minute Jail"
+    fail_embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+    
+    await interaction.edit_original_response(embed=fail_embed)
+    
+    # Apply Punishment (Mute Everyone)
+    for member in crew:
+        try:
+            # Skip Owner/Admin if hierarchy prevents it
+            if member.top_role < interaction.guild.me.top_role:
+                await member.timeout(dt.timedelta(minutes=5), reason="Heist Failed")
+        except:
+            pass # Power nahi hai ya owner hai
+
+# --- COMMAND ---
+
+@bot.tree.command(name="heist", description="🏦 Start a Team Bank Heist (Recruit Crew)")
+async def heist_command(i: discord.Interaction):
+    # Check Permissions
+    if not i.guild.me.guild_permissions.moderate_members:
+        return await i.response.send_message("❌ Mere paas 'Timeout' power nahi hai. Police arrest kaise karegi?", ephemeral=True)
+    
+    view = HeistLobbyView(i.user)
+    await i.response.send_message(embed=view.update_embed(), view=view)
+
 # ------------------------------------------------------------------
 # 🤠 GAME 1: WILD WEST DUEL (Reaction Time)
 # ------------------------------------------------------------------
