@@ -1249,6 +1249,233 @@ async def on_message(msg):
         # Ye 'except' ab peeche khisak gaya hai (Sahi jagah par)
         await msg.reply(f"❌ Critical Error: `{e}`")
         print(f"DEBUG ERROR: {e}")
+
+# ================== 💰 ECONOMY & SHOP SYSTEM (EXPANDED) ==================
+
+# --- 1. ECONOMY HELPERS ---
+async def get_data(user_id):
+    res = await db_call(lambda: supabase.table("economy").select("*").eq("user_id", str(user_id)).execute())
+    if not res.data:
+        init_data = {"user_id": str(user_id), "balance": 0, "inventory": {}, "vip_expiry": None}
+        await db_call(lambda: supabase.table("economy").insert(init_data).execute())
+        return init_data
+    return res.data[0]
+
+async def update_balance(user_id, amount):
+    current = await get_data(user_id)
+    new_bal = current["balance"] + amount
+    await db_call(lambda: supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(user_id)).execute())
+    return new_bal
+
+async def update_inventory(user_id, item_key, quantity):
+    data = await get_data(user_id)
+    inv = data["inventory"]
+    current_qty = inv.get(item_key, 0)
+    new_qty = current_qty + quantity
+    
+    if new_qty <= 0:
+        if item_key in inv: del inv[item_key]
+    else:
+        inv[item_key] = new_qty
+        
+    await db_call(lambda: supabase.table("economy").update({"inventory": inv}).eq("user_id", str(user_id)).execute())
+
+async def set_vip(user_id, minutes=0, days=0, lifetime=False):
+    if lifetime:
+        # Set expiry to year 9999
+        expiry = dt.datetime(9999, 12, 31).isoformat()
+    else:
+        # Add time to current time
+        expiry = (datetime.utcnow() + dt.timedelta(days=days, minutes=minutes)).isoformat()
+        
+    await db_call(lambda: supabase.table("economy").update({"vip_expiry": expiry}).eq("user_id", str(user_id)).execute())
+
+# --- 2. SMART PUNISHMENT (VIP CHECKER) ---
+async def smart_timeout(interaction, member, duration_seconds, reason):
+    """Checks VIP status before muting."""
+    if member.top_role >= interaction.guild.me.top_role or member.guild_permissions.administrator:
+        return "🛡️ **Saved:** Admin Power."
+
+    data = await get_data(member.id)
+    
+    # VIP Check
+    if data["vip_expiry"]:
+        expire_dt = dt.datetime.fromisoformat(data["vip_expiry"])
+        if datetime.utcnow() < expire_dt:
+            if expire_dt.year == 9999:
+                return "♾️ **VIP GOD:** Lifetime Immunity Active."
+            return f"👑 **VIP Protection:** Active until <t:{int(expire_dt.timestamp())}:R>."
+    
+    # Extra Life Check
+    inv = data["inventory"]
+    if inv.get("extra_life", 0) > 0:
+        await update_inventory(member.id, "extra_life", -1)
+        remaining = inv.get("extra_life", 0) - 1
+        return f"💖 **Extra Life Used:** Mute Dodged! (Remaining: {max(0, remaining)})"
+
+    # MUTE
+    try:
+        await member.timeout(dt.timedelta(seconds=duration_seconds), reason=reason)
+        return f"🔇 **Muted:** {duration_seconds}s ({reason})"
+    except Exception as e:
+        return f"⚠️ **Error:** Mute Permission Missing!"
+
+
+# --- 3. SHOP VIEW ---
+class ShopView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=120)
+        self.user = user
+
+    async def buy_item(self, interaction, item_name, cost, item_type, duration_args={}, role_color=None):
+        if interaction.user.id != self.user.id: return await interaction.response.send_message("Apna shop khud kholo!", ephemeral=True)
+        
+        data = await get_data(self.user.id)
+        if data["balance"] < cost:
+            return await interaction.response.send_message(f"❌ **Gareeb!** Tere paas `${data['balance']:,}` hain. Chahiye `${cost:,}`.", ephemeral=True)
+            
+        await update_balance(self.user.id, -cost)
+        
+        msg = ""
+        if item_type == "vip":
+            await set_vip(self.user.id, **duration_args)
+            msg = f"👑 **VIP ACTIVATED:** {item_name} purchased!"
+            
+        elif item_type == "life":
+            await update_inventory(self.user.id, "extra_life", 1)
+            msg = f"💖 **1UP!** Extra Life added."
+            
+        elif item_type == "role":
+            # Auto-Create Role Logic
+            role = discord.utils.get(interaction.guild.roles, name=item_name)
+            if not role:
+                try:
+                    role = await interaction.guild.create_role(name=item_name, color=role_color, hoist=True, reason="Shop Purchase")
+                except:
+                    await update_balance(self.user.id, cost) # Refund
+                    return await interaction.response.send_message("❌ Error: Mere paas Role banane ki permission nahi hai!", ephemeral=True)
+            
+            if role in interaction.user.roles:
+                await update_balance(self.user.id, cost) # Refund
+                return await interaction.response.send_message("❌ Ye role pehle se hai tumhare paas!", ephemeral=True)
+                
+            try:
+                await interaction.user.add_roles(role)
+                msg = f"🎉 **SWAG UPGRADED!** You are now: **{item_name}**"
+            except:
+                await update_balance(self.user.id, cost)
+                msg = "❌ Error: Role Hierarchy issue (Mera role neeche hai)."
+
+        embed = discord.Embed(title="🛒 PURCHASE SUCCESSFUL", description=f"{msg}\n💰 **Remaining:** `${data['balance'] - cost:,}`", color=0x00FF00)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # --- ROW 1: SURVIVAL ITEMS ---
+    @discord.ui.button(label="💖 Extra Life ($50k)", style=discord.ButtonStyle.primary, row=0)
+    async def buy_life(self, i, b):
+        await self.buy_item(i, "Extra Life", 50000, "life")
+
+    @discord.ui.button(label="👑 1 Hour VIP ($1M)", style=discord.ButtonStyle.success, row=0)
+    async def buy_vip_1h(self, i, b):
+        await self.buy_item(i, "1 Hour VIP", 1000000, "vip", duration_args={"minutes": 60})
+
+    @discord.ui.button(label="👑 1 Day VIP ($5M)", style=discord.ButtonStyle.success, row=0)
+    async def buy_vip_1d(self, i, b):
+        await self.buy_item(i, "1 Day VIP", 5000000, "vip", duration_args={"days": 1})
+
+    # --- ROW 2: LONG TERM VIP ---
+    @discord.ui.button(label="👑 3 Days VIP ($12M)", style=discord.ButtonStyle.success, row=1)
+    async def buy_vip_3d(self, i, b):
+        await self.buy_item(i, "3 Days VIP", 12000000, "vip", duration_args={"days": 3})
+
+    @discord.ui.button(label="👑 1 Week VIP ($25M)", style=discord.ButtonStyle.success, row=1)
+    async def buy_vip_1w(self, i, b):
+        await self.buy_item(i, "1 Week VIP", 25000000, "vip", duration_args={"days": 7})
+
+    @discord.ui.button(label="👑 1 Month VIP ($100M)", style=discord.ButtonStyle.success, row=1)
+    async def buy_vip_1m(self, i, b):
+        await self.buy_item(i, "1 Month VIP", 100000000, "vip", duration_args={"days": 30})
+
+    @discord.ui.button(label="♾️ GOD VIP ($5B)", style=discord.ButtonStyle.danger, row=1)
+    async def buy_vip_life(self, i, b):
+        await self.buy_item(i, "LIFETIME VIP", 5000000000, "vip", duration_args={"lifetime": True})
+
+    # --- ROW 3: ROLES (STATUS) ---
+    @discord.ui.button(label="🎲 Gambler ($5M)", style=discord.ButtonStyle.secondary, row=2)
+    async def role_1(self, i, b):
+        await self.buy_item(i, "🎲 GAMBLER", 5000000, "role", role_color=discord.Color.blue())
+
+    @discord.ui.button(label="💰 Millionaire ($25M)", style=discord.ButtonStyle.secondary, row=2)
+    async def role_2(self, i, b):
+        await self.buy_item(i, "💰 MILLIONAIRE", 25000000, "role", role_color=discord.Color.green())
+
+    @discord.ui.button(label="💸 Rich Kid ($50M)", style=discord.ButtonStyle.secondary, row=2)
+    async def role_3(self, i, b):
+        await self.buy_item(i, "💸 RICH KID", 50000000, "role", role_color=discord.Color.gold())
+
+    # --- ROW 4: HIGH END ROLES ---
+    @discord.ui.button(label="🕶️ Mafia Boss ($500M)", style=discord.ButtonStyle.secondary, row=3)
+    async def role_4(self, i, b):
+        await self.buy_item(i, "🕶️ MAFIA BOSS", 500000000, "role", role_color=discord.Color.dark_red())
+
+    @discord.ui.button(label="🛢️ Oil Prince ($1B)", style=discord.ButtonStyle.secondary, row=3)
+    async def role_5(self, i, b):
+        await self.buy_item(i, "🛢️ OIL PRINCE", 1000000000, "role", role_color=discord.Color.dark_gold())
+
+    @discord.ui.button(label="🛐 SERVER GOD ($10B)", style=discord.ButtonStyle.secondary, row=3)
+    async def role_6(self, i, b):
+        await self.buy_item(i, "🛐 SERVER GOD", 10000000000, "role", role_color=discord.Color.magenta())
+
+
+# --- 4. COMMANDS ---
+@bot.tree.command(name="shop", description="🛒 Buy VIP & Roles! (High Prices)")
+async def shop(i: discord.Interaction):
+    data = await get_data(i.user.id)
+    
+    # Status Check
+    status = "💀 Mortal (No VIP)"
+    if data["vip_expiry"]:
+        dt_obj = dt.datetime.fromisoformat(data["vip_expiry"])
+        if dt_obj.year == 9999: status = "♾️ **GOD MODE (Lifetime)**"
+        elif dt_obj > datetime.utcnow(): status = f"👑 **VIP Active:** Ends <t:{int(dt_obj.timestamp())}:R>"
+
+    embed = discord.Embed(title="🛒 THE BLACK MARKET", color=0xFFD700)
+    embed.description = (
+        f"💳 **Balance:** `${data['balance']:,}`\n"
+        f"🛡️ **Status:** {status}\n"
+        f"💖 **Extra Lives:** {data['inventory'].get('extra_life', 0)}\n\n"
+        "### 🛡️ SURVIVAL GEAR (Anti-Mute)\n"
+        "`$50k` : 💖 **1 Life Save** (Consumable)\n"
+        "`$1M`  : 👑 **1 Hour VIP**\n"
+        "`$5M`  : 👑 **1 Day VIP**\n"
+        "`$12M` : 👑 **3 Days VIP**\n"
+        "`$25M` : 👑 **1 Week VIP**\n"
+        "`$100M`: 👑 **1 Month VIP**\n"
+        "`$5B`  : ♾️ **LIFETIME GOD VIP**\n\n"
+        "### 🎭 FLEX ROLES (Show off)\n"
+        "`$5M`  : 🎲 **Gambler**\n"
+        "`$25M` : 💰 **Millionaire**\n"
+        "`$50M` : 💸 **Rich Kid**\n"
+        "`$500M`: 🕶️ **Mafia Boss**\n"
+        "`$1B`  : 🛢️ **Oil Prince**\n"
+        "`$10B` : 🛐 **SERVER GOD**"
+    )
+    embed.set_thumbnail(url=i.user.display_avatar.url)
+    embed.set_footer(text="No Refunds. Prices are final.")
+    
+    view = ShopView(i.user)
+    await i.response.send_message(embed=embed, view=view)
+
+@bot.tree.command(name="balance", description="💰 Check your wallet")
+async def balance(i: discord.Interaction, user: discord.Member = None):
+    target = user or i.user
+    data = await get_data(target.id)
+    await i.response.send_message(f"💰 **{target.name}** ka balance: `${data['balance']:,}`")
+
+@bot.tree.command(name="give_money", description="💰 (Admin) Give money to user")
+async def give_money(i: discord.Interaction, user: discord.Member, amount: int):
+    if not i.user.guild_permissions.administrator: return await i.response.send_message("❌ Chal nikal!", ephemeral=True)
+    new_bal = await update_balance(user.id, amount)
+    await i.response.send_message(f"✅ Added `${amount:,}` to {user.mention}. New Balance: `${new_bal:,}`")
                             
                         
  # ================== 1. BAN PAGINATOR CLASS (Ye sahi hai, isme change nahi chahiye) ==================
@@ -4231,7 +4458,6 @@ async def on_member_remove(member):
             try:
                 supabase.table("multi_access").delete().eq("discord_id", str(member.id)).execute()
             except:                pass
-
             print(f"AUTO-REMOVE: User {member.name} left. Whitelist removed.")
 
             # --- LOG TO DISCORD ---
@@ -4254,7 +4480,7 @@ async def on_member_remove(member):
     except Exception as e:
         print(f"LEAVE EVENT ERROR: {e}")
 
-# ================== 🎬 PREMIUM CINEMATIC SQUID GAME ==================
+# ================== 🦑 SQUID GAME DUEL (ORIGINAL THEME + VIP FIX) ==================
 
 class SquidGameMaster(discord.ui.View):
     def __init__(self, p1, p2, bullets, punishment_level, cylinder=None, slot_index=0):
@@ -4303,7 +4529,7 @@ class SquidGameMaster(discord.ui.View):
         self.add_item(btn_trigger)
 
     def update_embed(self, mode="RPS", extra_text=""):
-        # 🎨 PREMIUM COLOR PALETTE
+        # 🎨 PREMIUM COLOR PALETTE (ORIGINAL)
         color = 0x00FFFF if mode == "RPS" else 0xFF00E6 # Cyan for RPS, Hot Pink for Gun
         
         desc = f"### 💀 ROUND {self.slot_index + 1} / 6\n"
@@ -4372,7 +4598,6 @@ class SquidGameMaster(discord.ui.View):
             self.p1_choice = None
             self.p2_choice = None
             self.update_embed(mode="RPS")
-            # Update description for Draw
             self.embed.description = "### 🤝 DRAW! Dobara Khelo!\nDono ne same choose kiya."
             await interaction.edit_original_response(embed=self.embed, view=self)
             return
@@ -4394,11 +4619,26 @@ class SquidGameMaster(discord.ui.View):
         
         if is_bullet:
             self.stop()
-            punishment_msg = await self.apply_punishment(self.round_loser)
             
-            # 💀 WASTED EMBED
+            # --- 🔥 NEW: ECONOMY & VIP LOGIC ADDED HERE 🔥 ---
+            winner = self.p1 if self.round_loser.id == self.p2.id else self.p2
+            
+            # 1. Give Money to Winner
+            prize = 50000 
+            await update_balance(winner.id, prize)
+            
+            # 2. Punishment Logic (With VIP Check)
+            punishment_msg = await self.apply_punishment_with_vip(interaction, self.round_loser)
+            
+            # 💀 WASTED EMBED (ORIGINAL STYLE)
             dead_embed = discord.Embed(title="💀 WASTED!", color=0x880808)
-            dead_embed.description = f"# 💥 BANG!\n**{self.round_loser.mention}** ka bheja uda diya gaya.\n(Slot #{self.slot_index + 1})\n\n{punishment_msg}"
+            dead_embed.description = (
+                f"# 💥 BANG!\n"
+                f"**{self.round_loser.mention}** ka bheja uda diya gaya.\n"
+                f"(Slot #{self.slot_index + 1})\n\n"
+                f"{punishment_msg}\n"
+                f"🏆 **Winner:** {winner.mention} (Won **${prize:,}**)"
+            )
             dead_embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
             dead_embed.set_footer(text="Game Over.")
             
@@ -4415,51 +4655,57 @@ class SquidGameMaster(discord.ui.View):
             self.round_loser = None
             
             self.setup_rps_buttons()
-            # Show SAFE animation first
             self.update_embed(mode="SAFE", extra_text=f"**{interaction.user.name}** bach gaya! Ab Next Round.")
             await interaction.response.edit_message(embed=self.embed, view=self)
             
-            # 2 Second baad wapas RPS mode
             await asyncio.sleep(2) 
             self.update_embed(mode="RPS")
             await interaction.edit_original_response(embed=self.embed, view=self)
 
-    async def apply_punishment(self, loser):
-        import datetime as dt
+    async def apply_punishment_with_vip(self, interaction, loser):
         level = self.punishment_level
         reason = "Lost Squid Game Roulette 💀"
         msg = ""
 
+        # Using smart_timeout for VIP checks on Mutes
         try:
             if level == 1:
-                await loser.timeout(dt.timedelta(minutes=1), reason=reason)
-                msg = "🚫 **Saza (L1):** 1 Minute Timeout."
+                # 1 Minute Mute
+                msg = await smart_timeout(interaction, loser, 60, reason)
+                
             elif level == 2:
-                msg = "📉 **Saza (L2):** Level/XP Ghat gaya."
+                msg = "📉 **Saza (L2):** Level/XP Ghat gaya (No Mute)."
+                
             elif level == 3:
+                # Script Ban Only (VIP Mute se bacha sakta hai, par Ban se nahi usually, but lets keep it strictly script ban)
                 ban_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=3)
-                data = {"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}
-                supabase.table("script_bans").upsert(data).execute()
+                await db_call(lambda: supabase.table("script_bans").upsert({"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}).execute())
                 msg = "🔒 **Saza (L3):** Script Access Blocked for **3 Hours**."
+                
             elif level == 4:
-                await loser.timeout(dt.timedelta(hours=3), reason=reason)
+                # 3 Hours Mute + Script Ban
+                # Mute part (VIP can save)
+                mute_status = await smart_timeout(interaction, loser, 10800, reason)
+                # Script Ban Part
                 ban_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=3)
-                data = {"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}
-                supabase.table("script_bans").upsert(data).execute()
-                msg = "⛔ **Saza (L4):** 3 Hours Mute + 3 Hours Script Ban."
+                await db_call(lambda: supabase.table("script_bans").upsert({"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}).execute())
+                msg = f"{mute_status}\n🔒 **Script Ban:** 3 Hours applied."
+                
             elif level == 5:
-                await loser.timeout(dt.timedelta(days=1), reason=reason)
+                # 1 Day Mute + Script Ban
+                # Mute part (VIP can save)
+                mute_status = await smart_timeout(interaction, loser, 86400, reason)
+                # Script Ban Part
                 ban_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=1)
-                data = {"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}
-                supabase.table("script_bans").upsert(data).execute()
-                msg = "💀 **Saza (L5 - BRUTAL):** 1 Day Mute + 1 Day Script Ban."
+                await db_call(lambda: supabase.table("script_bans").upsert({"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}).execute())
+                msg = f"{mute_status}\n🔒 **Script Ban:** 1 Day applied."
+                
         except Exception as e:
-            msg += f"\n(Error applying punishment: {e})"
+            msg += f"\n(Error punishment: {e})"
         return msg
-        
+
 
 # --- 2. INVITE VIEW (Starting Point) ---
-
 class DuelInviteView(discord.ui.View):
     def __init__(self, challenger, opponent, bullets, punishment_level):
         super().__init__(timeout=60)
@@ -4475,8 +4721,8 @@ class DuelInviteView(discord.ui.View):
         
         # Start The Master Game Loop
         game_view = SquidGameMaster(self.challenger, self.opponent, self.bullets, self.punishment_level)
-        await interaction.response.edit_message(view=game_view) # Embed game_view ke init me update hoga, lekin yahan edit karna padega
-        # Hack: Game view ka embed turant bhejte hain
+        await interaction.response.edit_message(view=game_view) 
+        # Hack: Game view ka embed turant bhejte hain (Fixing previous display issues)
         await interaction.edit_original_response(embed=game_view.embed, view=game_view)
 
     @discord.ui.button(label="🏃 Bhaag Jao", style=discord.ButtonStyle.danger)
@@ -4487,7 +4733,6 @@ class DuelInviteView(discord.ui.View):
 
 
 # ================== 🎮 PUBLIC SQUID GAME COMMAND ==================
-
 @bot.tree.command(name="squid_duel", description="🦑 Kisi ko bhi maut ka challenge do (Public)")
 @app_commands.describe(
     opponent="Kisko maut ka challenge dena hai?",
@@ -4503,29 +4748,16 @@ class DuelInviteView(discord.ui.View):
 ])
 async def squid_duel(i: discord.Interaction, opponent: discord.Member, bullets: int, punishment: int):
     
-    # 1. Check: Kya Bot ke paas power hai?
     if not i.guild.me.guild_permissions.moderate_members:
-        return await i.response.send_message("❌ **Bot Error:** Mere paas Logon ko Timeout karne ki power nahi hai! (Give me 'Timeout Members' permission)", ephemeral=True)
+        return await i.response.send_message("❌ **Bot Error:** Timeout Permission Missing!", ephemeral=True)
     
-    # 2. Check: Khud se nahi khel sakte
-    if opponent.id == i.user.id:
-        return await i.response.send_message("❌ Khud ko goli kyu maar rahe ho bhai? Kisi aur ko challenge karo!", ephemeral=True)
-
-    # 3. Check: Bot ko challenge nahi kar sakte
-    if opponent.bot:
-        return await i.response.send_message("❌ Main immortal hu! Bots ko challenge nahi kar sakte.", ephemeral=True)
-
-    # 4. Check: OWNER ko challenge nahi kar sakte (Optional Safety)
-    # Agar aap chahte ho log aapko bhi challenge karein, to ye niche ki 2 line hata dena
-    if opponent.id == OWNER_ID:
-        return await i.response.send_message("❌ **Malik (Owner)** ko challenge karne ki aukaat nahi hai teri! 💀", ephemeral=True)
-
-    # 5. Bullet Validation
+    if opponent.id == i.user.id or opponent.bot:
+        return await i.response.send_message("❌ Invalid Opponent!", ephemeral=True)
+        
     if bullets < 1 or bullets > 5:
-        return await i.response.send_message("❌ Bullets 1 se 5 ke beech honi chahiye.", ephemeral=True)
+        return await i.response.send_message("❌ Bullets 1-5 only.", ephemeral=True)
 
-    # --- 📨 SEND PUBLIC INVITE ---
-    
+    # --- 📨 SEND PUBLIC INVITE (ORIGINAL THEME) ---
     embed = discord.Embed(
         title="🔺🟥🟢 SQUID GAME CHALLENGE", 
         description=f"📢 **SUNO SAB LOG!**\n\n**{i.user.mention}** ne **{opponent.mention}** ko Maut ka Challenge diya hai!", 
@@ -4534,12 +4766,10 @@ async def squid_duel(i: discord.Interaction, opponent: discord.Member, bullets: 
     embed.add_field(name="📜 Shartein (Rules)", value="• **RPS:** Pehle Toss hoga.\n• **Gun:** Jo hara, wo Trigger dabayega.\n• **Result:** Ya to Maut, ya Zindagi.", inline=False)
     embed.add_field(name="💣 Risk Info", value=f"🔫 Bullets: `{bullets}/6`\n⚖️ Saza Level: **{punishment}**", inline=False)
     
-    # Squid Game Card GIF
     embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
     embed.set_thumbnail(url=i.user.display_avatar.url)
     embed.set_footer(text="Accept karo ya Darpok kehlao! 🤡")
     
-    # View Bhejo
     await i.response.send_message(f"{opponent.mention}, pure server ke samne izzat ka sawal hai!", embed=embed, view=DuelInviteView(i.user, opponent, bullets, punishment))
 
 
@@ -4638,7 +4868,7 @@ async def say(i: discord.Interaction, message: str, mode: app_commands.Choice[st
     except Exception as e:
         await i.followup.send(f"❌ **System Error:** `{e}`")
 
-# ================== 🧠 FLIP & PAIR MEMORY GAME (LEVEL 7 = 3 BOMBS) ==================
+# ================== 🧠 FLIP & PAIR MEMORY GAME (ECONOMY + VIP) ==================
 
 class MemoryGameView(discord.ui.View):
     def __init__(self, user, level):
@@ -4650,7 +4880,6 @@ class MemoryGameView(discord.ui.View):
         self.game_over = False
         
         # --- CONFIGURATION ---
-        # Discord Limit: Max 25 buttons (5 Rows x 5 Cols)
         configs = {
             1: (2, 2), # 4 Cards
             2: (2, 3), # 6 Cards
@@ -4668,7 +4897,6 @@ class MemoryGameView(discord.ui.View):
         
         if level == 7:
             # Level 7: 3 BOMBS Logic 
-            # 25 Total Slots - 3 Bombs = 22 Safe Slots (11 Pairs)
             self.total_pairs = 11
             game_emojis = all_emojis[:11]
             self.deck = game_emojis * 2
@@ -4699,8 +4927,8 @@ class MemoryGameView(discord.ui.View):
                 style = discord.ButtonStyle.danger if self.deck[i] == "💣" else discord.ButtonStyle.primary
                 btn = discord.ui.Button(label=self.deck[i], style=style, disabled=False, row=row_num)
             else:
-                if self.game_over: # Game over pe sab disable aur grey
-                    # Show bombs in Red on game over
+                if self.game_over: 
+                    # Game over pe sab disable aur grey/red
                     style = discord.ButtonStyle.danger if self.deck[i] == "💣" else discord.ButtonStyle.secondary
                     btn = discord.ui.Button(label=self.deck[i], style=style, disabled=True, row=row_num)
                 else:
@@ -4738,7 +4966,10 @@ class MemoryGameView(discord.ui.View):
             self.flipped.append(idx)
             self.create_grid()
             
-            embed = discord.Embed(title="💥 BOOM! Game Over!", description=f"**{self.user.mention}** ne **Bomb** par pair rakh diya!\n\n❌ **YOU DIED**\n(Total 3 Bombs the isme!)", color=0xFF0000)
+            # 🔥 PUNISHMENT LOGIC (With VIP Check) 🔥
+            punish_msg = await smart_timeout(interaction, self.user, 3600, "Memory Bomb Death") # 1 Hour Mute
+            
+            embed = discord.Embed(title="💥 BOOM! Game Over!", description=f"**{self.user.mention}** ne **Bomb** par pair rakh diya!\n\n❌ **YOU DIED**\n(Total 3 Bombs the isme!)\n\n{punish_msg}", color=0xFF0000)
             embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
             await interaction.response.edit_message(embed=embed, view=self)
             return
@@ -4761,10 +4992,18 @@ class MemoryGameView(discord.ui.View):
                 if self.pairs_found == self.total_pairs:
                     self.game_over = True
                     self.create_grid()
+                    
+                    # 💰 REWARD LOGIC 💰
+                    reward = 500000 # Default (Level 1-4)
+                    if self.level == 7: reward = 10000000 # 1 Crore (God Mode)
+                    elif self.level >= 5: reward = 2000000 # 20 Lakh (Expert)
+                    
+                    await update_balance(self.user.id, reward)
+
                     embed = await self.get_embed()
                     embed.title = "🏆 GOD LEVEL CLEARED!"
                     embed.color = 0x00FF00
-                    embed.description = f"**INCREDIBLE!** {self.user.mention} ne **3 BOMBS** se bachkar Level 7 clear kar liya! 🤯\n\n🔥 Moves: `{self.moves}`"
+                    embed.description = f"**INCREDIBLE!** {self.user.mention} ne **3 BOMBS** se bachkar Level 7 clear kar liya! 🤯\n\n🔥 Moves: `{self.moves}`\n💰 **Reward:** ${reward:,}"
                     embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
                     
                     for child in self.children: child.disabled = True
@@ -4802,26 +5041,7 @@ async def memory_game(interaction: discord.Interaction, level: int):
     await interaction.response.send_message(embed=embed, view=view)
 
 
-# ================== 🏦 HEIST: NIGHTMARE MODE (IMPOSSIBLE) ==================
-
-# --- HELPER: TIMEOUT FUNCTION ---
-async def apply_heist_timeout(interaction, members):
-    """Applies 1 Minute Timeout to everyone, skips Admins safely."""
-    admin_saved = []
-    muted = []
-    
-    for member in members:
-        try:
-            # Discord API Rule: Bots cannot timeout Administrators or Owners
-            if member.guild_permissions.administrator or member.id == interaction.guild.owner_id:
-                admin_saved.append(member.mention)
-            else:
-                await member.timeout(dt.timedelta(minutes=1), reason="Failed Nightmare Heist")
-                muted.append(member.mention)
-        except Exception:
-            admin_saved.append(member.mention) # Fallback if perm issue
-
-    return muted, admin_saved
+# ================== 🏦 HEIST: NIGHTMARE MODE (ECONOMY + VIP) ==================
 
 # --- 1. LOBBY VIEW ---
 class HeistLobbyView(discord.ui.View):
@@ -4834,51 +5054,72 @@ class HeistLobbyView(discord.ui.View):
     def update_embed(self):
         crew_list = "\n".join([f"👤 **{m.name}**" for m in self.crew])
         embed = discord.Embed(title="☠️ HEIST: NIGHTMARE MODE", color=0x000000)
-        embed.description = "Mission: **CERTAIN DEATH**\nRandomized Tasks. **1 Minute Mute penalty.**\n*Note: Admins cannot be muted by Discord rules.*"
+        embed.description = (
+            "Mission: **CERTAIN DEATH**\n"
+            "Tasks: **Impossible** | Time: **3s**\n"
+            "💰 **Reward:** $1,500,000 (Each)\n"
+            "🔇 **Penalty:** 1 Minute Mute (Group Punishment)\n\n"
+            "*VIPs will be saved automatically.*"
+        )
         embed.add_field(name=f"👥 Victims ({len(self.crew)}/4)", value=crew_list, inline=False)
         embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/1785/1785117.png")
+        embed.set_footer(text="Start at your own risk.")
         return embed
 
-    @discord.ui.button(label="💀 Join Squad", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="💀 Join Suicide Mission", style=discord.ButtonStyle.danger)
     async def join_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.started: return
-        if interaction.user in self.crew: return await interaction.response.send_message("Already joined!", ephemeral=True)
-        if len(self.crew) >= 4: return await interaction.response.send_message("Full!", ephemeral=True)
+        if interaction.user in self.crew: return await interaction.response.send_message("Tu pehle se hai!", ephemeral=True)
+        if len(self.crew) >= 4: return await interaction.response.send_message("Gang Full!", ephemeral=True)
         
         self.crew.append(interaction.user)
         await interaction.response.edit_message(embed=self.update_embed(), view=self)
 
-    @discord.ui.button(label="🚀 START", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="🚀 START NIGHTMARE", style=discord.ButtonStyle.secondary)
     async def start_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.leader.id: return await interaction.response.send_message("Leader only.", ephemeral=True)
-        if len(self.crew) < 2: return await interaction.response.send_message("Need 2+ people.", ephemeral=True)
+        if len(self.crew) < 2: return await interaction.response.send_message("Need 2+ people to suffer.", ephemeral=True)
 
         self.started = True
         for child in self.children: child.disabled = True
-        await interaction.response.edit_message(content="⚫ **LOADING RANDOMIZED HELL...**", view=self, embed=self.update_embed())
+        
+        await interaction.response.edit_message(content="⚫ **ENTERING THE VOID...**", view=self, embed=self.update_embed())
         await start_interactive_heist(interaction, self.crew)
 
-# --- 2. GENERIC TASK VIEW ---
+
+# --- 2. TASK VIEWS ---
 class HeistTaskView(discord.ui.View):
-    def __init__(self, player, fail_cb, success_cb, timeout_sec):
-        super().__init__(timeout=timeout_sec) 
+    def __init__(self, player, correct_answer, fail_callback, success_callback, timeout_duration):
+        super().__init__(timeout=timeout_duration) 
         self.player = player
-        self.fail_cb = fail_cb
-        self.success_cb = success_cb
+        self.correct_answer = correct_answer
+        self.fail_callback = fail_callback
+        self.success_callback = success_callback
         self.responded = False
 
     async def on_timeout(self):
         if not self.responded:
-            await self.fail_cb(f"⏳ **TOO SLOW!** {self.player.mention} so gaya!", self.player)
+            await self.fail_callback(f"⏳ **TOO SLOW!** {self.player.mention} ka reflex bohot slow hai!", self.player)
 
-# --- 3. SEQUENCE VIEW (For Demo & Driver) ---
+    async def verify_answer(self, interaction, answer):
+        if interaction.user.id != self.player.id:
+            return await interaction.response.send_message("❌ Door reh!", ephemeral=True)
+        
+        self.responded = True
+        self.stop()
+
+        if answer == self.correct_answer:
+            await self.success_callback(interaction)
+        else:
+            await self.fail_callback(f"❌ **WRONG!** {self.player.mention} fail ho gaya!", self.player)
+
+
 class SequenceTaskView(HeistTaskView):
-    def __init__(self, player, target_sequence, fail_cb, success_cb, timeout_sec, buttons_config):
-        super().__init__(player, fail_cb, success_cb, timeout_sec)
+    def __init__(self, player, target_sequence, fail_callback, success_callback, timeout_duration, buttons_config):
+        super().__init__(player, None, fail_callback, success_callback, timeout_duration)
         self.target_sequence = target_sequence
         self.current_index = 0
         
-        # Add buttons dynamically
         for label, style, emoji in buttons_config:
             btn = discord.ui.Button(label=label, style=style, emoji=emoji, custom_id=label)
             btn.callback = self.make_callback(label)
@@ -4888,7 +5129,6 @@ class SequenceTaskView(HeistTaskView):
         async def callback(interaction: discord.Interaction):
             if interaction.user.id != self.player.id: return await interaction.response.send_message("Not your turn!", ephemeral=True)
             
-            # Check Sequence
             expected = self.target_sequence[self.current_index]
             
             if input_val == expected:
@@ -4896,16 +5136,17 @@ class SequenceTaskView(HeistTaskView):
                 if self.current_index >= len(self.target_sequence):
                     self.responded = True
                     self.stop()
-                    await self.success_cb(interaction)
+                    await self.success_callback(interaction)
                 else:
-                    await interaction.response.defer() # Acknowledge click, waiting for next
+                    await interaction.response.defer()
             else:
                 self.responded = True
                 self.stop()
-                await self.fail_cb(f"❌ **WRONG ORDER!** {self.player.mention} ne sequence tod diya!", self.player)
+                await self.fail_callback(f"❌ **WIRE BLAST!** {self.player.mention} ne galat taar kaat di!", self.player)
         return callback
 
-# --- 4. MAIN LOGIC ---
+
+# --- 3. MAIN LOGIC (UNFAIR TASKS) ---
 async def start_interactive_heist(interaction, crew):
     random.shuffle(crew)
     roles = {
@@ -4916,216 +5157,185 @@ async def start_interactive_heist(interaction, crew):
     }
     
     role_text = "\n".join([f"**{r}:** {u.mention}" for r, u in roles.items()])
-    intro_embed = discord.Embed(title="☠️ TASKS ASSIGNED", description=role_text + "\n\n🚨 **PREPARE YOURSELVES...**", color=0x000000)
+    intro_embed = discord.Embed(title="☠️ NIGHTMARE STARTED", description=role_text + "\n\n🚨 **RULES:**\n1. Time: 3-5 Seconds.\n2. One mistake = SQUAD WIPE.\n3. Good Luck.", color=0x000000)
     
     try: await interaction.edit_original_response(content=None, embed=intro_embed, view=None)
     except: await interaction.followup.send(embed=intro_embed)
     await asyncio.sleep(4)
 
-    # --- FAIL HANDLER ---
+    # --- FAIL HANDLER (WITH ECONOMY & VIP) ---
     async def mission_failed(reason, culprit):
-        muted, saved = await apply_heist_timeout(interaction, crew)
-        
-        desc = f"# {reason}\n**Culprit:** {culprit.mention}\n\n"
-        if muted: desc += f"🔇 **Muted (1 Min):** {', '.join(muted)}\n"
-        if saved: desc += f"🛡️ **Admin Immunity:** {', '.join(saved)}"
+        # Apply Punishments loop
+        status_report = []
+        for member in crew:
+            # Use smart_timeout from shop system
+            msg = await smart_timeout(interaction, member, 60, f"Heist Failed by {culprit.name}")
+            if "Saved" in msg or "Extra Life" in msg:
+                status_report.append(f"🛡️ {member.name}: Saved")
+            else:
+                status_report.append(f"🔇 {member.name}: Muted")
 
-        fail_embed = discord.Embed(title="🚨 MISSION FAILED", description=desc, color=0xFF0000)
+        fail_embed = discord.Embed(title="🚨 MISSION FAILED", color=0xFF0000)
+        fail_embed.description = f"# {reason}\n\n**Culprit:** {culprit.mention}\n\n**Squad Status:**\n" + "\n".join(status_report)
         fail_embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
         
         try: await interaction.edit_original_response(embed=fail_embed, view=None)
         except: await interaction.followup.send(embed=fail_embed)
 
-    # =========================================================================
-    # 💻 STAGE 1: HACKER (Random Trigonometry)
-    # =========================================================================
+
+    # --- STAGE 1: HACKER (Impossible Math) ---
     hacker = roles["💻 Hacker"]
     
-    # Random Trig Question Generator
-    trig_data = [
-        ("sin(0°)", "0"), ("sin(30°)", "0.5"), ("sin(45°)", "0.707"), ("sin(90°)", "1"),
-        ("cos(0°)", "1"), ("cos(60°)", "0.5"), ("cos(90°)", "0"), ("cos(180°)", "-1"),
-        ("tan(45°)", "1"), ("tan(0°)", "0")
+    # Advanced Questions
+    questions = [
+        ("sin(90°) + cos(0°)", "2"),
+        ("cosec(30°) + sec(60°)", "4"),
+        ("tan(60°) x cot(60°)", "1"),
+        ("log10(1000)", "3"),
+        ("sin(180°) + cos(180°)", "-1"),
+        ("2sin(30°)cos(30°)", "sin(60°)"),
+        ("cos²(45°) - sin²(45°)", "0"),
+        ("tan(90°)", "Undefined"),
+        ("e⁰ + ln(e)", "2"),
+        ("d/dx (sin x)", "cos x"),
+        ("∫ 1 dx", "x"),
+        ("15% of 1200", "180"),
+        ("13 x 17", "221"),
+        ("7³", "343"),
+        ("π radians", "180°"),
+        ("cos(-60°)", "0.5"),
+        ("log2(64)", "6"),
+        ("√2 + √2", "2√2"),
+        ("sin²θ + cos²θ", "1")
+        ("log(1)", "0"),
+        ("tan(45°)", "1"),
+        ("d/dx (x²)", "2x"),
+        ("sin²θ + cos²θ", "1"),
+        ("√256", "16"),
+        ("sec(0°)", "1"),
+        ("sin(270°)", "-1")
     ]
-    q, ans = random.choice(trig_data)
+    q_text, q_ans = random.choice(questions)
     
-    # Wrong Options
-    wrong_opts = ["0", "1", "0.5", "-1", "Infinite", "0.707"]
-    if ans in wrong_opts: wrong_opts.remove(ans)
-    options = random.sample(wrong_opts, 3) + [ans]
+    # Options generation
+    wrong_options = ["0", "1", "-1", "2", "Undefined", "0.5", "∞", "2x", "x"]
+    if q_ans in wrong_options: wrong_options.remove(q_ans)
+    options = random.sample(wrong_options, 3) + [q_ans]
     random.shuffle(options)
 
-    embed = discord.Embed(title="💻 HACKER: TRIGONOMETRY", description=f"**{hacker.mention}**, Solve Fast!\n# `{q} = ?`", color=0x00FFFF)
+    embed = discord.Embed(title="💻 STAGE 1: QUANTUM HACK", description=f"**{hacker.mention}**, SOLVE FAST (4s)!\n# `{q_text} = ?`", color=0x00FFFF)
     
-    async def pass_s1(i): await i.response.defer()
-    async def verify_s1(i, val):
-        if i.user.id != hacker.id: return
-        if val == ans: 
-            await i.response.defer()
-            task_view.stop()
-            task_view.responded = True
-        else:
-            await mission_failed(f"❌ **WRONG MATH!** {hacker.mention} failed math class!", hacker)
-
-    task_view = HeistTaskView(hacker, mission_failed, pass_s1, 10) # 10s for math
+    async def pass_stage_1(i): await i.response.defer()
+    
+    view = HeistTaskView(hacker, str(q_ans), mission_failed, pass_stage_1, 4.0) # 4 Seconds
     for opt in options:
-        btn = discord.ui.Button(label=opt, style=discord.ButtonStyle.secondary)
-        
-        async def cb(itx, v=opt): 
-            if itx.user.id != hacker.id: return
-            if v == ans:
-                task_view.stop()
-                task_view.responded = True
-                await itx.response.defer()
-            else:
-                task_view.stop()
-                task_view.responded = True
-                await mission_failed(f"❌ **WRONG ANSWER!**", hacker)
-                
-        btn.callback = cb
-        task_view.add_item(btn)
+        view.add_item(discord.ui.Button(label=opt, style=discord.ButtonStyle.secondary, custom_id=opt))
+        view.children[-1].callback = lambda i, opt=opt: view.verify_answer(i, opt)
 
-    await interaction.edit_original_response(embed=embed, view=task_view)
-    if await task_view.wait(): 
-        if not task_view.responded: return 
-    if not task_view.responded: return # Handled in timeout/callback
+    await interaction.edit_original_response(embed=embed, view=view)
+    if await view.wait(): return 
 
-    # =========================================================================
-    # 🔫 STAGE 2: SHOOTER (10 Buttons, 1 Evil Eye)
-    # =========================================================================
-    shooter = roles["🔫 Shooter"]
-    
-    # 9 Normal Police, 1 Evil Police (Target)
-    normal_emoji = "👮"
-    evil_emoji = "🧙" # Using Oni/Demon mask to represent "Red Face/Evil"
-    
-    # Create 10 slots
-    slots = [normal_emoji] * 9 + [evil_emoji]
-    random.shuffle(slots)
-    
-    embed = discord.Embed(title="🔫 SHOOTER: FIND THE RED FACE", description=f"**{shooter.mention}**, 10 mein se 1 **Culprit ({evil_emoji})** hai!\nBaaki Police hain. **Sirf Culprit ko maaro!**", color=0xFF0000)
-    
-    async def pass_s2(i): await i.response.defer()
-    
-    # 10 Buttons is a lot, so we make a grid
-    task_view = HeistTaskView(shooter, mission_failed, pass_s2, 5) # 5s
-    
-    for idx, emoji in enumerate(slots):
-        # We use custom_id to track which is evil
-        is_target = (emoji == evil_emoji)
-        btn = discord.ui.Button(emoji=emoji, style=discord.ButtonStyle.secondary, row=idx//5)
-        
-        async def shoot_cb(itx, target=is_target):
-            if itx.user.id != shooter.id: return
-            task_view.stop()
-            task_view.responded = True
-            if target:
-                await itx.response.defer()
-            else:
-                await mission_failed(f"❌ **FRIENDLY FIRE!** {shooter.mention} ne Police ko maar diya!", shooter)
-        
-        btn.callback = shoot_cb
-        task_view.add_item(btn)
-
-    await interaction.edit_original_response(embed=embed, view=task_view)
-    if await task_view.wait(): return
-    if not task_view.responded: return
-
-    # =========================================================================
-    # 💣 STAGE 3: DEMOLITION (Random Color Sequence)
-    # =========================================================================
+    # --- STAGE 2: DEMOLITION (Impossible Sequence) ---
     demo = roles["💣 Demolition"]
     
-    colors = ["🟥", "🟦", "🟩", "🟨"] # Red, Blue, Green, Yellow
-    # Generate random sequence of 5
-    sequence = [random.choice(colors) for _ in range(5)]
-    seq_str = " ".join(sequence)
+    # 6 Colors Sequence (Hard)
+    colors = ["🟥", "🟦", "🟩", "🟨"]
+    seq = [random.choice(colors) for _ in range(6)] # 6 steps!
+    seq_str = " ".join(seq)
     
-    embed = discord.Embed(title="💣 DEMOLITION: SIMON SAYS", description=f"**{demo.mention}**, Ye color order yaad kar!\n# {seq_str}\n\n*(Niche isi order mein dabana)*", color=0xFFA500)
+    embed = discord.Embed(title="💣 STAGE 2: RAPID DEFUSAL", description=f"**{demo.mention}**, MEMORIZE THIS!\n# {seq_str}\n\n*(You have 5 seconds only!)*", color=0xFFA500)
     
     await interaction.edit_original_response(embed=embed, view=None)
-    await asyncio.sleep(4) # Time to memorize
+    await asyncio.sleep(4) # Memorize time
     
-    # Mask the sequence in embed
-    embed.description = f"**{demo.mention}**, Sequence enter karo!\n# ❓ ❓ ❓ ❓ ❓"
+    embed.description = f"**{demo.mention}**, CUT THE WIRES!\n# ✂️ ✂️ ✂️ ✂️ ✂️ ✂️"
     
-    async def pass_s3(i): await i.response.defer()
-    
-    # Config for buttons
+    async def pass_stage_2(i): await i.response.defer()
+
     btn_config = [("RED", discord.ButtonStyle.danger, "🟥"), 
                   ("BLUE", discord.ButtonStyle.primary, "🟦"),
                   ("GREEN", discord.ButtonStyle.success, "🟩"), 
                   ("YELLOW", discord.ButtonStyle.secondary, "🟨")]
     
-    # Map button labels to sequence emojis
     map_input = {"RED": "🟥", "BLUE": "🟦", "GREEN": "🟩", "YELLOW": "🟨"}
-    # Convert target sequence to labels
     target_labels = []
-    for s in sequence:
+    for s in seq:
         for k, v in map_input.items():
             if v == s: target_labels.append(k)
 
-    task_view = SequenceTaskView(demo, target_labels, mission_failed, pass_s3, 8, btn_config)
-    await interaction.edit_original_response(embed=embed, view=task_view)
-    
-    if await task_view.wait(): return
-    if not task_view.responded: return
+    # 6 Steps in 6 Seconds = Insane Pressure
+    view = SequenceTaskView(demo, target_labels, mission_failed, pass_stage_2, 6, btn_config)
+    await interaction.edit_original_response(embed=embed, view=view)
+    if await view.wait(): return
 
-    # =========================================================================
-    # 🚗 STAGE 4: DRIVER (Random Action Sequence)
-    # =========================================================================
+    # --- STAGE 3: SHOOTER (The "Same" Trap) ---
+    shooter = roles["🔫 Shooter"]
+    target = "I" # Capital i
+    distraction = "l" # Small L
+    
+    layout = [distraction, distraction, target, distraction]
+    random.shuffle(layout)
+    
+    embed = discord.Embed(title="🔫 STAGE 3: PRECISION SHOT", description=f"**{shooter.mention}**, Find the **Capital 'i'** (I)!\nBaaki sab 'Small L' (l) hain.\n\n*Don't miss!*", color=0xFF0000)
+    
+    async def pass_stage_3(i): await i.response.defer()
+
+    view = HeistTaskView(shooter, target, mission_failed, pass_stage_3, 3.5)
+    for item in layout:
+        view.add_item(discord.ui.Button(label=item, style=discord.ButtonStyle.secondary, custom_id=item + str(random.random())))
+        view.children[-1].callback = lambda i, v=item: view.verify_answer(i, target if v == target else "FAIL")
+
+    await interaction.edit_original_response(embed=embed, view=view)
+    if await view.wait(): return
+
+    # --- STAGE 4: DRIVER (The Blank Button) ---
     driver = roles["🚗 Driver"]
     
-    actions = ["⬅️", "➡️", "⬆️", "⬇️", "🔊", "🛑"]
-    # Generate random sequence of 5
-    d_seq = [random.choice(actions) for _ in range(5)]
-    d_str = "  ".join(d_seq)
+    embed = discord.Embed(title="🚗 STAGE 4: ESCAPE MODE", description=f"**{driver.mention}**, Police Radar Active!\n**Go into SILENT MODE.**\n(Press the invisible/blank button)", color=0x808080)
     
-    embed = discord.Embed(title="🚗 DRIVER: ACTION REPLAY", description=f"**{driver.mention}**, Instructions follow karo!\n# {d_str}\n\n*(Niche isi order mein dabana)*", color=0x808080)
-    
-    await interaction.edit_original_response(embed=embed, view=None)
-    await asyncio.sleep(5)
-    
-    embed.description = f"**{driver.mention}**, Drive now!\n# ❓ ❓ ❓ ❓ ❓"
-    
-    async def pass_s4(i): await i.response.defer()
-    
-    # Config for buttons
-    d_btn_config = [
-        ("LEFT", discord.ButtonStyle.primary, "⬅️"), ("UP", discord.ButtonStyle.primary, "⬆️"), ("RIGHT", discord.ButtonStyle.primary, "➡️"),
-        ("DOWN", discord.ButtonStyle.primary, "⬇️"), ("HORN", discord.ButtonStyle.secondary, "🔊"), ("BRAKE", discord.ButtonStyle.danger, "🛑")
-    ]
-    
-    # Map emojis to labels
-    d_map = {"LEFT": "⬅️", "RIGHT": "➡️", "UP": "⬆️", "DOWN": "⬇️", "HORN": "🔊", "BRAKE": "🛑"}
-    d_targets = []
-    for s in d_seq:
-        for k, v in d_map.items():
-            if v == s: d_targets.append(k)
-            
-    task_view = SequenceTaskView(driver, d_targets, mission_failed, pass_s4, 10, d_btn_config)
-    await interaction.edit_original_response(embed=embed, view=task_view)
-    
-    if await task_view.wait(): return
-    if not task_view.responded: return
+    async def pass_stage_4(i): await i.response.defer()
 
-    # --- VICTORY ---
-    payout = random.randint(100000000, 999999999)
-    win_embed = discord.Embed(title="🏆 IMPOSSIBLE HEIST CLEARED!", description=f"# 💰 LOOT: ${payout:,}\n\n**GOD SQUAD:** {', '.join([m.name for m in crew])}\nSab random tasks clear kar diye! 🤯", color=0x00FF00)
+    view = HeistTaskView(driver, "SILENT", mission_failed, pass_stage_4, 4)
+    
+    view.add_item(discord.ui.Button(label="HORN 🔊", style=discord.ButtonStyle.danger, custom_id="HORN"))
+    view.add_item(discord.ui.Button(label="NITRO 🔥", style=discord.ButtonStyle.primary, custom_id="NITRO"))
+    view.add_item(discord.ui.Button(label=" ", style=discord.ButtonStyle.secondary, custom_id="SILENT")) # Correct
+    
+    # Shuffle buttons to confuse muscle memory
+    random.shuffle(view.children)
+    
+    # Re-bind callbacks after shuffle
+    for child in view.children:
+        if child.custom_id == "SILENT":
+            child.callback = lambda i: view.verify_answer(i, "SILENT")
+        else:
+            child.callback = lambda i: view.verify_answer(i, "FAIL")
+
+    await interaction.edit_original_response(embed=embed, view=view)
+    if await view.wait(): return
+
+    # --- VICTORY & PAYOUT ---
+    payout = 1500000 # 1.5 Million Fixed
+    
+    # Distribute Money
+    for m in crew:
+        await update_balance(m.id, payout)
+
+    win_embed = discord.Embed(title="🏆 HEIST COMPLETED!", description=f"# 💰 LOOT: ${payout:,} (Each)\n\n**LEGENDS:** {', '.join([m.name for m in crew])}\n\n✅ **Payment Successful!** Shop mein uda dena!", color=0x00FF00)
     win_embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
     await interaction.edit_original_response(embed=win_embed, view=None)
 
+
 # --- COMMAND ---
-@bot.tree.command(name="heist", description="🏦 Nightmare Heist (Randomized Tasks)")
+@bot.tree.command(name="heist", description="🏦 Nightmare Mode Heist (Team Task)")
 async def heist_cmd(i: discord.Interaction):
-    # Check perm only (bot needs timeout perm)
     if not i.guild.me.guild_permissions.moderate_members:
-        return await i.response.send_message("❌ Mere paas 'Timeout' power nahi hai!", ephemeral=True)
+        return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
     
     view = HeistLobbyView(i.user)
     await i.response.send_message(embed=view.update_embed(), view=view)
 
-# ================== 🤠 PREMIUM WESTERN DUEL (FACE-OFF STYLE) ==================
+# ================== 🤠 WESTERN DUEL (REACTION TEST) ==================
 
 class WesternDuelView(discord.ui.View):
     def __init__(self, p1, p2):
@@ -5136,13 +5346,13 @@ class WesternDuelView(discord.ui.View):
         self.winner = None
         self.start_time = None
         
-        # Initial Button (Red/Disabled is boring, let's keep it Red but Active for suicide trap)
+        # Initial Button (Red - Suicide Trap)
         btn = discord.ui.Button(label="🛑 WAIT...", style=discord.ButtonStyle.danger, custom_id="shoot_btn")
         btn.callback = self.shoot_callback
         self.add_item(btn)
 
     async def start_game_logic(self, interaction):
-        # 1. Suspense Phase
+        # 1. Suspense Phase (Random Delay)
         delay = random.uniform(3, 8)
         await asyncio.sleep(delay)
         
@@ -5158,7 +5368,6 @@ class WesternDuelView(discord.ui.View):
         
         # Update Embed to GREEN signal
         new_embed = discord.Embed(color=0x00FF00)
-        # Face-off Header Keep
         new_embed.set_author(name=f"{self.p1.name} (Ready)", icon_url=self.p1.display_avatar.url)
         new_embed.set_thumbnail(url=self.p2.display_avatar.url)
         
@@ -5183,15 +5392,20 @@ class WesternDuelView(discord.ui.View):
 
         # --- LOGIC START ---
         
-        # CASE A: EARLY FIRE (Disqualified)
+        # CASE A: EARLY FIRE (Disqualified / Suicide)
         if not self.signal_given:
-            self.winner = interaction.user 
+            # Current user loses, Opponent wins
+            loser = interaction.user
+            winner = self.p1 if loser.id == self.p2.id else self.p2
+            self.winner = winner 
             self.stop()
             
-            loser = self.p1 if interaction.user.id == self.p1.id else self.p2
-            winner = self.p2 if interaction.user.id == self.p1.id else self.p1
+            # ECONOMY: Give Money to Winner
+            prize = 10000
+            await update_balance(winner.id, prize)
             
-            punish = await self.apply_timeout(loser) # Timeout logic
+            # VIP: Punish Loser (Smart Timeout)
+            punish_msg = await smart_timeout(interaction, loser, 30, "Duel Suicide") # 30s Mute
 
             embed = discord.Embed(title="💀 MISFIRE! (Suicide)", color=0x000000)
             embed.set_author(name=winner.name + " WINS!", icon_url=winner.display_avatar.url)
@@ -5199,8 +5413,8 @@ class WesternDuelView(discord.ui.View):
             
             embed.description = (
                 f"### 🤦‍♂️ {loser.mention} ne ghabra ke khud ko uda liya!\n"
-                f"**Winner:** {winner.mention}\n\n"
-                f"{punish}"
+                f"**Winner:** {winner.mention} (+$10,000)\n\n"
+                f"{punish_msg}"
             )
             embed.set_image(url="https://media.tenor.com/12s3s2v1b4cAAAAC/gun-fail.gif")
             
@@ -5212,10 +5426,15 @@ class WesternDuelView(discord.ui.View):
         self.winner = interaction.user
         self.stop()
         
-        winner = self.p1 if interaction.user.id == self.p1.id else self.p2
-        loser = self.p2 if interaction.user.id == self.p1.id else self.p1
+        winner = interaction.user
+        loser = self.p1 if winner.id == self.p2.id else self.p2
         
-        punish = await self.apply_timeout(loser) # Timeout logic
+        # ECONOMY: Give Money to Winner
+        prize = 10000
+        await update_balance(winner.id, prize)
+        
+        # VIP: Punish Loser
+        punish_msg = await smart_timeout(interaction, loser, 30, "Lost Duel") # 30s Mute
         
         embed = discord.Embed(title="🤠 VICTORY!", color=0xFFD700)
         embed.set_author(name=f"🏆 {winner.name}", icon_url=winner.display_avatar.url)
@@ -5224,22 +5443,14 @@ class WesternDuelView(discord.ui.View):
         embed.description = (
             f"# 💥 BANG!\n"
             f"**{winner.mention}** ne **{reaction_time}s** mein trigger dabaya!\n\n"
+            f"💰 **Won:** ${prize:,}\n"
             f"🪦 **R.I.P:** {loser.mention}\n"
-            f"{punish}"
+            f"{punish_msg}"
         )
         embed.set_image(url="https://media.tenor.com/w9yv4p2y3QAAAAAC/tumbleweed.gif")
         
         await interaction.response.edit_message(embed=embed, view=None)
 
-    async def apply_timeout(self, member):
-        try:
-            if member.top_role < member.guild.me.top_role:
-                await member.timeout(dt.timedelta(seconds=30), reason="Lost Duel")
-                return "🔇 **Penalty:** 30s Timeout applied."
-            else:
-                return "⚠️ (Bach gaya! Admin/Mod Power)"
-        except:
-            return "⚠️ (Timeout Permission Missing)"
 
 @bot.tree.command(name="duel", description="🤠 Face-Off Duel (Reaction Test)")
 async def western_duel(i: discord.Interaction, opponent: discord.Member):
@@ -5264,15 +5475,17 @@ async def western_duel(i: discord.Interaction, opponent: discord.Member):
         f"**-----------------------------**\n"
         f"### 👁️ NAZAR BUTTON PE RAKHO!\n"
         f"Jab button **GREEN** ho jaye, tabhi dabana.\n"
-        f"*(Jaldi kiya to Maut, Late kiya to Maut)*"
+        f"*(Jaldi kiya to Maut, Late kiya to Maut)*\n\n"
+        f"💰 **Prize:** $10,000"
     )
     
-    # Image: Intense Stare / Tumbleweed
+    # Image: Tumbleweed
     embed.set_image(url="https://media.tenor.com/w9yv4p2y3QAAAAAC/tumbleweed.gif")
     
     view = WesternDuelView(i.user, opponent)
     await i.response.send_message(embed=embed, view=view)
     
+    # Start Logic in Background
     asyncio.create_task(view.start_game_logic(i))
 
 # ------------------------------------------------------------------
@@ -5350,7 +5563,7 @@ async def start_bomb(i: discord.Interaction):
     await i.response.send_message(embed=embed, view=view)
 
 
-# ================== 🎰 DEVIL'S SLOTS (AUTO ROLE & PUNISHMENT) ==================
+# ================== 🎰 DEVIL'S SLOTS (ECONOMY + VIP) ==================
 
 class DevilSlotsView(discord.ui.View):
     def __init__(self, user):
@@ -5363,16 +5576,32 @@ class DevilSlotsView(discord.ui.View):
         role = discord.utils.get(guild.roles, name=role_name)
         
         try:
-            # Agar role nahi hai to banao
             if not role:
                 role = await guild.create_role(name=role_name, color=color, reason="Devil Slots Game")
             
-            # User ko role do
             if role not in interaction.user.roles:
                 await interaction.user.add_roles(role)
             return True
         except:
-            return False # Permission error
+            return False 
+
+    # --- HELPER: CHECK VIP FOR SHAME SPIN ---
+    async def check_vip_status(self, user_id):
+        data = await get_data(user_id)
+        # 1. Check Time VIP
+        if data["vip_expiry"]:
+            expire_dt = dt.datetime.fromisoformat(data["vip_expiry"])
+            if datetime.utcnow() < expire_dt:
+                return True, "👑 **VIP Protection:** Izzat bach gayi!"
+        
+        # 2. Check Extra Life
+        inv = data["inventory"]
+        if inv.get("extra_life", 0) > 0:
+            await update_inventory(user_id, "extra_life", -1)
+            remaining = inv.get("extra_life", 0) - 1
+            return True, f"💖 **Extra Life Used:** Nickname change dodged! (Left: {remaining})"
+            
+        return False, None
 
     @discord.ui.button(label="🎰 SPIN THE WHEEL", style=discord.ButtonStyle.blurple, custom_id="spin_now")
     async def spin_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -5388,14 +5617,14 @@ class DevilSlotsView(discord.ui.View):
         spin_embed = discord.Embed(title="🎰 ROLLING...", color=0x9932CC)
         spin_embed.description = "# 🌀 | 🌀 | 🌀\n**Dhadkanein badh rahi hain...**"
         spin_embed.set_image(url="https://media.tenor.com/GoMvLaZs8KkAAAAC/slot-machine-casino.gif")
-        spin_embed.set_thumbnail(url=interaction.user.display_avatar.url) # Profile on Side
+        spin_embed.set_thumbnail(url=interaction.user.display_avatar.url) 
         
         await interaction.response.edit_message(embed=spin_embed, view=self)
-        await asyncio.sleep(3) # Suspense
+        await asyncio.sleep(3) 
 
         # 2. LOGIC: Outcomes & Weights
         outcomes = ["JACKPOT", "DEATH", "SHAME", "WIN", "LOSS"]
-        weights = [2, 8, 15, 30, 45] # Probabilities
+        weights = [2, 8, 15, 30, 45] 
         result_type = random.choices(outcomes, weights=weights, k=1)[0]
         
         final_desc = ""
@@ -5408,52 +5637,63 @@ class DevilSlotsView(discord.ui.View):
         if result_type == "JACKPOT":
             slots = "💎 | 💎 | 💎"
             status_text = "🎉 GRAND JACKPOT!"
-            final_desc = f"# [ {slots} ]\n\n### 👑 REWARD: 'Casino King' Role\n**💰 50,000,000 COINS!**\nAap server ke naye Raja hain!"
+            
+            # 💰 MONEY ADD
+            prize = 50000000 # 5 Crore
+            await update_balance(interaction.user.id, prize)
+            
+            final_desc = f"# [ {slots} ]\n\n### 👑 REWARD: 'Casino King' Role\n**💰 +${prize:,} COINS!**\nAap server ke naye Raja hain!"
             color = 0xFFD700 # Gold
             image = "https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif"
             
-            # Give Role
             await self.assign_role(interaction, "👑 CASINO KING", discord.Color.gold())
 
         elif result_type == "DEATH":
             slots = "💀 | 💀 | 💀"
             status_text = "💀 DEATH SPIN!"
-            final_desc = f"# [ {slots} ]\n\n### 🔇 PUNISHMENT: 1 Hour Mute\n**Shaitan ne aapki aawaz cheen li.**"
+            
+            # 🛡️ SMART TIMEOUT (VIP CHECK)
+            punish_msg = await smart_timeout(interaction, interaction.user, 3600, "Devil Slots Death")
+            
+            final_desc = f"# [ {slots} ]\n\n### 🔇 PUNISHMENT\n**Shaitan ne aapki aawaz cheen li.**\n\n{punish_msg}"
             color = 0x000000 # Black
             image = "https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif"
-            
-            # Timeout User
-            try:
-                if interaction.user.top_role < interaction.guild.me.top_role:
-                    await interaction.user.timeout(dt.timedelta(hours=1), reason="Devil Slots Death")
-                else:
-                    final_desc += "\n*(Admin Power: Mute fail ho gaya)*"
-            except:
-                pass
 
         elif result_type == "SHAME":
             slots = "💩 | 💩 | 💩"
             status_text = "💩 SHAME SPIN!"
-            final_desc = f"# [ {slots} ]\n\n### 🏷️ PUNISHMENT: 'HAGGU' Role\n**Apka naam ab 'Mr. Haggu' hai.**\nPoora server ab hasega! 😂"
-            color = 0x8B4513 # Brown
-            image = "https://media.tenor.com/P0G2gQJb6jAAAAAC/poop-emoji.gif"
             
-            # Nickname Change
-            try:
-                if interaction.user.top_role < interaction.guild.me.top_role:
-                    await interaction.user.edit(nick="Mr. Haggu 💩")
-                    # Assign Shame Role
-                    await self.assign_role(interaction, "💩 HAGGU", discord.Color.brown())
-                else:
-                    final_desc += "\n*(Role Issue: Admin ko rename nahi kar sakta)*"
-            except:
-                pass
+            # 🛡️ CHECK VIP FOR NICKNAME CHANGE
+            is_saved, save_msg = await self.check_vip_status(interaction.user.id)
+            
+            if is_saved:
+                final_desc = f"# [ {slots} ]\n\n### 💩 SHAME SPIN!\nLekin...\n{save_msg}"
+                color = 0x8B4513
+                image = "https://media.tenor.com/P0G2gQJb6jAAAAAC/poop-emoji.gif"
+            else:
+                final_desc = f"# [ {slots} ]\n\n### 🏷️ PUNISHMENT: 'HAGGU' Role\n**Apka naam ab 'Mr. Haggu' hai.**\nPoora server ab hasega! 😂"
+                color = 0x8B4513 
+                image = "https://media.tenor.com/P0G2gQJb6jAAAAAC/poop-emoji.gif"
+                
+                try:
+                    if interaction.user.top_role < interaction.guild.me.top_role:
+                        await interaction.user.edit(nick="Mr. Haggu 💩")
+                        await self.assign_role(interaction, "💩 HAGGU", discord.Color.brown())
+                    else:
+                        final_desc += "\n*(Role Issue: Admin ko rename nahi kar sakta)*"
+                except:
+                    pass
 
         elif result_type == "WIN":
             f1 = random.choice(["🍒", "🍋", "🍇"])
             slots = f"{f1} | {f1} | {f1}"
             status_text = "🍒 LUCKY WIN!"
-            final_desc = f"# [ {slots} ]\n\n### 💰 50,000 Coins\nBach gaye! Paise bhi mile aur izzat bhi bachi."
+            
+            # 💰 MONEY ADD
+            prize = 50000
+            await update_balance(interaction.user.id, prize)
+            
+            final_desc = f"# [ {slots} ]\n\n### 💰 +${prize:,} Coins\nBach gaye! Paise bhi mile aur izzat bhi bachi."
             color = 0x00FF00 # Green
             image = None
 
@@ -5467,8 +5707,6 @@ class DevilSlotsView(discord.ui.View):
         # 3. FINAL EMBED CONSTRUCTION
         result_embed = discord.Embed(title=f"🎰 {status_text}", color=color)
         result_embed.description = final_desc
-        
-        # Profile Picture Side-by-Side (Thumbnail)
         result_embed.set_thumbnail(url=interaction.user.display_avatar.url)
         
         if image:
@@ -5476,7 +5714,6 @@ class DevilSlotsView(discord.ui.View):
         
         result_embed.set_footer(text="Casino Rules: No Refunds | /devil_slots")
         
-        # Button update (Game Over)
         button.label = "GAME OVER"
         button.style = discord.ButtonStyle.secondary
         
@@ -5485,7 +5722,6 @@ class DevilSlotsView(discord.ui.View):
 
 @bot.tree.command(name="devil_slots", description="🎰 High Risk Casino (Roles + Mute)")
 async def devil_slots(i: discord.Interaction):
-    # Permissions Check (Zaruri hai roles/nicknames ke liye)
     perms = i.guild.me.guild_permissions
     if not (perms.moderate_members and perms.manage_nicknames and perms.manage_roles):
         return await i.response.send_message("❌ **Permissions Missing:** Mere paas `Manage Roles`, `Nicknames` aur `Timeout` ki power honi chahiye!", ephemeral=True)
@@ -5493,18 +5729,19 @@ async def devil_slots(i: discord.Interaction):
     embed = discord.Embed(title="🎰 DEVIL'S HIGH STAKES CASINO", color=0x9932CC)
     embed.description = (
         "**Are you ready to sell your soul?**\n\n"
-        "💎 **JACKPOT:** 5 Crore + `👑 CASINO KING` Role\n"
+        "💎 **JACKPOT:** $50M + `👑 CASINO KING` Role\n"
         "💀 **DEATH:** 1 Hour Mute 🔇\n"
-        "💩 **SHAME:** Name Change + `💩 HAGGU` Role\n\n"
+        "💩 **SHAME:** Name Change + `💩 HAGGU` Role\n"
+        "🍒 **WIN:** $50,000 Coins\n\n"
         "👇 **Click below to SPIN!**"
     )
-    embed.set_thumbnail(url=i.user.display_avatar.url) # User ki photo
+    embed.set_thumbnail(url=i.user.display_avatar.url)
     embed.set_image(url="https://media.tenor.com/GoMvLaZs8KkAAAAC/slot-machine-casino.gif")
     
     view = DevilSlotsView(i.user)
     await i.response.send_message(embed=embed, view=view)
 
-# ================== 🍪 SQUID GAME: DALGONA COOKIE ==================
+# ================== 🍪 SQUID GAME: DALGONA COOKIE (ECONOMY + VIP) ==================
 
 class DalgonaGameView(discord.ui.View):
     def __init__(self, user, difficulty):
@@ -5516,17 +5753,15 @@ class DalgonaGameView(discord.ui.View):
         self.game_over = False
         
         # Difficulty Settings
-        # [Break Chance on Crack, Progress per Lick, Progress per Crack, Image URL]
         self.settings = {
-            "TRIANGLE": {"break_chance": 10, "lick_gain": 8, "crack_gain": 25, "img": "https://i.imgur.com/L1M5K5s.png"}, # Placeholder Img
-            "CIRCLE":   {"break_chance": 30, "lick_gain": 6, "crack_gain": 20, "img": "https://i.imgur.com/L1M5K5s.png"},
-            "UMBRELLA": {"break_chance": 60, "lick_gain": 4, "crack_gain": 15, "img": "https://i.imgur.com/L1M5K5s.png"}
+            "TRIANGLE": {"break_chance": 10, "lick_gain": 8, "crack_gain": 25, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
+            "CIRCLE":   {"break_chance": 30, "lick_gain": 6, "crack_gain": 20, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
+            "UMBRELLA": {"break_chance": 60, "lick_gain": 4, "crack_gain": 15, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"}
         }
         
         self.current_setting = self.settings[difficulty]
 
     def get_progress_bar(self):
-        # Visual Progress Bar
         bar_len = 10
         filled = int((self.progress / 100) * bar_len)
         bar = "🟩" * filled + "⬜" * (bar_len - filled)
@@ -5542,21 +5777,21 @@ class DalgonaGameView(discord.ui.View):
             color = 0x00FF00
         elif status == "DIED":
             title = "💀 CRACKED!"
-            desc = f"**{self.user.mention}** ne jaldbaazi mein cookie tod di!\n\n🍪 **Cookie:** DESTROYED\n🔇 **Punishment:** 1 Hour Mute"
-            img = "https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif" # Gunshot/Eliminated
+            desc = f"**{self.user.mention}** ne jaldbaazi mein cookie tod di!\n\n🍪 **Cookie:** DESTROYED"
+            img = "https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif"
             color = 0xFF0000
         else:
             title = f"🍪 DALGONA: {self.difficulty}"
             desc = (
                 f"**Shape:** {self.difficulty}\n"
-                f"**Integrity (Mazbooti):** `{self.durability}%`\n"
+                f"**Integrity:** `{self.durability}%`\n"
                 f"**Progress:** `{self.progress}%`\n"
                 f"{self.get_progress_bar()}\n\n"
                 f"👇 **Action lo:**\n"
                 f"👅 **Lick:** Safe, Slow.\n"
                 f"🔨 **Crack:** Risky, Fast (+Risk of Break)."
             )
-            img = "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif" # Licking GIF or Static Cookie
+            img = self.current_setting["img"]
         
         embed = discord.Embed(title=title, description=desc, color=color)
         embed.set_thumbnail(url=self.user.display_avatar.url)
@@ -5571,9 +5806,19 @@ class DalgonaGameView(discord.ui.View):
         # 1. Check Win
         if self.progress >= 100:
             self.game_over = True
-            # Disable buttons
+            
+            # --- 💰 REWARD LOGIC ---
+            rewards = {"TRIANGLE": 10000, "CIRCLE": 25000, "UMBRELLA": 50000}
+            prize = rewards.get(self.difficulty, 10000)
+            
+            await update_balance(self.user.id, prize)
+
             for child in self.children: child.disabled = True
-            await interaction.response.edit_message(embed=await self.get_embed("WON"), view=self)
+            
+            embed = await self.get_embed("WON")
+            embed.description += f"\n💰 **Reward:** ${prize:,}"
+            
+            await interaction.response.edit_message(embed=embed, view=self)
             return
 
         # 2. Check Loss (Durability 0)
@@ -5589,14 +5834,13 @@ class DalgonaGameView(discord.ui.View):
         self.game_over = True
         for child in self.children: child.disabled = True
         
-        # Mute Logic
-        try:
-            if interaction.user.top_role < interaction.guild.me.top_role:
-                await interaction.user.timeout(dt.timedelta(hours=1), reason="Dalgona Failed")
-        except: pass
+        # --- 🛡️ SMART PUNISHMENT (VIP CHECK) ---
+        # 1 Hour Mute (3600 Seconds)
+        punish_msg = await smart_timeout(interaction, self.user, 3600, "Dalgona Failed")
 
         embed = await self.get_embed("DIED")
-        embed.description += f"\n\n**Reason:** {reason}"
+        embed.description += f"\n\n**Reason:** {reason}\n{punish_msg}"
+        
         await interaction.response.edit_message(embed=embed, view=self)
 
 
@@ -5606,7 +5850,7 @@ class DalgonaGameView(discord.ui.View):
         
         gain = self.current_setting["lick_gain"] + random.randint(-2, 2)
         self.progress += gain
-        self.durability -= random.randint(1, 3) # Thoda sa damage
+        self.durability -= random.randint(1, 3) 
         
         await self.check_game_state(interaction)
 
@@ -5626,7 +5870,7 @@ class DalgonaGameView(discord.ui.View):
 
         gain = self.current_setting["crack_gain"] + random.randint(-5, 5)
         self.progress += gain
-        self.durability -= random.randint(5, 15) # Bhari damage
+        self.durability -= random.randint(5, 15) 
         
         await self.check_game_state(interaction)
 
@@ -5651,7 +5895,7 @@ class DalgonaLobbyView(discord.ui.View):
     async def cir_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.start_game(interaction, "CIRCLE")
 
-    @discord.ui.button(label="☂️ UMBRELLA (IMPOSSIBLE)", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="☂️ UMBRELLA (Hard)", style=discord.ButtonStyle.danger)
     async def umb_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.start_game(interaction, "UMBRELLA")
 
@@ -5661,13 +5905,13 @@ async def dalgona(i: discord.Interaction):
     if not i.guild.me.guild_permissions.moderate_members:
         return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
         
-    embed = discord.Embed(title="🍪 DALGONA CHALLENGE", description="Apna Shape choose karo!\n\n🔺 **Easy:** Safe, Low Reward.\n☂️ **Umbrella:** Maut ka Khel (High Risk).", color=0xFFA500)
-    embed.set_image(url="https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif") # Placeholder
+    embed = discord.Embed(title="🍪 DALGONA CHALLENGE", description="Apna Shape choose karo!\n\n🔺 **Triangle:** $10,000 (Low Risk)\n⭕ **Circle:** $25,000 (Medium)\n☂️ **Umbrella:** $50,000 (High Risk)", color=0xFFA500)
+    embed.set_image(url="https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif")
     
     view = DalgonaLobbyView(i.user)
     await i.response.send_message(embed=embed, view=view)
 
-# ================== 🪢 TUG OF WAR (TEAM BATTLE) ==================
+# ================== 🪢 TUG OF WAR (ECONOMY + VIP) ==================
 
 class TugOfWarGame(discord.ui.View):
     def __init__(self, red_team, blue_team, interaction):
@@ -5676,56 +5920,24 @@ class TugOfWarGame(discord.ui.View):
         self.blue_team = blue_team
         self.interaction = interaction
         
-        self.score = 0 # 0 = Center, -ve = Red Win, +ve = Blue Win
-        self.win_threshold = 20 # Kitne clicks ka difference chahiye jeetne ke liye
+        self.score = 0 
+        self.win_threshold = 20
         self.game_active = True
         
         # Setup Buttons
-        # Note: Custom ID is crucial here
         self.add_item(discord.ui.Button(label="💪 PULL RED", style=discord.ButtonStyle.danger, custom_id="pull_red"))
         self.add_item(discord.ui.Button(label="💪 PULL BLUE", style=discord.ButtonStyle.primary, custom_id="pull_blue"))
         
-        # Bind callbacks
         self.children[0].callback = self.red_pull
         self.children[1].callback = self.blue_pull
         
-        # Start Background Updater
         self.updater_task = asyncio.create_task(self.update_game_state())
 
     def get_progress_bar(self):
-        # Visual Rope Representation
-        # Range: -20 to +20. Scale it to 10 blocks visual.
-        
-        # Normalized score (-10 to 10)
         scaled_score = int((self.score / self.win_threshold) * 10)
-        
-        # Clamp values
         scaled_score = max(-10, min(10, scaled_score))
         
-        # Center is at index 10 (in a 20 char string)
-        # We construct bar: [Red Area] [Marker] [Blue Area]
-        
-        bar_size = 10
-        center = bar_size
-        position = center + scaled_score
-        
-        chars = ["➖"] * (bar_size * 2 + 1)
-        chars[position] = "🔴" # The Knot/Marker
-        
-        # Make Red side Red and Blue side Blue visually (using emojis if possible or just the marker)
-        # Better visual:
-        # Red Winning: 🔴---------|----------
-        # Blue Winning: ---------|---------🔴
-        
-        left_side = "🟥" * (10 + scaled_score)
-        right_side = "🟦" * (10 - scaled_score)
-        
-        # Simple Rope Style
-        rope = "═" * 10 + "🔥" + "═" * 10
-        # We shift the flame based on score
-        # Let's use a simple slider logic
-        
-        p = 10 + scaled_score # 0 to 20
+        p = 10 + scaled_score 
         marker = "🚩"
         track = ["➖"] * 21
         track[p] = marker
@@ -5753,11 +5965,9 @@ class TugOfWarGame(discord.ui.View):
         return embed
 
     async def update_game_state(self):
-        # Updates the message every 1.5 seconds to avoid rate limits
         while self.game_active:
             await asyncio.sleep(1.5)
             
-            # Check Win Condition
             if self.score <= -self.win_threshold:
                 await self.end_game("RED")
                 break
@@ -5765,7 +5975,6 @@ class TugOfWarGame(discord.ui.View):
                 await self.end_game("BLUE")
                 break
             
-            # Update Embed
             try:
                 await self.interaction.edit_original_response(embed=await self.get_embed(), view=self)
             except: pass
@@ -5774,34 +5983,40 @@ class TugOfWarGame(discord.ui.View):
         self.game_active = False
         self.updater_task.cancel()
         
-        for child in self.children: child.disabled = True
-        await self.interaction.edit_original_response(embed=await self.get_embed(winner_team_name), view=self)
-        
-        # PUNISHMENT LOGIC
+        # --- ECONOMY & PUNISHMENT ---
+        winning_team = self.red_team if winner_team_name == "RED" else self.blue_team
         losing_team = self.blue_team if winner_team_name == "RED" else self.red_team
         
-        muted_users = []
-        for member in losing_team:
-            try:
-                if member.top_role < self.interaction.guild.me.top_role:
-                    await member.timeout(dt.timedelta(minutes=5), reason="Lost Tug of War")
-                    muted_users.append(member.name)
-            except: pass
-            
-        if muted_users:
-            await self.interaction.followup.send(f"🔇 **PUNISHMENT:** {', '.join(muted_users)} ko 5 Minute ka Mute mila hai!", ephemeral=False)
+        # 1. Reward Winners ($20,000 Each)
+        prize = 20000
+        for member in winning_team:
+            await update_balance(member.id, prize)
 
-    # --- BUTTON CALLBACKS (No Await to be fast) ---
+        # 2. Punish Losers (Smart Timeout)
+        status_report = []
+        for member in losing_team:
+            msg = await smart_timeout(self.interaction, member, 300, "Lost Tug of War") # 5 Min Mute
+            status_report.append(f"{member.name}: {msg}")
+
+        for child in self.children: child.disabled = True
+        
+        embed = await self.get_embed(winner_team_name)
+        embed.description += f"\n\n💰 **Reward:** ${prize:,} (Each Winner)\n\n🔇 **Losers Status:**\n" + "\n".join(status_report[:10]) # Show top 10 logs
+        if len(status_report) > 10: embed.description += "\n...(and more)"
+        
+        await self.interaction.edit_original_response(embed=embed, view=self)
+
+    # --- BUTTON CALLBACKS ---
     async def red_pull(self, interaction: discord.Interaction):
         if interaction.user not in self.red_team:
             return await interaction.response.send_message("❌ Tum Red Team mein nahi ho!", ephemeral=True)
-        self.score -= 1 # Move Left
-        await interaction.response.defer() # Just acknowledge, don't update UI yet
+        self.score -= 1 
+        await interaction.response.defer() 
 
     async def blue_pull(self, interaction: discord.Interaction):
         if interaction.user not in self.blue_team:
             return await interaction.response.send_message("❌ Tum Blue Team mein nahi ho!", ephemeral=True)
-        self.score += 1 # Move Right
+        self.score += 1 
         await interaction.response.defer()
 
 
@@ -5818,7 +6033,7 @@ class TugLobbyView(discord.ui.View):
         r_list = "\n".join([u.name for u in self.red_team]) or "Waiting..."
         b_list = "\n".join([u.name for u in self.blue_team]) or "Waiting..."
         
-        embed = discord.Embed(title="🪢 TUG OF WAR: LOBBY", description="Apni Team Chuno! \nJo haarega wo **MUTE** hoga!", color=0x95a5a6)
+        embed = discord.Embed(title="🪢 TUG OF WAR: LOBBY", description=f"Apni Team Chuno!\n💰 **Prize:** $20,000 (Each)\n🔇 **Penalty:** 5 Min Mute", color=0x95a5a6)
         embed.add_field(name=f"🔴 TEAM RED ({len(self.red_team)})", value=r_list, inline=True)
         embed.add_field(name=f"🔵 TEAM BLUE ({len(self.blue_team)})", value=b_list, inline=True)
         embed.set_image(url="https://media.tenor.com/J3t_A2lO-w0AAAAC/squid-game-tug-of-war.gif")
@@ -5833,7 +6048,8 @@ class TugLobbyView(discord.ui.View):
 
     @discord.ui.button(label="Join BLUE 🔵", style=discord.ButtonStyle.primary)
     async def join_blue(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user in self.red_team or interaction.user in self.blue_team:            return await interaction.response.send_message("Already joined a team!", ephemeral=True)
+        if interaction.user in self.red_team or interaction.user in self.blue_team:
+            return await interaction.response.send_message("Already joined a team!", ephemeral=True)
         self.blue_team.append(interaction.user)
         await interaction.response.edit_message(embed=self.get_embed(), view=self)
 
@@ -5856,7 +6072,9 @@ async def tug_of_war(i: discord.Interaction):
     view = TugLobbyView(i.user)
     await i.response.send_message(embed=view.get_embed(), view=view)
 
-# ================== 🔮 SQUID GAME: MARBLES (FIXED & STABLE) ==================
+        
+        
+# ================== 🔮 SQUID GAME: MARBLES (ECONOMY + VIP) ==================
 
 # --- 1. HIDDEN INPUT MODAL ---
 class MarblesHideModal(discord.ui.Modal, title="Hide Your Marbles"):
@@ -5881,13 +6099,10 @@ class MarblesHideModal(discord.ui.Modal, title="Hide Your Marbles"):
             if val > self.max_bet:
                 return await interaction.response.send_message(f"❌ Tumhare paas itne kanche nahi hain! Max: {self.max_bet}", ephemeral=True)
             
-            # Save the hidden number
             self.view_obj.hidden_number = val
             self.view_obj.state = "GUESSING"
             
-            # Modal submit ho gaya, ab interaction done hai.
-            # Hamein message edit karna hai.
-            await interaction.response.defer() # Acknowledge
+            await interaction.response.defer() 
             await self.view_obj.update_board(interaction, f"👀 **{self.view_obj.p2.mention}**, Ab guess karo! Odd ya Even?")
             
         except ValueError:
@@ -5897,19 +6112,14 @@ class MarblesHideModal(discord.ui.Modal, title="Hide Your Marbles"):
 # --- 2. MAIN GAME VIEW ---
 class MarblesGameView(discord.ui.View):
     def __init__(self, p1, p2):
-        super().__init__(timeout=300) # 5 Minutes Max
+        super().__init__(timeout=300) 
         self.p1 = p1
         self.p2 = p2
-        
-        # Initial Marbles
         self.marbles = {p1.id: 10, p2.id: 10}
-        
-        # Turn Logic: P1 hides first
         self.turn_hider = p1 
         self.turn_guesser = p2
         self.hidden_number = None
-        self.state = "HIDING" # HIDING or GUESSING
-        
+        self.state = "HIDING" 
         self.setup_buttons()
 
     def setup_buttons(self):
@@ -5930,7 +6140,6 @@ class MarblesGameView(discord.ui.View):
     async def update_board(self, interaction, status_msg):
         self.setup_buttons()
         
-        # Visual Stats
         p1_m = "🔮" * self.marbles[self.p1.id]
         p2_m = "🔮" * self.marbles[self.p2.id]
         
@@ -5951,17 +6160,12 @@ class MarblesGameView(discord.ui.View):
             
         embed.set_image(url="https://media.tenor.com/yA0wXCoqQJAAAAAC/squid-game-marbles.gif")
         
-        # ✅ SMART EDIT LOGIC (Ye Crash Fix Karega)
         try:
             if interaction.response.is_done():
-                # Agar defer ya reply ho chuka hai, to edit_original_response use karo
                 await interaction.edit_original_response(content=None, embed=embed, view=self)
             else:
-                # Agar fresh interaction hai (button click), to response.edit_message use karo
                 await interaction.response.edit_message(content=None, embed=embed, view=self)
         except Exception as e:
-            print(f"MARBLES UPDATE ERROR: {e}")
-            # Fallback
             try: await interaction.followup.send(embed=embed, view=self)
             except: pass
 
@@ -5969,8 +6173,6 @@ class MarblesGameView(discord.ui.View):
     async def hide_callback(self, interaction: discord.Interaction):
         if interaction.user.id != self.turn_hider.id:
             return await interaction.response.send_message("❌ Abhi tumhari baari nahi hai!", ephemeral=True)
-        
-        # Modal open karte waqt defer nahi karte
         modal = MarblesHideModal(self, self.marbles[self.turn_hider.id])
         await interaction.response.send_modal(modal)
 
@@ -6005,7 +6207,6 @@ class MarblesGameView(discord.ui.View):
         elif self.marbles[self.p2.id] <= 0:
             await self.end_game(interaction, self.p1, self.p2)
         else:
-            # Swap Turns
             self.turn_hider, self.turn_guesser = self.turn_guesser, self.turn_hider
             self.state = "HIDING"
             self.hidden_number = None
@@ -6014,23 +6215,25 @@ class MarblesGameView(discord.ui.View):
     async def end_game(self, interaction, winner, loser):
         self.stop()
         
-        # Mute Logic (Safe)
-        try:
-            if loser.top_role < interaction.guild.me.top_role:
-                await loser.timeout(dt.timedelta(minutes=10), reason="Lost Marbles Game")
-        except: pass
+        # --- ECONOMY & PUNISHMENT ---
+        # 1. Winner Reward ($50,000)
+        prize = 50000
+        await update_balance(winner.id, prize)
+        
+        # 2. Loser Punishment (Smart Timeout - 10 Mins)
+        punish_msg = await smart_timeout(interaction, loser, 600, "Lost Marbles Game")
         
         embed = discord.Embed(title="💀 GAME OVER", color=0x000000)
         embed.description = (
             f"### 🏆 WINNER: {winner.mention}\n"
-            f"**{winner.name}** ne saare Marbles jeet liye!\n\n"
+            f"**{winner.name}** ne saare Marbles jeet liye!\n"
+            f"💰 **Reward:** ${prize:,}\n\n"
             f"### ⚰️ ELIMINATED: {loser.mention}\n"
-            f"🔇 **Punishment:** 10 Minutes Mute."
+            f"{punish_msg}"
         )
         embed.set_thumbnail(url=winner.display_avatar.url)
         embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
         
-        # End Game me bhi smart edit check
         if interaction.response.is_done():
             await interaction.edit_original_response(embed=embed, view=None)
         else:
@@ -6046,19 +6249,15 @@ async def marbles(i: discord.Interaction, opponent: discord.Member):
     if not i.guild.me.guild_permissions.moderate_members:
         return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
 
-    embed = discord.Embed(title="🔮 MARBLES CHALLENGE", description=f"**{i.user.mention}** vs **{opponent.mention}**\n\nRule: 10-10 Marbles start.\nJo 0 pe aaya wo Mute hoga!\n\n**Accept Challenge?**", color=0xE91E63)
+    embed = discord.Embed(title="🔮 MARBLES CHALLENGE", description=f"**{i.user.mention}** vs **{opponent.mention}**\n\nRule: 10-10 Marbles start.\n💰 **Prize:** $50,000\n🔇 **Penalty:** 10 Min Mute\n\n**Accept Challenge?**", color=0xE91E63)
     
-    view = discord.ui.View(timeout=60) # Timeout zaroori hai
+    view = discord.ui.View(timeout=60) 
     btn = discord.ui.Button(label="✅ ACCEPT", style=discord.ButtonStyle.success)
     
     async def accept_callback(itx):
         if itx.user.id != opponent.id: return await itx.response.send_message("Ye tumhare liye nahi hai!", ephemeral=True)
         
-        # Initialize Game
         game_view = MarblesGameView(i.user, opponent)
-        
-        # Manually Setup First Screen (Crash Fix)
-        # Hum seedha edit_message karenge "ACCEPT" button wale interaction pe
         game_view.setup_buttons()
         
         p1_m = "🔮" * 10
@@ -6080,26 +6279,25 @@ async def marbles(i: discord.Interaction, opponent: discord.Member):
     view.add_item(btn)
     
     await i.response.send_message(embed=embed, view=view)
+            
 
-# ================== 🦑 SQUID GAME: GLASS BRIDGE ==================
+# ================== 🦑 SQUID GAME: GLASS BRIDGE (ECONOMY + VIP) ==================
 
 class GlassBridgeGame(discord.ui.View):
     def __init__(self, players, interaction):
         super().__init__(timeout=60) # 1 Minute Hard Limit
         self.original_interaction = interaction
         self.bridge_len = 7 # 7 Steps Long
-        # Generate Path: 0 = Left Safe, 1 = Right Safe
         self.path = [random.choice(["LEFT", "RIGHT"]) for _ in range(self.bridge_len)]
-        self.revealed = [None] * self.bridge_len # To track revealed glasses
+        self.revealed = [None] * self.bridge_len 
         
-        # Shuffle Players & Assign Numbers
         random.shuffle(players)
-        self.players = players # List of Member objects
+        self.players = players 
         self.dead_players = []
         self.winners = []
         
-        self.current_player_idx = 0 # Index of active player
-        self.current_step = 0 # Current step on bridge (0 to 6)
+        self.current_player_idx = 0 
+        self.current_step = 0 
         
         self.game_active = True
         self.timer_task = asyncio.create_task(self.start_timer())
@@ -6111,7 +6309,6 @@ class GlassBridgeGame(discord.ui.View):
         push_btn.callback = self.push_callback
         self.add_item(push_btn)
         
-        # Link Jump Callbacks
         self.children[0].callback = self.jump_callback
         self.children[1].callback = self.jump_callback
 
@@ -6120,54 +6317,45 @@ class GlassBridgeGame(discord.ui.View):
         if self.game_active:
             self.game_active = False
             self.stop()
+            
             # Kill Everyone Remaining
             survivors = self.players[self.current_player_idx:]
-            muted_names = []
+            status_report = []
             
             for p in survivors:
-                try:
-                    if p.top_role < self.original_interaction.guild.me.top_role:
-                        await p.timeout(dt.timedelta(seconds=30), reason="Glass Bridge Timeout")
-                        muted_names.append(p.name)
-                except: pass
+                # --- 🛡️ SMART TIMEOUT LOOP ---
+                msg = await smart_timeout(self.original_interaction, p, 30, "Glass Bridge Timeout")
+                status_report.append(f"{p.name}: {msg}")
             
             embed = discord.Embed(title="⏰ TIME OVER! ELIMINATED!", color=0x000000)
-            embed.description = f"**60 Seconds khatam!** Bridge toot gaya.\n\n💀 **Died:** {', '.join(muted_names) if muted_names else 'Everyone'}\n### 🔇 Saza: 30s Timeout"
+            embed.description = (
+                f"**60 Seconds khatam!** Bridge toot gaya.\n\n"
+                f"💀 **Status Report:**\n" + "\n".join(status_report)
+            )
             embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
-            await self.original_interaction.edit_original_response(embed=embed, view=None)
+            
+            try: await self.original_interaction.edit_original_response(embed=embed, view=None)
+            except: pass
 
     def generate_board(self):
-        # Visual Representation of Bridge
         board_str = ""
-        # Show Steps in Reverse (Finish Line at Top)
         for i in range(self.bridge_len - 1, -1, -1):
-            
             step_marker = f"**Step {i+1}**"
             
-            # Left Glass Logic
             if i == self.current_step and self.current_player_idx < len(self.players):
-                 # Current row marker
-                left_icon = "⬜" 
-                right_icon = "⬜"
+                left_icon = "⬜"; right_icon = "⬜"
             elif i < self.current_step:
-                # Passed steps (Show correct path)
-                left_icon = "🟩" if self.path[i] == "LEFT" else "⬛" # Green=Safe, Black=Broken
+                left_icon = "🟩" if self.path[i] == "LEFT" else "⬛"
                 right_icon = "🟩" if self.path[i] == "RIGHT" else "⬛"
             else:
-                # Future steps (Unknown)
-                left_icon = "🌫️" 
-                right_icon = "🌫️"
+                left_icon = "🌫️"; right_icon = "🌫️"
 
-            # If revealed by Push
             if self.revealed[i]:
                 left_icon = "✅" if self.path[i] == "LEFT" else "❌"
                 right_icon = "✅" if self.path[i] == "RIGHT" else "❌"
             
-            # Indicator for current position
             pointer = "👈 **HERE**" if i == self.current_step else ""
-            
             board_str += f"`[{left_icon}]`  `[{right_icon}]` {step_marker} {pointer}\n"
-        
         return board_str
 
     async def get_embed(self):
@@ -6183,7 +6371,6 @@ class GlassBridgeGame(discord.ui.View):
             f"**😈 BEHIND:** {next_p.mention if isinstance(next_p, discord.Member) else 'No one'}\n\n"
             f"*Rules: Jump karo ya Push karo. 1 Min limit!*"
         )
-        
         embed = discord.Embed(title="🦑 GLASS BRIDGE CHALLENGE", description=desc, color=0x3498DB)
         embed.set_thumbnail(url=active_p.display_avatar.url)
         return embed
@@ -6193,23 +6380,26 @@ class GlassBridgeGame(discord.ui.View):
         
         active_player = self.players[self.current_player_idx]
         if interaction.user.id != active_player.id:
-            return await interaction.response.send_message("❌ Teri baari nahi hai! Line mein lag.", ephemeral=True)
+            return await interaction.response.send_message("❌ Teri baari nahi hai!", ephemeral=True)
 
-        chosen_side = interaction.data["custom_id"] # LEFT or RIGHT
+        chosen_side = interaction.data["custom_id"] 
         correct_side = self.path[self.current_step]
         
         if chosen_side == correct_side:
-            # ✅ SAFE
             self.current_step += 1
             
-            # Check Win
+            # --- WIN CONDITION ---
             if self.current_step >= self.bridge_len:
                 self.game_active = False
                 self.timer_task.cancel()
                 self.winners.append(active_player)
                 
+                # 💰 REWARD: $30,000
+                prize = 30000
+                await update_balance(active_player.id, prize)
+                
                 embed = discord.Embed(title="🎉 SURVIVOR!", color=0x00FF00)
-                embed.description = f"**{active_player.mention}** ne Glass Bridge par kar liya!\n\n🏆 **WINNER**"
+                embed.description = f"**{active_player.mention}** ne Glass Bridge par kar liya!\n\n🏆 **WINNER**\n💰 **Reward:** ${prize:,}"
                 embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
                 await interaction.response.edit_message(embed=embed, view=None)
                 return
@@ -6217,15 +6407,13 @@ class GlassBridgeGame(discord.ui.View):
             await interaction.response.edit_message(embed=await self.get_embed(), view=self)
             
         else:
-            # ❌ DIED
             await self.handle_death(interaction, active_player, "Wrong Glass!")
 
     async def push_callback(self, interaction: discord.Interaction):
         if not self.game_active: return
         
-        # Logic: Only the person immediately BEHIND can push
         if self.current_player_idx + 1 >= len(self.players):
-            return await interaction.response.send_message("❌ Push karne ke liye koi bacha hi nahi!", ephemeral=True)
+            return await interaction.response.send_message("❌ Push karne ke liye koi nahi hai!", ephemeral=True)
             
         pusher = self.players[self.current_player_idx + 1]
         victim = self.players[self.current_player_idx]
@@ -6233,34 +6421,24 @@ class GlassBridgeGame(discord.ui.View):
         if interaction.user.id != pusher.id:
             return await interaction.response.send_message(f"❌ Sirf {pusher.name} dhakka de sakta hai!", ephemeral=True)
 
-        # REVEAL THE GLASS for current step
         self.revealed[self.current_step] = True
-        
-        # Kill the victim
         await self.handle_death(interaction, victim, f"Pushed by {pusher.name}", revealed=True)
 
     async def handle_death(self, interaction, player, reason, revealed=False):
-        # Mute Logic
-        try:
-            if player.top_role < interaction.guild.me.top_role:
-                await player.timeout(dt.timedelta(seconds=30), reason="Glass Bridge Death")
-        except: pass
+        # --- 🛡️ SMART PUNISHMENT (VIP CHECK) ---
+        punish_msg = await smart_timeout(interaction, player, 30, "Glass Bridge Death")
         
         self.dead_players.append(player)
-        self.current_player_idx += 1 # Next player's turn
-        
-        # Reset step? NO. In Squid game, next player stands at same step.
-        # But if revealed, they know the answer.
+        self.current_player_idx += 1 
         
         if self.current_player_idx >= len(self.players):
-            # No players left
             self.game_active = False
             self.timer_task.cancel()
             embed = discord.Embed(title="💀 GAME OVER", description="**Sab mar gaye!** Koi nahi bacha.", color=0x000000)
             await interaction.response.edit_message(embed=embed, view=None)
             return
 
-        msg = f"💀 **{player.name}** gir gaya! ({reason})\n🔇 **Saza:** 30s Mute."
+        msg = f"💀 **{player.name}** gir gaya! ({reason})\n{punish_msg}"
         if revealed:
             msg += "\n👀 **GLASS REVEALED!** Rasta saaf hai!"
 
@@ -6281,8 +6459,8 @@ class GlassLobbyView(discord.ui.View):
         embed.description = (
             "**Rule 1:** 2 Glasses. Ek toote ga, ek tikega.\n"
             "**Rule 2:** Random Numbers milenge.\n"
-            "**Rule 3:** Peeche wala aage wale ko **PUSH** kar sakta hai (Reveal Glass).\n"
-            "**Rule 4:** 1 Minute Total Time. Fail = Mute.\n\n"
+            "**Rule 3:** Peeche wala aage wale ko **PUSH** kar sakta hai (Reveal).\n"
+            "**Prizes:** 💰 $30,000 (Winner) | 🔇 30s Mute (Loser)\n\n"
             f"👥 **Players ({len(self.players)}):**\n{p_list}"
         )
         embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
@@ -6312,7 +6490,7 @@ async def glass_bridge(i: discord.Interaction):
     
     view = GlassLobbyView(i.user)
     await i.response.send_message(embed=view.get_embed(), view=view)
-
+        
 
 # ================== SAY ACCESS MANAGER (PREMIUM) ==================
 @bot.tree.command(name="sayaccess", description="Manage who can use /say command (Owner Only)")
