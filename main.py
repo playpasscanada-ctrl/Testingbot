@@ -7525,6 +7525,388 @@ async def roulette(i: discord.Interaction):
 
         await original_msg.edit(embed=safe_embed)
 
+# ================== 🧠 ULTIMATE IQ TEST CHALLENGE ==================
+
+# --- QUESTION BANK (Basic Knowledge) ---
+iq_questions = [
+    {"q": "India ki capital kya hai?", "a": "DELHI", "opts": ["MUMBAI", "DELHI", "KOLKATA"]},
+    {"q": "2 + 2 x 2 kitna hota hai?", "a": "6", "opts": ["6", "8", "4"]},
+    {"q": "Sun ek ____ hai.", "a": "STAR", "opts": ["PLANET", "STAR", "MOON"]},
+    {"q": "H2O kiska formula hai?", "a": "WATER", "opts": ["AIR", "WATER", "FIRE"]},
+    {"q": "Human body mein kitni haddiyan (bones) hoti hain?", "a": "206", "opts": ["206", "208", "300"]},
+    {"q": "Rainbow mein kitne colors hote hain?", "a": "7", "opts": ["5", "7", "9"]},
+    {"q": "Duniya ka sabse bada janwar (animal) kaunsa hai?", "a": "BLUE WHALE", "opts": ["ELEPHANT", "BLUE WHALE", "GIRAFFE"]},
+    {"q": "1 Kilogram mein kitne grams hote hain?", "a": "1000", "opts": ["100", "500", "1000"]},
+    {"q": "Moon par pehla kadam kisne rakha?", "a": "NEIL ARMSTRONG", "opts": ["ELON MUSK", "NEIL ARMSTRONG", "EINSTEIN"]},
+    {"q": "Computer ka dimag kise kehte hain?", "a": "CPU", "opts": ["MOUSE", "CPU", "KEYBOARD"]},
+    {"q": "Vowels kitne hote hain?", "a": "5", "opts": ["5", "21", "26"]},
+    # --- ANIME & GAMING (Discord Audience ke liye) ---
+    {"q": "Goku (Dragon Ball) ke transformation ko kya kehte hain?", "a": "SUPER SAIYAN", "opts": ["NINJA", "SUPER SAIYAN", "BANKAI"]},
+    {"q": "PUBG ka full form kya hai?", "a": "PLAYERUNKNOWN'S BATTLEGROUNDS", "opts": ["PUBLIC BATTLE GAME", "PLAYERUNKNOWN'S BATTLEGROUNDS", "PEOPLE UNDER BATTLE"]},
+    {"q": "Minecraft game ka malik kaun hai?", "a": "MICROSOFT", "opts": ["SONY", "MICROSOFT", "TENCENT"]},
+    {"q": "Naruto ke village ka naam kya hai?", "a": "KONOHA (LEAF)", "opts": ["SAND VILLAGE", "MIST VILLAGE", "KONOHA (LEAF)"]},
+    {"q": "Free Fire kis desh ka game hai?", "a": "SINGAPORE", "opts": ["CHINA", "INDIA", "SINGAPORE"]},
+    
+    # --- SCIENCE & TECH (Thoda Dimaag) ---
+    {"q": "Gold (Sona) ka chemical symbol kya hai?", "a": "Au", "opts": ["Ag", "Au", "Go"]},
+    {"q": "Android OS kis company ka hai?", "a": "GOOGLE", "opts": ["SAMSUNG", "APPLE", "GOOGLE"]},
+    {"q": "Bijli ke bulb (Bulb) mein kaunsi gas hoti hai?", "a": "ARGON", "opts": ["OXYGEN", "ARGON", "CARBON DIOXIDE"]},
+    {"q": "Sound (Aawaz) kismen travel nahi kar sakti?", "a": "VACUUM", "opts": ["WATER", "AIR", "VACUUM"]},
+    {"q": "Human heart mein kitne chambers hote hain?", "a": "4", "opts": ["2", "4", "6"]},
+
+    # --- GEOGRAPHY (Tricky) ---
+    {"q": "Canada ki capital kya hai?", "a": "OTTAWA", "opts": ["TORONTO", "VANCOUVER", "OTTAWA"]},
+    {"q": "Duniya ka sabse chhota ocean kaunsa hai?", "a": "ARCTIC OCEAN", "opts": ["INDIAN OCEAN", "ARCTIC OCEAN", "PACIFIC OCEAN"]},
+    {"q": "Japan ki currency kya hai?", "a": "YEN", "opts": ["DOLLAR", "WON", "YEN"]},
+    {"q": "Pyramids kis desh mein hain?", "a": "EGYPT", "opts": ["DUBAI", "EGYPT", "MEXICO"]},
+    {"q": "Kis desh ko 'Land of Rising Sun' kehte hain?", "a": "JAPAN", "opts": ["INDIA", "JAPAN", "NORWAY"]},
+
+    # --- INDIAN GK (Patriotism Check) ---
+    {"q": "Space mein jaane wala pehla Indian?", "a": "RAKESH SHARMA", "opts": ["KALPANA CHAWLA", "RAKESH SHARMA", "VIKRAM SARABHAI"]},
+    {"q": "India ka National Animal kya hai?", "a": "TIGER", "opts": ["LION", "TIGER", "ELEPHANT"]},
+    {"q": "Mahatma Gandhi ka janam kahan hua tha?", "a": "PORBANDAR", "opts": ["MUMBAI", "DELHI", "PORBANDAR"]},
+    {"q": "ISRO ka headquarter kahan hai?", "a": "BENGALURU", "opts": ["DELHI", "MUMBAI", "BENGALURU"]},
+    {"q": "IPL ki sabse pehli trophy kisne jeeti thi?", "a": "RAJASTHAN ROYALS", "opts": ["CSK", "MUMBAI INDIANS", "RAJASTHAN ROYALS"]},
+
+    # --- MATH & LOGIC (Quick Calc) ---
+    {"q": "12 ka Square (12x12) kya hota hai?", "a": "144", "opts": ["124", "144", "122"]},
+    {"q": "Roman Number 'X' ka matlab kya hai?", "a": "10", "opts": ["5", "10", "20"]},
+    {"q": "Ek ghante (Hour) mein kitne seconds hote hain?", "a": "3600", "opts": ["360", "600", "3600"]},
+    {"q": "Tash (Cards) ki gaddi mein kitne patte hote hain?", "a": "52", "opts": ["50", "52", "54"]},
+    {"q": "Agar 1kg Rui aur 1kg Loha fenke, to bhaari kaun?", "a": "BOTH EQUAL", "opts": ["LOHA (IRON)", "RUI (COTTON)", "BOTH EQUAL"]},
+
+    # --- MOVIES & POP CULTURE ---
+    {"q": "Avengers mein 'Iron Man' kaun hai?", "a": "TONY STARK", "opts": ["STEVE ROGERS", "TONY STARK", "BRUCE BANNER"]},
+    {"q": "KGF movie mein hero ka naam kya tha?", "a": "ROCKY", "opts": ["ROLEX", "ROCKY", "ADHEERA"]},
+    {"q": "Netflix kis desh ki company hai?", "a": "USA", "opts": ["UK", "USA", "CHINA"]},
+    {"q": "'Bahubali' ko kisne maara tha?", "a": "KATTAPPA", "opts": ["BHALLALADEVA", "KATTAPPA", "BIJJALADEVA"]},
+    {"q": "Oscar award kis cheez ke liye milta hai?", "a": "FILM/CINEMA", "opts": ["MUSIC ONLY", "SPORTS", "FILM/CINEMA"]}
+    # --- TRICKY (Dimag Ghumane Wale) ---
+    {"q": "USA ki Capital (Rajdhani) kya hai?", "a": "WASHINGTON DC", "opts": ["NEW YORK", "WASHINGTON DC", "LOS ANGELES"]},
+    {"q": "Ek century (shatabdi) mein kitne saal hote hain?", "a": "100", "opts": ["10", "50", "100"]},
+    {"q": "Agar aaj Monday hai, to 3 din baad kya hoga?", "a": "THURSDAY", "opts": ["WEDNESDAY", "THURSDAY", "FRIDAY"]},
+    {"q": "Duniya ki sabse lambi nadi (river) kaunsi hai?", "a": "NILE", "opts": ["AMAZON", "GANGA", "NILE"]},
+    {"q": "Kaunsa janwar khade-khade sota hai?", "a": "HORSE", "opts": ["DOG", "HORSE", "LION"]},
+
+    # --- TECH & SOCIAL MEDIA ---
+    {"q": "Instagram kisne khareeda tha?", "a": "FACEBOOK (META)", "opts": ["GOOGLE", "FACEBOOK (META)", "TWITTER"]},
+    {"q": "PDF ka full form kya hai?", "a": "PORTABLE DOCUMENT FORMAT", "opts": ["PUBLIC DATA FILE", "PORTABLE DOCUMENT FORMAT", "PC DATA FILE"]},
+    {"q": "Internet par 'WWW' ka matlab kya hai?", "a": "WORLD WIDE WEB", "opts": ["WORLD WEB WIDE", "WORLD WIDE WEB", "WIDE WORLD WEB"]},
+    {"q": "iPhone kis company ka product hai?", "a": "APPLE", "opts": ["SAMSUNG", "NOKIA", "APPLE"]},
+    {"q": "Keyboard mein sabse bada button kaunsa hota hai?", "a": "SPACE BAR", "opts": ["ENTER", "SHIFT", "SPACE BAR"]},
+
+    # --- SCIENCE (School Yaad Dilane Wale) ---
+    {"q": "Namak (Salt) ka chemical formula kya hai?", "a": "NaCl", "opts": ["H2O", "NaCl", "CO2"]},
+    {"q": "Plants (Paudhe) apna khana kaise banate hain?", "a": "PHOTOSYNTHESIS", "opts": ["RESPIRATION", "PHOTOSYNTHESIS", "DIGESTION"]},
+    {"q": "Human body ka normal temperature kitna hota hai?", "a": "37°C", "opts": ["37°C", "40°C", "30°C"]},
+    {"q": "Duniya ka sabse hard substance kaunsa hai?", "a": "DIAMOND", "opts": ["IRON", "GOLD", "DIAMOND"]},
+    {"q": "Penicillin ki khoj kisne ki thi?", "a": "ALEXANDER FLEMING", "opts": ["NEWTON", "ALEXANDER FLEMING", "EDISON"]},
+
+    # --- INDIA & BOLLYWOOD ---
+    {"q": "Sholay movie mein villain ka naam kya tha?", "a": "GABBAR SINGH", "opts": ["MOGAMBO", "SHAKAAL", "GABBAR SINGH"]},
+    {"q": "India ka National Bird kaunsa hai?", "a": "PEACOCK", "opts": ["PARROT", "EAGLE", "PEACOCK"]},
+    {"q": "Rupee (₹) ka symbol kisne design kiya?", "a": "UDAYA KUMAR", "opts": ["RBI GOVERNOR", "UDAYA KUMAR", "MODI JI"]},
+    {"q": "Dangal movie kis sport par based thi?", "a": "WRESTLING", "opts": ["BOXING", "CRICKET", "WRESTLING"]},
+    {"q": "India mein sabse zyada boli jane wali language?", "a": "HINDI", "opts": ["ENGLISH", "HINDI", "TAMIL"]},
+
+    # --- SPORTS ---
+    {"q": "Olympics kitne saal baad hota hai?", "a": "4 YEARS", "opts": ["2 YEARS", "4 YEARS", "5 YEARS"]},
+    {"q": "Football match ki duration kitni hoti hai?", "a": "90 MINS", "opts": ["60 MINS", "90 MINS", "100 MINS"]},
+    {"q": "Sachin Tendulkar ko kya kaha jata hai?", "a": "GOD OF CRICKET", "opts": ["THE WALL", "CAPTAIN COOL", "GOD OF CRICKET"]},
+    {"q": "Chess mein sabse powerful piece kaunsa hai?", "a": "QUEEN", "opts": ["KING", "QUEEN", "ROOK"]},
+    {"q": "Neeraj Chopra kis khel se jude hain?", "a": "JAVELIN THROW", "opts": ["CRICKET", "JAVELIN THROW", "HOCKEY"]},
+
+    # --- IMPOSSIBLE (Streak Breakers) ---
+    {"q": "Coca-Cola ka original color kya tha?", "a": "GREEN", "opts": ["BLACK", "BROWN", "GREEN"]},
+    {"q": "Octopus ke kitne dil (hearts) hote hain?", "a": "3", "opts": ["1", "3", "9"]},
+    {"q": "Chess game ki shuruaat kis desh mein hui?", "a": "INDIA", "opts": ["CHINA", "RUSSIA", "INDIA"]},
+    {"q": "Giraffe ki jeebh (tongue) ka color kya hota hai?", "a": "BLUE/BLACK", "opts": ["RED", "PINK", "BLUE/BLACK"]},
+    {"q": "Mona Lisa painting kisne banayi thi?", "a": "LEONARDO DA VINCI", "opts": ["PICASSO", "VAN GOGH", "LEONARDO DA VINCI"]},
+    {"q": "Google ka purana naam kya tha?", "a": "BACKRUB", "opts": ["BACKRUB", "SEARCHER", "ALPHABET"]},
+    {"q": "Duniya ka sabse chhota desh (country)?", "a": "VATICAN CITY", "opts": ["MONACO", "VATICAN CITY", "NEPAL"]},
+    {"q": "Harry Potter ke ullu (owl) ka naam kya tha?", "a": "HEDWIG", "opts": ["DOBBY", "HEDWIG", "DRACO"]},
+    {"q": "Titanic ka captain kaun tha?", "a": "EDWARD SMITH", "opts": ["JACK DAWSON", "EDWARD SMITH", "JAMES CAMERON"]},
+    {"q": "PUBG kis saal launch hua tha?", "a": "2017", "opts": ["2017", "2018", "2016"]}
+
+    # --- EASY / WARMUP ---
+    {"q": "India ki capital kya hai?", "a": "DELHI", "opts": ["MUMBAI", "DELHI", "KOLKATA"]},
+    {"q": "Rainbow mein kitne colors hote hain?", "a": "7", "opts": ["5", "7", "9"]},
+    {"q": "Cricket team mein kitne players hote hain?", "a": "11", "opts": ["10", "11", "12"]},
+    {"q": "H2O kiska formula hai?", "a": "WATER", "opts": ["AIR", "WATER", "FIRE"]},
+    {"q": "Computer ka dimag kise kehte hain?", "a": "CPU", "opts": ["MOUSE", "CPU", "KEYBOARD"]},
+    
+    # --- MEDIUM ---
+    {"q": "Human body mein kitni haddiyan (bones) hoti hain?", "a": "206", "opts": ["206", "208", "300"]},
+    {"q": "Duniya ka sabse bada janwar (animal) kaunsa hai?", "a": "BLUE WHALE", "opts": ["ELEPHANT", "BLUE WHALE", "GIRAFFE"]},
+    {"q": "Facebook ka malik kaun hai?", "a": "MARK ZUCKERBERG", "opts": ["ELON MUSK", "MARK ZUCKERBERG", "BILL GATES"]},
+    {"q": "Zero (0) kisne invent kiya tha?", "a": "ARYABHATTA", "opts": ["NEWTON", "ARYABHATTA", "EINSTEIN"]},
+    {"q": "Punjab mein kitni nadiya (rivers) hain?", "a": "5", "opts": ["5", "7", "3"]},
+    
+    # --- TRICKY (Log Galti Karenge) ---
+    {"q": "Solar System ka sabse garam (hottest) planet?", "a": "VENUS", "opts": ["MERCURY", "VENUS", "MARS"]},
+    {"q": "Australia ki capital kya hai?", "a": "CANBERRA", "opts": ["SYDNEY", "MELBOURNE", "CANBERRA"]},
+    {"q": "Kitne months mein 28 din hote hain?", "a": "ALL 12", "opts": ["1 (FEB)", "ALL 12", "6"]},
+    {"q": "Tomato (Tamatar) kya hai?", "a": "FRUIT", "opts": ["VEGETABLE", "FRUIT", "ROOT"]},
+    {"q": "Mount Everest kis desh mein hai?", "a": "NEPAL", "opts": ["INDIA", "CHINA", "NEPAL"]},
+    
+    # --- HARD (General Knowledge) ---
+    {"q": "Human Body ki sabse chhoti bone kahan hoti hai?", "a": "EAR", "opts": ["NOSE", "EAR", "FINGER"]},
+    {"q": "Bitcoin ka inventor kaun hai?", "a": "SATOSHI NAKAMOTO", "opts": ["ELON MUSK", "VITALIK", "SATOSHI NAKAMOTO"]},
+    {"q": "India ka Iron Man kise kehte hain?", "a": "SARDAR PATEL", "opts": ["GANDHI JI", "SARDAR PATEL", "BHAGAT SINGH"]},
+    {"q": "Light ki speed (approx) kitni hai?", "a": "3 LAKH KM/S", "opts": ["3 LAKH KM/S", "1 LAKH KM/S", "SOUND SPEED"]},
+    {"q": "Periodic Table ka pehla element kaunsa hai?", "a": "HYDROGEN", "opts": ["HELIUM", "HYDROGEN", "OXYGEN"]},
+    {"q": "Wifi ka full form kya hai?", "a": "WIRELESS FIDELITY", "opts": ["WIRELESS FIBER", "WIRELESS FIDELITY", "WIRELESS FIX"]},
+    {"q": "Titanic ship kab dooba tha?", "a": "1912", "opts": ["1905", "1912", "1920"]},
+    {"q": "GTA V game kab release hua tha?", "a": "2013", "opts": ["2013", "2015", "2011"]},
+    {"q": "Chess board mein total kitne squares hote hain?", "a": "64", "opts": ["64", "32", "100"]},
+    {"q": "Duniya mein sabse zyada islands kis desh mein hain?", "a": "SWEDEN", "opts": ["INDONESIA", "SWEDEN", "PHILIPPINES"]},
+
+    # --- BASIC & WARMUP (Round 1-5) ---
+    {"q": "India ka National Bird kaunsa hai?", "a": "PEACOCK", "opts": ["EAGLE", "PEACOCK", "PARROT"]},
+    {"q": "H2O kiska formula hai?", "a": "WATER", "opts": ["AIR", "WATER", "OIL"]},
+    {"q": "Triangle mein kitni sides hoti hain?", "a": "3", "opts": ["3", "4", "5"]},
+    {"q": "Computer ka brain kise kehte hain?", "a": "CPU", "opts": ["RAM", "CPU", "GPU"]},
+    {"q": "1 saal mein kitne weeks hote hain?", "a": "52", "opts": ["48", "50", "52"]},
+    {"q": "Rainbow mein kitne colors hote hain?", "a": "7", "opts": ["5", "7", "9"]},
+    {"q": "Earth ke sabse paas ka Planet?", "a": "VENUS", "opts": ["MARS", "VENUS", "JUPITER"]},
+    {"q": "Light ki speed (approx) kitni hai?", "a": "3 LAKH KM/S", "opts": ["3 LAKH KM/S", "1 LAKH KM/S", "5 LAKH KM/S"]},
+    {"q": "Solar system ka sabse bada planet?", "a": "JUPITER", "opts": ["SATURN", "JUPITER", "EARTH"]},
+    {"q": "Duniya ki sabse unchi choti (peak)?", "a": "MT. EVEREST", "opts": ["K2", "MT. EVEREST", "KANCHENJUNGA"]},
+
+    # --- MEDIUM & TRICKY (Round 6-10) ---
+    {"q": "Australia ki Capital kya hai?", "a": "CANBERRA", "opts": ["SYDNEY", "MELBOURNE", "CANBERRA"]},
+    {"q": "Goku ki sabse powerful form?", "a": "ULTRA INSTINCT", "opts": ["SUPER SAIYAN 3", "ULTRA INSTINCT", "GEAR 5"]},
+    {"q": "PUBG kis saal launch hua?", "a": "2017", "opts": ["2016", "2017", "2018"]},
+    {"q": "Human heart mein kitne chambers hote hain?", "a": "4", "opts": ["2", "4", "6"]},
+    {"q": "Python language kab bani thi?", "a": "1991", "opts": ["1991", "1995", "2000"]},
+    {"q": "ISRO ka headquarter kahan hai?", "a": "BENGALURU", "opts": ["DELHI", "MUMBAI", "BENGALURU"]},
+    {"q": "Zero (0) kisne invent kiya?", "a": "ARYABHATTA", "opts": ["EINSTEIN", "ARYABHATTA", "NEWTON"]},
+    {"q": "Minecraft ka creator kaun hai?", "a": "NOTCH", "opts": ["NOTCH", "JEB", "ELON MUSK"]},
+    {"q": "Duniya ka sabse bada desert?", "a": "SAHARA", "opts": ["THAR", "SAHARA", "GOBI"]},
+    {"q": "1 GB mein kitne MB hote hain?", "a": "1024", "opts": ["1000", "1024", "1056"]},
+
+    # --- HARD & GENIUS (Round 11-15) ---
+    {"q": "Titanic kis saal dooba tha?", "a": "1912", "opts": ["1905", "1912", "1920"]},
+    {"q": "Duniya ka sabse chhota country?", "a": "VATICAN CITY", "opts": ["MONACO", "VATICAN CITY", "SINGAPORE"]},
+    {"q": "Bitcoin ka inventor?", "a": "SATOSHI NAKAMOTO", "opts": ["ELON MUSK", "SATOSHI NAKAMOTO", "BILL GATES"]},
+    {"q": "Mona Lisa painting kisne banayi?", "a": "LEONARDO DA VINCI", "opts": ["PICASSO", "LEONARDO DA VINCI", "VAN GOGH"]},
+    {"q": "Human body ki sabse badi haddi (bone)?", "a": "FEMUR", "opts": ["SKULL", "FEMUR", "SPINE"]},
+    {"q": "Periodic table ka pehla element?", "a": "HYDROGEN", "opts": ["OXYGEN", "HYDROGEN", "HELIUM"]},
+    {"q": "Japan ki currency kya hai?", "a": "YEN", "opts": ["DOLLAR", "WON", "YEN"]},
+    {"q": "Facebook ka purana naam?", "a": "THEFACEBOOK", "opts": ["THEFACEBOOK", "META", "FACEMASH"]},
+    {"q": "Duniya ki sabse lambi nadi (river)?", "a": "NILE", "opts": ["AMAZON", "NILE", "GANGA"]},
+    {"q": "Blood pressure napne ka instrument?", "a": "SPHYGMOMANOMETER", "opts": ["THERMOMETER", "SPHYGMOMANOMETER", "BAROMETER"]},
+
+    # --- STREAK BREAKERS (Round 16-20) ---
+    {"q": "Octopus ke kitne dil (hearts) hote hain?", "a": "3", "opts": ["1", "3", "8"]},
+    {"q": "Eiffel Tower kahan hai?", "a": "PARIS", "opts": ["LONDON", "PARIS", "ROME"]},
+    {"q": "Instagram kis saal launch hua?", "a": "2010", "opts": ["2008", "2010", "2012"]},
+    {"q": "Spider-Man ka real name?", "a": "PETER PARKER", "opts": ["MILES MORALES", "PETER PARKER", "BRUCE WAYNE"]},
+    {"q": "India ka Iron Man kise kehte hain?", "a": "SARDAR PATEL", "opts": ["GANDHI JI", "SARDAR PATEL", "NEHRU JI"]},
+    {"q": "Duniya mein kitne continents hain?", "a": "7", "opts": ["5", "7", "8"]},
+    {"q": "Chess board mein kitne squares hote hain?", "a": "64", "opts": ["32", "64", "100"]},
+    {"q": "Kis desh ko 'Land of Rising Sun' kehte hain?", "a": "JAPAN", "opts": ["INDIA", "JAPAN", "CHINA"]},
+    {"q": "Tomato kya hai?", "a": "FRUIT", "opts": ["VEGETABLE", "FRUIT", "ROOT"]},
+    {"q": "Harry Potter mein kitni total movies hain?", "a": "8", "opts": ["7", "8", "9"]},
+
+    # --- THE ELIMINATORS (Mixed Tough) ---
+    {"q": "India ka National Anthem kisne likha?", "a": "TAGORE", "opts": ["GANDHI", "TAGORE", "NEHRU"]},
+    {"q": "Duniya ka sabse chhota ocean?", "a": "ARCTIC", "opts": ["INDIAN", "PACIFIC", "ARCTIC"]},
+    {"q": "Elon Musk ki car company?", "a": "TESLA", "opts": ["TESLA", "SPACEX", "FORD"]},
+    {"q": "Kis planet ko 'Red Planet' kehte hain?", "a": "MARS", "opts": ["MARS", "VENUS", "SATURN"]},
+    {"q": "Human eye kitne megapixels ki hoti hai?", "a": "576 MP", "opts": ["100 MP", "576 MP", "1000 MP"]},
+    {"q": "Duniya ka sabse bada bird?", "a": "OSTRICH", "opts": ["EAGLE", "OSTRICH", "PEACOCK"]},
+    {"q": "Google ka purana naam?", "a": "BACKRUB", "opts": ["BACKRUB", "SEARCHER", "ALPHABET"]},
+    {"q": "1 ton mein kitne kg hote hain?", "a": "1000", "opts": ["100", "500", "1000"]},
+    {"q": "Naruto ka favorite food?", "a": "RAMEN", "opts": ["SUSHI", "RAMEN", "DUMPLINGS"]},
+    {"q": "Youtube ki pehli video kisne upload ki?", "a": "JAWED", "opts": ["PEWDIEPIE", "JAWED", "MRBEAST"]},
+
+    # --- MORE BRAIN TEASERS ---
+    {"q": "India kab aazad hua?", "a": "1947", "opts": ["1947", "1950", "1942"]},
+    {"q": "Duniya ka sabse bada island?", "a": "GREENLAND", "opts": ["ICELAND", "GREENLAND", "SRI LANKA"]},
+    {"q": "Kis gas ko 'Laughing Gas' kehte hain?", "a": "NITROUS OXIDE", "opts": ["OXYGEN", "NITROUS OXIDE", "HELIUM"]},
+    {"q": "Coca-Cola ka original color?", "a": "GREEN", "opts": ["BLACK", "GREEN", "RED"]},
+    {"q": "Duniya ka sabse tezz bird?", "a": "PEREGRINE FALCON", "opts": ["EAGLE", "PEREGRINE FALCON", "SWIFT"]},
+    {"q": "NASA kahan ki space agency hai?", "a": "USA", "opts": ["USA", "RUSSIA", "INDIA"]},
+    {"q": "Penicillin kisne discover kiya?", "a": "ALEXANDER FLEMING", "opts": ["NEWTON", "ALEXANDER FLEMING", "EDISON"]},
+    {"q": "Cricket ka Bhagwan kise kehte hain?", "a": "SACHIN TENDULKAR", "opts": ["DHONI", "SACHIN TENDULKAR", "KOHLI"]},
+    {"q": "Chess mein kitne pieces (mohre) hote hain?", "a": "32", "opts": ["16", "32", "64"]},
+    {"q": "India ka sabse bada state (Area)?", "a": "RAJASTHAN", "opts": ["UP", "MP", "RAJASTHAN"]},
+
+    # --- MIXED & TRICKY ---
+    {"q": "Kitne months mein 28 days hote hain?", "a": "ALL 12", "opts": ["1 (FEB)", "ALL 12", "6"]},
+    {"q": "GTA 5 kab release hua?", "a": "2013", "opts": ["2013", "2015", "2011"]},
+    {"q": "iPhone kis company ka hai?", "a": "APPLE", "opts": ["APPLE", "SAMSUNG", "GOOGLE"]},
+    {"q": "Duniya ka sabse meetha fruit?", "a": "STEVIA", "opts": ["MANGO", "STEVIA", "APPLE"]},
+    {"q": "Olympic rings mein kitne colors hote hain?", "a": "5", "opts": ["4", "5", "6"]},
+    {"q": "Duniya ka sabse purana dharam?", "a": "SANATAN DHARMA", "opts": ["SANATAN DHARMA", "ISLAM", "BUDDHISM"]},
+    {"q": "India ki sabse lambi train?", "a": "VIVEK EXPRESS", "opts": ["RAJDHANI", "SHATABDI", "VIVEK EXPRESS"]},
+    {"q": "Ek normal insan kitne din bina soye reh sakta hai?", "a": "11 DAYS", "opts": ["3 DAYS", "7 DAYS", "11 DAYS"]},
+    {"q": "Wifi ka full form?", "a": "WIRELESS FIDELITY", "opts": ["WIRELESS FIBER", "WIRELESS FIDELITY", "WIRELESS FIX"]},
+    {"q": "Duniya ka sabse bada stadium?", "a": "NARENDRA MODI STADIUM", "opts": ["MCG", "NARENDRA MODI STADIUM", "LORDS"]},
+
+    # --- FINAL ROUND KILLERS ---
+    {"q": "Elon Musk ki company 'X' ka purana naam?", "a": "TWITTER", "opts": ["FACEBOOK", "TWITTER", "LINKEDIN"]},
+    {"q": "One Piece anime ka main character?", "a": "LUFFY", "opts": ["ZORO", "LUFFY", "SANJI"]},
+    {"q": "Duniya ka sabse pehla website?", "a": "CERN", "opts": ["GOOGLE", "CERN", "YAHOO"]},
+    {"q": "Duniya ka sabse bada flower?", "a": "RAFFLESIA", "opts": ["ROSE", "RAFFLESIA", "LOTUS"]},
+    {"q": "India ka sabse lamba bridge?", "a": "DHOLA-SADIYA", "opts": ["BANDRA-WORLI", "DHOLA-SADIYA", "HOWRAH"]},
+    {"q": "1 minute mein kitne seconds?", "a": "60", "opts": ["60", "100", "3600"]},
+    {"q": "Duniya ka sabse hard substance?", "a": "DIAMOND", "opts": ["GOLD", "IRON", "DIAMOND"]},
+    {"q": "Free Fire kis desh ka game hai?", "a": "SINGAPORE", "opts": ["CHINA", "INDIA", "SINGAPORE"]},
+    {"q": "Human eye ka resolution?", "a": "576 MP", "opts": ["100 MP", "576 MP", "800 MP"]},
+    {"q": "Duniya mein sabse zyada population?", "a": "INDIA", "opts": ["CHINA", "INDIA", "USA"]},
+
+    # --- THE LAST BATCH (100 TOTAL) ---
+    {"q": "Billi (Cat) kitne saal jeeti hai?", "a": "12-18 YEARS", "opts": ["5-10 YEARS", "12-18 YEARS", "20-30 YEARS"]},
+    {"q": "Shatranj (Chess) ki shuruaat kahan hui?", "a": "INDIA", "opts": ["CHINA", "RUSSIA", "INDIA"]},
+    {"q": "Duniya ka sabse poisonous sanp?", "a": "INLAND TAIPAN", "opts": ["COBRA", "INLAND TAIPAN", "PYTHON"]},
+    {"q": "India ka sabse rich person?", "a": "MUKESH AMBANI", "opts": ["ADANI", "MUKESH AMBANI", "TATA"]},
+    {"q": "Duniya ka sabse bada mammal?", "a": "BLUE WHALE", "opts": ["ELEPHANT", "BLUE WHALE", "SHARK"]},
+    {"q": "Earth kitne percent paani hai?", "a": "71%", "opts": ["50%", "71%", "90%"]},
+    {"q": "Sun kiska chakkar lagata hai?", "a": "MILKY WAY CENTER", "opts": ["EARTH", "MILKY WAY CENTER", "MOON"]},
+    {"q": "1 byte mein kitne bits?", "a": "8", "opts": ["4", "8", "16"]},
+    {"q": "Duniya ka sabse lamba rasta?", "a": "PAN-AMERICAN HIGHWAY", "opts": ["NH-44", "PAN-AMERICAN HIGHWAY", "ROUTE 66"]},
+    {"q": "Spider-man ka chacha ka naam?", "a": "BEN", "opts": ["BEN", "TONY", "BRUCE"]},
+    {"q": "Kis janwar ka doodh pink hota hai?", "a": "HIPPO", "opts": ["COW", "HIPPO", "GOAT"]},
+    {"q": "Sabse zyada islands kis desh mein hain?", "a": "SWEDEN", "opts": ["INDONESIA", "SWEDEN", "PHILIPPINES"]},
+    {"q": "India ka National River?", "a": "GANGA", "opts": ["YAMUNA", "GANGA", "NARMADA"]},
+    {"q": "Kaunsa janwar khade rehkar sota hai?", "a": "HORSE", "opts": ["DOG", "HORSE", "COW"]},
+    {"q": "Human brain kitne percent fat hai?", "a": "60%", "opts": ["20%", "60%", "90%"]},
+    {"q": "Ek hafte mein kitne minutes?", "a": "10080", "opts": ["1440", "10080", "5000"]},
+    {"q": "Duniya ka sabse bada jungle?", "a": "AMAZON", "opts": ["AMAZON", "SUNDARBANS", "CONGO"]},
+    {"q": "KGF hero ka naam?", "a": "YASH", "opts": ["PRABHAS", "YASH", "ALLU ARJUN"]},
+    {"q": "India mein total kitne states hain?", "a": "28", "opts": ["29", "28", "30"]},
+    {"q": "Duniya ka sabse mehnga item?", "a": "ANTIMATTER", "opts": ["DIAMOND", "ANTIMATTER", "GOLD"]}
+    
+    # --- IMPOSSIBLE (Luck or Genius) ---
+    {"q": "Elon Musk ki rocket company ka naam?", "a": "SPACEX", "opts": ["NASA", "SPACEX", "BLUE ORIGIN"]},
+    {"q": "Python language kab release hui thi?", "a": "1991", "opts": ["1991", "1995", "2000"]},
+    {"q": "Harry Potter mein total kitni books hain?", "a": "7", "opts": ["7", "8", "6"]},
+    {"q": "Spider-Man ka asli naam kya hai?", "a": "PETER PARKER", "opts": ["BRUCE WAYNE", "PETER PARKER", "TONY STARK"]},
+    {"q": "Youtube par sabse pehli video kisne dali?", "a": "JAWED", "opts": ["PEWDIEPIE", "JAWED", "GOOGLE"]}
+    {"q": "Triangle ki kitni sides hoti hain?", "a": "3", "opts": ["3", "4", "5"]},
+    {"q": "Cricket team mein kitne players hote hain?", "a": "11", "opts": ["10", "11", "12"]},
+    {"q": "Facebook ka malik kaun hai?", "a": "MARK ZUCKERBERG", "opts": ["ELON MUSK", "MARK ZUCKERBERG", "BILL GATES"]},
+    {"q": "Taj Mahal kahan hai?", "a": "AGRA", "opts": ["DELHI", "AGRA", "JAIPUR"]},
+    {"q": "Fastest land animal kaunsa hai?", "a": "CHEETAH", "opts": ["LION", "CHEETAH", "HORSE"]},
+    {"q": "Zero (0) kisne invent kiya tha?", "a": "ARYABHATTA", "opts": ["NEWTON", "ARYABHATTA", "EINSTEIN"]},
+    {"q": "Earth ke sabse paas kaunsa planet hai?", "a": "VENUS", "opts": ["MARS", "VENUS", "JUPITER"]},
+    {"q": "Youtube kis company ka hai?", "a": "GOOGLE", "opts": ["MICROSOFT", "GOOGLE", "AMAZON"]},
+    {"q": "500 ka note kis color ka hai (India)?", "a": "STONE GREY", "opts": ["PINK", "GREEN", "STONE GREY"]}
+]
+
+class IQTestView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=30) # 30s per question
+        self.user = user
+        self.score = 0
+        self.max_score = 20
+        # Shuffle questions every time
+        self.game_questions = random.sample(iq_questions, self.max_score) 
+        self.current_q_index = 0
+        self.setup_question()
+
+    def setup_question(self):
+        self.clear_items()
+        q_data = self.game_questions[self.current_q_index]
+        
+        # Shuffle Options
+        options = q_data["opts"][:]
+        random.shuffle(options)
+        
+        for opt in options:
+            btn = discord.ui.Button(label=opt, style=discord.ButtonStyle.secondary)
+            btn.callback = self.make_callback(opt)
+            self.add_item(btn)
+
+    def make_callback(self, answer):
+        async def callback(interaction: discord.Interaction):
+            if interaction.user.id != self.user.id: return await interaction.response.send_message("Apna IQ Test khud start karo!", ephemeral=True)
+            
+            correct_ans = self.game_questions[self.current_q_index]["a"]
+            
+            if answer == correct_ans:
+                # ✅ CORRECT ANSWER
+                self.score += 1
+                self.current_q_index += 1
+                
+                if self.score >= self.max_score:
+                    # 🎉 WINNER (20/20)
+                    await update_balance(self.user.id, 500000)
+                    embed = discord.Embed(title="🧠 EINSTEIN LEVEL GENIUS!", color=0x00FF00)
+                    embed.description = f"### 🏆 YOU WON!\nTumne saare **20 Sawal** sahi diye!\n💰 **Prize:** $500,000 (Added to Balance)"
+                    embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
+                    await interaction.response.edit_message(embed=embed, view=None)
+                else:
+                    # Next Question
+                    self.setup_question()
+                    embed = discord.Embed(title=f"🧠 IQ TEST: Round {self.current_q_index + 1}/20", color=0x3498DB)
+                    embed.description = f"**Question:** {self.game_questions[self.current_q_index]['q']}"
+                    await interaction.response.edit_message(embed=embed, view=self)
+            
+            else:
+                # ❌ WRONG ANSWER (GAME OVER)
+                await self.punish_user(interaction, correct_ans)
+                
+        return callback
+
+    async def punish_user(self, interaction, correct_ans):
+        self.stop()
+        
+        # 1. Generate Shame Name
+        bad_names = ["Anpadh 🤡", "Duffer 🤪", "Fail Fail Fail", "Dimag Se Paidal", "Gobar Ganesh"]
+        new_nick = f"{random.choice(bad_names)} {self.user.name[:10]}"
+        
+        # 2. Rename User
+        msg = ""
+        try:
+            if self.user.top_role < interaction.guild.me.top_role:
+                await self.user.edit(nick=new_nick)
+                msg = f"\n📛 **Nickname Changed to:** `{new_nick}`"
+                
+                # Give Haggu Role if exists
+                role = discord.utils.get(interaction.guild.roles, name="💩 HAGGU")
+                if role: await self.user.add_roles(role)
+            else:
+                msg = "\n*(Admin ho isliye bach gaye, warna naam badal deta)*"
+        except:
+            msg = "\n*(Permission Issue: Rename nahi kar paya)*"
+
+        # 3. Insult Embed
+        embed = discord.Embed(title="🤡 FAIL! IQ = 0", color=0xFF0000)
+        embed.description = (
+            f"❌ **Galat Jawab!** Sahi tha: `{correct_ans}`\n"
+            f"Tum 20 sawal bhi nahi de paye? **Sharam karo!**\n"
+            f"{msg}\n\n"
+            f"💡 **Tip:** Naam hatana hai to `/dark_shop` se **Izzat Wapasi** kharido ($100k)."
+        )
+        embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
+        
+        await interaction.response.edit_message(embed=embed, view=None)
+
+
+@bot.tree.command(name="iq_test", description="🧠 Answer 20 Questions to win $500k (Risk: Bezzati)")
+async def iq_test(i: discord.Interaction):
+    if not i.guild.me.guild_permissions.manage_nicknames:
+        return await i.response.send_message("❌ Mere paas 'Manage Nicknames' permission nahi hai!", ephemeral=True)
+        
+    embed = discord.Embed(title="🧠 ULTIMATE IQ CHALLENGE", color=0xFFA500)
+    embed.description = (
+        "**Rules:**\n"
+        "1. Lagatar **20 Sawal** sahi dene hain.\n"
+        "2. Prize: **$500,000** 💰\n"
+        "3. Ek bhi galti hui to... **Game Over + Ganda Nickname!** 🤡\n\n"
+        "**Kya tum taiyaar ho?**"
+    )
+    
+    view = IQTestView(i.user)
+    # Manually setup first question embed
+    q = view.game_questions[0]
+    embed.add_field(name="Round 1/20", value=f"**Q:** {q['q']}")
+    
+    await i.response.send_message(embed=embed, view=view)
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
