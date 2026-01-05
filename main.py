@@ -4546,10 +4546,7 @@ async def say(i: discord.Interaction, message: str, mode: app_commands.Choice[st
     except Exception as e:
         await i.followup.send(f"❌ **System Error:** `{e}`")
 
-# ================== 🧠 FLIP & PAIR MEMORY GAME (MAX 25 LIMIT) ==================
-
-import asyncio
-import random
+# ================== 🧠 FLIP & PAIR MEMORY GAME (LEVEL 7 = 3 BOMBS) ==================
 
 class MemoryGameView(discord.ui.View):
     def __init__(self, user, level):
@@ -4569,7 +4566,7 @@ class MemoryGameView(discord.ui.View):
             4: (3, 4), # 12 Cards
             5: (4, 4), # 16 Cards
             6: (4, 5), # 20 Cards
-            7: (5, 5), # 25 Cards (24 Pairs + 1 BOMB) 🔥
+            7: (5, 5), # 25 Cards (3 BOMBS) 🔥
         }
         
         self.rows, self.cols = configs.get(level, (2, 2))
@@ -4578,11 +4575,12 @@ class MemoryGameView(discord.ui.View):
         all_emojis = ["🍎", "🍌", "🍒", "🍇", "🍉", "🍓", "🍍", "🥝", "🥑", "🌽", "🥕", "🥦", "🍄", "🥜", "🥐", "🥨", "🍔", "🍕", "🌭", "🌮", "🍬", "🍭", "🧊"]
         
         if level == 7:
-            # Special Logic for Level 7 (Bomb)
-            self.total_pairs = 12
-            game_emojis = all_emojis[:12]
+            # Level 7: 3 BOMBS Logic 
+            # 25 Total Slots - 3 Bombs = 22 Safe Slots (11 Pairs)
+            self.total_pairs = 11
+            game_emojis = all_emojis[:11]
             self.deck = game_emojis * 2
-            self.deck.append("💣") # Add Bomb
+            self.deck.extend(["💣", "💣", "💣"]) # Adding 3 Bombs
         else:
             self.total_pairs = (self.rows * self.cols) // 2
             game_emojis = all_emojis[:self.total_pairs]
@@ -4600,7 +4598,6 @@ class MemoryGameView(discord.ui.View):
     def create_grid(self):
         self.clear_items()
         for i in range(len(self.deck)):
-            # Row Calculation logic for 5x5
             row_num = i // 5 
             
             if i in self.matched_indices:
@@ -4611,7 +4608,9 @@ class MemoryGameView(discord.ui.View):
                 btn = discord.ui.Button(label=self.deck[i], style=style, disabled=False, row=row_num)
             else:
                 if self.game_over: # Game over pe sab disable aur grey
-                    btn = discord.ui.Button(label=self.deck[i], style=discord.ButtonStyle.secondary, disabled=True, row=row_num)
+                    # Show bombs in Red on game over
+                    style = discord.ButtonStyle.danger if self.deck[i] == "💣" else discord.ButtonStyle.secondary
+                    btn = discord.ui.Button(label=self.deck[i], style=style, disabled=True, row=row_num)
                 else:
                     btn = discord.ui.Button(label="❓", style=discord.ButtonStyle.secondary, custom_id=f"card_{i}", row=row_num)
                     btn.callback = self.card_callback
@@ -4623,13 +4622,13 @@ class MemoryGameView(discord.ui.View):
         desc = f"Cards match karo! (Level {self.level})\n"
         
         if self.level == 7:
-            desc += "⚠️ **WARNING:** Ek **Bomb (💣)** chupa hai. Dhyan se!\n"
+            desc += "☠️ **DANGER:** Isme **3 BOMBS (💣)** chupe hain!\nEk galti aur Game Over.\n"
 
         desc += f"\n**📊 Stats:**\n🎯 Pairs: `{self.pairs_found}/{self.total_pairs}`\n🔄 Moves: `{self.moves}`"
         
         embed = discord.Embed(title=f"🧩 Memory Puzzle: Level {self.level}", description=desc, color=color)
         embed.set_thumbnail(url=self.user.display_avatar.url)
-        embed.set_footer(text=f"Player: {self.user.name} | Max Limit Edition")
+        embed.set_footer(text=f"Player: {self.user.name} | 3 Bombs Edition")
         return embed
 
     async def card_callback(self, interaction: discord.Interaction):
@@ -4641,14 +4640,14 @@ class MemoryGameView(discord.ui.View):
         if idx in self.flipped or idx in self.matched_indices or len(self.flipped) >= 2:
             return await interaction.response.defer()
 
-        # --- BOMB CHECK (Level 7 Only) ---
+        # --- BOMB CHECK (Level 7) ---
         if self.deck[idx] == "💣":
             self.game_over = True
             self.flipped.append(idx)
             self.create_grid()
             
-            embed = discord.Embed(title="💥 BOOM! Game Over!", description=f"**{self.user.mention}** bomb par pair rakh diya!\n\n❌ **YOU DIED**", color=0xFF0000)
-            embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif") # Blast or Elimination GIF
+            embed = discord.Embed(title="💥 BOOM! Game Over!", description=f"**{self.user.mention}** ne **Bomb** par pair rakh diya!\n\n❌ **YOU DIED**\n(Total 3 Bombs the isme!)", color=0xFF0000)
+            embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
             await interaction.response.edit_message(embed=embed, view=self)
             return
 
@@ -4673,7 +4672,7 @@ class MemoryGameView(discord.ui.View):
                     embed = await self.get_embed()
                     embed.title = "🏆 GOD LEVEL CLEARED!"
                     embed.color = 0x00FF00
-                    embed.description = f"**INCREDIBLE!** {self.user.mention} ne Max Level complete kar liya! 🤯\n\n🔥 Moves: `{self.moves}`"
+                    embed.description = f"**INCREDIBLE!** {self.user.mention} ne **3 BOMBS** se bachkar Level 7 clear kar liya! 🤯\n\n🔥 Moves: `{self.moves}`"
                     embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
                     
                     for child in self.children: child.disabled = True
@@ -4703,12 +4702,13 @@ class MemoryGameView(discord.ui.View):
     app_commands.Choice(name="Level 4: Hard (3x4)", value=4),
     app_commands.Choice(name="Level 5: Expert (4x4)", value=5),
     app_commands.Choice(name="Level 6: Master (4x5)", value=6),
-    app_commands.Choice(name="Level 7: GOD MODE (5x5 + Bomb 💣)", value=7),
+    app_commands.Choice(name="Level 7: GOD MODE (5x5 + 3 Bombs 💣)", value=7),
 ])
 async def memory_game(interaction: discord.Interaction, level: int):
     view = MemoryGameView(interaction.user, level)
     embed = await view.get_embed()
     await interaction.response.send_message(embed=embed, view=view)
+
 
 # ================== 🏦 HEIST: NIGHTMARE MODE (IMPOSSIBLE) ==================
 
