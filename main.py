@@ -7580,7 +7580,8 @@ iq_questions = [
     {"q": "KGF movie mein hero ka naam kya tha?", "a": "ROCKY", "opts": ["ROLEX", "ROCKY", "ADHEERA"]},
     {"q": "Netflix kis desh ki company hai?", "a": "USA", "opts": ["UK", "USA", "CHINA"]},
     {"q": "'Bahubali' ko kisne maara tha?", "a": "KATTAPPA", "opts": ["BHALLALADEVA", "KATTAPPA", "BIJJALADEVA"]},
-    {"q": "Oscar award kis cheez ke liye milta hai?", "a": "FILM/CINEMA", "opts": ["MUSIC ONLY", "SPORTS", "FILM/CINEMA"]}
+    {"q": "Oscar award kis cheez ke liye milta hai?", "a": "FILM/CINEMA", "opts": ["MUSIC ONLY", "SPORTS", "FILM/CINEMA"]},
+    
     # --- TRICKY (Dimag Ghumane Wale) ---
     {"q": "USA ki Capital (Rajdhani) kya hai?", "a": "WASHINGTON DC", "opts": ["NEW YORK", "WASHINGTON DC", "LOS ANGELES"]},
     {"q": "Ek century (shatabdi) mein kitne saal hote hain?", "a": "100", "opts": ["10", "50", "100"]},
