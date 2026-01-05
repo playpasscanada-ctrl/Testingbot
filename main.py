@@ -5258,40 +5258,52 @@ async def start_bomb(i: discord.Interaction):
     await i.response.send_message(embed=embed, view=view)
 
 
-# ================== 🎰 PREMIUM DEVIL'S SLOTS (WITH BUTTON) ==================
+# ================== 🎰 DEVIL'S SLOTS (AUTO ROLE & PUNISHMENT) ==================
 
 class DevilSlotsView(discord.ui.View):
     def __init__(self, user):
         super().__init__(timeout=180)
         self.user = user
 
+    async def assign_role(self, interaction, role_name, color):
+        # Helper function to create/give roles automatically
+        guild = interaction.guild
+        role = discord.utils.get(guild.roles, name=role_name)
+        
+        try:
+            # Agar role nahi hai to banao
+            if not role:
+                role = await guild.create_role(name=role_name, color=color, reason="Devil Slots Game")
+            
+            # User ko role do
+            if role not in interaction.user.roles:
+                await interaction.user.add_roles(role)
+            return True
+        except:
+            return False # Permission error
+
     @discord.ui.button(label="🎰 SPIN THE WHEEL", style=discord.ButtonStyle.blurple, custom_id="spin_now")
     async def spin_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         
-        # 1. Check: Kya wahi user hai?
         if interaction.user.id != self.user.id:
-            return await interaction.response.send_message("❌ Apna khud ka /devil_slots command chalao!", ephemeral=True)
+            return await interaction.response.send_message("❌ Apne paise lagao, dusre ka button mat dabao!", ephemeral=True)
 
-        # 2. Button Disable & Spinning Animation
+        # 1. Disable Button & Animation
         button.disabled = True
         button.label = "🔄 SPINNING..."
         button.style = discord.ButtonStyle.secondary
         
-        # Spinning Embed
-        spin_embed = discord.Embed(title="🎰 WHEEL IS SPINNING...", color=0x9932CC)
-        spin_embed.description = "# 🌀 | 🌀 | 🌀\n**Kismat ghum rahi hai...**"
+        spin_embed = discord.Embed(title="🎰 ROLLING...", color=0x9932CC)
+        spin_embed.description = "# 🌀 | 🌀 | 🌀\n**Dhadkanein badh rahi hain...**"
         spin_embed.set_image(url="https://media.tenor.com/GoMvLaZs8KkAAAAC/slot-machine-casino.gif")
-        spin_embed.set_thumbnail(url=interaction.user.display_avatar.url) # Profile Pic
+        spin_embed.set_thumbnail(url=interaction.user.display_avatar.url) # Profile on Side
         
         await interaction.response.edit_message(embed=spin_embed, view=self)
-        
-        # 3. Wait for Suspense (3 Seconds)
-        await asyncio.sleep(3)
+        await asyncio.sleep(3) # Suspense
 
-        # 4. LOGIC: Calculate Result
+        # 2. LOGIC: Outcomes & Weights
         outcomes = ["JACKPOT", "DEATH", "SHAME", "WIN", "LOSS"]
-        # Weights: Jackpot (2%), Death (10%), Shame (15%), Win (30%), Loss (43%)
-        weights = [2, 10, 15, 30, 43]
+        weights = [2, 8, 15, 30, 45] # Probabilities
         result_type = random.choices(outcomes, weights=weights, k=1)[0]
         
         final_desc = ""
@@ -5299,89 +5311,107 @@ class DevilSlotsView(discord.ui.View):
         image = ""
         status_text = ""
 
-        # --- OUTCOME HANDLING ---
-        
+        # --- OUTCOME HANDLER ---
+
         if result_type == "JACKPOT":
             slots = "💎 | 💎 | 💎"
             status_text = "🎉 GRAND JACKPOT!"
-            final_desc = f"# [ {slots} ]\n\n### 💰 10,000,000 COINS!\n**Mubarak ho! Aap Crorepati ban gaye!**"
+            final_desc = f"# [ {slots} ]\n\n### 👑 REWARD: 'Casino King' Role\n**💰 50,000,000 COINS!**\nAap server ke naye Raja hain!"
             color = 0xFFD700 # Gold
             image = "https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif"
+            
+            # Give Role
+            await self.assign_role(interaction, "👑 CASINO KING", discord.Color.gold())
 
         elif result_type == "DEATH":
             slots = "💀 | 💀 | 💀"
             status_text = "💀 DEATH SPIN!"
-            final_desc = f"# [ {slots} ]\n\n### 🔇 PENALTY: 1 Hour Mute\n**Shaitan ne aapki aawaz cheen li.**"
+            final_desc = f"# [ {slots} ]\n\n### 🔇 PUNISHMENT: 1 Hour Mute\n**Shaitan ne aapki aawaz cheen li.**"
             color = 0x000000 # Black
             image = "https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif"
+            
+            # Timeout User
             try:
-                await interaction.user.timeout(dt.timedelta(hours=1), reason="Devil Slots Death")
+                if interaction.user.top_role < interaction.guild.me.top_role:
+                    await interaction.user.timeout(dt.timedelta(hours=1), reason="Devil Slots Death")
+                else:
+                    final_desc += "\n*(Admin Power: Mute fail ho gaya)*"
             except:
-                final_desc += "\n*(Admin Power ne bacha liya)*"
+                pass
 
         elif result_type == "SHAME":
             slots = "💩 | 💩 | 💩"
             status_text = "💩 SHAME SPIN!"
-            final_desc = f"# [ {slots} ]\n\n### 🏷️ PENALTY: Name Change\n**Ab se aapka naam 'Mr. Haggu' hai.**"
+            final_desc = f"# [ {slots} ]\n\n### 🏷️ PUNISHMENT: 'HAGGU' Role\n**Apka naam ab 'Mr. Haggu' hai.**\nPoora server ab hasega! 😂"
             color = 0x8B4513 # Brown
             image = "https://media.tenor.com/P0G2gQJb6jAAAAAC/poop-emoji.gif"
+            
+            # Nickname Change
             try:
                 if interaction.user.top_role < interaction.guild.me.top_role:
                     await interaction.user.edit(nick="Mr. Haggu 💩")
+                    # Assign Shame Role
+                    await self.assign_role(interaction, "💩 HAGGU", discord.Color.brown())
                 else:
-                    final_desc += "\n*(Role Issue: Naam change nahi kar paaya)*"
+                    final_desc += "\n*(Role Issue: Admin ko rename nahi kar sakta)*"
             except:
                 pass
 
         elif result_type == "WIN":
-            # Random fruits
-            fruits = ["🍒", "🍋", "🍇", "🍉"]
-            f1, f2 = random.choices(fruits, k=2)
-            slots = f"{f1} | {f1} | {f2}" # 2 Same
-            status_text = "🍒 SMALL WIN!"
-            final_desc = f"# [ {slots} ]\n\n**Badhiya! Paise wapas mil gaye.**\n(Safe Spin)"
+            f1 = random.choice(["🍒", "🍋", "🍇"])
+            slots = f"{f1} | {f1} | {f1}"
+            status_text = "🍒 LUCKY WIN!"
+            final_desc = f"# [ {slots} ]\n\n### 💰 50,000 Coins\nBach gaye! Paise bhi mile aur izzat bhi bachi."
             color = 0x00FF00 # Green
             image = None
 
         else: # LOSS
-            f1, f2, f3 = random.sample(["🍒", "🍋", "🍇", "🍉", "🔔", "❌"], k=3)
-            slots = f"{f1} | {f2} | {f3}"
-            status_text = "❌ BETTER LUCK NEXT TIME"
-            final_desc = f"# [ {slots} ]\n\n**Haar gaye!**\nDobara try karo agar himmat hai."
+            slots = f"❌ | 🍋 | 🔔"
+            status_text = "❌ YOU LOST!"
+            final_desc = f"# [ {slots} ]\n\n**Sab haar gaye!**\nGhar jao, yahan kuch nahi rakha."
             color = 0xFF0000 # Red
             image = None
 
-        # 5. FINAL EMBED
+        # 3. FINAL EMBED CONSTRUCTION
         result_embed = discord.Embed(title=f"🎰 {status_text}", color=color)
         result_embed.description = final_desc
         
-        # Profile Picture on Right (Thumbnail)
+        # Profile Picture Side-by-Side (Thumbnail)
         result_embed.set_thumbnail(url=interaction.user.display_avatar.url)
         
         if image:
             result_embed.set_image(url=image)
         
-        result_embed.set_footer(text="Casino Owner: The Devil 😈 | /devil_slots")
+        result_embed.set_footer(text="Casino Rules: No Refunds | /devil_slots")
         
-        # Re-enable button for Re-spin? (Optional: Let's keep it disabled to prevent spam)
-        # Agar Re-spin chahiye to button.disabled = False kardo.
+        # Button update (Game Over)
+        button.label = "GAME OVER"
+        button.style = discord.ButtonStyle.secondary
         
-        await interaction.edit_original_response(embed=result_embed, view=None)
+        await interaction.edit_original_response(embed=result_embed, view=self)
 
 
-@bot.tree.command(name="devil_slots", description="🎰 Spin the Wheel (Button Activated)")
+@bot.tree.command(name="devil_slots", description="🎰 High Risk Casino (Roles + Mute)")
 async def devil_slots(i: discord.Interaction):
-    # Permission Check
-    if not i.guild.me.guild_permissions.moderate_members or not i.guild.me.guild_permissions.manage_nicknames:
-        return await i.response.send_message("❌ **Missing Permissions:** Mere paas 'Timeout' aur 'Manage Nicknames' ki power nahi hai.", ephemeral=True)
+    # Permissions Check (Zaruri hai roles/nicknames ke liye)
+    perms = i.guild.me.guild_permissions
+    if not (perms.moderate_members and perms.manage_nicknames and perms.manage_roles):
+        return await i.response.send_message("❌ **Permissions Missing:** Mere paas `Manage Roles`, `Nicknames` aur `Timeout` ki power honi chahiye!", ephemeral=True)
 
-    # Intro Embed
-    embed = discord.Embed(title="🎰 WELCOME TO DEVIL'S CASINO", description="Kya aap apni kismat aur izzat daav par lagana chahte hain?\n\n**Risk:** Mute 🔇 ya Beizzat 💩\n**Reward:** CRORES 💰", color=0x9932CC)
-    embed.set_thumbnail(url=i.user.display_avatar.url)
+    embed = discord.Embed(title="🎰 DEVIL'S HIGH STAKES CASINO", color=0x9932CC)
+    embed.description = (
+        "**Are you ready to sell your soul?**\n\n"
+        "💎 **JACKPOT:** 5 Crore + `👑 CASINO KING` Role\n"
+        "💀 **DEATH:** 1 Hour Mute 🔇\n"
+        "💩 **SHAME:** Name Change + `💩 HAGGU` Role\n\n"
+        "👇 **Click below to SPIN!**"
+    )
+    embed.set_thumbnail(url=i.user.display_avatar.url) # User ki photo
     embed.set_image(url="https://media.tenor.com/GoMvLaZs8KkAAAAC/slot-machine-casino.gif")
     
     view = DevilSlotsView(i.user)
     await i.response.send_message(embed=embed, view=view)
+
 
 # ================== SAY ACCESS MANAGER (PREMIUM) ==================
 @bot.tree.command(name="sayaccess", description="Manage who can use /say command (Owner Only)")
