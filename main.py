@@ -5504,6 +5504,238 @@ async def devil_slots(i: discord.Interaction):
     view = DevilSlotsView(i.user)
     await i.response.send_message(embed=embed, view=view)
 
+# ================== 🦑 SQUID GAME: GLASS BRIDGE ==================
+
+class GlassBridgeGame(discord.ui.View):
+    def __init__(self, players, interaction):
+        super().__init__(timeout=60) # 1 Minute Hard Limit
+        self.original_interaction = interaction
+        self.bridge_len = 7 # 7 Steps Long
+        # Generate Path: 0 = Left Safe, 1 = Right Safe
+        self.path = [random.choice(["LEFT", "RIGHT"]) for _ in range(self.bridge_len)]
+        self.revealed = [None] * self.bridge_len # To track revealed glasses
+        
+        # Shuffle Players & Assign Numbers
+        random.shuffle(players)
+        self.players = players # List of Member objects
+        self.dead_players = []
+        self.winners = []
+        
+        self.current_player_idx = 0 # Index of active player
+        self.current_step = 0 # Current step on bridge (0 to 6)
+        
+        self.game_active = True
+        self.timer_task = asyncio.create_task(self.start_timer())
+
+        # Setup Buttons
+        self.add_item(discord.ui.Button(label="🦵 LEFT GLASS", style=discord.ButtonStyle.secondary, custom_id="LEFT"))
+        self.add_item(discord.ui.Button(label="🦵 RIGHT GLASS", style=discord.ButtonStyle.secondary, custom_id="RIGHT"))
+        push_btn = discord.ui.Button(label="✋ PUSH FRONT PLAYER", style=discord.ButtonStyle.danger, custom_id="PUSH", row=1)
+        push_btn.callback = self.push_callback
+        self.add_item(push_btn)
+        
+        # Link Jump Callbacks
+        self.children[0].callback = self.jump_callback
+        self.children[1].callback = self.jump_callback
+
+    async def start_timer(self):
+        await asyncio.sleep(60)
+        if self.game_active:
+            self.game_active = False
+            self.stop()
+            # Kill Everyone Remaining
+            survivors = self.players[self.current_player_idx:]
+            muted_names = []
+            
+            for p in survivors:
+                try:
+                    if p.top_role < self.original_interaction.guild.me.top_role:
+                        await p.timeout(dt.timedelta(seconds=30), reason="Glass Bridge Timeout")
+                        muted_names.append(p.name)
+                except: pass
+            
+            embed = discord.Embed(title="⏰ TIME OVER! ELIMINATED!", color=0x000000)
+            embed.description = f"**60 Seconds khatam!** Bridge toot gaya.\n\n💀 **Died:** {', '.join(muted_names) if muted_names else 'Everyone'}\n### 🔇 Saza: 30s Timeout"
+            embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
+            await self.original_interaction.edit_original_response(embed=embed, view=None)
+
+    def generate_board(self):
+        # Visual Representation of Bridge
+        board_str = ""
+        # Show Steps in Reverse (Finish Line at Top)
+        for i in range(self.bridge_len - 1, -1, -1):
+            
+            step_marker = f"**Step {i+1}**"
+            
+            # Left Glass Logic
+            if i == self.current_step and self.current_player_idx < len(self.players):
+                 # Current row marker
+                left_icon = "⬜" 
+                right_icon = "⬜"
+            elif i < self.current_step:
+                # Passed steps (Show correct path)
+                left_icon = "🟩" if self.path[i] == "LEFT" else "⬛" # Green=Safe, Black=Broken
+                right_icon = "🟩" if self.path[i] == "RIGHT" else "⬛"
+            else:
+                # Future steps (Unknown)
+                left_icon = "🌫️" 
+                right_icon = "🌫️"
+
+            # If revealed by Push
+            if self.revealed[i]:
+                left_icon = "✅" if self.path[i] == "LEFT" else "❌"
+                right_icon = "✅" if self.path[i] == "RIGHT" else "❌"
+            
+            # Indicator for current position
+            pointer = "👈 **HERE**" if i == self.current_step else ""
+            
+            board_str += f"`[{left_icon}]`  `[{right_icon}]` {step_marker} {pointer}\n"
+        
+        return board_str
+
+    async def get_embed(self):
+        if not self.game_active: return None
+        
+        active_p = self.players[self.current_player_idx]
+        next_p = self.players[self.current_player_idx + 1] if self.current_player_idx + 1 < len(self.players) else "None"
+        
+        desc = (
+            f"⏱️ **TIME REMAINING:** Checking...\n\n"
+            f"{self.generate_board()}\n"
+            f"**🏃 CURRENT TURN:** {active_p.mention} (Step {self.current_step + 1})\n"
+            f"**😈 BEHIND:** {next_p.mention if isinstance(next_p, discord.Member) else 'No one'}\n\n"
+            f"*Rules: Jump karo ya Push karo. 1 Min limit!*"
+        )
+        
+        embed = discord.Embed(title="🦑 GLASS BRIDGE CHALLENGE", description=desc, color=0x3498DB)
+        embed.set_thumbnail(url=active_p.display_avatar.url)
+        return embed
+
+    async def jump_callback(self, interaction: discord.Interaction):
+        if not self.game_active: return
+        
+        active_player = self.players[self.current_player_idx]
+        if interaction.user.id != active_player.id:
+            return await interaction.response.send_message("❌ Teri baari nahi hai! Line mein lag.", ephemeral=True)
+
+        chosen_side = interaction.data["custom_id"] # LEFT or RIGHT
+        correct_side = self.path[self.current_step]
+        
+        if chosen_side == correct_side:
+            # ✅ SAFE
+            self.current_step += 1
+            
+            # Check Win
+            if self.current_step >= self.bridge_len:
+                self.game_active = False
+                self.timer_task.cancel()
+                self.winners.append(active_player)
+                
+                embed = discord.Embed(title="🎉 SURVIVOR!", color=0x00FF00)
+                embed.description = f"**{active_player.mention}** ne Glass Bridge par kar liya!\n\n🏆 **WINNER**"
+                embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
+                await interaction.response.edit_message(embed=embed, view=None)
+                return
+
+            await interaction.response.edit_message(embed=await self.get_embed(), view=self)
+            
+        else:
+            # ❌ DIED
+            await self.handle_death(interaction, active_player, "Wrong Glass!")
+
+    async def push_callback(self, interaction: discord.Interaction):
+        if not self.game_active: return
+        
+        # Logic: Only the person immediately BEHIND can push
+        if self.current_player_idx + 1 >= len(self.players):
+            return await interaction.response.send_message("❌ Push karne ke liye koi bacha hi nahi!", ephemeral=True)
+            
+        pusher = self.players[self.current_player_idx + 1]
+        victim = self.players[self.current_player_idx]
+        
+        if interaction.user.id != pusher.id:
+            return await interaction.response.send_message(f"❌ Sirf {pusher.name} dhakka de sakta hai!", ephemeral=True)
+
+        # REVEAL THE GLASS for current step
+        self.revealed[self.current_step] = True
+        
+        # Kill the victim
+        await self.handle_death(interaction, victim, f"Pushed by {pusher.name}", revealed=True)
+
+    async def handle_death(self, interaction, player, reason, revealed=False):
+        # Mute Logic
+        try:
+            if player.top_role < interaction.guild.me.top_role:
+                await player.timeout(dt.timedelta(seconds=30), reason="Glass Bridge Death")
+        except: pass
+        
+        self.dead_players.append(player)
+        self.current_player_idx += 1 # Next player's turn
+        
+        # Reset step? NO. In Squid game, next player stands at same step.
+        # But if revealed, they know the answer.
+        
+        if self.current_player_idx >= len(self.players):
+            # No players left
+            self.game_active = False
+            self.timer_task.cancel()
+            embed = discord.Embed(title="💀 GAME OVER", description="**Sab mar gaye!** Koi nahi bacha.", color=0x000000)
+            await interaction.response.edit_message(embed=embed, view=None)
+            return
+
+        msg = f"💀 **{player.name}** gir gaya! ({reason})\n🔇 **Saza:** 30s Mute."
+        if revealed:
+            msg += "\n👀 **GLASS REVEALED!** Rasta saaf hai!"
+
+        await interaction.response.edit_message(content=msg, embed=await self.get_embed(), view=self)
+
+
+# --- LOBBY VIEW ---
+class GlassLobbyView(discord.ui.View):
+    def __init__(self, host):
+        super().__init__(timeout=120)
+        self.host = host
+        self.players = [host]
+        self.started = False
+
+    def get_embed(self):
+        p_list = "\n".join([f"{i+1}. {p.name}" for i, p in enumerate(self.players)])
+        embed = discord.Embed(title="🦑 SQUID GAME: GLASS BRIDGE", color=0x3498DB)
+        embed.description = (
+            "**Rule 1:** 2 Glasses. Ek toote ga, ek tikega.\n"
+            "**Rule 2:** Random Numbers milenge.\n"
+            "**Rule 3:** Peeche wala aage wale ko **PUSH** kar sakta hai (Reveal Glass).\n"
+            "**Rule 4:** 1 Minute Total Time. Fail = Mute.\n\n"
+            f"👥 **Players ({len(self.players)}):**\n{p_list}"
+        )
+        embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
+        return embed
+
+    @discord.ui.button(label="✋ Join Game", style=discord.ButtonStyle.success)
+    async def join_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.started: return
+        if interaction.user in self.players: return await interaction.response.send_message("Already joined!", ephemeral=True)
+        self.players.append(interaction.user)
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
+
+    @discord.ui.button(label="🚀 START", style=discord.ButtonStyle.danger)
+    async def start_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.host.id: return await interaction.response.send_message("Host only.", ephemeral=True)
+        if len(self.players) < 2: return await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
+        
+        self.started = True
+        game_view = GlassBridgeGame(self.players, interaction)
+        await interaction.response.edit_message(content="🔢 **Assigning Numbers...**", embed=await game_view.get_embed(), view=game_view)
+
+
+@bot.tree.command(name="glass_bridge", description="🦑 Squid Game Glass Bridge (Push & Survive)")
+async def glass_bridge(i: discord.Interaction):
+    if not i.guild.me.guild_permissions.moderate_members:
+        return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
+    
+    view = GlassLobbyView(i.user)
+    await i.response.send_message(embed=view.get_embed(), view=view)
+
 
 # ================== SAY ACCESS MANAGER (PREMIUM) ==================
 @bot.tree.command(name="sayaccess", description="Manage who can use /say command (Owner Only)")
