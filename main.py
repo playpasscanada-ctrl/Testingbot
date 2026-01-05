@@ -5504,6 +5504,557 @@ async def devil_slots(i: discord.Interaction):
     view = DevilSlotsView(i.user)
     await i.response.send_message(embed=embed, view=view)
 
+# ================== 🍪 SQUID GAME: DALGONA COOKIE ==================
+
+class DalgonaGameView(discord.ui.View):
+    def __init__(self, user, difficulty):
+        super().__init__(timeout=60) # 1 Minute Timer
+        self.user = user
+        self.difficulty = difficulty
+        self.progress = 0 # 0 to 100 needed
+        self.durability = 100 # Cookie Health
+        self.game_over = False
+        
+        # Difficulty Settings
+        # [Break Chance on Crack, Progress per Lick, Progress per Crack, Image URL]
+        self.settings = {
+            "TRIANGLE": {"break_chance": 10, "lick_gain": 8, "crack_gain": 25, "img": "https://i.imgur.com/L1M5K5s.png"}, # Placeholder Img
+            "CIRCLE":   {"break_chance": 30, "lick_gain": 6, "crack_gain": 20, "img": "https://i.imgur.com/L1M5K5s.png"},
+            "UMBRELLA": {"break_chance": 60, "lick_gain": 4, "crack_gain": 15, "img": "https://i.imgur.com/L1M5K5s.png"}
+        }
+        
+        self.current_setting = self.settings[difficulty]
+
+    def get_progress_bar(self):
+        # Visual Progress Bar
+        bar_len = 10
+        filled = int((self.progress / 100) * bar_len)
+        bar = "🟩" * filled + "⬜" * (bar_len - filled)
+        return bar
+
+    async def get_embed(self, status="PLAYING"):
+        color = 0xFFA500 # Orange
+        
+        if status == "WON":
+            title = "🎉 PASSED!"
+            desc = f"**{self.user.mention}** ne **{self.difficulty}** complete kar liya!\n\n🍪 **Cookie:** Perfect Shape!\n🏆 **Status:** SURVIVOR"
+            img = "https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif"
+            color = 0x00FF00
+        elif status == "DIED":
+            title = "💀 CRACKED!"
+            desc = f"**{self.user.mention}** ne jaldbaazi mein cookie tod di!\n\n🍪 **Cookie:** DESTROYED\n🔇 **Punishment:** 1 Hour Mute"
+            img = "https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif" # Gunshot/Eliminated
+            color = 0xFF0000
+        else:
+            title = f"🍪 DALGONA: {self.difficulty}"
+            desc = (
+                f"**Shape:** {self.difficulty}\n"
+                f"**Integrity (Mazbooti):** `{self.durability}%`\n"
+                f"**Progress:** `{self.progress}%`\n"
+                f"{self.get_progress_bar()}\n\n"
+                f"👇 **Action lo:**\n"
+                f"👅 **Lick:** Safe, Slow.\n"
+                f"🔨 **Crack:** Risky, Fast (+Risk of Break)."
+            )
+            img = "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif" # Licking GIF or Static Cookie
+        
+        embed = discord.Embed(title=title, description=desc, color=color)
+        embed.set_thumbnail(url=self.user.display_avatar.url)
+        embed.set_image(url=img)
+        
+        if status == "PLAYING":
+            embed.set_footer(text="Timer: 60 Seconds | Don't break it!")
+            
+        return embed
+
+    async def check_game_state(self, interaction):
+        # 1. Check Win
+        if self.progress >= 100:
+            self.game_over = True
+            # Disable buttons
+            for child in self.children: child.disabled = True
+            await interaction.response.edit_message(embed=await self.get_embed("WON"), view=self)
+            return
+
+        # 2. Check Loss (Durability 0)
+        if self.durability <= 0:
+            await self.trigger_death(interaction, "Cookie choora ho gayi!")
+            return
+
+        # 3. Continue
+        await interaction.response.edit_message(embed=await self.get_embed("PLAYING"), view=self)
+
+
+    async def trigger_death(self, interaction, reason):
+        self.game_over = True
+        for child in self.children: child.disabled = True
+        
+        # Mute Logic
+        try:
+            if interaction.user.top_role < interaction.guild.me.top_role:
+                await interaction.user.timeout(dt.timedelta(hours=1), reason="Dalgona Failed")
+        except: pass
+
+        embed = await self.get_embed("DIED")
+        embed.description += f"\n\n**Reason:** {reason}"
+        await interaction.response.edit_message(embed=embed, view=self)
+
+
+    @discord.ui.button(label="👅 LICK (Safe)", style=discord.ButtonStyle.success)
+    async def lick_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user.id: return
+        
+        gain = self.current_setting["lick_gain"] + random.randint(-2, 2)
+        self.progress += gain
+        self.durability -= random.randint(1, 3) # Thoda sa damage
+        
+        await self.check_game_state(interaction)
+
+
+    @discord.ui.button(label="🔨 CRACK (Risky)", style=discord.ButtonStyle.danger)
+    async def crack_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user.id: return
+        
+        # Risk Check
+        fail_chance = self.current_setting["break_chance"]
+        roll = random.randint(1, 100)
+        
+        if roll <= fail_chance:
+            # INSTANT DEATH
+            await self.trigger_death(interaction, "Hathoda zor se lag gaya!")
+            return
+
+        gain = self.current_setting["crack_gain"] + random.randint(-5, 5)
+        self.progress += gain
+        self.durability -= random.randint(5, 15) # Bhari damage
+        
+        await self.check_game_state(interaction)
+
+
+# --- SHAPE SELECTION VIEW ---
+class DalgonaLobbyView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=60)
+        self.user = user
+
+    async def start_game(self, interaction, shape):
+        if interaction.user.id != self.user.id: return
+        
+        view = DalgonaGameView(self.user, shape)
+        await interaction.response.edit_message(embed=await view.get_embed(), view=view)
+
+    @discord.ui.button(label="🔺 TRIANGLE (Easy)", style=discord.ButtonStyle.secondary)
+    async def tri_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.start_game(interaction, "TRIANGLE")
+
+    @discord.ui.button(label="⭕ CIRCLE (Medium)", style=discord.ButtonStyle.primary)
+    async def cir_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.start_game(interaction, "CIRCLE")
+
+    @discord.ui.button(label="☂️ UMBRELLA (IMPOSSIBLE)", style=discord.ButtonStyle.danger)
+    async def umb_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.start_game(interaction, "UMBRELLA")
+
+
+@bot.tree.command(name="dalgona", description="🍪 Squid Game: Honeycomb Challenge")
+async def dalgona(i: discord.Interaction):
+    if not i.guild.me.guild_permissions.moderate_members:
+        return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
+        
+    embed = discord.Embed(title="🍪 DALGONA CHALLENGE", description="Apna Shape choose karo!\n\n🔺 **Easy:** Safe, Low Reward.\n☂️ **Umbrella:** Maut ka Khel (High Risk).", color=0xFFA500)
+    embed.set_image(url="https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif") # Placeholder
+    
+    view = DalgonaLobbyView(i.user)
+    await i.response.send_message(embed=embed, view=view)
+
+# ================== 🪢 TUG OF WAR (TEAM BATTLE) ==================
+
+class TugOfWarGame(discord.ui.View):
+    def __init__(self, red_team, blue_team, interaction):
+        super().__init__(timeout=60) # 60 Seconds Match
+        self.red_team = red_team
+        self.blue_team = blue_team
+        self.interaction = interaction
+        
+        self.score = 0 # 0 = Center, -ve = Red Win, +ve = Blue Win
+        self.win_threshold = 20 # Kitne clicks ka difference chahiye jeetne ke liye
+        self.game_active = True
+        
+        # Setup Buttons
+        # Note: Custom ID is crucial here
+        self.add_item(discord.ui.Button(label="💪 PULL RED", style=discord.ButtonStyle.danger, custom_id="pull_red"))
+        self.add_item(discord.ui.Button(label="💪 PULL BLUE", style=discord.ButtonStyle.primary, custom_id="pull_blue"))
+        
+        # Bind callbacks
+        self.children[0].callback = self.red_pull
+        self.children[1].callback = self.blue_pull
+        
+        # Start Background Updater
+        self.updater_task = asyncio.create_task(self.update_game_state())
+
+    def get_progress_bar(self):
+        # Visual Rope Representation
+        # Range: -20 to +20. Scale it to 10 blocks visual.
+        
+        # Normalized score (-10 to 10)
+        scaled_score = int((self.score / self.win_threshold) * 10)
+        
+        # Clamp values
+        scaled_score = max(-10, min(10, scaled_score))
+        
+        # Center is at index 10 (in a 20 char string)
+        # We construct bar: [Red Area] [Marker] [Blue Area]
+        
+        bar_size = 10
+        center = bar_size
+        position = center + scaled_score
+        
+        chars = ["➖"] * (bar_size * 2 + 1)
+        chars[position] = "🔴" # The Knot/Marker
+        
+        # Make Red side Red and Blue side Blue visually (using emojis if possible or just the marker)
+        # Better visual:
+        # Red Winning: 🔴---------|----------
+        # Blue Winning: ---------|---------🔴
+        
+        left_side = "🟥" * (10 + scaled_score)
+        right_side = "🟦" * (10 - scaled_score)
+        
+        # Simple Rope Style
+        rope = "═" * 10 + "🔥" + "═" * 10
+        # We shift the flame based on score
+        # Let's use a simple slider logic
+        
+        p = 10 + scaled_score # 0 to 20
+        marker = "🚩"
+        track = ["➖"] * 21
+        track[p] = marker
+        
+        return f"`🔴 {''.join(track)} 🔵`"
+
+    async def get_embed(self, winner=None):
+        if winner:
+            color = 0xE74C3C if winner == "RED" else 0x3498DB
+            desc = f"🏆 **WINNER:** TEAM {winner}!\n\n**Red Team:** {len(self.red_team)} Players\n**Blue Team:** {len(self.blue_team)} Players"
+            title = "🎉 MATCH OVER!"
+        else:
+            color = 0xFFA500
+            title = "🪢 TUG OF WAR: PULL NOW!"
+            desc = (
+                f"{self.get_progress_bar()}\n\n"
+                f"🔴 **RED Power:** {abs(min(0, self.score))}\n"
+                f"🔵 **BLUE Power:** {max(0, self.score)}\n\n"
+                f"👇 **Jaldi Button Dabao!**"
+            )
+            
+        embed = discord.Embed(title=title, description=desc, color=color)
+        if not winner:
+            embed.set_footer(text="Spam Click! Jo rukega wo harega!")
+        return embed
+
+    async def update_game_state(self):
+        # Updates the message every 1.5 seconds to avoid rate limits
+        while self.game_active:
+            await asyncio.sleep(1.5)
+            
+            # Check Win Condition
+            if self.score <= -self.win_threshold:
+                await self.end_game("RED")
+                break
+            elif self.score >= self.win_threshold:
+                await self.end_game("BLUE")
+                break
+            
+            # Update Embed
+            try:
+                await self.interaction.edit_original_response(embed=await self.get_embed(), view=self)
+            except: pass
+
+    async def end_game(self, winner_team_name):
+        self.game_active = False
+        self.updater_task.cancel()
+        
+        for child in self.children: child.disabled = True
+        await self.interaction.edit_original_response(embed=await self.get_embed(winner_team_name), view=self)
+        
+        # PUNISHMENT LOGIC
+        losing_team = self.blue_team if winner_team_name == "RED" else self.red_team
+        
+        muted_users = []
+        for member in losing_team:
+            try:
+                if member.top_role < self.interaction.guild.me.top_role:
+                    await member.timeout(dt.timedelta(minutes=5), reason="Lost Tug of War")
+                    muted_users.append(member.name)
+            except: pass
+            
+        if muted_users:
+            await self.interaction.followup.send(f"🔇 **PUNISHMENT:** {', '.join(muted_users)} ko 5 Minute ka Mute mila hai!", ephemeral=False)
+
+    # --- BUTTON CALLBACKS (No Await to be fast) ---
+    async def red_pull(self, interaction: discord.Interaction):
+        if interaction.user not in self.red_team:
+            return await interaction.response.send_message("❌ Tum Red Team mein nahi ho!", ephemeral=True)
+        self.score -= 1 # Move Left
+        await interaction.response.defer() # Just acknowledge, don't update UI yet
+
+    async def blue_pull(self, interaction: discord.Interaction):
+        if interaction.user not in self.blue_team:
+            return await interaction.response.send_message("❌ Tum Blue Team mein nahi ho!", ephemeral=True)
+        self.score += 1 # Move Right
+        await interaction.response.defer()
+
+
+# --- LOBBY VIEW ---
+class TugLobbyView(discord.ui.View):
+    def __init__(self, host):
+        super().__init__(timeout=120)
+        self.host = host
+        self.red_team = []
+        self.blue_team = []
+        self.started = False
+
+    def get_embed(self):
+        r_list = "\n".join([u.name for u in self.red_team]) or "Waiting..."
+        b_list = "\n".join([u.name for u in self.blue_team]) or "Waiting..."
+        
+        embed = discord.Embed(title="🪢 TUG OF WAR: LOBBY", description="Apni Team Chuno! \nJo haarega wo **MUTE** hoga!", color=0x95a5a6)
+        embed.add_field(name=f"🔴 TEAM RED ({len(self.red_team)})", value=r_list, inline=True)
+        embed.add_field(name=f"🔵 TEAM BLUE ({len(self.blue_team)})", value=b_list, inline=True)
+        embed.set_image(url="https://media.tenor.com/J3t_A2lO-w0AAAAC/squid-game-tug-of-war.gif")
+        return embed
+
+    @discord.ui.button(label="Join RED 🔴", style=discord.ButtonStyle.danger)
+    async def join_red(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user in self.red_team or interaction.user in self.blue_team:
+            return await interaction.response.send_message("Already joined a team!", ephemeral=True)
+        self.red_team.append(interaction.user)
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
+
+    @discord.ui.button(label="Join BLUE 🔵", style=discord.ButtonStyle.primary)
+    async def join_blue(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user in self.red_team or interaction.user in self.blue_team:
+            return await interaction.response.send_message("Already joined a team!", ephemeral=True)
+        self.blue_team.append(interaction.user)
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
+
+    @discord.ui.button(label="🚀 START MATCH", style=discord.ButtonStyle.success, row=1)
+    async def start_game(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.host.id: return await interaction.response.send_message("Sirf Host start kar sakta hai.", ephemeral=True)
+        if len(self.red_team) == 0 or len(self.blue_team) == 0:
+            return await interaction.response.send_message("Dono teams mein players hone chahiye!", ephemeral=True)
+        
+        self.started = True
+        game_view = TugOfWarGame(self.red_team, self.blue_team, interaction)
+        await interaction.response.edit_message(embed=await game_view.get_embed(), view=game_view)
+
+
+@bot.tree.command(name="tug_of_war", description="🪢 Team Battle: Spam Click to Win")
+async def tug_of_war(i: discord.Interaction):
+    if not i.guild.me.guild_permissions.moderate_members:
+        return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
+    
+    view = TugLobbyView(i.user)
+    await i.response.send_message(embed=view.get_embed(), view=view)
+
+# ================== 🔮 SQUID GAME: MARBLES (ODD/EVEN) ==================
+
+# --- 1. HIDDEN INPUT MODAL (Chupke se number daalne ke liye) ---
+class MarblesHideModal(discord.ui.Modal, title="Hide Your Marbles"):
+    number = discord.ui.TextInput(
+        label="Kitne kanche chipane hain? (1-10)",
+        placeholder="Ek number likho (e.g. 3)",
+        min_length=1,
+        max_length=2,
+        required=True
+    )
+
+    def __init__(self, view_obj, max_bet):
+        super().__init__()
+        self.view_obj = view_obj
+        self.max_bet = max_bet
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            val = int(self.number.value)
+            if val < 1 or val > 10:
+                return await interaction.response.send_message("❌ Sirf 1 se 10 ke beech mein!", ephemeral=True)
+            if val > self.max_bet:
+                return await interaction.response.send_message(f"❌ Tumhare paas itne kanche nahi hain! Max: {self.max_bet}", ephemeral=True)
+            
+            # Save the hidden number
+            self.view_obj.hidden_number = val
+            self.view_obj.state = "GUESSING"
+            
+            await interaction.response.send_message(f"🤐 **{interaction.user.name}** ne kanche chupa liye hain!", ephemeral=True)
+            await self.view_obj.update_board(interaction, f"👀 **{self.view_obj.p2.mention}**, Ab guess karo! Odd ya Even?")
+            
+        except ValueError:
+            await interaction.response.send_message("❌ Number likho, text nahi!", ephemeral=True)
+
+
+# --- 2. MAIN GAME VIEW ---
+class MarblesGameView(discord.ui.View):
+    def __init__(self, p1, p2):
+        super().__init__(timeout=300) # 5 Minutes Max
+        self.p1 = p1
+        self.p2 = p2
+        
+        # Initial Marbles
+        self.marbles = {p1.id: 10, p2.id: 10}
+        
+        # Turn Logic: P1 hides first
+        self.turn_hider = p1 
+        self.turn_guesser = p2
+        self.hidden_number = None
+        self.state = "HIDING" # HIDING or GUESSING
+        
+        self.setup_buttons()
+
+    def setup_buttons(self):
+        self.clear_items()
+        
+        if self.state == "HIDING":
+            # Button to open Modal
+            btn = discord.ui.Button(label="🖐️ HIDE MARBLES", style=discord.ButtonStyle.primary, custom_id="hide_btn")
+            btn.callback = self.hide_callback
+            self.add_item(btn)
+        else:
+            # Buttons to Guess
+            btn_odd = discord.ui.Button(label="ODD (1, 3, 5...)", style=discord.ButtonStyle.secondary, custom_id="odd")
+            btn_even = discord.ui.Button(label="EVEN (2, 4, 6...)", style=discord.ButtonStyle.secondary, custom_id="even")
+            btn_odd.callback = self.guess_callback
+            btn_even.callback = self.guess_callback
+            self.add_item(btn_odd)
+            self.add_item(btn_even)
+
+    async def update_board(self, interaction, status_msg):
+        self.setup_buttons()
+        
+        # Visual Stats
+        p1_m = "🔮" * self.marbles[self.p1.id]
+        p2_m = "🔮" * self.marbles[self.p2.id]
+        
+        embed = discord.Embed(title="🔮 MARBLES GAME (Gaddari)", color=0xE91E63)
+        embed.description = (
+            f"**{self.p1.name}:** {self.marbles[self.p1.id]}\n{p1_m}\n\n"
+            f"**{self.p2.name}:** {self.marbles[self.p2.id]}\n{p2_m}\n\n"
+            f"-----------------------------\n"
+            f"{status_msg}"
+        )
+        
+        if self.state == "HIDING":
+            embed.set_footer(text=f"Turn: {self.turn_hider.name} chupa raha hai...")
+            embed.set_thumbnail(url=self.turn_hider.display_avatar.url)
+        else:
+            embed.set_footer(text=f"Turn: {self.turn_guesser.name} guess kar raha hai...")
+            embed.set_thumbnail(url=self.turn_guesser.display_avatar.url)
+            
+        embed.set_image(url="https://media.tenor.com/yA0wXCoqQJAAAAAC/squid-game-marbles.gif")
+        
+        try:
+            await interaction.edit_original_response(content=None, embed=embed, view=self)
+        except:
+            await interaction.response.edit_message(content=None, embed=embed, view=self)
+
+    # --- CALLBACKS ---
+    async def hide_callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.turn_hider.id:
+            return await interaction.response.send_message("❌ Abhi tumhari baari nahi hai!", ephemeral=True)
+        
+        # Open Modal
+        modal = MarblesHideModal(self, self.marbles[self.turn_hider.id])
+        await interaction.response.send_modal(modal)
+
+    async def guess_callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.turn_guesser.id:
+            return await interaction.response.send_message("❌ Tumhe guess nahi karna hai!", ephemeral=True)
+        
+        guess = interaction.data["custom_id"].upper() # ODD or EVEN
+        actual_is_odd = (self.hidden_number % 2 != 0)
+        
+        win = False
+        if (guess == "ODD" and actual_is_odd) or (guess == "EVEN" and not actual_is_odd):
+            win = True
+            
+        amount = self.hidden_number
+        msg = ""
+        
+        if win:
+            # Guesser Wins -> Takes marbles from Hider
+            self.marbles[self.turn_guesser.id] += amount
+            self.marbles[self.turn_hider.id] -= amount
+            msg = f"🎉 **CORRECT!** ({self.hidden_number})\n**{self.turn_guesser.name}** ne {amount} marbles jeet liye!"
+        else:
+            # Guesser Loses -> Gives marbles to Hider
+            # (Rule: You lose the amount equal to what was bet)
+            # Check if guesser has enough
+            if self.marbles[self.turn_guesser.id] < amount:
+                amount = self.marbles[self.turn_guesser.id] # Take all if less
+            
+            self.marbles[self.turn_guesser.id] -= amount
+            self.marbles[self.turn_hider.id] += amount
+            msg = f"❌ **WRONG!** ({self.hidden_number})\n**{self.turn_guesser.name}** ne {amount} marbles kho diye!"
+
+        # CHECK GAME OVER
+        if self.marbles[self.p1.id] <= 0:
+            await self.end_game(interaction, self.p2, self.p1)
+        elif self.marbles[self.p2.id] <= 0:
+            await self.end_game(interaction, self.p1, self.p2)
+        else:
+            # Swap Turns
+            self.turn_hider, self.turn_guesser = self.turn_guesser, self.turn_hider
+            self.state = "HIDING"
+            self.hidden_number = None
+            await self.update_board(interaction, f"{msg}\n\n🔄 **SWAP!** Ab **{self.turn_hider.mention}** chupayega!")
+
+    async def end_game(self, interaction, winner, loser):
+        self.stop()
+        
+        # Mute Logic
+        try:
+            if loser.top_role < interaction.guild.me.top_role:
+                await loser.timeout(dt.timedelta(minutes=10), reason="Lost Marbles Game")
+        except: pass
+        
+        embed = discord.Embed(title="💀 GAME OVER", color=0x000000)
+        embed.description = (
+            f"### 🏆 WINNER: {winner.mention}\n"
+            f"**{winner.name}** ne saare Marbles jeet liye!\n\n"
+            f"### ⚰️ ELIMINATED: {loser.mention}\n"
+            f"🔇 **Punishment:** 10 Minutes Mute."
+        )
+        embed.set_thumbnail(url=winner.display_avatar.url)
+        embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
+        
+        await interaction.response.edit_message(embed=embed, view=None)
+
+
+# --- COMMAND ---
+@bot.tree.command(name="marbles", description="🔮 Squid Game Marbles (Odd/Even Betrayal)")
+async def marbles(i: discord.Interaction, opponent: discord.Member):
+    if opponent.id == i.user.id or opponent.bot:
+        return await i.response.send_message("❌ Khud se ya bot se nahi khel sakte!", ephemeral=True)
+    
+    if not i.guild.me.guild_permissions.moderate_members:
+        return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
+
+    embed = discord.Embed(title="🔮 MARBLES CHALLENGE", description=f"**{i.user.mention}** vs **{opponent.mention}**\n\nRule: 10-10 Marbles start.\nJo 0 pe aaya wo Mute hoga!\n\n**Accept Challenge?**", color=0xE91E63)
+    
+    view = discord.ui.View()
+    btn = discord.ui.Button(label="✅ ACCEPT", style=discord.ButtonStyle.success)
+    
+    async def accept_callback(itx):
+        if itx.user.id != opponent.id: return await itx.response.send_message("Ye tumhare liye nahi hai!", ephemeral=True)
+        game_view = MarblesGameView(i.user, opponent)
+        await game_view.update_board(itx, "Game Start! Player 1 hiding marbles...")
+        
+    btn.callback = accept_callback
+    view.add_item(btn)
+    
+    await i.response.send_message(embed=embed, view=view)
+
+
 # ================== 🦑 SQUID GAME: GLASS BRIDGE ==================
 
 class GlassBridgeGame(discord.ui.View):
