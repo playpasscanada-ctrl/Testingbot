@@ -4927,9 +4927,7 @@ async def heist_cmd(i: discord.Interaction):
     await i.response.send_message(embed=view.update_embed(), view=view)
 
 
-# ------------------------------------------------------------------
-# 🤠 GAME 1: WILD WEST DUEL (Reaction Time)
-# ------------------------------------------------------------------
+# ================== 🤠 PREMIUM WESTERN DUEL (FACE-OFF STYLE) ==================
 
 class WesternDuelView(discord.ui.View):
     def __init__(self, p1, p2):
@@ -4940,50 +4938,72 @@ class WesternDuelView(discord.ui.View):
         self.winner = None
         self.start_time = None
         
-        # Initial Button (Disabled/Red)
-        btn = discord.ui.Button(label="🛑 WAIT FOR SIGNAL...", style=discord.ButtonStyle.danger, custom_id="shoot_btn")
+        # Initial Button (Red/Disabled is boring, let's keep it Red but Active for suicide trap)
+        btn = discord.ui.Button(label="🛑 WAIT...", style=discord.ButtonStyle.danger, custom_id="shoot_btn")
         btn.callback = self.shoot_callback
         self.add_item(btn)
 
     async def start_game_logic(self, interaction):
-        # 1. Suspense Phase (3-8 seconds)
+        # 1. Suspense Phase
         delay = random.uniform(3, 8)
         await asyncio.sleep(delay)
         
-        if self.winner: return # Agar koi pehle hi disqualify ho gaya
+        if self.winner: return 
 
         # 2. FIRE SIGNAL!
         self.signal_given = True
         self.start_time = dt.datetime.now().timestamp()
         
-        button = self.children[0]
-        button.label = "🔥 SHOOT! (CLICK NOW!)"
-        button.style = discord.ButtonStyle.success # Green
+        # Update Button to GREEN
+        self.children[0].label = "🔥 SHOOT NOW!"
+        self.children[0].style = discord.ButtonStyle.success 
+        
+        # Update Embed to GREEN signal
+        new_embed = discord.Embed(color=0x00FF00)
+        # Face-off Header Keep
+        new_embed.set_author(name=f"{self.p1.name} (Ready)", icon_url=self.p1.display_avatar.url)
+        new_embed.set_thumbnail(url=self.p2.display_avatar.url)
+        
+        new_embed.description = (
+            f"# 🔫 FIRE! FIRE! FIRE!\n"
+            f"# 👇 **BUTTON DABAO!** 👇\n"
+            f"**-----------------------------**"
+        )
+        new_embed.set_image(url="https://media.tenor.com/E5J0kC1yTzAAAAAC/the-good-the-bad-and-the-ugly-clint-eastwood.gif")
         
         try:
-            embed = interaction.message.embeds[0]
-            embed.color = 0x00FF00 # Green
-            embed.description = "# 🔫 FIRE! FIRE! FIRE!\n**Jaldi button dabao!**"
-            await interaction.edit_original_response(embed=embed, view=self)
+            await interaction.edit_original_response(embed=new_embed, view=self)
         except:
             pass
 
     async def shoot_callback(self, interaction: discord.Interaction):
         if interaction.user.id not in [self.p1.id, self.p2.id]:
-            return await interaction.response.send_message("❌ Audience door rahein! Goli lag jayegi.", ephemeral=True)
+            return await interaction.response.send_message("❌ Audience door rahein!", ephemeral=True)
             
         if self.winner:
-            return await interaction.response.send_message("⚰️ Der ho gayi! Tum mar chuke ho.", ephemeral=True)
+            return await interaction.response.send_message("⚰️ Tum mar chuke ho. Late ho gaye.", ephemeral=True)
 
+        # --- LOGIC START ---
+        
         # CASE A: EARLY FIRE (Disqualified)
         if not self.signal_given:
-            self.winner = interaction.user # Technically winner is other guy
+            self.winner = interaction.user 
             self.stop()
             
-            winner_user = self.p2 if interaction.user.id == self.p1.id else self.p1
+            loser = self.p1 if interaction.user.id == self.p1.id else self.p2
+            winner = self.p2 if interaction.user.id == self.p1.id else self.p1
             
-            embed = discord.Embed(title="💀 MISFIRE! (Khud ko uda liya)", color=0x000000)
-            embed.description = f"**{interaction.user.mention}** ne dar ke maare pehle hi trigger daba diya!\n\n🏆 **Winner:** {winner_user.mention} (Bina kuch kiye jeet gaya)"
+            punish = await self.apply_timeout(loser) # Timeout logic
+
+            embed = discord.Embed(title="💀 MISFIRE! (Suicide)", color=0x000000)
+            embed.set_author(name=winner.name + " WINS!", icon_url=winner.display_avatar.url)
+            embed.set_thumbnail(url=loser.display_avatar.url)
+            
+            embed.description = (
+                f"### 🤦‍♂️ {loser.mention} ne ghabra ke khud ko uda liya!\n"
+                f"**Winner:** {winner.mention}\n\n"
+                f"{punish}"
+            )
             embed.set_image(url="https://media.tenor.com/12s3s2v1b4cAAAAC/gun-fail.gif")
             
             await interaction.response.edit_message(embed=embed, view=None)
@@ -4994,29 +5014,68 @@ class WesternDuelView(discord.ui.View):
         self.winner = interaction.user
         self.stop()
         
+        winner = self.p1 if interaction.user.id == self.p1.id else self.p2
         loser = self.p2 if interaction.user.id == self.p1.id else self.p1
         
-        embed = discord.Embed(title="🤠 THE FASTEST GUN IN THE WEST!", color=0xFFD700)
-        embed.description = f"### 💥 BANG!\n**{interaction.user.mention}** ne **{reaction_time}s** mein dushman ko dher kar diya!\n\n🪦 **R.I.P:** {loser.mention}"
-        embed.set_thumbnail(url=interaction.user.display_avatar.url)
-        embed.set_image(url="https://media.tenor.com/E5J0kC1yTzAAAAAC/the-good-the-bad-and-the-ugly-clint-eastwood.gif")
+        punish = await self.apply_timeout(loser) # Timeout logic
+        
+        embed = discord.Embed(title="🤠 VICTORY!", color=0xFFD700)
+        embed.set_author(name=f"🏆 {winner.name}", icon_url=winner.display_avatar.url)
+        embed.set_thumbnail(url=loser.display_avatar.url)
+        
+        embed.description = (
+            f"# 💥 BANG!\n"
+            f"**{winner.mention}** ne **{reaction_time}s** mein trigger dabaya!\n\n"
+            f"🪦 **R.I.P:** {loser.mention}\n"
+            f"{punish}"
+        )
+        embed.set_image(url="https://media.tenor.com/w9yv4p2y3QAAAAAC/tumbleweed.gif")
         
         await interaction.response.edit_message(embed=embed, view=None)
 
-@bot.tree.command(name="duel", description="🤠 Wild West Shootout (Reaction Test)")
+    async def apply_timeout(self, member):
+        try:
+            if member.top_role < member.guild.me.top_role:
+                await member.timeout(dt.timedelta(seconds=30), reason="Lost Duel")
+                return "🔇 **Penalty:** 30s Timeout applied."
+            else:
+                return "⚠️ (Bach gaya! Admin/Mod Power)"
+        except:
+            return "⚠️ (Timeout Permission Missing)"
+
+@bot.tree.command(name="duel", description="🤠 Face-Off Duel (Reaction Test)")
 async def western_duel(i: discord.Interaction, opponent: discord.Member):
-    if opponent.id == i.user.id or opponent.bot:
-        return await i.response.send_message("❌ Khud se ya Bot se duel nahi ho sakta.", ephemeral=True)
+    if not i.guild.me.guild_permissions.moderate_members:
+        return await i.response.send_message("❌ Mere paas 'Timeout' power nahi hai!", ephemeral=True)
         
-    embed = discord.Embed(title="🌵 HIGH NOON DUEL", description=f"**{i.user.mention}** ⚔️ **{opponent.mention}**\n\n👁️ **Nazar Button pe rakhna!**\nJab button **GREEN** ho jaye, tabhi dabana.\n*Jaldi dabaya to Maut, Dheere dabaya to Maut.*", color=0xB8860B)
+    if opponent.id == i.user.id or opponent.bot:
+        return await i.response.send_message("❌ Khud se ya Bot se nahi lad sakte.", ephemeral=True)
+
+    # --- 🎭 THE FACE-OFF EMBED ---
+    embed = discord.Embed(color=0xB8860B) # Gold/Brown Style
+    
+    # Left Side: Challenger (Author)
+    embed.set_author(name=f"{i.user.name} 🔫", icon_url=i.user.display_avatar.url)
+    
+    # Right Side: Opponent (Thumbnail)
+    embed.set_thumbnail(url=opponent.display_avatar.url)
+    
+    # Center: The VS Sign
+    embed.description = (
+        f"# ⚡ {i.user.mention} 🆚 {opponent.mention} ⚡\n"
+        f"**-----------------------------**\n"
+        f"### 👁️ NAZAR BUTTON PE RAKHO!\n"
+        f"Jab button **GREEN** ho jaye, tabhi dabana.\n"
+        f"*(Jaldi kiya to Maut, Late kiya to Maut)*"
+    )
+    
+    # Image: Intense Stare / Tumbleweed
     embed.set_image(url="https://media.tenor.com/w9yv4p2y3QAAAAAC/tumbleweed.gif")
     
     view = WesternDuelView(i.user, opponent)
     await i.response.send_message(embed=embed, view=view)
     
-    # Start Timer
     asyncio.create_task(view.start_game_logic(i))
-
 
 # ------------------------------------------------------------------
 # 💣 GAME 2: TIME BOMB (Hot Potato Group Game)
