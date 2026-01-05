@@ -4163,16 +4163,7 @@ async def on_member_remove(member):
     except Exception as e:
         print(f"LEAVE EVENT ERROR: {e}")
 
-# ================== 🦑 SQUID GAME ROULETTE (RPS EVERY ROUND) ==================
-
-import discord
-from discord import app_commands
-import random
-import datetime
-import asyncio
-
-# ================== 🛠️ FIX FOR INTERACTION FAILED ==================
-
+# ================== 🦑 SQUID GAME ROULETTE (RPS EVERY ROUND) ==========
 class SquidGameMaster(discord.ui.View):
     def __init__(self, p1, p2, bullets, punishment_level, cylinder=None, slot_index=0):
         super().__init__(timeout=300)
@@ -4315,36 +4306,51 @@ class SquidGameMaster(discord.ui.View):
             
             await interaction.response.edit_message(embed=self.embed, view=self)
 
-    async def apply_punishment(self, loser):
-        # Punishment Logic same as before...
+     async def apply_punishment(self, loser):
+        # 🔥 FIX: Import 'datetime' as 'dt' to avoid conflicts
+        import datetime as dt
+        
         level = self.punishment_level
         reason = "Lost Squid Game Roulette 💀"
         msg = ""
+
         try:
+            # LEVEL 1: 1 Min Timeout
             if level == 1:
-                await loser.timeout(datetime.timedelta(minutes=1), reason=reason)
+                await loser.timeout(dt.timedelta(minutes=1), reason=reason)
                 msg = "🚫 **Saza (L1):** 1 Minute Timeout."
+
+            # LEVEL 2: Level Deduction (XP Logic)
             elif level == 2:
                 msg = "📉 **Saza (L2):** Level/XP Ghat gaya."
+
+            # LEVEL 3: Script Access Off (3 Hours)
             elif level == 3:
-                ban_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)
+                # dt.datetime.now aur dt.timedelta use karein
+                ban_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=3)
                 data = {"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}
                 supabase.table("script_bans").upsert(data).execute()
                 msg = "🔒 **Saza (L3):** Script Access Blocked for **3 Hours**."
+
+            # LEVEL 4: 3Hr Timeout + 3Hr Script Ban
             elif level == 4:
-                await loser.timeout(datetime.timedelta(hours=3), reason=reason)
-                ban_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=3)
+                await loser.timeout(dt.timedelta(hours=3), reason=reason)
+                ban_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=3)
                 data = {"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}
                 supabase.table("script_bans").upsert(data).execute()
                 msg = "⛔ **Saza (L4):** 3 Hours Mute + 3 Hours Script Ban."
+
+            # LEVEL 5: 1 Day Timeout + 1 Day Script Ban (BRUTAL)
             elif level == 5:
-                await loser.timeout(datetime.timedelta(days=1), reason=reason)
-                ban_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+                await loser.timeout(dt.timedelta(days=1), reason=reason)
+                ban_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=1)
                 data = {"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}
                 supabase.table("script_bans").upsert(data).execute()
                 msg = "💀 **Saza (L5 - BRUTAL):** 1 Day Mute + 1 Day Script Ban."
+
         except Exception as e:
             msg += f"\n(Error applying punishment: {e})"
+            
         return msg
 
 # --- 2. INVITE VIEW (Starting Point) ---
