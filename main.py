@@ -5206,7 +5206,7 @@ async def start_interactive_heist(interaction, crew):
         ("cos(-60°)", "0.5"),
         ("log2(64)", "6"),
         ("√2 + √2", "2√2"),
-        ("sin²θ + cos²θ", "1")
+        ("sin²θ + cos²θ", "1"),
         ("log(1)", "0"),
         ("tan(45°)", "1"),
         ("d/dx (x²)", "2x"),
