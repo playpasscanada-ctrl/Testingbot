@@ -1579,6 +1579,144 @@ async def check_lottery(i: discord.Interaction):
         text += f"👤 **{ticket['user_name']}** | 🎫 `{ticket['ticket_type']}` | ⏰ Result: <t:{ts}:R>\n"
         
     await i.response.send_message(text, ephemeral=True)
+
+# ================== 🌑 DARK SHOP: ROLES & IDENTITY ==================
+
+class DarkShopView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=120)
+        self.user = user
+
+    # --- HELPER: BUY ROLE ---
+    async def buy_role(self, interaction, role_name, cost, color):
+        if interaction.user.id != self.user.id: 
+            return await interaction.response.send_message("❌ Apni shop kholo!", ephemeral=True)
+        
+        data = await get_data(self.user.id)
+        if data["balance"] < cost:
+            return await interaction.response.send_message(f"❌ **Bhikari!** `${cost:,}` chahiye. Tere paas `${data['balance']:,}` hain.", ephemeral=True)
+
+        # Money Deduct
+        await update_balance(self.user.id, -cost)
+        
+        # Role Logic
+        guild = interaction.guild
+        role = discord.utils.get(guild.roles, name=role_name)
+        
+        try:
+            # Create Role if not exists
+            if not role:
+                role = await guild.create_role(name=role_name, color=color, hoist=True, reason="Dark Shop Purchase")
+            
+            # Check if user already has it
+            if role in interaction.user.roles:
+                await update_balance(self.user.id, cost) # Refund
+                return await interaction.response.send_message("❌ Ye role pehle se hai!", ephemeral=True)
+            
+            # Assign Role
+            await interaction.user.add_roles(role)
+            
+            embed = discord.Embed(title="💀 BLACK MARKET DEAL", color=color)
+            embed.description = f"✅ **Sold!** Ab tum **{role_name}** ho.\n💰 **Paid:** `${cost:,}`"
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            await update_balance(self.user.id, cost) # Refund
+            await interaction.response.send_message(f"❌ **Error:** Role nahi de pa raha (Permission check karo).", ephemeral=True)
+
+
+    # --- 1. IZZAT WAPASI (NAME CLEANER) ---
+    @discord.ui.button(label="🧼 Izzat Wapasi ($100k)", style=discord.ButtonStyle.success, row=0)
+    async def clean_identity(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user.id: return
+        
+        cost = 100000
+        data = await get_data(self.user.id)
+        
+        if data["balance"] < cost:
+            return await interaction.response.send_message(f"❌ **Gareeb!** Izzat bachane ke liye **$100,000** chahiye!", ephemeral=True)
+
+        await interaction.response.defer()
+
+        # 1. Deduct Money
+        await update_balance(self.user.id, -cost)
+        
+        # 2. Fix Nickname (Reset to None)
+        try:
+            await interaction.user.edit(nick=None) # Resets to Discord Username
+        except:
+            await interaction.followup.send("⚠️ Name change permission nahi hai mere paas!", ephemeral=True)
+            return
+
+        # 3. Remove 'HAGGU' Role (If exists)
+        haggu_role = discord.utils.get(interaction.guild.roles, name="💩 HAGGU")
+        if haggu_role and haggu_role in interaction.user.roles:
+            try: await interaction.user.remove_roles(haggu_role)
+            except: pass
+
+        embed = discord.Embed(title="✨ IDENTITY CLEANSED", color=0x00FF00)
+        embed.description = (
+            f"✅ **Success!** Aapka naam saaf kar diya gaya hai.\n"
+            f"🗑️ **Haggu Role:** Removed.\n"
+            f"💰 **Cost:** $100,000\n\n"
+            f"*Ab sharafat se rehna!*"
+        )
+        embed.set_image(url="https://media.tenor.com/images/8e6c46a67812040b2a759247656914b4/tenor.gif") # Washing/Cleaning gif
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+
+    # --- 2. KHATARNAK ROLES ---
+    
+    @discord.ui.button(label="🗡️ HITMAN ($5M)", style=discord.ButtonStyle.secondary, row=1)
+    async def role_hitman(self, i, b):
+        await self.buy_role(i, "🗡️ HITMAN", 5000000, discord.Color.dark_red())
+
+    @discord.ui.button(label="👺 YAKUZA ($10M)", style=discord.ButtonStyle.secondary, row=1)
+    async def role_yakuza(self, i, b):
+        await self.buy_role(i, "👺 YAKUZA", 10000000, discord.Color.red())
+
+    @discord.ui.button(label="🚬 PEAKY BLINDER ($20M)", style=discord.ButtonStyle.secondary, row=2)
+    async def role_peaky(self, i, b):
+        await self.buy_role(i, "🚬 PEAKY BLINDER", 20000000, discord.Color.dark_grey())
+
+    @discord.ui.button(label="💀 YAMRAJ ($50M)", style=discord.ButtonStyle.secondary, row=2)
+    async def role_yamraj(self, i, b):
+        await self.buy_role(i, "💀 YAMRAJ", 50000000, discord.Color.default()) 
+
+    @discord.ui.button(label="😈 LUCIFER ($100M)", style=discord.ButtonStyle.danger, row=3)
+    async def role_lucifer(self, i, b):
+        await self.buy_role(i, "😈 LUCIFER", 100000000, discord.Color.dark_theme()) 
+
+    # --- THE IMPOSSIBLE ROLE ---
+    @discord.ui.button(label="♾️ THE IMPOSSIBLE ($1Q)", style=discord.ButtonStyle.danger, row=3)
+    async def role_impossible(self, i, b):
+        # Price: 1 Quintillion (18 Zeros) -> 1,000,000,000,000,000,000
+        await self.buy_role(i, "♾️ THE IMPOSSIBLE", 1000000000000000000, discord.Color.from_rgb(1, 1, 1))
+
+
+@bot.tree.command(name="dark_shop", description="🌑 Buy Dangerous Roles & Fix Identity")
+async def dark_shop(i: discord.Interaction):
+    data = await get_data(i.user.id)
+    
+    embed = discord.Embed(title="🌑 THE DARK WEB STORE", color=0x2F3136)
+    embed.description = (
+        f"💳 **Balance:** `${data['balance']:,}`\n"
+        f"---------------------------------\n"
+        f"🧼 **Izzat Wapasi ($100k):**\n"
+        f"Naam 'Haggu' se wapas Normal karein.\n\n"
+        f"🔥 **Khatarnak Roles:**\n"
+        f"`$5M` : 🗡️ Hitman\n"
+        f"`$10M`: 👺 Yakuza\n"
+        f"`$20M`: 🚬 Peaky Blinder\n"
+        f"`$50M`: 💀 Yamraj\n"
+        f"`$100M`: 😈 Lucifer\n"
+        f"💀 **THE END:**\n"
+        f"`$1Q` : ♾️ **THE IMPOSSIBLE** (1 Quintillion)"
+    )
+    embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2040/2040504.png") 
+    
+    view = DarkShopView(i.user)
+    await i.response.send_message(embed=embed, view=view)
                         
  # ================== 1. BAN PAGINATOR CLASS (Ye sahi hai, isme change nahi chahiye) ==================
 class BanPaginator(discord.ui.View):
