@@ -667,7 +667,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # ================== 🔒 MULTI-SERVER LOCK ==================
 
 # 1. Yahan un sabhi Servers ki ID daal do jahan bot chalna chahiye
-ALLOWED_SERVERS = [1257403231127076915] # Dusra ID yahan add karo
+ALLOWED_SERVERS = [1257403231127076915, 1431694952080871566] # Dusra ID yahan add karo
 
 async def global_server_check(interaction: discord.Interaction) -> bool:
     # Check karega ki kya current server ID list mein hai?
