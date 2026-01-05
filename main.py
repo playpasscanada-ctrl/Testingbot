@@ -1250,10 +1250,13 @@ async def on_message(msg):
         await msg.reply(f"❌ Critical Error: `{e}`")
         print(f"DEBUG ERROR: {e}")
 
-# ================== 💰 ECONOMY & SHOP SYSTEM (EXPANDED) ==================
+# ==============================================================================
+# 💰 ULTIMATE ECONOMY SYSTEM (Database, Shop, Lottery, VIP, Punishments)
+# ==============================================================================
 
-# --- 1. ECONOMY HELPERS ---
+# --- 1. DATABASE HELPERS (Supabase) ---
 async def get_data(user_id):
+    """User ka data lata hai ya naya account banata hai."""
     res = await db_call(lambda: supabase.table("economy").select("*").eq("user_id", str(user_id)).execute())
     if not res.data:
         init_data = {"user_id": str(user_id), "balance": 0, "inventory": {}, "vip_expiry": None}
@@ -1262,12 +1265,14 @@ async def get_data(user_id):
     return res.data[0]
 
 async def update_balance(user_id, amount):
+    """Balance update karta hai (Positive add, Negative subtract)."""
     current = await get_data(user_id)
     new_bal = current["balance"] + amount
     await db_call(lambda: supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(user_id)).execute())
     return new_bal
 
 async def update_inventory(user_id, item_key, quantity):
+    """Inventory me item jodta/ghatata hai."""
     data = await get_data(user_id)
     inv = data["inventory"]
     current_qty = inv.get(item_key, 0)
@@ -1281,202 +1286,299 @@ async def update_inventory(user_id, item_key, quantity):
     await db_call(lambda: supabase.table("economy").update({"inventory": inv}).eq("user_id", str(user_id)).execute())
 
 async def set_vip(user_id, minutes=0, days=0, lifetime=False):
+    """VIP Time set karta hai."""
     if lifetime:
-        # Set expiry to year 9999
         expiry = dt.datetime(9999, 12, 31).isoformat()
     else:
-        # Add time to current time
+        # Existing VIP time extend logic could be added here, currently overwrites
         expiry = (datetime.utcnow() + dt.timedelta(days=days, minutes=minutes)).isoformat()
         
     await db_call(lambda: supabase.table("economy").update({"vip_expiry": expiry}).eq("user_id", str(user_id)).execute())
 
-# --- 2. SMART PUNISHMENT (VIP CHECKER) ---
+
+# --- 2. SMART PUNISHMENT SYSTEM (VIP CHECKER) ---
 async def smart_timeout(interaction, member, duration_seconds, reason):
-    """Checks VIP status before muting."""
+    """
+    Ye function Games me use hoga. 
+    Agar banda VIP hai to Mute nahi karega.
+    """
+    # 1. Check Admin/Owner (Always Safe)
     if member.top_role >= interaction.guild.me.top_role or member.guild_permissions.administrator:
         return "🛡️ **Saved:** Admin Power."
 
     data = await get_data(member.id)
     
-    # VIP Check
+    # 2. Check VIP Status
     if data["vip_expiry"]:
         expire_dt = dt.datetime.fromisoformat(data["vip_expiry"])
         if datetime.utcnow() < expire_dt:
             if expire_dt.year == 9999:
-                return "♾️ **VIP GOD:** Lifetime Immunity Active."
+                return "♾️ **VIP GOD:** Lifetime Immunity."
             return f"👑 **VIP Protection:** Active until <t:{int(expire_dt.timestamp())}:R>."
     
-    # Extra Life Check
+    # 3. Check 'Extra Life' in Inventory
     inv = data["inventory"]
     if inv.get("extra_life", 0) > 0:
         await update_inventory(member.id, "extra_life", -1)
         remaining = inv.get("extra_life", 0) - 1
         return f"💖 **Extra Life Used:** Mute Dodged! (Remaining: {max(0, remaining)})"
 
-    # MUTE
+    # 4. KOI BACHAV NAHI -> MUTE KARO
     try:
         await member.timeout(dt.timedelta(seconds=duration_seconds), reason=reason)
-        return f"🔇 **Muted:** {duration_seconds}s ({reason})"
+        return f"🔇 **Muted:** {duration_seconds}s"
     except Exception as e:
         return f"⚠️ **Error:** Mute Permission Missing!"
 
 
-# --- 3. SHOP VIEW ---
+# --- 3. LOTTERY BACKGROUND TASK ---
+async def start_lottery_task(interaction, amount_won, ticket_name, duration_seconds=18000): 
+    # duration_seconds = 18000 (5 Hours)
+    user = interaction.user
+    
+    # 1. Database me Entry (Owner ke dekhne ke liye)
+    end_time = (datetime.utcnow() + dt.timedelta(seconds=duration_seconds)).isoformat()
+    try:
+        await db_call(lambda: supabase.table("lottery").insert({
+            "user_id": str(user.id), 
+            "user_name": user.name, 
+            "ticket_type": ticket_name, 
+            "end_time": end_time
+        }).execute())
+    except: pass # Table error ignore handle
+    
+    # 2. Wait for 5 Hours
+    await asyncio.sleep(duration_seconds)
+    
+    # 3. Result Declare
+    if amount_won > 0:
+        # REAL WIN
+        await update_balance(user.id, amount_won)
+        msg = f"🎉 **LOTTERY JACKPOT:** {user.mention} ne **{ticket_name}** mein **${amount_won:,}** jeet liye! 🤑 Party kab de raha hai?"
+    else:
+        # LOSS / SCAM MESSAGE
+        fail_msgs = [
+            f"💸 **LOTTERY RESULT:** {user.mention}, tumhare **{ticket_name}** mein kuch nahi nikla. Pura paisa barbad! 😂",
+            f"📉 **SCAM ALERT:** {user.mention} ne **{ticket_name}** kharidi thi... Result: **0**. Lagg gaye! 🤡",
+            f"🚫 **LOTTERY:** {user.mention}, Better luck next time. (Jeb khali ho gayi)",
+            f"💀 **LOL:** {user.mention} 5 ghante wait kiya aur mila kya? **BABAJI KA THULLU!** 🔔"
+        ]
+        msg = random.choice(fail_msgs)
+        
+    # 4. Send Message to Channel (Tagging User)
+    try:
+        await interaction.channel.send(msg)
+    except:
+        pass 
+        
+    # 5. Delete Entry from DB
+    await db_call(lambda: supabase.table("lottery").delete().eq("user_id", str(user.id)).eq("ticket_type", ticket_name).execute())
+
+
+# --- 4. SHOP VIEW (BUTTONS & LOGIC) ---
 class ShopView(discord.ui.View):
     def __init__(self, user):
         super().__init__(timeout=120)
         self.user = user
 
-    async def buy_item(self, interaction, item_name, cost, item_type, duration_args={}, role_color=None):
-        if interaction.user.id != self.user.id: return await interaction.response.send_message("Apna shop khud kholo!", ephemeral=True)
+    async def buy_item(self, interaction, item_name, cost, item_type, **kwargs):
+        if interaction.user.id != self.user.id: 
+            return await interaction.response.send_message("❌ Khud ki shop kholo!", ephemeral=True)
         
         data = await get_data(self.user.id)
         if data["balance"] < cost:
-            return await interaction.response.send_message(f"❌ **Gareeb!** Tere paas `${data['balance']:,}` hain. Chahiye `${cost:,}`.", ephemeral=True)
+            return await interaction.response.send_message(f"❌ **Gareeb!** Tere paas sirf `${data['balance']:,}` hain. Chahiye `${cost:,}`", ephemeral=True)
             
+        # Deduct Money First
         await update_balance(self.user.id, -cost)
         
         msg = ""
+        
+        # --- TYPE: VIP PASS ---
         if item_type == "vip":
-            await set_vip(self.user.id, **duration_args)
-            msg = f"👑 **VIP ACTIVATED:** {item_name} purchased!"
-            
+            await set_vip(self.user.id, **kwargs)
+            msg = f"👑 **VIP ACTIVATED:** {item_name} Purchased!"
+        
+        # --- TYPE: EXTRA LIFE ---
         elif item_type == "life":
             await update_inventory(self.user.id, "extra_life", 1)
-            msg = f"💖 **1UP!** Extra Life added."
-            
+            msg = f"💖 **1UP!** Extra Life Added to Inventory."
+        
+        # --- TYPE: ROLES ---
         elif item_type == "role":
-            # Auto-Create Role Logic
             role = discord.utils.get(interaction.guild.roles, name=item_name)
-            if not role:
-                try:
-                    role = await interaction.guild.create_role(name=item_name, color=role_color, hoist=True, reason="Shop Purchase")
-                except:
-                    await update_balance(self.user.id, cost) # Refund
-                    return await interaction.response.send_message("❌ Error: Mere paas Role banane ki permission nahi hai!", ephemeral=True)
+            if not role: 
+                try: 
+                    role = await interaction.guild.create_role(name=item_name, color=kwargs['role_color'], hoist=True)
+                except: 
+                    await update_balance(self.user.id, cost) # Refund if fail
+                    return await interaction.response.send_message("❌ Error: Role Create Permission nahi hai!", ephemeral=True)
             
-            if role in interaction.user.roles:
-                await update_balance(self.user.id, cost) # Refund
-                return await interaction.response.send_message("❌ Ye role pehle se hai tumhare paas!", ephemeral=True)
-                
-            try:
+            if role: 
                 await interaction.user.add_roles(role)
-                msg = f"🎉 **SWAG UPGRADED!** You are now: **{item_name}**"
-            except:
-                await update_balance(self.user.id, cost)
-                msg = "❌ Error: Role Hierarchy issue (Mera role neeche hai)."
+            msg = f"🎉 **FLEX:** You are now **{item_name}**!"
+            
+        # --- TYPE: LOTTERY ---
+        elif item_type == "lottery":
+            win_amount = 0
+            # Chance logic: 1 in X chances
+            chance = random.randint(1, kwargs['chance_pool']) 
+            
+            if kwargs['is_scam']:
+                # SCAM LOGIC: Hamesha harega
+                win_amount = 0 
+                log_msg = "🎟️ **VIP LOTTERY PURCHASED!**\n🤞 Fingers crossed! (Result in 5 Hours...)"
+            elif chance == 1:
+                # WIN LOGIC
+                win_amount = kwargs['win_prize']
+                log_msg = f"🎟️ **TICKET PURCHASED!**\n🤞 Good Luck! (Result in 5 Hours...)"
+            else:
+                # LOSS LOGIC
+                win_amount = 0
+                log_msg = f"🎟️ **TICKET PURCHASED!**\n🤞 Good Luck! (Result in 5 Hours...)"
+            
+            # Background Task Start
+            asyncio.create_task(start_lottery_task(interaction, win_amount, item_name, duration_seconds=18000))
+            msg = log_msg
 
-        embed = discord.Embed(title="🛒 PURCHASE SUCCESSFUL", description=f"{msg}\n💰 **Remaining:** `${data['balance'] - cost:,}`", color=0x00FF00)
+        # Confirmation Message
+        embed = discord.Embed(description=f"✅ {msg}\n💰 **Remaining:** `${data['balance'] - cost:,}`", color=0x00FF00)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    # --- ROW 1: SURVIVAL ITEMS ---
+    # ================= BUTTON LAYOUT (SYSTEMATIC ROWS) =================
+
+    # --- ROW 0: SURVIVAL GEAR ---
     @discord.ui.button(label="💖 Extra Life ($50k)", style=discord.ButtonStyle.primary, row=0)
-    async def buy_life(self, i, b):
-        await self.buy_item(i, "Extra Life", 50000, "life")
+    async def b_life(self, i, b): await self.buy_item(i, "Extra Life", 50000, "life")
 
     @discord.ui.button(label="👑 1 Hour VIP ($1M)", style=discord.ButtonStyle.success, row=0)
-    async def buy_vip_1h(self, i, b):
-        await self.buy_item(i, "1 Hour VIP", 1000000, "vip", duration_args={"minutes": 60})
+    async def b_vip1h(self, i, b): await self.buy_item(i, "1 Hour VIP", 1000000, "vip", minutes=60)
 
     @discord.ui.button(label="👑 1 Day VIP ($5M)", style=discord.ButtonStyle.success, row=0)
-    async def buy_vip_1d(self, i, b):
-        await self.buy_item(i, "1 Day VIP", 5000000, "vip", duration_args={"days": 1})
+    async def b_vip1d(self, i, b): await self.buy_item(i, "1 Day VIP", 5000000, "vip", days=1)
 
-    # --- ROW 2: LONG TERM VIP ---
-    @discord.ui.button(label="👑 3 Days VIP ($12M)", style=discord.ButtonStyle.success, row=1)
-    async def buy_vip_3d(self, i, b):
-        await self.buy_item(i, "3 Days VIP", 12000000, "vip", duration_args={"days": 3})
-
+    # --- ROW 1: MID TIER VIP & ROLES ---
     @discord.ui.button(label="👑 1 Week VIP ($25M)", style=discord.ButtonStyle.success, row=1)
-    async def buy_vip_1w(self, i, b):
-        await self.buy_item(i, "1 Week VIP", 25000000, "vip", duration_args={"days": 7})
+    async def b_vip1w(self, i, b): await self.buy_item(i, "1 Week VIP", 25000000, "vip", days=7)
 
-    @discord.ui.button(label="👑 1 Month VIP ($100M)", style=discord.ButtonStyle.success, row=1)
-    async def buy_vip_1m(self, i, b):
-        await self.buy_item(i, "1 Month VIP", 100000000, "vip", duration_args={"days": 30})
+    @discord.ui.button(label="🎲 Gambler Role ($5M)", style=discord.ButtonStyle.secondary, row=1)
+    async def b_r1(self, i, b): await self.buy_item(i, "🎲 GAMBLER", 5000000, "role", role_color=discord.Color.blue())
 
-    @discord.ui.button(label="♾️ GOD VIP ($5B)", style=discord.ButtonStyle.danger, row=1)
-    async def buy_vip_life(self, i, b):
-        await self.buy_item(i, "LIFETIME VIP", 5000000000, "vip", duration_args={"lifetime": True})
+    @discord.ui.button(label="💸 Rich Kid Role ($50M)", style=discord.ButtonStyle.secondary, row=1)
+    async def b_r2(self, i, b): await self.buy_item(i, "💸 RICH KID", 50000000, "role", role_color=discord.Color.gold())
+    
+    # --- ROW 2: HIGH TIER (GOD MODE) ---
+    @discord.ui.button(label="🕶️ Mafia ($500M)", style=discord.ButtonStyle.secondary, row=2)
+    async def b_r3(self, i, b): await self.buy_item(i, "🕶️ MAFIA BOSS", 500000000, "role", role_color=discord.Color.dark_red())
 
-    # --- ROW 3: ROLES (STATUS) ---
-    @discord.ui.button(label="🎲 Gambler ($5M)", style=discord.ButtonStyle.secondary, row=2)
-    async def role_1(self, i, b):
-        await self.buy_item(i, "🎲 GAMBLER", 5000000, "role", role_color=discord.Color.blue())
+    @discord.ui.button(label="🛐 Server God ($10B)", style=discord.ButtonStyle.secondary, row=2)
+    async def b_r4(self, i, b): await self.buy_item(i, "🛐 SERVER GOD", 10000000000, "role", role_color=discord.Color.magenta())
 
-    @discord.ui.button(label="💰 Millionaire ($25M)", style=discord.ButtonStyle.secondary, row=2)
-    async def role_2(self, i, b):
-        await self.buy_item(i, "💰 MILLIONAIRE", 25000000, "role", role_color=discord.Color.green())
+    @discord.ui.button(label="♾️ LifeTime VIP ($5B)", style=discord.ButtonStyle.danger, row=2)
+    async def b_viplife(self, i, b): await self.buy_item(i, "LIFETIME VIP", 5000000000, "vip", lifetime=True)
 
-    @discord.ui.button(label="💸 Rich Kid ($50M)", style=discord.ButtonStyle.secondary, row=2)
-    async def role_3(self, i, b):
-        await self.buy_item(i, "💸 RICH KID", 50000000, "role", role_color=discord.Color.gold())
+    # --- ROW 3: REAL LOTTERY TICKETS ---
+    @discord.ui.button(label="🎟️ 10k Lotto (Win 100k)", style=discord.ButtonStyle.primary, row=3)
+    async def b_l1(self, i, b): 
+        # Chance: 1 in 100
+        await self.buy_item(i, "10k Ticket", 10000, "lottery", win_prize=100000, chance_pool=100, is_scam=False)
 
-    # --- ROW 4: HIGH END ROLES ---
-    @discord.ui.button(label="🕶️ Mafia Boss ($500M)", style=discord.ButtonStyle.secondary, row=3)
-    async def role_4(self, i, b):
-        await self.buy_item(i, "🕶️ MAFIA BOSS", 500000000, "role", role_color=discord.Color.dark_red())
+    @discord.ui.button(label="🎟️ 20k Lotto (Win 150k)", style=discord.ButtonStyle.primary, row=3)
+    async def b_l2(self, i, b): 
+        # Chance: 1 in 150
+        await self.buy_item(i, "20k Ticket", 20000, "lottery", win_prize=150000, chance_pool=150, is_scam=False)
 
-    @discord.ui.button(label="🛢️ Oil Prince ($1B)", style=discord.ButtonStyle.secondary, row=3)
-    async def role_5(self, i, b):
-        await self.buy_item(i, "🛢️ OIL PRINCE", 1000000000, "role", role_color=discord.Color.dark_gold())
+    @discord.ui.button(label="🎟️ 50k Lotto (Win 400k)", style=discord.ButtonStyle.primary, row=3)
+    async def b_l3(self, i, b): 
+        # Chance: 1 in 400
+        await self.buy_item(i, "50k Ticket", 50000, "lottery", win_prize=400000, chance_pool=400, is_scam=False)
 
-    @discord.ui.button(label="🛐 SERVER GOD ($10B)", style=discord.ButtonStyle.secondary, row=3)
-    async def role_6(self, i, b):
-        await self.buy_item(i, "🛐 SERVER GOD", 10000000000, "role", role_color=discord.Color.magenta())
+    # --- ROW 4: THE SCAM (100k Ticket) ---
+    @discord.ui.button(label="🎰 JACKPOT ($5M Prize)", style=discord.ButtonStyle.danger, row=4)
+    async def b_lscam(self, i, b): 
+        # Chance Pool 1 hai par is_scam=True hai. 
+        # User ko lagega jeetne wala hu, par jeetega 0.
+        await self.buy_item(i, "🎰 JACKPOT TICKET", 100000, "lottery", win_prize=5000000, chance_pool=1, is_scam=True)
 
 
-# --- 4. COMMANDS ---
-@bot.tree.command(name="shop", description="🛒 Buy VIP & Roles! (High Prices)")
+# --- 5. ECONOMY COMMANDS ---
+
+@bot.tree.command(name="shop", description="🛒 Black Market: VIP, Roles & Lottery")
 async def shop(i: discord.Interaction):
     data = await get_data(i.user.id)
     
     # Status Check
-    status = "💀 Mortal (No VIP)"
+    status = "💀 Mortal (No Protection)"
     if data["vip_expiry"]:
         dt_obj = dt.datetime.fromisoformat(data["vip_expiry"])
-        if dt_obj.year == 9999: status = "♾️ **GOD MODE (Lifetime)**"
+        if dt_obj.year == 9999: status = "♾️ **GOD MODE**"
         elif dt_obj > datetime.utcnow(): status = f"👑 **VIP Active:** Ends <t:{int(dt_obj.timestamp())}:R>"
 
     embed = discord.Embed(title="🛒 THE BLACK MARKET", color=0xFFD700)
     embed.description = (
         f"💳 **Balance:** `${data['balance']:,}`\n"
         f"🛡️ **Status:** {status}\n"
-        f"💖 **Extra Lives:** {data['inventory'].get('extra_life', 0)}\n\n"
-        "### 🛡️ SURVIVAL GEAR (Anti-Mute)\n"
-        "`$50k` : 💖 **1 Life Save** (Consumable)\n"
-        "`$1M`  : 👑 **1 Hour VIP**\n"
-        "`$5M`  : 👑 **1 Day VIP**\n"
-        "`$12M` : 👑 **3 Days VIP**\n"
-        "`$25M` : 👑 **1 Week VIP**\n"
-        "`$100M`: 👑 **1 Month VIP**\n"
-        "`$5B`  : ♾️ **LIFETIME GOD VIP**\n\n"
-        "### 🎭 FLEX ROLES (Show off)\n"
-        "`$5M`  : 🎲 **Gambler**\n"
-        "`$25M` : 💰 **Millionaire**\n"
-        "`$50M` : 💸 **Rich Kid**\n"
-        "`$500M`: 🕶️ **Mafia Boss**\n"
-        "`$1B`  : 🛢️ **Oil Prince**\n"
-        "`$10B` : 🛐 **SERVER GOD**"
+        f"💖 **Extra Lives:** {data['inventory'].get('extra_life', 0)}\n"
+        f"---------------------------------\n"
+        f"**Row 1:** Survival Gear (Sasta VIP)\n"
+        f"**Row 2:** Roles & Weekly VIP\n"
+        f"**Row 3:** High Tier (Mafia, God Role, Lifetime)\n"
+        f"**Row 4:** Lucky Lottery (Try Luck)\n"
+        f"**Row 5:** 🎰 **JACKPOT ($5M Prize)** - *High Stakes!*"
     )
     embed.set_thumbnail(url=i.user.display_avatar.url)
-    embed.set_footer(text="No Refunds. Prices are final.")
     
     view = ShopView(i.user)
     await i.response.send_message(embed=embed, view=view)
 
-@bot.tree.command(name="balance", description="💰 Check your wallet")
+
+@bot.tree.command(name="balance", description="💰 Check your wallet balance")
 async def balance(i: discord.Interaction, user: discord.Member = None):
     target = user or i.user
     data = await get_data(target.id)
-    await i.response.send_message(f"💰 **{target.name}** ka balance: `${data['balance']:,}`")
+    
+    embed = discord.Embed(title="💰 BANK BALANCE", color=0x00FF00)
+    embed.description = f"👤 **User:** {target.mention}\n💳 **Cash:** `${data['balance']:,}`"
+    
+    lives = data['inventory'].get('extra_life', 0)
+    if lives > 0: embed.add_field(name="🎒 Inventory", value=f"💖 Extra Lives: {lives}")
+    
+    await i.response.send_message(embed=embed)
 
-@bot.tree.command(name="give_money", description="💰 (Admin) Give money to user")
+
+@bot.tree.command(name="give_money", description="💸 (Admin) Kisi ko free ka paisa do")
 async def give_money(i: discord.Interaction, user: discord.Member, amount: int):
-    if not i.user.guild_permissions.administrator: return await i.response.send_message("❌ Chal nikal!", ephemeral=True)
+    if not i.user.guild_permissions.administrator: 
+        return await i.response.send_message("❌ Abe nikal! Ye command sirf Admin ke liye hai.", ephemeral=True)
+    
     new_bal = await update_balance(user.id, amount)
-    await i.response.send_message(f"✅ Added `${amount:,}` to {user.mention}. New Balance: `${new_bal:,}`")
-                            
+    
+    embed = discord.Embed(title="💸 MONEY TRANSFER", color=0x00FF00)
+    embed.description = f"✅ **Success!**\n\n👤 **To:** {user.mention}\n💰 **Amount:** +${amount:,}\n💳 **New Balance:** `${new_bal:,}`"
+    
+    await i.response.send_message(embed=embed)
+
+
+@bot.tree.command(name="check_lottery", description="🔒 (Owner) Dekho kis bakre ne ticket li hai")
+async def check_lottery(i: discord.Interaction):
+    # YAHAN APNI DISCORD ID DALO (Right Click on your profile -> Copy ID)
+    MY_OWNER_ID = 1234567890 # <--- REPLACE WITH YOUR ID
+    
+    if i.user.id != 804687084249284618: 
+        return await i.response.send_message("❌ Ye command sirf Malik (Owner) ke liye hai!", ephemeral=True)
+        
+    res = await db_call(lambda: supabase.table("lottery").select("*").execute())
+    
+    if not res.data:
+        return await i.response.send_message("📂 **Empty:** Abhi kisi ne ticket nahi kharidi.", ephemeral=True)
+        
+    text = "**🎟️ ACTIVE LOTTERY TICKETS (Waiting for Result):**\n\n"
+    for ticket in res.data:
+        end_dt = dt.datetime.fromisoformat(ticket["end_time"])
+        ts = int(end_dt.timestamp())
+        text += f"👤 **{ticket['user_name']}** | 🎫 `{ticket['ticket_type']}` | ⏰ Result: <t:{ts}:R>\n"
+        
+    await i.response.send_message(text, ephemeral=True)
                         
  # ================== 1. BAN PAGINATOR CLASS (Ye sahi hai, isme change nahi chahiye) ==================
 class BanPaginator(discord.ui.View):
@@ -5488,9 +5590,7 @@ async def western_duel(i: discord.Interaction, opponent: discord.Member):
     # Start Logic in Background
     asyncio.create_task(view.start_game_logic(i))
 
-# ------------------------------------------------------------------
-# 💣 GAME 2: TIME BOMB (Hot Potato Group Game)
-# ------------------------------------------------------------------
+# # ================== 💣 HOT POTATO BOMB (VIP SUPPORT) ==================
 
 class BombPassView(discord.ui.View):
     def __init__(self, holder, interaction):
@@ -5498,7 +5598,7 @@ class BombPassView(discord.ui.View):
         self.holder = holder
         self.origin_interaction = interaction
         self.exploded = False
-        # Bomb time: 20 to 40 seconds
+        # Bomb time: 20 to 40 seconds (Random)
         self.explode_time = dt.datetime.now().timestamp() + random.randint(20, 40)
         
         asyncio.create_task(self.bomb_timer())
@@ -5512,16 +5612,22 @@ class BombPassView(discord.ui.View):
                 break
 
     async def trigger_explosion(self):
-        # Mute Logic
-        punishment = "🔇 **Saza:** 5 Minute Timeout (Lagg gaye)"
-        try:
-            await self.holder.timeout(dt.timedelta(minutes=5), reason="Bomb Exploded in Hand")
-        except:
-            punishment = "⚠️ (Mere paas admin power nahi hai, bach gaya)"
+        # --- 🛡️ SMART PUNISHMENT (VIP CHECK) ---
+        # 5 Minute Mute (300 Seconds)
+        # Paisa ka len-den nahi hai, bas saza milegi.
+        punish_msg = await smart_timeout(self.origin_interaction, self.holder, 300, "Bomb Exploded in Hand")
 
         embed = discord.Embed(title="💥 BOMB PHAT GAYA!", color=0xFF0000)
-        embed.description = f"# 💣 BOOOOM!\n\n**{self.holder.mention}** bomb pass karne mein slow nikla!\nUda diya gaya.\n\n{punishment}"
+        embed.description = (
+            f"# 💣 BOOOOM!\n\n"
+            f"**{self.holder.mention}** bomb pass karne mein slow nikla!\n"
+            f"Chithde udd gaye. ☠️\n\n"
+            f"{punish_msg}"
+        )
         embed.set_image(url="https://media.tenor.com/8p1jZ5jG4yQAAAAC/explosion-boom.gif")
+        
+        # Disable Selection
+        self.clear_items()
         
         try:
             await self.origin_interaction.edit_original_response(content=None, embed=embed, view=None)
@@ -5530,25 +5636,37 @@ class BombPassView(discord.ui.View):
 
     @discord.ui.select(placeholder="Bomb kisko fekna hai? (Select User)", cls=discord.ui.UserSelect, max_values=1)
     async def pass_bomb(self, interaction: discord.Interaction, select: discord.ui.UserSelect):
-        if self.exploded: return await interaction.response.send_message("❌ Bomb phat chuka hai!", ephemeral=True)
+        if self.exploded: 
+            return await interaction.response.send_message("❌ Bomb phat chuka hai, ab kya fayda!", ephemeral=True)
 
         if interaction.user.id != self.holder.id:
             return await interaction.response.send_message("❌ Bomb tere haath mein nahi hai, hero mat ban!", ephemeral=True)
 
         target = select.values[0]
-        if target.bot or target.id == interaction.user.id:
-            return await interaction.response.send_message("❌ Khud ko ya Bot ko pass nahi kar sakte!", ephemeral=True)
+        
+        # Validation
+        if target.bot:
+            return await interaction.response.send_message("❌ Bots immune hote hain, kisi insan ko do!", ephemeral=True)
+        if target.id == interaction.user.id:
+            return await interaction.response.send_message("❌ Khud ko pass karke kya milega? Marne ka shauk hai?", ephemeral=True)
 
         # Successful Pass
         self.holder = target
         
         # Intense Embed Update
         embed = discord.Embed(title="💣 BOMB PASSED!", color=0xFFA500)
-        embed.description = f"### 🏃💨 BHAAGO!\n**{interaction.user.name}** ne bomb **{target.mention}** ki taraf fek diya!\n\n⏱️ **Tik.. Tok.. Tik.. Tok..**\nJaldi pass karo!"
+        embed.description = (
+            f"### 🏃💨 BHAAGO!\n"
+            f"**{interaction.user.name}** ne bomb **{target.mention}** ki taraf fek diya!\n\n"
+            f"⏱️ **Tik.. Tok.. Tik.. Tok..**\n"
+            f"Jaldi pass karo!"
+        )
         embed.set_thumbnail(url=target.display_avatar.url)
         embed.set_image(url="https://media.tenor.com/G5m6K_1u_mIAAAAC/bomb-ticking.gif")
         
-        await interaction.response.edit_message(content=f"🚨 **URGENT:** {target.mention} TERE PAAS BOMB HAI!", embed=embed, view=self)
+        # Edit message to alert new target
+        await interaction.response.edit_message(content=f"🚨 **URGENT:** {target.mention} TERE PAAS BOMB HAI! JALDI FEK!", embed=embed, view=self)
+
 
 @bot.tree.command(name="bomb_start", description="💣 Hot Potato Bomb Game (Group Masti)")
 async def start_bomb(i: discord.Interaction):
@@ -5556,12 +5674,16 @@ async def start_bomb(i: discord.Interaction):
         return await i.response.send_message("❌ Mere paas Mute Power nahi hai, game nahi chalega.", ephemeral=True)
 
     embed = discord.Embed(title="💣 ACTIVE BOMB SPOTTED!", color=0xFF4500)
-    embed.description = f"**{i.user.mention}** ne pin nikaal di hai!\n\n👇 **Dropdown se kisi dushman ko select karo aur bomb feko!**\nJo aakhri mein pakda gaya, wo gaya kaam se."
+    embed.description = (
+        f"**{i.user.mention}** ne pin nikaal di hai!\n\n"
+        f"👇 **Dropdown se kisi dushman ko select karo aur bomb feko!**\n"
+        f"Jo aakhri mein pakda gaya, wo gaya kaam se.\n\n"
+        f"*(No Money involved, Sirf Maut)*"
+    )
     embed.set_image(url="https://media.tenor.com/pyk_eO99u_0AAAAC/bomb-bomb-timer.gif")
     
     view = BombPassView(i.user, i)
     await i.response.send_message(embed=embed, view=view)
-
 
 # ================== 🎰 DEVIL'S SLOTS (ECONOMY + VIP) ==================
 
