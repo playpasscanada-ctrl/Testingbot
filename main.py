@@ -4856,13 +4856,10 @@ async def start_interactive_heist(interaction, crew):
     await interaction.edit_original_response(embed=win_embed, view=None)
 
 # --- COMMAND ---
-
-@bot.tree.command(name="heist", description="🏦 Start a Team Bank Heist (Recruit Crew)")
-async def heist_command(i: discord.Interaction):
-    # Check Permissions
+@bot.tree.command(name="heist", description="🏦 Interactive Team Heist (Task Based)")
+async def heist_cmd(i: discord.Interaction):
     if not i.guild.me.guild_permissions.moderate_members:
-        return await i.response.send_message("❌ Mere paas 'Timeout' power nahi hai. Police arrest kaise karegi?", ephemeral=True)
-    
+        return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
     view = HeistLobbyView(i.user)
     await i.response.send_message(embed=view.update_embed(), view=view)
 
