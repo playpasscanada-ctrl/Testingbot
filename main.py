@@ -7627,7 +7627,7 @@ iq_questions = [
     {"q": "Duniya ka sabse chhota desh (country)?", "a": "VATICAN CITY", "opts": ["MONACO", "VATICAN CITY", "NEPAL"]},
     {"q": "Harry Potter ke ullu (owl) ka naam kya tha?", "a": "HEDWIG", "opts": ["DOBBY", "HEDWIG", "DRACO"]},
     {"q": "Titanic ka captain kaun tha?", "a": "EDWARD SMITH", "opts": ["JACK DAWSON", "EDWARD SMITH", "JAMES CAMERON"]},
-    {"q": "PUBG kis saal launch hua tha?", "a": "2017", "opts": ["2017", "2018", "2016"]}
+    {"q": "PUBG kis saal launch hua tha?", "a": "2017", "opts": ["2017", "2018", "2016"]},
 
     # --- EASY / WARMUP ---
     {"q": "India ki capital kya hai?", "a": "DELHI", "opts": ["MUMBAI", "DELHI", "KOLKATA"]},
@@ -7778,7 +7778,7 @@ iq_questions = [
     {"q": "Duniya ka sabse bada jungle?", "a": "AMAZON", "opts": ["AMAZON", "SUNDARBANS", "CONGO"]},
     {"q": "KGF hero ka naam?", "a": "YASH", "opts": ["PRABHAS", "YASH", "ALLU ARJUN"]},
     {"q": "India mein total kitne states hain?", "a": "28", "opts": ["29", "28", "30"]},
-    {"q": "Duniya ka sabse mehnga item?", "a": "ANTIMATTER", "opts": ["DIAMOND", "ANTIMATTER", "GOLD"]}
+    {"q": "Duniya ka sabse mehnga item?", "a": "ANTIMATTER", "opts": ["DIAMOND", "ANTIMATTER", "GOLD"]},
     
     # --- IMPOSSIBLE (Luck or Genius) ---
     {"q": "Elon Musk ki rocket company ka naam?", "a": "SPACEX", "opts": ["NASA", "SPACEX", "BLUE ORIGIN"]},
