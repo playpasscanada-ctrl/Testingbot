@@ -1350,8 +1350,57 @@ class BanClearView(discord.ui.View):
         self.stop()
 
 
-# ================== 3. MAIN ACTION COMMAND (FIXED: ALL MODES) ==================
-@bot.tree.command(name="action", description="🛡️ Ultimate Moderation System (Kick, Ban, Unban, List)")
+# ================== 3. MAIN ACTION COMMAND (PREMIUM & FIXED) ==================
+
+# --- HELPER: PREMIUM EMBED BUILDER ---
+def build_premium_embed(action_type, u_name, d_name, u_id, moderator, reason, duration=None):
+    """
+    Creates a consistent High-Quality Embed for all moderation actions.
+    """
+    colors = {
+        "kick": 0xE74C3C,    # Red/Orange
+        "ban": 0x992D22,     # Dark Red
+        "tempban": 0xE67E22, # Orange
+        "unban": 0x2ECC71,   # Green
+    }
+    
+    titles = {
+        "kick": "👢 PLAYER KICKED",
+        "ban": "🔨 PERMANENT BAN",
+        "tempban": "⏱️ TEMPORARY BAN",
+        "unban": "✅ PLAYER UNBANNED"
+    }
+
+    embed = discord.Embed(title=titles.get(action_type, "Action"), color=colors.get(action_type, 0x2f3136))
+    
+    # 1. Top Section: Target User Info
+    embed.add_field(name="👤 Target User", value=f"**{d_name}**\n(@{u_name})", inline=True)
+    embed.add_field(name="🆔 Roblox ID", value=f"`{u_id}`", inline=True)
+    
+    # 2. Duration (If Tempban)
+    if duration:
+        expire_ts = int(time.time() + (duration * 60))
+        embed.add_field(name="⏳ Duration", value=f"**{duration} Mins**\nUnban: <t:{expire_ts}:R>", inline=True)
+    else:
+        # Empty field to balance UI if needed, or skip
+        embed.add_field(name="🛡️ Action By", value=moderator.mention, inline=True)
+
+    # 3. Reason Section (Full Width)
+    embed.add_field(name="📝 Reason", value=f"```\n{reason}\n```", inline=False)
+    
+    # 4. Thumbnail (Roblox Headshot)
+    embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={u_id}&width=420&height=420&format=png")
+    
+    # 5. Footer with Timestamp
+    if duration: # Agar duration upar dikhaya to moderator niche dikhao
+        embed.set_footer(text=f"Executed by {moderator.display_name} • {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}", icon_url=moderator.display_avatar.url)
+    else:
+        embed.set_footer(text=f"Server Protection System • {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}", icon_url=moderator.display_avatar.url)
+        
+    return embed
+
+
+@bot.tree.command(name="action", description="🛡️ Premium Moderation System (Kick, Ban, Unban)")
 @app_commands.choices(mode=[
     app_commands.Choice(name="👢 Kick Player", value="kick"),
     app_commands.Choice(name="🔨 Ban (Permanent)", value="ban"),
@@ -1370,7 +1419,6 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
     if not owner(i):
         return await i.response.send_message("❌ **Access Denied:** Owner/Admin only.", ephemeral=True)
 
-    # Note: 'clear' ke liye defer nahi karenge (Button turant aana chahiye)
     if mode.value != "clear":
         await i.response.defer(ephemeral=False)
 
@@ -1380,21 +1428,20 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
             if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
             u, d = await roblox_info(user_id)
 
-            # ✅ FIX: Async DB Call
-            await db_call(lambda: supabase.table("kick_logs").insert({
-                "user_id": user_id, "username": u, "display_name": d, "reason": reason, "timestamp": datetime.utcnow().isoformat()
-            }).execute())
+            # ✅ FIX: Safe DB Call (Error aayega to bhi command nahi rukega)
+            try:
+                await db_call(lambda: supabase.table("kick_logs").insert({
+                    "user_id": user_id, "username": u, "display_name": d, "reason": reason, "timestamp": datetime.utcnow().isoformat()
+                }).execute())
+            except Exception as e:
+                print(f"⚠️ Log Error (Kick Logs missing?): {e}")
 
-            # ✅ FIX: Async DB Call
+            # Kick Flag Set
             await db_call(lambda: supabase.table("kick_flags").upsert({
                 "user_id": user_id, "reason": reason
             }).execute())
 
-            embed = discord.Embed(title="👢 PLAYER KICKED", color=0xe74c3c)
-            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
-            embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
-            embed.add_field(name="📝 Reason", value=f"`{reason}`", inline=True)
-            embed.set_footer(text=f"Kicked by {i.user.display_name}", icon_url=i.user.display_avatar.url)
+            embed = build_premium_embed("kick", u, d, user_id, i.user, reason)
             await i.followup.send(embed=embed)
 
 
@@ -1403,7 +1450,6 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
             if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
             u, d = await roblox_info(user_id)
             
-            # ✅ FIX: Async DB Call
             await db_call(lambda: supabase.table("bans").upsert({
                 "user_id": user_id, "perm": True, "reason": reason, "expire": None, "executor": str(i.user.id)
             }).execute())
@@ -1411,23 +1457,18 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
             try: log_action("ban", user_id, u, d, i.user.id)
             except: pass
 
-            embed = discord.Embed(title="🔨 USER BANNED", color=0xff0000)
-            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
-            embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
-            embed.add_field(name="📝 Reason", value=f"`{reason}`", inline=True)
-            embed.set_footer(text=f"Banned by {i.user.display_name}")
+            embed = build_premium_embed("ban", u, d, user_id, i.user, reason)
             await i.followup.send(embed=embed)
 
 
         # ================== 3. TEMP BAN ==================
         elif mode.value == "tempban":
             if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
-            if not duration: return await i.followup.send("⚠️ **Duration Required!**")
+            if not duration: return await i.followup.send("⚠️ **Duration Required!** (Minutes)")
 
             u, d = await roblox_info(user_id)
             expire_time = time.time() + (duration * 60)
 
-            # ✅ FIX: Async DB Call
             await db_call(lambda: supabase.table("bans").upsert({
                 "user_id": user_id, "perm": False, "reason": reason, "expire": expire_time, "executor": str(i.user.id)
             }).execute())
@@ -1435,11 +1476,7 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
             try: log_action("tempban", user_id, u, d, i.user.id)
             except: pass
 
-            embed = discord.Embed(title="⏱ USER TEMP-BANNED", color=0xe67e22)
-            embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
-            embed.add_field(name="⏳ Duration", value=f"{duration} Mins\nUnban: <t:{int(expire_time)}:R>", inline=True)
-            embed.add_field(name="📝 Reason", value=f"`{reason}`", inline=False)
-            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+            embed = build_premium_embed("tempban", u, d, user_id, i.user, reason, duration)
             await i.followup.send(embed=embed)
 
 
@@ -1449,37 +1486,31 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
 
             u, d = await roblox_info(user_id)
             
-            # ✅ FIX: Async DB Call
             await db_call(lambda: supabase.table("bans").delete().eq("user_id", user_id).execute())
 
             try: log_action("unban", user_id, u, d, i.user.id)
             except: pass
 
-            embed = discord.Embed(title="✅ USER UNBANNED", color=0x2ecc71)
-            embed.add_field(name="👤 User", value=f"**{d}**\n(@{u})", inline=True)
-            embed.add_field(name="🆔 ID", value=f"`{user_id}`", inline=True)
-            embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
+            embed = build_premium_embed("unban", u, d, user_id, i.user, reason)
             await i.followup.send(embed=embed)
 
 
-        # ================== 5. LIST BANS ==================
+        # ================== 5. LIST BANS (Premium List) ==================
         elif mode.value == "list":
-            # ✅ FIX: Async DB Call for fetching list
             data_req = await db_call(lambda: supabase.table("bans").select("*").execute())
             data = data_req.data if data_req else []
 
-            # Filter Expired Bans
+            # Expired Bans Cleanup
             active_bans = []
             now = time.time()
             for row in data:
                 if not row.get("perm") and row.get("expire") and now > float(row["expire"]):
-                    # Expired ban delete karo (Background me)
                     asyncio.create_task(db_call(lambda: supabase.table("bans").delete().eq("user_id", row["user_id"]).execute()))
                 else:
                     active_bans.append(row)
 
             if not active_bans:
-                return await i.followup.send(embed=discord.Embed(title="📜 Ban List", description="✅ No active bans found.", color=0x2ecc71))
+                return await i.followup.send(embed=discord.Embed(title="📜 Ban List", description="✅ **No active bans found.**\nServer is clean!", color=0x2ecc71))
 
             view = BanPaginator(active_bans, i.user, bot)
             if view.total_pages <= 1:
@@ -1496,19 +1527,21 @@ async def action(i: discord.Interaction, mode: app_commands.Choice[str], user_id
         elif mode.value == "clear":
             embed = discord.Embed(
                 title="⚠️ DANGER ZONE: CLEAR DATABASE",
-                description="Are you sure you want to **DELETE ALL BANS**?\nThis cannot be undone.",
+                description="Are you sure you want to **DELETE ALL BANS**?\n\nThis will unban **everyone**. This cannot be undone.",
                 color=0xffaa00
             )
+            embed.set_footer(text="Wait 10 seconds before confirming.")
             view = BanClearView(i.user.id)
             await i.response.send_message(embed=embed, view=view, ephemeral=False)
 
     except Exception as e:
         print(f"ACTION ERROR: {e}")
-        try:
+        # Error handling thoda clean kiya hai
+        if "Missing Permissions" in str(e):
+            await i.followup.send("❌ **Bot Error:** Mere paas permissions nahi hain.")
+        else:
             await i.followup.send(f"❌ **System Error:** `{e}`")
-        except:
-            await i.response.send_message(f"❌ **System Error:** `{e}`", ephemeral=True)         
-            
+
 # ================== PREMIUM PLAYSOUND (Embed + Hidden) ==================
 
 # 1. Autocomplete (Same rahega)
@@ -2218,8 +2251,54 @@ class AccessClearView(discord.ui.View):
         await i.response.edit_message(embed=embed, view=None)
         self.stop()
 
-# ================== 3. ULTIMATE ACCESS COMMAND (FIXED: Non-Blocking) ==================
-@bot.tree.command(name="access", description="⚙️ Manage Access, Maintenance, Whitelist & Blacklist (Fixed)")
+# ================== HELPER: SYSTEM EMBED BUILDER ==================
+def build_access_embed(mode_type, moderator, user_data=None, extra_info=None):
+    """
+    Generates consistent Premium Embeds for Access Control.
+    """
+    # Configuration for different modes
+    config = {
+        # System Modes
+        "on": {"title": "🟢 SYSTEM ONLINE", "color": 0x2ECC71, "desc": "Verification Access is now **ENABLED**."},
+        "off": {"title": "🔴 SYSTEM OFFLINE", "color": 0xE74C3C, "desc": "Verification Access is now **DISABLED**."},
+        "maint_on": {"title": "🛡️ MAINTENANCE MODE", "color": 0xE67E22, "desc": "System is now in **Maintenance**.\nOnly Whitelisted users can bypass."},
+        "maint_off": {"title": "🚀 SYSTEM LIVE", "color": 0x2ECC71, "desc": "Maintenance Mode **DISABLED**.\nSystem is operating normally."},
+        
+        # Whitelist Modes
+        "add": {"title": "👤 WHITELIST ADDED", "color": 0x2ECC71, "desc": "User has been granted **Premium Access**."},
+        "remove": {"title": "🗑️ WHITELIST REMOVED", "color": 0xE74C3C, "desc": "User access has been **Revoked**."},
+        
+        # Blacklist Modes
+        "blk_add": {"title": "🚫 USER BLACKLISTED", "color": 0x000000, "desc": "User has been **Banned** from verification."},
+        "blk_remove": {"title": "✅ BLACKLIST REMOVED", "color": 0x3498DB, "desc": "User has been **Unbanned**."},
+        
+        # Clear
+        "clear": {"title": "⚠️ DATABASE RESET", "color": 0xFFAA00, "desc": "Clear All Request Initiated."}
+    }
+
+    cfg = config.get(mode_type, {"title": "⚙️ UPDATE", "color": 0x2F3136, "desc": "System Updated"})
+    
+    embed = discord.Embed(title=cfg["title"], description=cfg["desc"], color=cfg["color"])
+    
+    # If specific user action (Whitelist/Blacklist)
+    if user_data:
+        u_name, d_name, u_id = user_data
+        embed.add_field(name="👤 User", value=f"**{d_name}**\n(@{u_name})", inline=True)
+        embed.add_field(name="🆔 Roblox ID", value=f"`{u_id}`", inline=True)
+        embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={u_id}&width=420&height=420&format=png")
+    
+    # If System Action, add status icon or details
+    elif extra_info:
+        embed.add_field(name="📝 Status Details", value=f"```{extra_info}```", inline=False)
+
+    # Footer
+    embed.set_footer(text=f"Action by {moderator.display_name} • {datetime.utcnow().strftime('%H:%M UTC')}", icon_url=moderator.display_avatar.url)
+    
+    return embed
+
+
+# ================== 3. ULTIMATE ACCESS COMMAND ==================
+@bot.tree.command(name="access", description="⚙️ Premium Access Control (Whitelist, Blacklist, Maintenance)")
 @app_commands.choices(mode=[
     app_commands.Choice(name="🟢 Unlock Verification (Access ON)", value="on"),
     app_commands.Choice(name="🔴 Lock Verification (Access OFF)", value="off"),
@@ -2236,10 +2315,9 @@ class AccessClearView(discord.ui.View):
 async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id: str = None):
     
     # 1. OWNER CHECK
-    if not owner(i): 
-        await i.response.send_message("❌ **Access Denied:** Owner Only.", ephemeral=True)
-        return
-
+    if not owner(i):
+        return await i.response.send_message("❌ **Access Denied:** Owner Only.", ephemeral=True)
+    
     # Clear mode ke liye defer nahi karenge (Button turant aana chahiye)
     if mode.value != "clear":
         await i.response.defer(ephemeral=False)
@@ -2248,132 +2326,146 @@ async def access(i: discord.Interaction, mode: app_commands.Choice[str], user_id
         # ================== 1. ACCESS ON/OFF ==================
         if mode.value in ["on", "off"]:
             val = "true" if mode.value == "on" else "false"
-            # ✅ FIX
-            await db_call(lambda: supabase.table("bot_settings").update({"value": val}).eq("key", "access_enabled").execute())
             
-            status_emoji = "🟢" if mode.value == "on" else "🔴"
-            color = 0x2ecc71 if mode.value == "on" else 0xe74c3c
-            embed = discord.Embed(title=f"{status_emoji} System Updated", description=f"Verification Access is now **{mode.value.upper()}**", color=color)
+            await db_call(lambda: supabase.table("bot_settings").update({"value": val}).eq("key", "access_enabled").execute())
             
             try: log_action(f"access_{mode.value}", "-", "-", "-", i.user.id)
             except: pass
+            
+            embed = build_access_embed(mode.value, i.user)
             await i.followup.send(embed=embed)
+
 
         # ================== 2. MAINTENANCE ON/OFF ==================
         elif mode.value in ["maint_on", "maint_off"]:
             val = "true" if mode.value == "maint_on" else "false"
-            # ✅ FIX
+            
             await db_call(lambda: supabase.table("bot_settings").update({"value": val}).eq("key", "maintenance").execute())
-
-            if mode.value == "maint_on":
-                embed = discord.Embed(title="🛡️ Maintenance Enabled", description="⚠️ **System is now in Maintenance Mode.**", color=0xe67e22)
-            else:
-                embed = discord.Embed(title="🚀 Maintenance Disabled", description="✅ **System is now LIVE.**", color=0x2ecc71)
             
             try: log_action(f"maintenance_{val}", "-", "-", "-", i.user.id)
             except: pass
+            
+            embed = build_access_embed(mode.value, i.user)
             await i.followup.send(embed=embed)
+
 
         # ================== 3. WHITELIST ADD ==================
         elif mode.value == "add":
-            if not user_id: return await i.followup.send("❌ **ID required!**")
+            if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
             u, d = await roblox_info(user_id)
             
-            # ✅ FIX
-            await db_call(lambda: supabase.table("access_users").upsert({"user_id": user_id, "username": u, "display_name": d, "discord_id": str(i.user.id)}).execute())
+            await db_call(lambda: supabase.table("access_users").upsert({
+                "user_id": user_id, "username": u, "display_name": d, "discord_id": str(i.user.id)
+            }).execute())
             
             try: log_action("access_add", user_id, u, d, i.user.id)
             except: pass
             
-            embed = discord.Embed(title="✅ Access Granted", color=0x2ecc71)
-            embed.add_field(name="User", value=f"{d} (@{u})", inline=True)
+            embed = build_access_embed("add", i.user, (u, d, user_id))
             await i.followup.send(embed=embed)
+
 
         # ================== 4. WHITELIST REMOVE ==================
         elif mode.value == "remove":
-            if not user_id: return await i.followup.send("❌ **ID required!**")
+            if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
             u, d = await roblox_info(user_id)
             
-            # ✅ FIX
             await db_call(lambda: supabase.table("access_users").delete().eq("user_id", user_id).execute())
             
             try: log_action("access_remove", user_id, u, d, i.user.id)
             except: pass
             
-            embed = discord.Embed(title="🗑️ Access Removed", color=0xff0000)
-            embed.add_field(name="User", value=f"{d} (@{u})", inline=True)
+            embed = build_access_embed("remove", i.user, (u, d, user_id))
             await i.followup.send(embed=embed)
+
 
         # ================== 5. WHITELIST LIST ==================
         elif mode.value == "list":
-            # ✅ FIX
             data_req = await db_call(lambda: supabase.table("access_users").select("*").execute())
             data = data_req.data if data_req else []
-            
-            if not data: return await i.followup.send("❌ List is empty.")
+
+            if not data:
+                return await i.followup.send(embed=discord.Embed(title="📜 Whitelist Empty", description="No users are currently whitelisted.", color=0x2ECC71))
             
             view = AccessPaginator(data, i.user)
-            if view.total_pages <= 1: view.children[0].disabled = True; view.children[1].disabled = True
-            else: view.update_buttons()
+            if view.total_pages <= 1:
+                view.children[0].disabled = True
+                view.children[1].disabled = True
+            else:
+                view.update_buttons()
+            
             await i.followup.send(embed=view.get_embed(), view=view)
+
 
         # ================== 6. BLACKLIST ADD ==================
         elif mode.value == "blk_add":
-            if not user_id: return await i.followup.send("❌ **ID required!**")
+            if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
             u, d = await roblox_info(user_id)
-
-            # ✅ FIX: Dono call async wrapper me
+            
+            # Add to Blacklist
             await db_call(lambda: supabase.table("blacklist_users").upsert({"user_id": user_id}).execute())
+            # Remove from Whitelist if exists (Security)
             try: await db_call(lambda: supabase.table("access_users").delete().eq("user_id", user_id).execute())
             except: pass
-
+            
             try: log_action("blacklist_add", user_id, u, d, i.user.id)
             except: pass
-
-            embed = discord.Embed(title="🚫 User Blacklisted", color=0x000000)
-            embed.add_field(name="User", value=f"{d} (@{u})", inline=True)
+            
+            embed = build_access_embed("blk_add", i.user, (u, d, user_id))
             await i.followup.send(embed=embed)
+
 
         # ================== 7. BLACKLIST REMOVE ==================
         elif mode.value == "blk_remove":
-            if not user_id: return await i.followup.send("❌ **ID required!**")
+            if not user_id: return await i.followup.send("❌ **Roblox ID Required!**")
             u, d = await roblox_info(user_id)
-
-            # ✅ FIX
+            
             await db_call(lambda: supabase.table("blacklist_users").delete().eq("user_id", user_id).execute())
-
+            
             try: log_action("blacklist_remove", user_id, u, d, i.user.id)
             except: pass
-
-            embed = discord.Embed(title="✅ Blacklist Removed", color=0x3498db)
-            embed.add_field(name="User", value=f"{d} (@{u})", inline=True)
+            
+            embed = build_access_embed("blk_remove", i.user, (u, d, user_id))
             await i.followup.send(embed=embed)
+
 
         # ================== 8. BLACKLIST LIST ==================
         elif mode.value == "blk_list":
-            # ✅ FIX
             data_req = await db_call(lambda: supabase.table("blacklist_users").select("user_id").execute())
             data = data_req.data if data_req else []
-            
-            if not data: return await i.followup.send("✅ No users blacklisted.")
 
+            if not data:
+                return await i.followup.send(embed=discord.Embed(title="📜 Blacklist Empty", description="No users are currently blacklisted.", color=0x3498DB))
+            
             view = BlacklistPaginator(data, i.user)
-            if view.total_pages <= 1: view.children[0].disabled = True; view.children[1].disabled = True
-            else: view.update_buttons()
+            if view.total_pages <= 1:
+                view.children[0].disabled = True
+                view.children[1].disabled = True
+            else:
+                view.update_buttons()
             
             embed = await view.get_page_embed()
             await i.followup.send(embed=embed, view=view)
 
+
         # ================== 9. CLEAR WHITELIST ==================
         elif mode.value == "clear":
-            embed = discord.Embed(title="⚠️ DANGER ZONE", description="Are you sure you want to **RESET** the whitelist?", color=0xffaa00)
+            embed = discord.Embed(
+                title="⚠️ DANGER ZONE: RESET WHITELIST", 
+                description="Are you sure you want to **DELETE ALL** Whitelisted users?\nThis action cannot be undone.", 
+                color=0xFFAA00
+            )
+            embed.set_footer(text="Requires confirmation")
             view = AccessClearView(i.user.id)
             await i.response.send_message(embed=embed, view=view, ephemeral=False)
 
     except Exception as e:
-        print(f"ERROR: {e}")
-        try: await i.followup.send(f"❌ **System Error:** `{e}`")
-        except: await i.response.send_message(f"❌ **System Error:** `{e}`", ephemeral=True)
+        print(f"ACCESS COMMAND ERROR: {e}")
+        try:
+            await i.followup.send(f"❌ **System Error:** `{e}`")
+        except:
+            await i.response.send_message(f"❌ **System Error:** `{e}`", ephemeral=True)
+            
 
 # ================== VERIFIED LIST COMMAND (FIXED: Async & Fast) ==================
 @bot.tree.command(name="verifiedlist", description="Show paginated verified Roblox users (Fixed)")
