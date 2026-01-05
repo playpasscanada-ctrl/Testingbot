@@ -1,5 +1,5 @@
 import os, json, time, threading, requests, asyncio
-from datetime import datetime
+import datetime as dt 
 import aiohttp
 from discord.ext import commands
 from gtts import gTTS
@@ -4709,6 +4709,251 @@ async def memory_game(interaction: discord.Interaction, level: int):
     view = MemoryGameView(interaction.user, level)
     embed = await view.get_embed()
     await interaction.response.send_message(embed=embed, view=view)
+
+# ------------------------------------------------------------------
+# 🤠 GAME 1: WILD WEST DUEL (Reaction Time)
+# ------------------------------------------------------------------
+
+class WesternDuelView(discord.ui.View):
+    def __init__(self, p1, p2):
+        super().__init__(timeout=60)
+        self.p1 = p1
+        self.p2 = p2
+        self.signal_given = False
+        self.winner = None
+        self.start_time = None
+        
+        # Initial Button (Disabled/Red)
+        btn = discord.ui.Button(label="🛑 WAIT FOR SIGNAL...", style=discord.ButtonStyle.danger, custom_id="shoot_btn")
+        btn.callback = self.shoot_callback
+        self.add_item(btn)
+
+    async def start_game_logic(self, interaction):
+        # 1. Suspense Phase (3-8 seconds)
+        delay = random.uniform(3, 8)
+        await asyncio.sleep(delay)
+        
+        if self.winner: return # Agar koi pehle hi disqualify ho gaya
+
+        # 2. FIRE SIGNAL!
+        self.signal_given = True
+        self.start_time = dt.datetime.now().timestamp()
+        
+        button = self.children[0]
+        button.label = "🔥 SHOOT! (CLICK NOW!)"
+        button.style = discord.ButtonStyle.success # Green
+        
+        try:
+            embed = interaction.message.embeds[0]
+            embed.color = 0x00FF00 # Green
+            embed.description = "# 🔫 FIRE! FIRE! FIRE!\n**Jaldi button dabao!**"
+            await interaction.edit_original_response(embed=embed, view=self)
+        except:
+            pass
+
+    async def shoot_callback(self, interaction: discord.Interaction):
+        if interaction.user.id not in [self.p1.id, self.p2.id]:
+            return await interaction.response.send_message("❌ Audience door rahein! Goli lag jayegi.", ephemeral=True)
+            
+        if self.winner:
+            return await interaction.response.send_message("⚰️ Der ho gayi! Tum mar chuke ho.", ephemeral=True)
+
+        # CASE A: EARLY FIRE (Disqualified)
+        if not self.signal_given:
+            self.winner = interaction.user # Technically winner is other guy
+            self.stop()
+            
+            winner_user = self.p2 if interaction.user.id == self.p1.id else self.p1
+            
+            embed = discord.Embed(title="💀 MISFIRE! (Khud ko uda liya)", color=0x000000)
+            embed.description = f"**{interaction.user.mention}** ne dar ke maare pehle hi trigger daba diya!\n\n🏆 **Winner:** {winner_user.mention} (Bina kuch kiye jeet gaya)"
+            embed.set_image(url="https://media.tenor.com/12s3s2v1b4cAAAAC/gun-fail.gif")
+            
+            await interaction.response.edit_message(embed=embed, view=None)
+            return
+
+        # CASE B: PERFECT SHOT (Win)
+        reaction_time = round(dt.datetime.now().timestamp() - self.start_time, 3)
+        self.winner = interaction.user
+        self.stop()
+        
+        loser = self.p2 if interaction.user.id == self.p1.id else self.p1
+        
+        embed = discord.Embed(title="🤠 THE FASTEST GUN IN THE WEST!", color=0xFFD700)
+        embed.description = f"### 💥 BANG!\n**{interaction.user.mention}** ne **{reaction_time}s** mein dushman ko dher kar diya!\n\n🪦 **R.I.P:** {loser.mention}"
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        embed.set_image(url="https://media.tenor.com/E5J0kC1yTzAAAAAC/the-good-the-bad-and-the-ugly-clint-eastwood.gif")
+        
+        await interaction.response.edit_message(embed=embed, view=None)
+
+@bot.tree.command(name="duel", description="🤠 Wild West Shootout (Reaction Test)")
+async def western_duel(i: discord.Interaction, opponent: discord.Member):
+    if opponent.id == i.user.id or opponent.bot:
+        return await i.response.send_message("❌ Khud se ya Bot se duel nahi ho sakta.", ephemeral=True)
+        
+    embed = discord.Embed(title="🌵 HIGH NOON DUEL", description=f"**{i.user.mention}** ⚔️ **{opponent.mention}**\n\n👁️ **Nazar Button pe rakhna!**\nJab button **GREEN** ho jaye, tabhi dabana.\n*Jaldi dabaya to Maut, Dheere dabaya to Maut.*", color=0xB8860B)
+    embed.set_image(url="https://media.tenor.com/w9yv4p2y3QAAAAAC/tumbleweed.gif")
+    
+    view = WesternDuelView(i.user, opponent)
+    await i.response.send_message(embed=embed, view=view)
+    
+    # Start Timer
+    asyncio.create_task(view.start_game_logic(i))
+
+
+# ------------------------------------------------------------------
+# 💣 GAME 2: TIME BOMB (Hot Potato Group Game)
+# ------------------------------------------------------------------
+
+class BombPassView(discord.ui.View):
+    def __init__(self, holder, interaction):
+        super().__init__(timeout=180)
+        self.holder = holder
+        self.origin_interaction = interaction
+        self.exploded = False
+        # Bomb time: 20 to 40 seconds
+        self.explode_time = dt.datetime.now().timestamp() + random.randint(20, 40)
+        
+        asyncio.create_task(self.bomb_timer())
+
+    async def bomb_timer(self):
+        while not self.exploded:
+            await asyncio.sleep(1)
+            if dt.datetime.now().timestamp() >= self.explode_time:
+                self.exploded = True
+                await self.trigger_explosion()
+                break
+
+    async def trigger_explosion(self):
+        # Mute Logic
+        punishment = "🔇 **Saza:** 5 Minute Timeout (Lagg gaye)"
+        try:
+            await self.holder.timeout(dt.timedelta(minutes=5), reason="Bomb Exploded in Hand")
+        except:
+            punishment = "⚠️ (Mere paas admin power nahi hai, bach gaya)"
+
+        embed = discord.Embed(title="💥 BOMB PHAT GAYA!", color=0xFF0000)
+        embed.description = f"# 💣 BOOOOM!\n\n**{self.holder.mention}** bomb pass karne mein slow nikla!\nUda diya gaya.\n\n{punishment}"
+        embed.set_image(url="https://media.tenor.com/8p1jZ5jG4yQAAAAC/explosion-boom.gif")
+        
+        try:
+            await self.origin_interaction.edit_original_response(content=None, embed=embed, view=None)
+        except:
+            pass
+
+    @discord.ui.select(placeholder="Bomb kisko fekna hai? (Select User)", cls=discord.ui.UserSelect, max_values=1)
+    async def pass_bomb(self, interaction: discord.Interaction, select: discord.ui.UserSelect):
+        if self.exploded: return await interaction.response.send_message("❌ Bomb phat chuka hai!", ephemeral=True)
+
+        if interaction.user.id != self.holder.id:
+            return await interaction.response.send_message("❌ Bomb tere haath mein nahi hai, hero mat ban!", ephemeral=True)
+
+        target = select.values[0]
+        if target.bot or target.id == interaction.user.id:
+            return await interaction.response.send_message("❌ Khud ko ya Bot ko pass nahi kar sakte!", ephemeral=True)
+
+        # Successful Pass
+        self.holder = target
+        
+        # Intense Embed Update
+        embed = discord.Embed(title="💣 BOMB PASSED!", color=0xFFA500)
+        embed.description = f"### 🏃💨 BHAAGO!\n**{interaction.user.name}** ne bomb **{target.mention}** ki taraf fek diya!\n\n⏱️ **Tik.. Tok.. Tik.. Tok..**\nJaldi pass karo!"
+        embed.set_thumbnail(url=target.display_avatar.url)
+        embed.set_image(url="https://media.tenor.com/G5m6K_1u_mIAAAAC/bomb-ticking.gif")
+        
+        await interaction.response.edit_message(content=f"🚨 **URGENT:** {target.mention} TERE PAAS BOMB HAI!", embed=embed, view=self)
+
+@bot.tree.command(name="bomb_start", description="💣 Hot Potato Bomb Game (Group Masti)")
+async def start_bomb(i: discord.Interaction):
+    if not i.guild.me.guild_permissions.moderate_members:
+        return await i.response.send_message("❌ Mere paas Mute Power nahi hai, game nahi chalega.", ephemeral=True)
+
+    embed = discord.Embed(title="💣 ACTIVE BOMB SPOTTED!", color=0xFF4500)
+    embed.description = f"**{i.user.mention}** ne pin nikaal di hai!\n\n👇 **Dropdown se kisi dushman ko select karo aur bomb feko!**\nJo aakhri mein pakda gaya, wo gaya kaam se."
+    embed.set_image(url="https://media.tenor.com/pyk_eO99u_0AAAAC/bomb-bomb-timer.gif")
+    
+    view = BombPassView(i.user, i)
+    await i.response.send_message(embed=embed, view=view)
+
+
+# ------------------------------------------------------------------
+# 🎰 GAME 3: DEVIL'S SLOT MACHINE (Risk vs Reward)
+# ------------------------------------------------------------------
+
+@bot.tree.command(name="devil_slots", description="🎰 Spin for Jackpot or Get Humiliated 😈")
+async def devil_slots(i: discord.Interaction):
+    # Permissions Check
+    if not i.guild.me.guild_permissions.moderate_members or not i.guild.me.guild_permissions.manage_nicknames:
+        return await i.response.send_message("❌ Mere paas 'Manage Nicknames' aur 'Timeout' permission honi chahiye!", ephemeral=True)
+
+    # 1. Animation Phase
+    embed = discord.Embed(title="🎰 DEVIL'S CASINO", color=0x9932CC)
+    embed.description = "## 🍒 | 🍋 | 🔔\n**Spinning...** 🤞"
+    embed.set_image(url="https://media.tenor.com/GoMvLaZs8KkAAAAC/slot-machine-casino.gif") # Slot animation
+    await i.response.send_message(embed=embed)
+    
+    await asyncio.sleep(2.5) # Thoda suspense
+
+    # 2. Logic Phase
+    # Items: Jackpot, Shame, Death, Small Win
+    outcomes = ["JACKPOT", "DEATH", "SHAME", "NORMAL", "LOSS"]
+    weights = [2, 10, 15, 30, 43] # Jackpot is very rare (2%)
+    
+    result_type = random.choices(outcomes, weights=weights, k=1)[0]
+    
+    final_desc = ""
+    color = 0x000000
+    img = ""
+    footer = "Casino Owner: The Devil 😈"
+
+    if result_type == "JACKPOT":
+        slots = ["💎", "💎", "💎"]
+        final_desc = "# 🎉 JACKPOT!! 🎉\n### 💎 | 💎 | 💎\n\n**OMG!** Tumne Casino loot liya!\n💰 **Reward:** 1,000,000 Aura Points (Imaginary)"
+        color = 0xFFD700
+        img = "https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif"
+
+    elif result_type == "DEATH":
+        slots = ["💀", "💀", "💀"]
+        final_desc = "# 💀 DEATH SPIN!\n### 💀 | 💀 | 💀\n\n**Bad Luck!** Shaitan ne tumhe chun liya.\n🔇 **Penalty:** 1 Hour Mute."
+        color = 0x000000
+        img = "https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif"
+        try:
+            await i.user.timeout(dt.timedelta(hours=1), reason="Lost in Devil Slots")
+        except:
+            final_desc += "\n*(Admin Power Saves You)*"
+
+    elif result_type == "SHAME":
+        slots = ["💩", "💩", "💩"]
+        final_desc = "# 💩 SHAME SPIN!\n### 💩 | 💩 | 💩\n\n**Chee!** Kaisi kismat hai teri?\n🏷️ **Penalty:** Nickname changed to **'Mr. Haggu'**"
+        color = 0x8B4513
+        img = "https://media.tenor.com/P0G2gQJb6jAAAAAC/poop-emoji.gif"
+        try:
+            # Hierarchy check logic included automatically by Discord usually, but good to wrap in try
+            if i.user.top_role < i.guild.me.top_role:
+                await i.user.edit(nick="Mr. Haggu 💩")
+            else:
+                final_desc += "\n*(Tumhara Role mere se bada hai, naam change nahi kar sakta)*"
+        except:
+            pass
+
+    elif result_type == "NORMAL":
+        slots = ["🍒", "🍒", "🍋"]
+        final_desc = "### 🍒 | 🍒 | 🍋\n**Small Win!**\nPaisa wapas mil gaya. Safe."
+        color = 0x00FF00
+        img = None
+
+    else: # LOSS
+        slots = ["❌", "🍋", "🍇"]
+        final_desc = "### ❌ | 🍋 | 🍇\n**Haar gaye!**\nGhar jao."
+        color = 0xFF0000
+        img = None
+
+    # 3. Result Phase
+    result_embed = discord.Embed(title="🎰 SPIN RESULT", description=final_desc, color=color)
+    if img: result_embed.set_image(url=img)
+    result_embed.set_footer(text=footer)
+    
+    await i.edit_original_response(embed=result_embed)
 
 # ================== SAY ACCESS MANAGER (PREMIUM) ==================
 @bot.tree.command(name="sayaccess", description="Manage who can use /say command (Owner Only)")
