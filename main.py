@@ -4876,84 +4876,130 @@ async def start_bomb(i: discord.Interaction):
     await i.response.send_message(embed=embed, view=view)
 
 
-# ------------------------------------------------------------------
-# 🎰 GAME 3: DEVIL'S SLOT MACHINE (Risk vs Reward)
-# ------------------------------------------------------------------
+# ================== 🎰 PREMIUM DEVIL'S SLOTS (WITH BUTTON) ==================
 
-@bot.tree.command(name="devil_slots", description="🎰 Spin for Jackpot or Get Humiliated 😈")
-async def devil_slots(i: discord.Interaction):
-    # Permissions Check
-    if not i.guild.me.guild_permissions.moderate_members or not i.guild.me.guild_permissions.manage_nicknames:
-        return await i.response.send_message("❌ Mere paas 'Manage Nicknames' aur 'Timeout' permission honi chahiye!", ephemeral=True)
+class DevilSlotsView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=180)
+        self.user = user
 
-    # 1. Animation Phase
-    embed = discord.Embed(title="🎰 DEVIL'S CASINO", color=0x9932CC)
-    embed.description = "## 🍒 | 🍋 | 🔔\n**Spinning...** 🤞"
-    embed.set_image(url="https://media.tenor.com/GoMvLaZs8KkAAAAC/slot-machine-casino.gif") # Slot animation
-    await i.response.send_message(embed=embed)
-    
-    await asyncio.sleep(2.5) # Thoda suspense
+    @discord.ui.button(label="🎰 SPIN THE WHEEL", style=discord.ButtonStyle.blurple, custom_id="spin_now")
+    async def spin_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        
+        # 1. Check: Kya wahi user hai?
+        if interaction.user.id != self.user.id:
+            return await interaction.response.send_message("❌ Apna khud ka /devil_slots command chalao!", ephemeral=True)
 
-    # 2. Logic Phase
-    # Items: Jackpot, Shame, Death, Small Win
-    outcomes = ["JACKPOT", "DEATH", "SHAME", "NORMAL", "LOSS"]
-    weights = [2, 10, 15, 30, 43] # Jackpot is very rare (2%)
-    
-    result_type = random.choices(outcomes, weights=weights, k=1)[0]
-    
-    final_desc = ""
-    color = 0x000000
-    img = ""
-    footer = "Casino Owner: The Devil 😈"
+        # 2. Button Disable & Spinning Animation
+        button.disabled = True
+        button.label = "🔄 SPINNING..."
+        button.style = discord.ButtonStyle.secondary
+        
+        # Spinning Embed
+        spin_embed = discord.Embed(title="🎰 WHEEL IS SPINNING...", color=0x9932CC)
+        spin_embed.description = "# 🌀 | 🌀 | 🌀\n**Kismat ghum rahi hai...**"
+        spin_embed.set_image(url="https://media.tenor.com/GoMvLaZs8KkAAAAC/slot-machine-casino.gif")
+        spin_embed.set_thumbnail(url=interaction.user.display_avatar.url) # Profile Pic
+        
+        await interaction.response.edit_message(embed=spin_embed, view=self)
+        
+        # 3. Wait for Suspense (3 Seconds)
+        await asyncio.sleep(3)
 
-    if result_type == "JACKPOT":
-        slots = ["💎", "💎", "💎"]
-        final_desc = "# 🎉 JACKPOT!! 🎉\n### 💎 | 💎 | 💎\n\n**OMG!** Tumne Casino loot liya!\n💰 **Reward:** 1,000,000 Aura Points (Imaginary)"
-        color = 0xFFD700
-        img = "https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif"
-
-    elif result_type == "DEATH":
-        slots = ["💀", "💀", "💀"]
-        final_desc = "# 💀 DEATH SPIN!\n### 💀 | 💀 | 💀\n\n**Bad Luck!** Shaitan ne tumhe chun liya.\n🔇 **Penalty:** 1 Hour Mute."
+        # 4. LOGIC: Calculate Result
+        outcomes = ["JACKPOT", "DEATH", "SHAME", "WIN", "LOSS"]
+        # Weights: Jackpot (2%), Death (10%), Shame (15%), Win (30%), Loss (43%)
+        weights = [2, 10, 15, 30, 43]
+        result_type = random.choices(outcomes, weights=weights, k=1)[0]
+        
+        final_desc = ""
         color = 0x000000
-        img = "https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif"
-        try:
-            await i.user.timeout(dt.timedelta(hours=1), reason="Lost in Devil Slots")
-        except:
-            final_desc += "\n*(Admin Power Saves You)*"
+        image = ""
+        status_text = ""
 
-    elif result_type == "SHAME":
-        slots = ["💩", "💩", "💩"]
-        final_desc = "# 💩 SHAME SPIN!\n### 💩 | 💩 | 💩\n\n**Chee!** Kaisi kismat hai teri?\n🏷️ **Penalty:** Nickname changed to **'Mr. Haggu'**"
-        color = 0x8B4513
-        img = "https://media.tenor.com/P0G2gQJb6jAAAAAC/poop-emoji.gif"
-        try:
-            # Hierarchy check logic included automatically by Discord usually, but good to wrap in try
-            if i.user.top_role < i.guild.me.top_role:
-                await i.user.edit(nick="Mr. Haggu 💩")
-            else:
-                final_desc += "\n*(Tumhara Role mere se bada hai, naam change nahi kar sakta)*"
-        except:
-            pass
+        # --- OUTCOME HANDLING ---
+        
+        if result_type == "JACKPOT":
+            slots = "💎 | 💎 | 💎"
+            status_text = "🎉 GRAND JACKPOT!"
+            final_desc = f"# [ {slots} ]\n\n### 💰 10,000,000 COINS!\n**Mubarak ho! Aap Crorepati ban gaye!**"
+            color = 0xFFD700 # Gold
+            image = "https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif"
 
-    elif result_type == "NORMAL":
-        slots = ["🍒", "🍒", "🍋"]
-        final_desc = "### 🍒 | 🍒 | 🍋\n**Small Win!**\nPaisa wapas mil gaya. Safe."
-        color = 0x00FF00
-        img = None
+        elif result_type == "DEATH":
+            slots = "💀 | 💀 | 💀"
+            status_text = "💀 DEATH SPIN!"
+            final_desc = f"# [ {slots} ]\n\n### 🔇 PENALTY: 1 Hour Mute\n**Shaitan ne aapki aawaz cheen li.**"
+            color = 0x000000 # Black
+            image = "https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif"
+            try:
+                await interaction.user.timeout(dt.timedelta(hours=1), reason="Devil Slots Death")
+            except:
+                final_desc += "\n*(Admin Power ne bacha liya)*"
 
-    else: # LOSS
-        slots = ["❌", "🍋", "🍇"]
-        final_desc = "### ❌ | 🍋 | 🍇\n**Haar gaye!**\nGhar jao."
-        color = 0xFF0000
-        img = None
+        elif result_type == "SHAME":
+            slots = "💩 | 💩 | 💩"
+            status_text = "💩 SHAME SPIN!"
+            final_desc = f"# [ {slots} ]\n\n### 🏷️ PENALTY: Name Change\n**Ab se aapka naam 'Mr. Haggu' hai.**"
+            color = 0x8B4513 # Brown
+            image = "https://media.tenor.com/P0G2gQJb6jAAAAAC/poop-emoji.gif"
+            try:
+                if interaction.user.top_role < interaction.guild.me.top_role:
+                    await interaction.user.edit(nick="Mr. Haggu 💩")
+                else:
+                    final_desc += "\n*(Role Issue: Naam change nahi kar paaya)*"
+            except:
+                pass
 
-    # 3. Result Phase
-    result_embed = discord.Embed(title="🎰 SPIN RESULT", description=final_desc, color=color)
-    if img: result_embed.set_image(url=img)
-    result_embed.set_footer(text=footer)
+        elif result_type == "WIN":
+            # Random fruits
+            fruits = ["🍒", "🍋", "🍇", "🍉"]
+            f1, f2 = random.choices(fruits, k=2)
+            slots = f"{f1} | {f1} | {f2}" # 2 Same
+            status_text = "🍒 SMALL WIN!"
+            final_desc = f"# [ {slots} ]\n\n**Badhiya! Paise wapas mil gaye.**\n(Safe Spin)"
+            color = 0x00FF00 # Green
+            image = None
+
+        else: # LOSS
+            f1, f2, f3 = random.sample(["🍒", "🍋", "🍇", "🍉", "🔔", "❌"], k=3)
+            slots = f"{f1} | {f2} | {f3}"
+            status_text = "❌ BETTER LUCK NEXT TIME"
+            final_desc = f"# [ {slots} ]\n\n**Haar gaye!**\nDobara try karo agar himmat hai."
+            color = 0xFF0000 # Red
+            image = None
+
+        # 5. FINAL EMBED
+        result_embed = discord.Embed(title=f"🎰 {status_text}", color=color)
+        result_embed.description = final_desc
+        
+        # Profile Picture on Right (Thumbnail)
+        result_embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        
+        if image:
+            result_embed.set_image(url=image)
+        
+        result_embed.set_footer(text="Casino Owner: The Devil 😈 | /devil_slots")
+        
+        # Re-enable button for Re-spin? (Optional: Let's keep it disabled to prevent spam)
+        # Agar Re-spin chahiye to button.disabled = False kardo.
+        
+        await interaction.edit_original_response(embed=result_embed, view=None)
+
+
+@bot.tree.command(name="devil_slots", description="🎰 Spin the Wheel (Button Activated)")
+async def devil_slots(i: discord.Interaction):
+    # Permission Check
+    if not i.guild.me.guild_permissions.moderate_members or not i.guild.me.guild_permissions.manage_nicknames:
+        return await i.response.send_message("❌ **Missing Permissions:** Mere paas 'Timeout' aur 'Manage Nicknames' ki power nahi hai.", ephemeral=True)
+
+    # Intro Embed
+    embed = discord.Embed(title="🎰 WELCOME TO DEVIL'S CASINO", description="Kya aap apni kismat aur izzat daav par lagana chahte hain?\n\n**Risk:** Mute 🔇 ya Beizzat 💩\n**Reward:** CRORES 💰", color=0x9932CC)
+    embed.set_thumbnail(url=i.user.display_avatar.url)
+    embed.set_image(url="https://media.tenor.com/GoMvLaZs8KkAAAAC/slot-machine-casino.gif")
     
-    await i.edit_original_response(embed=result_embed)
+    view = DevilSlotsView(i.user)
+    await i.response.send_message(embed=embed, view=view)
 
 # ================== SAY ACCESS MANAGER (PREMIUM) ==================
 @bot.tree.command(name="sayaccess", description="Manage who can use /say command (Owner Only)")
