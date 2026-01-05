@@ -4710,9 +4710,9 @@ async def memory_game(interaction: discord.Interaction, level: int):
     embed = await view.get_embed()
     await interaction.response.send_message(embed=embed, view=view)
 
-# ================== 🏦 IMPOSSIBLE HEIST (GOD MODE - COMPLETE) ==================
+# ================== 🏦 IMPOSSIBLE HEIST (GOD MODE - FINAL FIX) ==================
 
-# --- 1. LOBBY VIEW (Team Setup) ---
+# --- 1. LOBBY VIEW ---
 class HeistLobbyView(discord.ui.View):
     def __init__(self, leader):
         super().__init__(timeout=120)
@@ -4723,11 +4723,10 @@ class HeistLobbyView(discord.ui.View):
     def update_embed(self):
         crew_list = "\n".join([f"👤 **{m.name}**" for m in self.crew])
         embed = discord.Embed(title="☠️ HEIST SETUP: GOD MODE", color=0x000000)
-        embed.description = "Mission: **SUICIDE SQUAD**\nSirf 3-5 Seconds milenge. Galti ki koi maafi nahi."
+        embed.description = "Mission: **SUICIDE SQUAD**\nSirf 3-5 Seconds milenge.\n**Ek galti = Sab Mute.**"
         embed.add_field(name=f"👥 The Crew ({len(self.crew)}/4)", value=crew_list, inline=False)
-        embed.add_field(name="⚠️ WARNING", value="Ek galti = Sab Mute (10 Mins).", inline=False)
         embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/1785/1785117.png")
-        embed.set_footer(text="Leader 'Start' dabaye jab gang ready ho.")
+        embed.set_footer(text="Leader 'Start' dabaye.")
         return embed
 
     @discord.ui.button(label="✋ Join Suicide Squad", style=discord.ButtonStyle.secondary)
@@ -4745,16 +4744,19 @@ class HeistLobbyView(discord.ui.View):
         if len(self.crew) < 2: return await interaction.response.send_message("Kam se kam 2 log chahiye!", ephemeral=True)
 
         self.started = True
+        # Disable buttons to prevent spam
         for child in self.children: child.disabled = True
         
         await interaction.response.edit_message(content="💀 **INITIATING GOD MODE...**", view=self, embed=self.update_embed())
+        
+        # Start logic
         await start_interactive_heist(interaction, self.crew)
 
 
-# --- 2. TASK VIEW (Generic) ---
+# --- 2. TASK VIEW (Generic Safe) ---
 class HeistTaskView(discord.ui.View):
     def __init__(self, player, correct_answer, fail_callback, success_callback):
-        super().__init__(timeout=5) # Default 5s timeout (updated dynamically)
+        super().__init__(timeout=6) # Thoda sa buffer time
         self.player = player
         self.correct_answer = correct_answer
         self.fail_callback = fail_callback
@@ -4766,11 +4768,12 @@ class HeistTaskView(discord.ui.View):
             await self.fail_callback(f"⏳ **TIMEOUT!** {self.player.mention} behosh ho gaya!", self.player)
 
     async def verify_answer(self, interaction, answer):
+        # Interaction check
         if interaction.user.id != self.player.id:
             return await interaction.response.send_message("❌ Ye task tera nahi hai!", ephemeral=True)
         
         self.responded = True
-        self.stop()
+        self.stop() # Stop listening
 
         if answer == self.correct_answer:
             await self.success_callback(interaction)
@@ -4778,7 +4781,7 @@ class HeistTaskView(discord.ui.View):
             await self.fail_callback(f"❌ **WRONG MOVE!** {self.player.mention} ne marwa di!", self.player)
 
 
-# --- 3. MAIN LOGIC (Impossible Tasks) ---
+# --- 3. MAIN GAME LOGIC (Fixed) ---
 async def start_interactive_heist(interaction, crew):
     # Assign Roles
     random.shuffle(crew)
@@ -4801,79 +4804,92 @@ async def start_interactive_heist(interaction, crew):
         fail_embed = discord.Embed(title="🚨 WASTED!", color=0xFF0000)
         fail_embed.description = f"# {reason}\n\n**Gunhegar:** {culprit.mention}\n### ⚰️ SAZA: 10 Min Mute"
         fail_embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+        
+        # Try editing first, else send new
         try: await interaction.edit_original_response(embed=fail_embed, view=None)
         except: await interaction.followup.send(embed=fail_embed)
 
+        # Apply Mute
         for m in crew:
             try:
                 if m.top_role < interaction.guild.me.top_role:
-                    await m.timeout(dt.timedelta(minutes=10), reason="Failed Impossible Heist")
+                    await m.timeout(dt.timedelta(minutes=10), reason="Failed Heist")
             except: pass
 
-    # --- STAGE 1: HACKER (Memory Test) ---
+    # ================= STAGE 1: HACKER (Memory Test) =================
     hacker = roles["💻 Hacker"]
     chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789#@"
     code = "".join(random.choices(chars, k=5))
     
-    # Fake options
-    fake1 = code[:-1] + random.choice(chars)
-    fake2 = random.choice(chars) + code[1:]
-    fake3 = code.replace(code[2], random.choice(chars))
-    options = [code, fake1, fake2, fake3]
+    # Generate Unique Options
+    opts_set = {code}
+    while len(opts_set) < 4:
+        fake = "".join(random.choices(chars, k=5))
+        opts_set.add(fake)
+    
+    options = list(opts_set)
     random.shuffle(options)
 
-    # Show code briefly
+    # Show Code
     embed = discord.Embed(title="💻 STAGE 1: MEMORY TEST", description=f"**{hacker.mention}**, Code yaad kar!\n# 🔐 `{code}`\n\n*(2s mein gayab hoga)*", color=0x00FFFF)
     await interaction.edit_original_response(embed=embed, view=None)
     await asyncio.sleep(2.5)
 
-    embed.description = "**{hacker.mention}**, Code kya tha? (Quick!)"
-    embed.description += "\n# 🔐 `?????`"
+    # Hide Code
+    embed.description = f"**{hacker.mention}**, Code kya tha? (Quick!)\n# 🔐 `?????`"
     
     async def pass_stage_1(i): await i.response.defer()
     
     view = HeistTaskView(hacker, code, mission_failed, pass_stage_1)
     view.timeout = 5
-    for opt in options:
-        view.add_item(discord.ui.Button(label=opt, style=discord.ButtonStyle.secondary, custom_id=opt))
-        view.children[-1].callback = lambda i, opt=opt: view.verify_answer(i, opt)
+    
+    # Safe Button Creation with Unique IDs
+    for idx, opt in enumerate(options):
+        # Custom ID must be unique and safe string
+        cid = f"hack_{idx}" 
+        view.add_item(discord.ui.Button(label=opt, style=discord.ButtonStyle.secondary, custom_id=cid))
+        # Bind proper callback
+        view.children[-1].callback = lambda i, o=opt: view.verify_answer(i, o)
 
     await interaction.edit_original_response(embed=embed, view=view)
     if await view.wait(): return 
 
-    # --- STAGE 2: DEMOLITION (Stroop/Color Confusion) ---
+    # ================= STAGE 2: DEMOLITION (Stroop Test) =================
     demo = roles["💣 Demolition"]
     colors = {"RED": 0xFF0000, "BLUE": 0x0000FF, "GREEN": 0x00FF00}
-    text_word = random.choice(list(colors.keys())) 
     
+    # Text != Visual Color
+    text_word = random.choice(list(colors.keys())) 
     available_visuals = list(colors.keys())
     if text_word in available_visuals: available_visuals.remove(text_word)
     visual_word = random.choice(available_visuals)
-    visual_hex = colors[visual_word]
     
-    correct_ans = visual_word # Logic: Cut the visual color
+    correct_ans = visual_word # Logic: Cut the SIDE COLOR
 
-    embed = discord.Embed(title="💣 STAGE 2: CONFUSION WIRE", color=visual_hex)
+    embed = discord.Embed(title="💣 STAGE 2: CONFUSION WIRE", color=colors[visual_word])
     embed.description = f"**{demo.mention}**, Suno!\n**EMBED KA SIDE COLOR** (Patti ka rang) dekho aur wahi button dabao!\n\nIgnore text: # {text_word}"
     
     async def pass_stage_2(i): await i.response.defer()
 
     view = HeistTaskView(demo, correct_ans, mission_failed, pass_stage_2)
     view.timeout = 4
+    
     opts = ["RED", "BLUE", "GREEN"]
     random.shuffle(opts)
+    
     for o in opts:
         style = discord.ButtonStyle.secondary
         if o == "RED": style = discord.ButtonStyle.danger
         elif o == "BLUE": style = discord.ButtonStyle.primary
         elif o == "GREEN": style = discord.ButtonStyle.success
-        view.add_item(discord.ui.Button(label=o, style=style, custom_id=o))
+        
+        view.add_item(discord.ui.Button(label=o, style=style, custom_id=f"demo_{o}"))
         view.children[-1].callback = lambda i, o=o: view.verify_answer(i, o)
 
     await interaction.edit_original_response(embed=embed, view=view)
     if await view.wait(): return
 
-    # --- STAGE 3: SHOOTER (Reflex) ---
+    # ================= STAGE 3: SHOOTER (Reflex) =================
     shooter = roles["🔫 Shooter"]
     target = "👺"
     civilian = "👮"
@@ -4886,18 +4902,21 @@ async def start_interactive_heist(interaction, crew):
 
     view = HeistTaskView(shooter, target, mission_failed, pass_stage_3)
     view.timeout = 3.5
-    for item in layout:
-        view.add_item(discord.ui.Button(label=item, style=discord.ButtonStyle.secondary, custom_id=item + str(random.random())))
+    
+    for idx, item in enumerate(layout):
+        # Use index to make custom_id unique even if emojis are same
+        view.add_item(discord.ui.Button(label=item, style=discord.ButtonStyle.secondary, custom_id=f"shoot_{idx}"))
         view.children[-1].callback = lambda i, v=item: view.verify_answer(i, target if v == target else "FAIL")
 
     await interaction.edit_original_response(embed=embed, view=view)
     if await view.wait(): return
 
-    # --- STAGE 4: DRIVER (Broken GPS Logic) ---
+    # ================= STAGE 4: DRIVER (GPS Logic) =================
     driver = roles["🚗 Driver"]
     moves = ["LEFT", "RIGHT", "STRAIGHT"]
     correct = random.choice(moves)
     distractions = [m for m in moves if m != correct]
+    
     text = f"GPS: Pehle {distractions[0]} jao... nahi ruko, {distractions[1]} block hai... U-Turn lo... \n# ABHI {correct} JAO!"
     
     embed = discord.Embed(title="🚗 STAGE 4: BROKEN GPS", description=f"**{driver.mention}**, Aakhri instruction follow karo!\n\n{text}", color=0x808080)
@@ -4906,35 +4925,34 @@ async def start_interactive_heist(interaction, crew):
 
     view = HeistTaskView(driver, correct, mission_failed, pass_stage_4)
     view.timeout = 5
-    view.add_item(discord.ui.Button(label="⬅️ LEFT", style=discord.ButtonStyle.primary, custom_id="LEFT"))
-    view.add_item(discord.ui.Button(label="⬆️ STRAIGHT", style=discord.ButtonStyle.primary, custom_id="STRAIGHT"))
-    view.add_item(discord.ui.Button(label="➡️ RIGHT", style=discord.ButtonStyle.primary, custom_id="RIGHT"))
     
-    view.children[0].callback = lambda i: view.verify_answer(i, "LEFT")
-    view.children[1].callback = lambda i: view.verify_answer(i, "STRAIGHT")
-    view.children[2].callback = lambda i: view.verify_answer(i, "RIGHT")
+    view.add_item(discord.ui.Button(label="⬅️ LEFT", style=discord.ButtonStyle.primary, custom_id="d_left"))
+    view.children[-1].callback = lambda i: view.verify_answer(i, "LEFT")
+    
+    view.add_item(discord.ui.Button(label="⬆️ STRAIGHT", style=discord.ButtonStyle.primary, custom_id="d_straight"))
+    view.children[-1].callback = lambda i: view.verify_answer(i, "STRAIGHT")
+    
+    view.add_item(discord.ui.Button(label="➡️ RIGHT", style=discord.ButtonStyle.primary, custom_id="d_right"))
+    view.children[-1].callback = lambda i: view.verify_answer(i, "RIGHT")
 
     await interaction.edit_original_response(embed=embed, view=view)
     if await view.wait(): return
 
-    # --- VICTORY ---
+    # ================= VICTORY =================
     payout = random.randint(50000000, 100000000)
     win_embed = discord.Embed(title="🏆 GOD LEVEL HEIST COMPLETE!", description=f"# 💰 LOOT: ${payout:,}\n\n**IMMORTAL SQUAD:** {', '.join([m.name for m in crew])}\nTum log insaan nahi, Robot ho! 🤖🔥", color=0x00FF00)
     win_embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
     await interaction.edit_original_response(embed=win_embed, view=None)
 
 
-# --- 4. COMMAND REGISTRATION ---
+# --- 4. COMMAND ---
 @bot.tree.command(name="heist", description="🏦 Interactive Team Heist (God Mode)")
 async def heist_cmd(i: discord.Interaction):
     if not i.guild.me.guild_permissions.moderate_members:
         return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
     
-    # Class is defined right above, so this will work now 100%
     view = HeistLobbyView(i.user)
     await i.response.send_message(embed=view.update_embed(), view=view)
-
-
 
 # ------------------------------------------------------------------
 # 🤠 GAME 1: WILD WEST DUEL (Reaction Time)
