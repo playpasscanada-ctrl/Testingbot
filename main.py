@@ -8088,6 +8088,753 @@ async def pay(interaction: discord.Interaction, user: discord.Member, amount: in
 
     await interaction.response.send_message(embed=embed)
 
+# ================== 🔪 HIDE & SEEK: NIGHT MASSACRE ==================
+
+class HideSeekGameView(discord.ui.View):
+    def __init__(self, killer, victims, traitor, pot_money):
+        super().__init__(timeout=60)
+        self.killer = killer
+        self.victims = victims # List of Member objects
+        self.traitor = traitor # Member object
+        self.pot_money = pot_money
+        
+        # Locations
+        self.locations = ["Bed", "Curtains", "Closet", "Bathroom", "Table"]
+        self.victim_choices = {} # {user_id: "Bed"}
+        self.killer_choice = None
+        self.killed_players = []
+        
+        # Setup Buttons for Victims
+        for loc in self.locations:
+            btn = discord.ui.Button(label=loc, style=discord.ButtonStyle.secondary, custom_id=loc)
+            btn.callback = self.hider_callback
+            self.add_item(btn)
+
+        # Setup Killer Select (Initially disabled, enabled after 10s)
+        self.kill_select = discord.ui.Select(
+            placeholder="🔪 KILLER: Choose location to shoot!",
+            options=[discord.SelectOption(label=l, emoji="🔫") for l in self.locations],
+            custom_id="kill_select",
+            disabled=True # Pehle victims chupenge
+        )
+        self.kill_select.callback = self.killer_callback
+        self.add_item(self.kill_select)
+        
+        # Game State
+        self.phase = "HIDING" # HIDING -> KILLING -> RESULT
+
+    async def hider_callback(self, interaction: discord.Interaction):
+        if interaction.user.id == self.killer.id:
+            return await interaction.response.send_message("❌ Abe tu Killer hai! Chupna nahi, dhundna hai!", ephemeral=True)
+        
+        if interaction.user not in self.victims:
+            return await interaction.response.send_message("❌ Tum game mein nahi ho.", ephemeral=True)
+
+        # Save Choice
+        self.victim_choices[interaction.user.id] = interaction.data["custom_id"]
+        await interaction.response.send_message(f"🤫 **Shh!** Tum **{interaction.data['custom_id']}** mein chup gaye ho.", ephemeral=True)
+        
+        # Check if all victims hid
+        if len(self.victim_choices) >= len(self.victims):
+            await self.start_killing_phase(interaction)
+
+    async def start_killing_phase(self, interaction):
+        self.phase = "KILLING"
+        
+        # Enable Killer's Dropdown, Disable Hider Buttons
+        for item in self.children:
+            if isinstance(item, discord.ui.Button): item.disabled = True
+            if isinstance(item, discord.ui.Select): item.disabled = False
+        
+        embed = interaction.message.embeds[0]
+        embed.title = "💀 THE HUNT BEGINS!"
+        embed.description = (
+            f"🩸 **Killer {self.killer.mention}** has loaded the gun.\n"
+            f"🚪 Sare darwaze band hain.\n\n"
+            f"🔫 **Killer:** Ab select karo kahan goli chalani hai!\n"
+            f"⏳ **Time:** 30 Seconds"
+        )
+        embed.set_image(url="https://media.tenor.com/yJ3j3rX08F0AAAAC/squid-game-front-man.gif")
+        
+        await interaction.message.edit(embed=embed, view=self)
+        
+        # Traitor Hint (Optional Feature)
+        if self.traitor:
+            try: await self.traitor.send(f"🕵️ **Psst!** Main Gaddar hu. Killer shyad **{random.choice(self.locations)}** check karega (Fake Hint) ya asli... risk tumhara!")
+            except: pass
+
+    async def killer_callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.killer.id:
+            return await interaction.response.send_message("❌ Tu Killer nahi hai! Bhaag yahan se!", ephemeral=True)
+            
+        self.killer_choice = self.kill_select.values[0]
+        await interaction.response.defer()
+        await self.end_game(interaction)
+
+    async def end_game(self, interaction):
+        # --- 👑 KILLER VIP CHECK ---
+        killer_data = await get_data(self.killer.id)
+        killer_is_vip = False
+        k_expiry = killer_data.get("vip_expiry")
+        if k_expiry:
+             # Yahan proper date check kar lena (Short me True maan raha hu)
+             killer_is_vip = True
+
+        # Calculate Deaths
+        dead_text = ""
+        survivors = []
+        location_img = "https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif" 
+        
+        for victim in self.victims:
+            chosen_loc = self.victim_choices.get(victim.id, "Panic (Open)")
+            
+            if chosen_loc == self.killer_choice:
+                # --- 🛡️ VICTIM DEFENSE LOGIC ---
+                saved = False
+                reason = "Dead"
+                
+                # Victim VIP Check
+                v_data = await get_data(victim.id)
+                victim_is_vip = False
+                if v_data.get("vip_expiry"): victim_is_vip = True
+                
+                # 1. Check Extra Life (Priority)
+                if v_data.get("inventory", {}).get("life", 0) > 0:
+                    await update_inventory(victim.id, "life", -1)
+                    saved = True
+                    reason = "💖 Extra Life Used"
+                
+                # 2. Check VIP Vest (Luck)
+                elif victim_is_vip and random.random() < 0.5:
+                    if killer_is_vip:
+                        # 💀 VIP KILLER POWER ACTIVE
+                        saved = False # Vest Fail
+                        reason = "🛡️💥 **VIP Vest Pierced!** (Killer is VIP)"
+                    else:
+                        # Normal Killer vs VIP Victim
+                        saved = True
+                        reason = "🛡️ VIP Matrix Dodge!"
+                
+                # FINAL DECISION
+                if saved:
+                    survivors.append(victim)
+                    dead_text += f"🤕 **{victim.name}:** Shot in {chosen_loc} ({reason})\n"
+                else:
+                    # KILL
+                    dead_text += f"💀 **{victim.name}:** FOUND in {chosen_loc} (ELIMINATED)\n"
+                    await smart_timeout(interaction, victim, 300, "Shot by Killer")
+                    self.killed_players.append(victim)
+            else:
+                survivors.append(victim)
+        
+        # --- WINNER EMBED LOGIC (Same as before) ---
+        if not self.killed_players: 
+            title = "❌ KILLER FAILED!"
+            desc = f"🔫 **Killer:** {self.killer.mention} nishana chuk gaya!\n📍 **Location:** {self.killer_choice} khali tha.\n💰 **Victims Win:** ${self.pot_money:,} distributed!"
+            color = 0x00FF00
+            if survivors:
+                share = self.pot_money // len(survivors)
+                for s in survivors: await update_balance(s.id, share)
+                
+        elif len(survivors) == 0: 
+            title = "🩸 TOTAL MASSACRE!"
+            desc = f"🔫 **Killer:** {self.killer.mention} ne SABKO maar diya!\n📍 **Location:** {self.killer_choice} khoon se bhar gaya.\n💰 **Killer Wins:** ${self.pot_money:,}"
+            color = 0xFF0000
+            await update_balance(self.killer.id, self.pot_money)
+            location_img = "https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif"
+            
+        else: 
+            title = "🔫 BLOOD BATH!"
+            desc = f"📍 **Killer checked:** {self.killer_choice}\n\n{dead_text}\n\n🏃 **Survivors:** {len(survivors)} log bach gaye.\n💰 **Pot Split:** Survivors & Killer keep their share."
+            color = 0xFFA500
+            share = self.pot_money // (len(survivors) + 1)
+            for s in survivors: await update_balance(s.id, share)
+            await update_balance(self.killer.id, share)
+
+        embed = discord.Embed(title=title, description=desc, color=color)
+        embed.set_thumbnail(url=self.killer.display_avatar.url)
+        embed.set_image(url=location_img)
+        embed.set_footer(text="Game Over")
+        
+        for item in self.children: item.disabled = True
+        await interaction.message.edit(embed=embed, view=None)
+
+
+class HideLobbyView(discord.ui.View):
+    def __init__(self, host, fee=50000):
+        super().__init__(timeout=120)
+        self.host = host
+        self.players = [host]
+        self.fee = fee
+        self.started = False
+
+    def get_embed(self):
+        plist = "\n".join([f"👤 {u.name}" for u in self.players])
+        embed = discord.Embed(title="🌃 NIGHT MASSACRE (Lobby)", color=0x2C3E50)
+        embed.description = (
+            f"**Host:** {self.host.mention}\n"
+            f"💵 **Entry Fee:** ${self.fee:,}\n"
+            f"👥 **Players:** {len(self.players)}\n\n"
+            f"**Roles (Random):**\n"
+            f"🔪 **1x Killer:** Gun milegi.\n"
+            f"😱 **Victims:** Chupna padega.\n"
+            f"🕵️ **1x Traitor:** Hint milega.\n\n"
+            f"👇 **JOIN NOW!**"
+        )
+        embed.add_field(name="Lobby List", value=plist or "Empty")
+        embed.set_image(url="https://media.tenor.com/Xv5Wl2l_u-AAAAAC/squid-game-soldier.gif")
+        return embed
+
+    @discord.ui.button(label="JOIN GAME ($50k)", style=discord.ButtonStyle.primary)
+    async def join(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user in self.players:
+            return await interaction.response.send_message("Already joined!", ephemeral=True)
+        
+        # Check Balance
+        data = await get_data(interaction.user.id)
+        if data["balance"] < self.fee:
+            return await interaction.response.send_message("❌ Gareeb! $50k chahiye.", ephemeral=True)
+            
+        await update_balance(interaction.user.id, -self.fee)
+        self.players.append(interaction.user)
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
+
+    @discord.ui.button(label="START MASSACRE", style=discord.ButtonStyle.danger)
+    async def start(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.host: return
+        if len(self.players) < 2: return await interaction.response.send_message("❌ Kam se kam 2 log chahiye!", ephemeral=True)
+        
+        self.started = True
+        
+        # 🎲 ASSIGN ROLES RANDOMLY
+        import random
+        random.shuffle(self.players)
+        
+        killer = self.players[0]
+        victims = self.players[1:]
+        traitor = random.choice(victims) if len(victims) > 1 else None
+        
+        pot = len(self.players) * self.fee
+        
+        # Notify Roles via DM (Optional, keeps suspense)
+        try:
+            await killer.send(f"🔪 **YOU ARE THE KILLER!**\nSabko dhoond ke maar daalo! Wait for hiding phase.")
+            for v in victims:
+                role_msg = "😱 **YOU ARE A VICTIM!** Chupo warna maroge."
+                if v == traitor: role_msg += "\n🕵️ **PSST!** Tum **TRAITOR** ho! (Backstabber)"
+                await v.send(role_msg)
+        except: pass
+        
+        game_view = HideSeekGameView(killer, victims, traitor, pot)
+        
+        embed = discord.Embed(title="🌃 LIGHTS OUT! HIDE NOW!", color=0x000000)
+        embed.description = (
+            f"🛑 **KILLER:** ||{killer.mention}||\n"
+            f"🏃 **Victims:** {len(victims)} players\n\n"
+            f"👇 **Niche buttons dabake jagah select karo!**\n"
+            f"⚡ **Killer 10 second baad aayega!**"
+        )
+        embed.set_image(url="https://media.tenor.com/Tq9Y_3xOQYkAAAAC/run-bitch-run.gif")
+        
+        await interaction.response.edit_message(embed=embed, view=game_view)
+
+
+@bot.tree.command(name="hide_and_seek", description="🔪 Random Killer vs Victims (High Stakes)")
+async def hide_seek(i: discord.Interaction):
+    view = HideLobbyView(i.user)
+    await i.response.send_message(embed=view.get_embed(), view=view)
+
+# ================== 🚦 RED LIGHT, GREEN LIGHT (SQUID GAME) ==================
+
+class RedLightGameView(discord.ui.View):
+    def __init__(self, players, pot_money, interaction):
+        super().__init__(timeout=300) # 5 Minutes Max Game
+        self.players = players # List of user IDs
+        self.pot_money = pot_money
+        self.interaction = interaction
+        self.active_players = {uid: {"dist": 0, "status": "ALIVE"} for uid in players} # 0 to 100m
+        
+        self.game_state = "GREEN" # GREEN, YELLOW, RED
+        self.goal = 100
+        self.is_game_over = False
+        
+        # Setup Run Button
+        self.run_btn = discord.ui.Button(label="🏃 RUN! (Click Fast)", style=discord.ButtonStyle.success, custom_id="run_btn")
+        self.run_btn.callback = self.run_callback
+        self.add_item(self.run_btn)
+        
+        # Start Game Loop
+        self.loop_task = asyncio.create_task(self.game_loop())
+
+    async def game_loop(self):
+        """
+        Ye loop Light Change karega:
+        Green (Run) -> Yellow (Warning) -> Red (Kill) -> Green...
+        """
+        while not self.is_game_over:
+            # --- 🟢 GREEN LIGHT (Safe to Run) ---
+            self.game_state = "GREEN"
+            self.run_btn.style = discord.ButtonStyle.success
+            self.run_btn.label = "🏃 RUN! (SPAM CLICK)"
+            self.run_btn.disabled = False
+            
+            embed = discord.Embed(title="🟢 GREEN LIGHT", description="**BHAAGO!** Button spam karo!", color=0x00FF00)
+            embed.set_image(url="https://media.tenor.com/F_r_03yJqG4AAAAC/squid-game-green-light.gif") # Doll Running
+            embed.set_footer(text=f"Survivors: {len([p for p in self.active_players.values() if p['status']=='ALIVE'])}")
+            
+            try: await self.interaction.edit_original_response(embed=embed, view=self)
+            except: break
+            
+            await asyncio.sleep(random.uniform(3, 6)) # 3-6 sec run time
+
+            # --- 🟡 YELLOW LIGHT (Warning) ---
+            self.game_state = "YELLOW"
+            embed.title = "👀 DOLL IS TURNING..."
+            embed.description = "🛑 **RUK JAO!** Doll dekhne wali hai!"
+            embed.color = 0xFFA500
+            
+            try: await self.interaction.edit_original_response(embed=embed, view=self)
+            except: break
+            
+            await asyncio.sleep(1.5) # 1.5 sec warning
+
+            # --- 🔴 RED LIGHT (Death Trap) ---
+            self.game_state = "RED"
+            self.run_btn.style = discord.ButtonStyle.danger
+            self.run_btn.label = "🛑 DON'T MOVE!" 
+            # Note: Button disabled nahi kiya, taaki log galti karein!
+            
+            embed = discord.Embed(title="🔴 RED LIGHT", description="**HILNA MAT!** (Don't Click)", color=0xFF0000)
+            embed.set_image(url="https://media.tenor.com/v1sLzJqf8i8AAAAC/squid-game-doll.gif") # Doll Staring (Laser Eyes)
+            
+            try: await self.interaction.edit_original_response(embed=embed, view=self)
+            except: break
+            
+            await asyncio.sleep(random.uniform(2, 4)) # 2-4 sec death time
+            
+            # Check for Winners/Losers
+            alive_count = len([p for p in self.active_players.values() if p['status']=='ALIVE'])
+            if alive_count == 0:
+                await self.end_game("NO_SURVIVORS")
+                break
+
+    async def run_callback(self, interaction: discord.Interaction):
+        uid = interaction.user.id
+        
+        if uid not in self.players:
+            return await interaction.response.send_message("❌ Tum game mein nahi ho!", ephemeral=True)
+            
+        player_data = self.active_players[uid]
+        
+        if player_data["status"] == "DEAD" or player_data["status"] == "WON":
+            return await interaction.response.send_message("🚫 Tum game se bahar ho.", ephemeral=True)
+
+        # --- LOGIC ---
+        if self.game_state == "GREEN":
+            # ✅ Safe Run
+            move = random.randint(3, 7) # Random speed
+            player_data["dist"] += move
+            
+            if player_data["dist"] >= self.goal:
+                player_data["status"] = "WON"
+                await interaction.response.send_message(f"🎉 **FINISH LINE!** Tum Jeet gaye!", ephemeral=True)
+                await self.check_all_finished()
+            else:
+                # Silent update to avoid rate limit (Show progress in ephemeral)
+                # Har click pe message bhejna spam hoga, isliye defer kar rahe hain
+                await interaction.response.defer() 
+
+        elif self.game_state == "YELLOW":
+            # ⚠️ Risky (High chance to slip into Red)
+            # Yellow me click karne par 20% chance hai girne ka
+            if random.random() < 0.2:
+                 await interaction.response.send_message("⚠️ **Ladkhada gaye!** (Movement Stalled)", ephemeral=True)
+            else:
+                 player_data["dist"] += 2 # Slow movement
+                 await interaction.response.defer()
+
+        elif self.game_state == "RED":
+            # 💀 DEATH CHECK
+            user_db = await get_data(uid)
+            saved = False
+            reason = "Dead"
+            
+            # 1. VIP Check (50% Matrix Dodge)
+            is_vip = False
+            if user_db.get("vip_expiry"): is_vip = True # Add proper date check
+            
+            if is_vip and random.random() < 0.5:
+                saved = True
+                reason = "🛡️ **VIP Freeze:** Doll ne ignore kar diya!"
+            
+            # 2. Extra Life Check (Guaranteed Save)
+            elif user_db.get("inventory", {}).get("life", 0) > 0:
+                await update_inventory(uid, "life", -1)
+                saved = True
+                reason = "💖 **Extra Life:** Bullet proof jacket ne bacha liya!"
+
+            if saved:
+                await interaction.response.send_message(f"😰 **BACH GAYE!** {reason}\nAgli baar mat hilna!", ephemeral=True)
+            else:
+                # 🔫 ELIMINATED
+                player_data["status"] = "DEAD"
+                
+                # Visual Feedback
+                embed = discord.Embed(title="🔫 ELIMINATED!", color=0x2f3136)
+                embed.description = f"**{interaction.user.mention}** hila aur mara gaya.\n💀 **Headshot.**"
+                embed.set_thumbnail(url=interaction.user.display_avatar.url)
+                try: await interaction.channel.send(embed=embed)
+                except: pass
+                
+                # Mute Punishment
+                await smart_timeout(interaction, interaction.user, 300, "Moved in Red Light")
+                await interaction.response.send_message("💀 **YOU DIED.**", ephemeral=True)
+
+    async def check_all_finished(self):
+        # Check agar sab ya to Jeet gaye ya Mar gaye
+        active = [p for p in self.active_players.values() if p['status'] == "ALIVE"]
+        if not active:
+            await self.end_game("FINISHED")
+
+    async def end_game(self, reason):
+        self.is_game_over = True
+        self.loop_task.cancel()
+        self.run_btn.disabled = True
+        
+        winners = [uid for uid, data in self.active_players.items() if data["status"] == "WON"]
+        
+        if winners:
+            prize = self.pot_money // len(winners)
+            names = []
+            for uid in winners:
+                await update_balance(uid, prize)
+                names.append(f"<@{uid}>")
+            
+            desc = f"💰 **Total Pot:** ${self.pot_money:,}\n🏆 **Winners:** {', '.join(names)}\n💵 **Prize Each:** ${prize:,}"
+            color = 0x00FF00
+            img = "https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif"
+        else:
+            desc = f"💀 **SAB MAR GAYE!**\nKoi nahi bacha.\n💰 **Pot Lost:** ${self.pot_money:,}"
+            color = 0xFF0000
+            img = "https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif"
+
+        embed = discord.Embed(title="🏁 GAME OVER", description=desc, color=color)
+        embed.set_image(url=img)
+        
+        try: await self.interaction.edit_original_response(embed=embed, view=None)
+        except: pass
+
+
+# --- LOBBY VIEW (Entry System) ---
+class RedLightLobby(discord.ui.View):
+    def __init__(self, host, fee=50000):
+        super().__init__(timeout=120)
+        self.host = host
+        self.players = [host.id] # Store IDs
+        self.fee = fee
+        self.started = False
+
+    def get_embed(self):
+        embed = discord.Embed(title="🚥 RED LIGHT, GREEN LIGHT", color=0xE74C3C)
+        embed.description = (
+            f"**Host:** {self.host.mention}\n"
+            f"💵 **Entry Fee:** ${self.fee:,}\n"
+            f"👥 **Players:** {len(self.players)}\n\n"
+            f"🟢 **Green:** Bhagoooo!\n"
+            f"🔴 **Red:** Hilo mat warna **Maut**.\n"
+            f"👇 **JOIN NOW!**"
+        )
+        embed.set_image(url="https://media.tenor.com/Xv5Wl2l_u-AAAAAC/squid-game-soldier.gif")
+        embed.set_footer(text="VIPs have 50% chance to survive Red Light.")
+        return embed
+
+    @discord.ui.button(label="JOIN GAME ($50k)", style=discord.ButtonStyle.primary)
+    async def join(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id in self.players:
+            return await interaction.response.send_message("Already joined!", ephemeral=True)
+        
+        data = await get_data(interaction.user.id)
+        if data["balance"] < self.fee:
+            return await interaction.response.send_message("❌ Paise nahi hai tere paas!", ephemeral=True)
+            
+        await update_balance(interaction.user.id, -self.fee)
+        self.players.append(interaction.user.id)
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
+
+    @discord.ui.button(label="START GAME", style=discord.ButtonStyle.success)
+    async def start(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.host.id: return
+        if len(self.players) < 1: return # Testing ke liye 1 allow kar raha hu, production me 2 karna
+        
+        self.started = True
+        pot = len(self.players) * self.fee
+        
+        game_view = RedLightGameView(self.players, pot, interaction)
+        
+        # Initial Message
+        embed = discord.Embed(title="🟢 GAME STARTING...", description="Tayyar ho jao!", color=0x00FF00)
+        await interaction.response.edit_message(embed=embed, view=game_view)
+
+
+@bot.tree.command(name="red_light", description="🚥 Squid Game: Run on Green, Freeze on Red")
+async def red_light(i: discord.Interaction):
+    if not i.guild.me.guild_permissions.moderate_members:
+        return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
+        
+    # Host ki fee pehle kaat lo ya lobby me join karwao (Lobby logic use kar rahe hain)
+    # Host auto-join karega lobby code me
+    
+    # Check Host Balance for safety
+    data = await get_data(i.user.id)
+    if data["balance"] < 50000:
+        return await i.response.send_message("❌ $50,000 chahiye host karne ke liye.", ephemeral=True)
+    
+    # Deduct Host Fee immediately
+    await update_balance(i.user.id, -50000)
+    
+    view = RedLightLobby(i.user)
+    await i.response.send_message(embed=view.get_embed(), view=view)
+
+# ================== 🦑 SQUID PENTATHLON (TEAM RELAY MODE) ==================
+
+class PentathlonGameView(discord.ui.View):
+    def __init__(self, players, pot_per_winner, interaction):
+        super().__init__(timeout=180) # 3 Min total buffer
+        self.players = players # List of Member Objects
+        self.pot_prize = pot_per_winner
+        self.interaction = interaction
+        
+        self.round_index = 0
+        self.game_active = True
+        
+        # 5 KOREAN GAMES DATA
+        self.games = [
+            {
+                "name": "🔴 Ddakji (Flip)",
+                "desc": "Blue Card ya Red Card? Flip karo!",
+                "img": "https://media.tenor.com/lZ2tS1uXv4AAAAAC/squid-game-slap.gif",
+                "opts": ["🟦 BLUE", "🟥 RED"],
+                "win_chance": 0.6
+            },
+            {
+                "name": "🦶 Jegi Chagi (Kick)",
+                "desc": "Sack ko hawa mein balance karo!",
+                "img": "https://media.tenor.com/yv-15Xn4x4AAAAAC/korean-game.gif",
+                "opts": ["🦵 KICK LEFT", "🦵 KICK RIGHT"],
+                "win_chance": 0.6
+            },
+            {
+                "name": "🎲 Gonggi (Catch)",
+                "desc": "Stones ko hawa mein feko aur pakdo!",
+                "img": "https://media.tenor.com/images/3d51737e45b42661502f676458564e9a/tenor.gif",
+                "opts": ["✋ GRAB FAST", "🐢 GRAB SLOW"],
+                "win_chance": 0.5
+            },
+            {
+                "name": "🌪️ Spinning Top",
+                "desc": "Lattu ghuma! Balance bana ke rakh!",
+                "img": "https://media.tenor.com/Im_hKqCg4iUAAAAC/inception-top.gif",
+                "opts": ["⚖️ BALANCE", "🚀 SPIN HARD"],
+                "win_chance": 0.5
+            },
+            {
+                "name": "🦑 Squid Final (Defense)",
+                "desc": "Line cross karo ya Defense karo!",
+                "img": "https://media.tenor.com/Xv5Wl2l_u-AAAAAC/squid-game-soldier.gif",
+                "opts": ["⚔️ ATTACK", "🛡️ DEFEND"],
+                "win_chance": 0.5
+            }
+        ]
+        
+        # Start First Round
+        asyncio.create_task(self.load_round())
+
+    async def load_round(self):
+        if not self.game_active: return
+        
+        # Win Condition: Agar 5 Rounds complete ho gaye
+        if self.round_index >= 5:
+            await self.team_win()
+            return
+
+        # Determine Current Player (Relay Style: P1 -> P2 -> P3 -> P1...)
+        self.current_turn_player = self.players[self.round_index % len(self.players)]
+        game_data = self.games[self.round_index]
+
+        # Embed Setup
+        embed = discord.Embed(title=f"🏆 TEAM RELAY: ROUND {self.round_index + 1}/5", color=0xE91E63) # Squid Pink
+        embed.description = (
+            f"🎮 **Game:** {game_data['name']}\n"
+            f"📝 **Task:** {game_data['desc']}\n\n"
+            f"👉 **Player:** {self.current_turn_player.mention}\n"
+            f"⚠️ **WARNING:** Agar ye hara, to **PURI TEAM** maregi!\n"
+            f"⏱️ **Time:** 15 Seconds!"
+        )
+        embed.set_image(url=game_data['img'])
+        embed.set_footer(text="Team Death Mode: One Fails = All Fail")
+
+        # Buttons Setup
+        self.clear_items()
+        
+        btn1 = discord.ui.Button(label=game_data['opts'][0], style=discord.ButtonStyle.primary, custom_id="opt_1")
+        btn2 = discord.ui.Button(label=game_data['opts'][1], style=discord.ButtonStyle.danger, custom_id="opt_2")
+        
+        btn1.callback = self.game_action
+        btn2.callback = self.game_action
+        
+        self.add_item(btn1)
+        self.add_item(btn2)
+
+        try:
+            await self.interaction.edit_original_response(embed=embed, view=self)
+        except: pass
+
+    async def game_action(self, interaction: discord.Interaction):
+        if interaction.user.id != self.current_turn_player.id:
+            return await interaction.response.send_message("❌ Teri baari nahi hai! Team ko marwayega kya?", ephemeral=True)
+
+        await interaction.response.defer()
+        
+        # Game Logic
+        game_data = self.games[self.round_index]
+        is_win = random.random() < game_data['win_chance']
+        
+        # --- 🛡️ VIP & LIFE CHECK (Saving Logic) ---
+        saved = False
+        save_msg = ""
+        
+        if not is_win:
+            data = await get_data(interaction.user.id)
+            
+            # 1. VIP Check (50% Chance to Save Team)
+            is_vip = False
+            if data.get("vip_expiry"): is_vip = True 
+            
+            if is_vip and random.random() < 0.5:
+                is_win = True
+                saved = True
+                save_msg = "(👑 VIP Saved the Team!)"
+            
+            # 2. Extra Life Check (Guaranteed Save)
+            elif data.get("inventory", {}).get("life", 0) > 0:
+                await update_inventory(interaction.user.id, "life", -1)
+                is_win = True
+                saved = True
+                save_msg = "(💖 Extra Life Saved the Team!)"
+
+        # Result Handle
+        if is_win:
+            # ✅ ROUND PASSED
+            if saved:
+                try: await interaction.followup.send(f"😰 **Close Call!** {save_msg}", ephemeral=True)
+            except: pass
+            
+            self.round_index += 1
+            await self.load_round()
+        else:
+            # ❌ ROUND FAILED = TEAM ELIMINATED
+            await self.team_eliminate(interaction.user)
+
+    async def team_eliminate(self, loser):
+        self.game_active = False
+        self.clear_items()
+        
+        # 💀 Punish EVERYONE (Team Wipe)
+        punish_logs = []
+        for p in self.players:
+            # Sabko Mute Karo using Smart Timeout
+            await smart_timeout(self.interaction, p, 60, f"Pentathlon Failed by {loser.name}")
+            punish_logs.append(p.mention)
+
+        embed = discord.Embed(title="💀 TEAM ELIMINATED!", color=0x000000)
+        embed.description = (
+            f"🚫 **Failed By:** {loser.mention}\n"
+            f"🎭 **Task Failed:** {self.games[self.round_index]['name']}\n\n"
+            f"⚰️ **TEAM WIPEOUT:**\n" + ", ".join(punish_logs) + "\n\n"
+            f"💰 **Prize Lost:** ${len(self.players)*100000:,}\n"
+            f"❌ **GAME OVER**"
+        )
+        embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+        
+        try: await self.interaction.edit_original_response(embed=embed, view=None)
+        except: pass
+
+    async def team_win(self):
+        self.game_active = False
+        self.clear_items()
+        
+        # 🎉 Reward EVERYONE
+        prize = 100000
+        winners_list = []
+        
+        for p in self.players:
+            await update_balance(p.id, prize)
+            winners_list.append(p.mention)
+            
+        embed = discord.Embed(title="🎉 PERFECT TEAMWORK!", color=0xFFD700)
+        embed.description = (
+            f"🏆 **All 5 Rounds Cleared!**\n\n"
+            f"👥 **Survivors:**\n" + ", ".join(winners_list) + "\n\n"
+            f"💰 **Reward:** ${prize:,} (Each Player)"
+        )
+        embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
+        
+        try: await self.interaction.edit_original_response(embed=embed, view=None)
+        except: pass
+
+
+# --- LOBBY VIEW ---
+class PentaLobby(discord.ui.View):
+    def __init__(self, host):
+        super().__init__(timeout=120)
+        self.host = host
+        self.players = [host]
+        self.started = False
+
+    def get_embed(self):
+        plist = "\n".join([f"🏃 {u.name}" for u in self.players])
+        embed = discord.Embed(title="🦑 SQUID PENTATHLON (Team Mode)", color=0xE91E63)
+        embed.description = (
+            f"**Host:** {self.host.mention}\n"
+            f"👥 **Players:** {len(self.players)}/5 (Min 2)\n"
+            f"💰 **Prize:** $100,000 (Each Player)\n"
+            f"🔇 **Punishment:** 1 Min Timeout (Entire Team)\n\n"
+            f"⚠️ **RULE:** Ek bhi hara, to sab marenge!\n"
+            f"🔥 **5 Mini Games (Relay):**\n"
+            f"🔴 Ddakji ➜ 🦶 Jegi ➜ 🎲 Gonggi ➜ 🌪️ Top ➜ 🦑 Final\n\n"
+            f"👇 **JOIN NOW!**"
+        )
+        embed.add_field(name="Participants", value=plist or "Waiting...")
+        embed.set_thumbnail(url="https://media.tenor.com/yv-15Xn4x4AAAAAC/korean-game.gif")
+        return embed
+
+    @discord.ui.button(label="JOIN TEAM", style=discord.ButtonStyle.success)
+    async def join(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user in self.players:
+            return await interaction.response.send_message("Already joined!", ephemeral=True)
+        if len(self.players) >= 5:
+            return await interaction.response.send_message("Full House! (Max 5)", ephemeral=True)
+            
+        self.players.append(interaction.user)
+        await interaction.response.edit_message(embed=self.get_embed(), view=self)
+
+    @discord.ui.button(label="START RELAY", style=discord.ButtonStyle.danger)
+    async def start(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.host: return
+        if len(self.players) < 2: return await interaction.response.send_message("Need at least 2 players!", ephemeral=True)
+        
+        self.started = True
+        game_view = PentathlonGameView(self.players, 100000, interaction)
+        await interaction.response.edit_message(embed=discord.Embed(title="🚀 STARTING PENTATHLON...", color=0x00FF00), view=game_view)
+
+
+@bot.tree.command(name="pentathlon", description="🦑 5-Game Relay Challenge (One Fails = All Die)")
+async def pentathlon(i: discord.Interaction):
+    if not i.guild.me.guild_permissions.moderate_members:
+        return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
+        
+    view = PentaLobby(i.user)
+    await i.response.send_message(embed=view.get_embed(), view=view)
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
