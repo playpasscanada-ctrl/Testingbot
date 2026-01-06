@@ -15,6 +15,44 @@ from discord.ext import commands
 from deep_translator import GoogleTranslator
 from concurrent.futures import ThreadPoolExecutor
 
+# ================== 🛍️ SHOP ITEMS (FULL LIST) ==================
+SHOP_ITEMS = {
+    # Special Items
+    "izzat":      {"name": "🧼 Izzat Wapasi", "price": 100000, "type": "special"},
+    "landmine":   {"name": "💣 Landmine", "price": 25000, "type": "item"},
+    "life":       {"name": "💖 Extra Life", "price": 50000, "type": "item"},
+    "cctv":       {"name": "📹 CCTV Camera", "price": 150000, "type": "item"},
+
+    # VIP Access
+    "vip_10m":    {"name": "⚡ 10 Mins Escape", "price": 200000, "type": "vip", "min": 10},
+    "vip_1h":     {"name": "👑 1 Hour VIP", "price": 1000000, "type": "vip", "min": 60},
+    "vip_6h":     {"name": "🛡️ 6 Hours VIP", "price": 3000000, "type": "vip", "min": 360},
+    "vip_1d":     {"name": "💎 1 Day VIP", "price": 5000000, "type": "vip", "min": 1440},
+    "vip_3d":     {"name": "🗓️ 3 Days VIP", "price": 12000000, "type": "vip", "min": 4320},
+    "vip_1w":     {"name": "🔥 1 Week VIP", "price": 25000000, "type": "vip", "min": 10080},
+    "vip_life":   {"name": "♾️ Lifetime VIP", "price": 7000000000, "type": "vip", "life": True},
+
+    # Roles (Emoji hatake role name match karega)
+    "hitman":     {"name": "🗡️ Hitman", "price": 5000000, "type": "role"},
+    "hacker":     {"name": "💻 Hacker", "price": 8000000, "type": "role"},
+    "gambler":    {"name": "🎲 Gambler", "price": 10000000, "type": "role"},
+    "peaky":      {"name": "🚬 Peaky Blinders", "price": 20000000, "type": "role"},
+    "shadow":     {"name": "👻 Shadow", "price": 35000000, "type": "role"},
+    "yakuza":     {"name": "👺 Yakuza", "price": 50000000, "type": "role"},
+    "mafia":      {"name": "🕶️ Mafia Boss", "price": 100000000, "type": "role"},
+    "king":       {"name": "👑 Kingpin", "price": 500000000, "type": "role"},
+    "oil":        {"name": "🛢️ Oil Prince", "price": 1000000000, "type": "role"},
+    "god":        {"name": "🛐 Server God", "price": 10000000000, "type": "role"},
+    "immortal":   {"name": "🧟 Immortal", "price": 50000000000, "type": "role"},
+
+    # Lottery
+    "lotto_10k":  {"name": "🎟️ 10k Ticket", "price": 10000, "type": "lotto", "win": 100000, "chance": 10},
+    "lotto_50k":  {"name": "🎟️ 50k Ticket", "price": 50000, "type": "lotto", "win": 400000, "chance": 8},
+    "lotto_100k": {"name": "🎟️ 100k Ticket", "price": 100000, "type": "lotto", "win": 1000000, "chance": 5},
+    "lotto_mega": {"name": "🎫 MEGA JACKPOT", "price": 500000, "type": "lotto", "win": 10000000, "chance": 2},
+    "lotto_god":  {"name": "🎰 GOD TICKET", "price": 5000000, "type": "lotto", "win": 500000000, "chance": 1},
+}
+
 # 🛡️ SYSTEM SAVER: Sirf 2 translation threads allow honge (Crash Fix)
 roast_executor = ThreadPoolExecutor(max_workers=2)
 
@@ -7708,76 +7746,15 @@ async def roblox_info(uid):
         
 
 # 💰 PURE ECONOMY & WEB SHOP SYSTEM (NO EXTRA GAMES)
-import discord
-from discord.ext import commands
-from discord import app_commands
-import os
-import random
-import asyncio
-import threading
-import requests
-import datetime as dt
-from datetime import datetime
-from flask import Flask, request, jsonify, render_template
-from supabase import create_client, Client
 
 # ================== ⚙️ CONFIGURATION ==================
 LOG_CHANNEL_ID = 1451973589342621791  
-OWNER_ID = 804687084249284618         
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-intents = discord.Intents.default()
-intents.message_content = True
-intents.members = True
-bot = commands.Bot(command_prefix="!", intents=intents)
-app = Flask(__name__)
 
 # Premium Colors
 C_GOLD = 0xFFD700
 C_RED = 0xFF0000
 C_GREEN = 0x00FF00
 C_DARK = 0x2B2D31
-
-# ================== 🛍️ SHOP ITEMS (FULL LIST) ==================
-SHOP_ITEMS = {
-    # Special Items
-    "izzat":      {"name": "🧼 Izzat Wapasi", "price": 100000, "type": "special"},
-    "landmine":   {"name": "💣 Landmine", "price": 25000, "type": "item"},
-    "life":       {"name": "💖 Extra Life", "price": 50000, "type": "item"},
-    "cctv":       {"name": "📹 CCTV Camera", "price": 150000, "type": "item"},
-
-    # VIP Access
-    "vip_10m":    {"name": "⚡ 10 Mins Escape", "price": 200000, "type": "vip", "min": 10},
-    "vip_1h":     {"name": "👑 1 Hour VIP", "price": 1000000, "type": "vip", "min": 60},
-    "vip_6h":     {"name": "🛡️ 6 Hours VIP", "price": 3000000, "type": "vip", "min": 360},
-    "vip_1d":     {"name": "💎 1 Day VIP", "price": 5000000, "type": "vip", "min": 1440},
-    "vip_3d":     {"name": "🗓️ 3 Days VIP", "price": 12000000, "type": "vip", "min": 4320},
-    "vip_1w":     {"name": "🔥 1 Week VIP", "price": 25000000, "type": "vip", "min": 10080},
-    "vip_life":   {"name": "♾️ Lifetime VIP", "price": 7000000000, "type": "vip", "life": True},
-
-    # Roles (Emoji hatake role name match karega)
-    "hitman":     {"name": "🗡️ Hitman", "price": 5000000, "type": "role"},
-    "hacker":     {"name": "💻 Hacker", "price": 8000000, "type": "role"},
-    "gambler":    {"name": "🎲 Gambler", "price": 10000000, "type": "role"},
-    "peaky":      {"name": "🚬 Peaky Blinders", "price": 20000000, "type": "role"},
-    "shadow":     {"name": "👻 Shadow", "price": 35000000, "type": "role"},
-    "yakuza":     {"name": "👺 Yakuza", "price": 50000000, "type": "role"},
-    "mafia":      {"name": "🕶️ Mafia Boss", "price": 100000000, "type": "role"},
-    "king":       {"name": "👑 Kingpin", "price": 500000000, "type": "role"},
-    "oil":        {"name": "🛢️ Oil Prince", "price": 1000000000, "type": "role"},
-    "god":        {"name": "🛐 Server God", "price": 10000000000, "type": "role"},
-    "immortal":   {"name": "🧟 Immortal", "price": 50000000000, "type": "role"},
-
-    # Lottery
-    "lotto_10k":  {"name": "🎟️ 10k Ticket", "price": 10000, "type": "lotto", "win": 100000, "chance": 10},
-    "lotto_50k":  {"name": "🎟️ 50k Ticket", "price": 50000, "type": "lotto", "win": 400000, "chance": 8},
-    "lotto_100k": {"name": "🎟️ 100k Ticket", "price": 100000, "type": "lotto", "win": 1000000, "chance": 5},
-    "lotto_mega": {"name": "🎫 MEGA JACKPOT", "price": 500000, "type": "lotto", "win": 10000000, "chance": 2},
-    "lotto_god":  {"name": "🎰 GOD TICKET", "price": 5000000, "type": "lotto", "win": 500000000, "chance": 1},
-}
 
 # ================== 🌐 WEBSITE BACKEND ==================
 @app.route('/')
@@ -8046,22 +8023,24 @@ async def check_lottery(i: discord.Interaction):
     if i.user.id != OWNER_ID: return await i.response.send_message("❌ Admin Only", ephemeral=True)
     await i.response.send_message("ℹ️ Website Lottery is Instant. No pending tickets.", ephemeral=True)
 
-# ================== 🚀 SERVER START ==================
+
+# ================== 🚀 FINAL STARTUP ==================
+
+# 1. Pinger (Bot ko sone nahi dega)
 def self_ping():
     while True:
         time.sleep(45)
         try: requests.get(f"{os.getenv('RENDER_URL')}/ping")
         except: pass
 
+# 2. Server Start (Website + Shop)
 def run_server():
+    # Render Port 10000 use karta hai
     app.run(host='0.0.0.0', port=10000)
 
-@bot.event
-async def on_ready():
-    print(f"🔥 Logged in as {bot.user}")
-    await bot.tree.sync()
-
+# ✅ THREADS KO SABSE LAST ME START KARO
 threading.Thread(target=run_server, daemon=True).start()
 threading.Thread(target=self_ping, daemon=True).start()
+
+# ✅ BOT START (Ye file ki bilkul aakhiri line honi chahiye)
 bot.run(os.getenv("DISCORD_TOKEN"))
-        
