@@ -5517,68 +5517,65 @@ async def start_bomb(i: discord.Interaction):
     view = BombPassView(i.user, i)
     await i.response.send_message(embed=embed, view=view)
 
-# ================== 🎰 DEVIL'S SLOTS (ECONOMY + VIP) ==================
+# ================== 🎰 DEVIL SLOTS (HIGH STAKES) ==================
 
 class DevilSlotsView(discord.ui.View):
-    def __init__(self, user):
+    def __init__(self, user, fee):
         super().__init__(timeout=180)
         self.user = user
+        self.fee = fee # $100k Entry Fee
 
     async def assign_role(self, interaction, role_name, color):
-        # Helper function to create/give roles automatically
         guild = interaction.guild
         role = discord.utils.get(guild.roles, name=role_name)
-        
         try:
             if not role:
                 role = await guild.create_role(name=role_name, color=color, reason="Devil Slots Game")
-            
             if role not in interaction.user.roles:
                 await interaction.user.add_roles(role)
             return True
-        except:
-            return False 
+        except: return False 
 
-    # --- HELPER: CHECK VIP FOR SHAME SPIN ---
     async def check_vip_status(self, user_id):
         data = await get_data(user_id)
-        # 1. Check Time VIP
         if data["vip_expiry"]:
             expire_dt = dt.datetime.fromisoformat(data["vip_expiry"])
-            if datetime.utcnow() < expire_dt:
-                return True, "👑 **VIP Protection:** Izzat bach gayi!"
-        
-        # 2. Check Extra Life
+            if datetime.utcnow() < expire_dt: return True, "👑 **VIP Protection:** Izzat bach gayi!"
         inv = data["inventory"]
-        if inv.get("extra_life", 0) > 0:
-            await update_inventory(user_id, "extra_life", -1)
-            remaining = inv.get("extra_life", 0) - 1
+        if inv.get("life", 0) > 0: # Note: 'life' use kar rahe hain
+            await update_inventory(user_id, "life", -1)
+            remaining = inv.get("life", 0) - 1
             return True, f"💖 **Extra Life Used:** Nickname change dodged! (Left: {remaining})"
-            
         return False, None
 
-    @discord.ui.button(label="🎰 SPIN THE WHEEL", style=discord.ButtonStyle.blurple, custom_id="spin_now")
+    @discord.ui.button(label="🎰 SPIN (-$100k)", style=discord.ButtonStyle.blurple, custom_id="spin_now")
     async def spin_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        
         if interaction.user.id != self.user.id:
-            return await interaction.response.send_message("❌ Apne paise lagao, dusre ka button mat dabao!", ephemeral=True)
+            return await interaction.response.send_message("❌ Apne paise lagao!", ephemeral=True)
 
-        # 1. Disable Button & Animation
+        # 💰 ENTRY FEE DEDUCTION
+        user_data = await get_data(self.user.id)
+        if user_data['balance'] < self.fee:
+            return await interaction.response.send_message("❌ **Gareeb!** $100,000 nahi hain wallet me.", ephemeral=True)
+            
+        await update_balance(self.user.id, -self.fee) # Deduct Fee
+
+        # Animation
         button.disabled = True
         button.label = "🔄 SPINNING..."
         button.style = discord.ButtonStyle.secondary
         
         spin_embed = discord.Embed(title="🎰 ROLLING...", color=0x9932CC)
-        spin_embed.description = "# 🌀 | 🌀 | 🌀\n**Dhadkanein badh rahi hain...**"
+        spin_embed.description = "# 🌀 | 🌀 | 🌀\n**Paise kat gaye... Kismat aajmao!**"
         spin_embed.set_image(url="https://media.tenor.com/GoMvLaZs8KkAAAAC/slot-machine-casino.gif")
-        spin_embed.set_thumbnail(url=interaction.user.display_avatar.url) 
         
         await interaction.response.edit_message(embed=spin_embed, view=self)
         await asyncio.sleep(3) 
 
-        # 2. LOGIC: Outcomes & Weights
+        # 🎲 PROBABILITY LOGIC (0.1% Jackpot)
+        # Total Weights: 0.1 + 5 + 10 + 30 + 54.9 = 100
         outcomes = ["JACKPOT", "DEATH", "SHAME", "WIN", "LOSS"]
-        weights = [2, 8, 15, 30, 45] 
+        weights = [0.1, 5, 10, 30, 54.9] 
         result_type = random.choices(outcomes, weights=weights, k=1)[0]
         
         final_desc = ""
@@ -5586,114 +5583,81 @@ class DevilSlotsView(discord.ui.View):
         image = ""
         status_text = ""
 
-        # --- OUTCOME HANDLER ---
-
         if result_type == "JACKPOT":
             slots = "💎 | 💎 | 💎"
             status_text = "🎉 GRAND JACKPOT!"
-            
-            # 💰 MONEY ADD
             prize = 50000000 # 5 Crore
             await update_balance(interaction.user.id, prize)
-            
             final_desc = f"# [ {slots} ]\n\n### 👑 REWARD: 'Casino King' Role\n**💰 +${prize:,} COINS!**\nAap server ke naye Raja hain!"
-            color = 0xFFD700 # Gold
+            color = 0xFFD700
             image = "https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif"
-            
             await self.assign_role(interaction, "👑 CASINO KING", discord.Color.gold())
 
         elif result_type == "DEATH":
             slots = "💀 | 💀 | 💀"
             status_text = "💀 DEATH SPIN!"
-            
-            # 🛡️ SMART TIMEOUT (VIP CHECK)
             punish_msg = await smart_timeout(interaction, interaction.user, 3600, "Devil Slots Death")
-            
             final_desc = f"# [ {slots} ]\n\n### 🔇 PUNISHMENT\n**Shaitan ne aapki aawaz cheen li.**\n\n{punish_msg}"
-            color = 0x000000 # Black
+            color = 0x000000
             image = "https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif"
 
         elif result_type == "SHAME":
             slots = "💩 | 💩 | 💩"
             status_text = "💩 SHAME SPIN!"
-            
-            # 🛡️ CHECK VIP FOR NICKNAME CHANGE
             is_saved, save_msg = await self.check_vip_status(interaction.user.id)
-            
             if is_saved:
                 final_desc = f"# [ {slots} ]\n\n### 💩 SHAME SPIN!\nLekin...\n{save_msg}"
                 color = 0x8B4513
-                image = "https://media.tenor.com/P0G2gQJb6jAAAAAC/poop-emoji.gif"
             else:
                 final_desc = f"# [ {slots} ]\n\n### 🏷️ PUNISHMENT: 'HAGGU' Role\n**Apka naam ab 'Mr. Haggu' hai.**\nPoora server ab hasega! 😂"
-                color = 0x8B4513 
-                image = "https://media.tenor.com/P0G2gQJb6jAAAAAC/poop-emoji.gif"
-                
+                color = 0x8B4513
                 try:
                     if interaction.user.top_role < interaction.guild.me.top_role:
                         await interaction.user.edit(nick="Mr. Haggu 💩")
                         await self.assign_role(interaction, "💩 HAGGU", discord.Color.brown())
-                    else:
-                        final_desc += "\n*(Role Issue: Admin ko rename nahi kar sakta)*"
-                except:
-                    pass
+                except: pass
 
         elif result_type == "WIN":
             f1 = random.choice(["🍒", "🍋", "🍇"])
             slots = f"{f1} | {f1} | {f1}"
             status_text = "🍒 LUCKY WIN!"
-            
-            # 💰 MONEY ADD
-            prize = 50000
+            prize = 200000 # 2 Lakh (Taaki entry fee se jyada mile)
             await update_balance(interaction.user.id, prize)
-            
-            final_desc = f"# [ {slots} ]\n\n### 💰 +${prize:,} Coins\nBach gaye! Paise bhi mile aur izzat bhi bachi."
-            color = 0x00FF00 # Green
-            image = None
+            final_desc = f"# [ {slots} ]\n\n### 💰 +${prize:,} Coins\nEntry Fee wapis + Profit!"
+            color = 0x00FF00
 
         else: # LOSS
             slots = f"❌ | 🍋 | 🔔"
             status_text = "❌ YOU LOST!"
-            final_desc = f"# [ {slots} ]\n\n**Sab haar gaye!**\nGhar jao, yahan kuch nahi rakha."
-            color = 0xFF0000 # Red
-            image = None
+            final_desc = f"# [ {slots} ]\n\n**Haar gaye!**\nApke $100,000 doob gaye."
+            color = 0xFF0000
 
-        # 3. FINAL EMBED CONSTRUCTION
         result_embed = discord.Embed(title=f"🎰 {status_text}", color=color)
         result_embed.description = final_desc
         result_embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        if image: result_embed.set_image(url=image)
         
-        if image:
-            result_embed.set_image(url=image)
-        
-        result_embed.set_footer(text="Casino Rules: No Refunds | /devil_slots")
-        
-        button.label = "GAME OVER"
-        button.style = discord.ButtonStyle.secondary
+        button.label = "PLAY AGAIN (-100k)"
+        button.style = discord.ButtonStyle.primary
+        button.disabled = False # Button wapis enable taaki wo dubara khel sake
         
         await interaction.edit_original_response(embed=result_embed, view=self)
 
-
-@bot.tree.command(name="devil_slots", description="🎰 High Risk Casino (Roles + Mute)")
+@bot.tree.command(name="devil_slots", description="🎰 Spin for $100k Fee (0.1% Jackpot Chance)")
 async def devil_slots(i: discord.Interaction):
-    perms = i.guild.me.guild_permissions
-    if not (perms.moderate_members and perms.manage_nicknames and perms.manage_roles):
-        return await i.response.send_message("❌ **Permissions Missing:** Mere paas `Manage Roles`, `Nicknames` aur `Timeout` ki power honi chahiye!", ephemeral=True)
-
-    embed = discord.Embed(title="🎰 DEVIL'S HIGH STAKES CASINO", color=0x9932CC)
+    embed = discord.Embed(title="🎰 DEVIL'S CASINO", color=0x9932CC)
     embed.description = (
-        "**Are you ready to sell your soul?**\n\n"
-        "💎 **JACKPOT:** $50M + `👑 CASINO KING` Role\n"
-        "💀 **DEATH:** 1 Hour Mute 🔇\n"
-        "💩 **SHAME:** Name Change + `💩 HAGGU` Role\n"
-        "🍒 **WIN:** $50,000 Coins\n\n"
-        "👇 **Click below to SPIN!**"
+        "**Entry Fee:** `$100,000`\n"
+        "**Jackpot Chance:** `0.1%` (Extremely Rare)\n\n"
+        "💎 **JACKPOT:** $50M + Role\n"
+        "💀 **DEATH:** 1 Hour Mute\n"
+        "💩 **SHAME:** Name Change + Role\n"
+        "🍒 **WIN:** $200,000 Coins\n\n"
+        "👇 **Click to Pay & Spin!**"
     )
-    embed.set_thumbnail(url=i.user.display_avatar.url)
-    embed.set_image(url="https://media.tenor.com/GoMvLaZs8KkAAAAC/slot-machine-casino.gif")
-    
-    view = DevilSlotsView(i.user)
+    view = DevilSlotsView(i.user, 100000)
     await i.response.send_message(embed=embed, view=view)
+
 
 # ================== 🍪 SQUID GAME: DALGONA COOKIE (ECONOMY + VIP) ==================
 
