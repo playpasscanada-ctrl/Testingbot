@@ -3,109 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ultimate Discord Shop</title>
+    <title>Dark Premium Store</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #121212; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; text-align: center; }
-        h1 { color: #FFD700; text-shadow: 0 0 10px #FFD700; }
-        .container { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 30px; }
-        .card { background: #1e1e1e; border: 1px solid #333; border-radius: 10px; width: 250px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.2s; }
-        .card:hover { transform: translateY(-5px); border-color: #FFD700; }
-        .card h3 { margin-top: 0; color: #fff; }
-        .price { color: #2ecc71; font-weight: bold; font-size: 1.2em; }
-        .btn { background: #FFD700; color: black; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 15px; width: 100%; }
-        .btn:hover { background: #ffcc00; }
-        .role-card { border-top: 5px solid; }
-        .vip-card { border-top: 5px solid #9b59b6; }
-        .lotto-card { border-top: 5px solid #e74c3c; }
+        body { background-color: #050505; color: #fff; font-family: 'Rajdhani', sans-serif; text-align: center; padding: 20px; margin: 0; }
+        
+        /* Header Styling */
+        h1 { 
+            font-size: 3em; 
+            margin-bottom: 5px; 
+            background: -webkit-linear-gradient(#FFD700, #B8860B);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0px 0px 20px rgba(255, 215, 0, 0.3);
+        }
+        
+        /* Status Bar */
+        #status { 
+            padding: 10px 20px; border-radius: 30px; display: inline-block; margin-bottom: 40px; 
+            font-weight: bold; letter-spacing: 1px; font-size: 1.1em;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+        .connected { background: rgba(0, 255, 127, 0.1); border: 1px solid #00ff7f; color: #00ff7f; }
+        .disconnected { background: rgba(255, 69, 58, 0.1); border: 1px solid #ff453a; color: #ff453a; }
+
+        /* Grid Layout */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+
+        /* Card Design */
+        .card { 
+            background: #111; border: 1px solid #222; border-radius: 15px; padding: 20px; 
+            display: flex; flex-direction: column; justify-content: space-between; height: 100%;
+            transition: 0.3s; position: relative; overflow: hidden;
+        }
+        .card:hover { transform: translateY(-7px); border-color: #ffd700; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        /* Category Lines */
+        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; }
+        .special::before { background: #2ecc71; box-shadow: 0 0 10px #2ecc71; }
+        .vip::before { background: #9b59b6; box-shadow: 0 0 10px #9b59b6; }
+        .role::before { background: #3498db; box-shadow: 0 0 10px #3498db; }
+        .lotto::before { background: #e74c3c; box-shadow: 0 0 10px #e74c3c; }
+
+        .type-label { font-size: 0.8em; text-transform: uppercase; letter-spacing: 2px; opacity: 0.5; margin-bottom: 5px; }
+        h3 { margin: 5px 0; font-size: 1.4em; }
+        .price { color: #ffd700; font-size: 1.3em; font-weight: bold; margin: 15px 0; text-shadow: 0 0 10px rgba(255, 215, 0, 0.2); }
+
+        /* Buttons */
+        button { 
+            background: linear-gradient(45deg, #FFD700, #DAA520); color: black; border: none; 
+            padding: 12px; width: 100%; font-weight: bold; font-family: 'Rajdhani', sans-serif; font-size: 1.1em;
+            cursor: pointer; border-radius: 8px; transition: 0.2s; 
+        }
+        button:hover { background: linear-gradient(45deg, #fff, #FFD700); box-shadow: 0 0 15px #FFD700; }
+        button:disabled { background: #333; color: #666; cursor: not-allowed; box-shadow: none; }
     </style>
 </head>
 <body>
 
-    <h1>🛒 GLOBAL BLACK MARKET</h1>
-    <p>Logged in User ID: <span id="uid-display">Checking...</span></p>
+    <h1>⚜️ GLOBAL BLACK MARKET ⚜️</h1>
+    <div id="status" class="disconnected">Waiting for Connection...</div>
 
-    <div class="container" id="shop-container">
-        </div>
+    <div class="grid" id="container"></div>
 
     <script>
-        // Get User ID from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const userId = urlParams.get('user_id');
-        document.getElementById('uid-display').innerText = userId || "Not Logged In (Use /shop in Discord)";
+        const params = new URLSearchParams(window.location.search);
+        const uid = params.get('uid');
+        const statusDiv = document.getElementById('status');
 
-        // Shop Data (Synced with Python)
+        if (uid) {
+            statusDiv.innerText = "⚡ Connected: " + uid;
+            statusDiv.className = "connected";
+        } else {
+            statusDiv.innerText = "❌ Not Logged In (Use /shop in Discord)";
+            statusDiv.className = "disconnected";
+        }
+
+        // Must match Python SHOP_ITEMS keys exactly!
         const items = [
-            {id: 'izzat_wapasi', name: '🧼 Izzat Wapasi', price: 100000, type: 'item', desc: "Clean your bad name"},
-            {id: 'extra_life', name: '💖 Extra Life', price: 50000, type: 'item', desc: "Survive one death"},
-            {id: 'landmine', name: '💣 Landmine', price: 25000, type: 'item', desc: "Explode robbers"},
-            
-            {id: 'vip_1h', name: '👑 1 Hour VIP', price: 1000000, type: 'vip', desc: "Immunity for 1 Hr"},
-            {id: 'vip_1d', name: '👑 1 Day VIP', price: 5000000, type: 'vip', desc: "Immunity for 24 Hrs"},
-            {id: 'vip_1w', name: '👑 1 Week VIP', price: 25000000, type: 'vip', desc: "Immunity for 7 Days"},
-            {id: 'vip_life', name: '♾️ Lifetime VIP', price: 7000000000, type: 'vip', desc: "Immunity FOREVER"},
+            // --- ITEMS ---
+            {id: 'izzat', name: '🧼 Izzat Wapasi', price: 100000, type: 'special'},
+            {id: 'landmine', name: '💣 Landmine', price: 25000, type: 'special'},
+            {id: 'life', name: '💖 Extra Life', price: 50000, type: 'special'},
+            {id: 'cctv', name: '📹 CCTV Cam', price: 150000, type: 'special'},
 
-            {id: 'lotto_10k', name: '🎟️ 10k Ticket', price: 10000, type: 'lotto', desc: "Win 100k (10%)"},
-            {id: 'lotto_20k', name: '🎟️ 20k Ticket', price: 20000, type: 'lotto', desc: "Win 150k (8%)"},
-            {id: 'lotto_50k', name: '🎟️ 50k Ticket', price: 50000, type: 'lotto', desc: "Win 400k (5%)"},
-            {id: 'lotto_100k', name: '🎟️ 100k Ticket', price: 100000, type: 'lotto', desc: "Win 5M (2%)"},
+            // --- VIP ---
+            {id: 'vip_10m', name: '⚡ 10 Mins Escape', price: 200000, type: 'vip'},
+            {id: 'vip_1h', name: '👑 1 Hour VIP', price: 1000000, type: 'vip'},
+            {id: 'vip_6h', name: '🛡️ 6 Hours VIP', price: 3000000, type: 'vip'},
+            {id: 'vip_1d', name: '💎 1 Day VIP', price: 5000000, type: 'vip'},
+            {id: 'vip_3d', name: '🗓️ 3 Days VIP', price: 12000000, type: 'vip'},
+            {id: 'vip_1w', name: '🔥 1 Week VIP', price: 25000000, type: 'vip'},
+            {id: 'vip_life', name: '♾️ Lifetime VIP', price: 7000000000, type: 'vip'},
 
-            {id: 'hitman', name: '🗡️ Hitman', price: 5000000, type: 'role', color: '#8B0000'},
-            {id: 'gambler', name: '🎲 Gambler', price: 5000000, type: 'role', color: '#3498DB'},
-            {id: 'peaky', name: '🚬 Peaky Blinders', price: 20000000, type: 'role', color: '#808080'},
-            {id: 'millionaire', name: '💰 Millionaire', price: 25000000, type: 'role', color: '#2ECC71'},
-            {id: 'yakuza', name: '👺 Yakuza', price: 30000000, type: 'role', color: '#FF0000'},
-            {id: 'yamraj', name: '💀 Yamraj', price: 50000000, type: 'role', color: '#000000'},
-            {id: 'rich_kid', name: '💸 Rich Kid', price: 50000000, type: 'role', color: '#F1C40F'},
-            {id: 'lucifer', name: '😈 Lucifer', price: 100000000, type: 'role', color: '#4B0082'},
-            {id: 'mafia', name: '🕶️ Mafia', price: 500000000, type: 'role', color: '#2C3E50'},
-            {id: 'oil_prince', name: '🛢️ Oil Prince', price: 1000000000, type: 'role', color: '#D35400'},
-            {id: 'server_god', name: '🛐 Server God', price: 10000000000, type: 'role', color: '#FF00FF'},
-            {id: 'impossible', name: '♾️ IMPOSSIBLE', price: 1000000000000000000, type: 'role', color: '#FFFFFF'},
+            // --- LOTTERY ---
+            {id: 'lotto_10k', name: '🎟️ 10k Ticket (Win 100k)', price: 10000, type: 'lotto'},
+            {id: 'lotto_50k', name: '🎟️ 50k Ticket (Win 400k)', price: 50000, type: 'lotto'},
+            {id: 'lotto_100k', name: '🎟️ 100k Ticket (Win 1M)', price: 100000, type: 'lotto'},
+            {id: 'lotto_mega', name: '🎫 MEGA POT (Win 10M)', price: 500000, type: 'lotto'},
+            {id: 'lotto_god', name: '🎰 GOD TICKET (Win 500M)', price: 5000000, type: 'lotto'},
+
+            // --- ROLES ---
+            {id: 'hitman', name: '🗡️ Hitman', price: 5000000, type: 'role'},
+            {id: 'hacker', name: '💻 Hacker', price: 8000000, type: 'role'},
+            {id: 'gambler', name: '🎲 Gambler', price: 10000000, type: 'role'},
+            {id: 'peaky', name: '🚬 Peaky Blinders', price: 20000000, type: 'role'},
+            {id: 'shadow', name: '👻 Shadow', price: 35000000, type: 'role'},
+            {id: 'yakuza', name: '👺 Yakuza', price: 50000000, type: 'role'},
+            {id: 'mafia', name: '🕶️ Mafia Boss', price: 100000000, type: 'role'},
+            {id: 'king', name: '👑 Kingpin', price: 500000000, type: 'role'},
+            {id: 'oil', name: '🛢️ Oil Prince', price: 1000000000, type: 'role'},
+            {id: 'god', name: '🛐 Server God', price: 10000000000, type: 'role'},
+            {id: 'immortal', name: '🧟 Immortal', price: 50000000000, type: 'role'},
         ];
 
-        const container = document.getElementById('shop-container');
-
+        const container = document.getElementById('container');
         items.forEach(item => {
-            let borderStyle = '';
-            if(item.type === 'role') borderStyle = `border-top-color: ${item.color}; border-top-width: 5px;`;
-            if(item.type === 'vip') borderStyle = `border-top-color: #9b59b6; border-top-width: 5px;`;
-            if(item.type === 'lotto') borderStyle = `border-top-color: #e74c3c; border-top-width: 5px;`;
-
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.style = borderStyle;
-            card.innerHTML = `
-                <h3>${item.name}</h3>
-                <p>${item.desc || 'Role for Flex'}</p>
-                <div class="price">$${item.price.toLocaleString()}</div>
-                <button class="btn" onclick="buyItem('${item.id}')">BUY NOW</button>
-            `;
-            container.appendChild(card);
+            container.innerHTML += `
+            <div class="card ${item.type}">
+                <div>
+                    <div class="type-label">${item.type.toUpperCase()}</div>
+                    <h3>${item.name}</h3>
+                </div>
+                <div>
+                    <div class="price">$${item.price.toLocaleString()}</div>
+                    <button onclick="buy('${item.id}')">BUY NOW</button>
+                </div>
+            </div>`;
         });
 
-        async function buyItem(itemKey) {
-            if(!userId) return alert("Please open this link from Discord /shop command!");
-
-            if(!confirm("Confirm purchase?")) return;
+        async function buy(itemId) {
+            if (!uid) return alert("❌ Not Logged In! Open link from Discord.");
+            
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.innerText = "Processing...";
+            btn.disabled = true;
+            btn.style.background = "#333";
 
             try {
                 const res = await fetch('/buy', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ user_id: userId, item_key: itemKey })
+                    body: JSON.stringify({ uid: uid, item_id: itemId })
                 });
                 const data = await res.json();
                 
-                if(data.status === 'success') {
-                    alert(data.msg + "\nRemaining Balance: $" + data.new_balance.toLocaleString());
+                if (data.status === 'success') {
+                    alert("✅ " + data.msg + "\nRemaining: $" + data.bal.toLocaleString());
                 } else {
-                    alert("Error: " + data.msg);
+                    alert("❌ Error: " + data.msg);
                 }
-            } catch(e) {
-                alert("Server Error");
+            } catch (err) {
+                alert("⚠️ Server Error or Bot Offline");
             }
+            
+            btn.innerText = originalText;
+            btn.disabled = false;
+            btn.style.background = "linear-gradient(45deg, #FFD700, #DAA520)";
         }
     </script>
 </body>
 </html>
-
