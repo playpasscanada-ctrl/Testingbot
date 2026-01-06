@@ -7599,10 +7599,10 @@ def ping():
     return "pong"
 
 
-@app.route("/")
-def home():
-    return jsonify({"status": "OK", "time": datetime.utcnow().isoformat()})
-
+@app.route('/')
+def shop_home():
+    return render_template('index.html')  # <--- Ye line honi chahiye
+    
 @app.route("/fakecheck/<uid>")
 def fakecheck(uid):
     try:
@@ -7762,8 +7762,8 @@ SHOP_ITEMS = {
 
 # --- 2. FLASK ROUTES (WEBSITE BACKEND) ---
 @app.route('/')
-def home():
-    return render_template('index.html')
+def shop_home():
+    return render_template('index.html') 
 
 @app.route('/buy', methods=['POST'])
 def buy_item():
