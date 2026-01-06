@@ -6943,6 +6943,56 @@ async def glass_bridge(i: discord.Interaction):
     
     view = GlassLobbyView(i.user)
     await i.response.send_message(embed=view.get_embed(), view=view)
+
+# ================== 📉 ADMIN: REMOVE MONEY (ASSET SEIZURE) ==================
+
+@bot.tree.command(name="remove_money", description="👮‍♂️ Admin: Kisi user ke wallet se paise remove karo")
+@app_commands.describe(user="Kiske paise kaatne hain?", amount="Kitna amount remove karna hai?")
+@app_commands.default_permissions(administrator=True) # Sirf Admin ke liye
+async def remove_money(interaction: discord.Interaction, user: discord.Member, amount: int):
+    
+    # 1. Security Check (Waise to default_permissions sambhal lega, par double safety)
+    if not interaction.user.guild_permissions.administrator:
+        return await interaction.response.send_message("❌ **Access Denied:** Sirf Admins ye command use kar sakte hain!", ephemeral=True)
+
+    if amount <= 0:
+        return await interaction.response.send_message("❌ Positive number daalo (e.g. 5000)", ephemeral=True)
+
+    if user.bot:
+        return await interaction.response.send_message("❌ Bots ke paas paise nahi hote.", ephemeral=True)
+
+    # 2. Data Fetch
+    data = await get_data(user.id)
+    current_bal = data['balance']
+    
+    if current_bal <= 0:
+        return await interaction.response.send_message(f"❌ **Already Broke:** {user.name} ke paas pehle se $0 hain.", ephemeral=True)
+
+    # 3. Calculation (Negative Balance Protection)
+    # Agar 500 hain aur 1000 nikal rahe ho, to sirf 500 hi niklenge (Bal = 0)
+    amount_to_remove = min(current_bal, amount)
+    new_bal = current_bal - amount_to_remove
+
+    # 4. Database Update
+    await update_balance(user.id, -amount_to_remove)
+
+    # 5. PREMIUM EMBED
+    embed = discord.Embed(title="📉 ASSET SEIZURE (TAX RAID)", color=0x8B0000) # Dark Red
+    embed.description = (
+        f"# 👮‍♂️ ORDER EXECUTED\n"
+        f"**Authority:** {interaction.user.mention}\n"
+        f"**Target:** {user.mention}\n\n"
+        f"Official action ke tehat inke account se funds zabt kar liye gaye hain."
+    )
+    
+    embed.add_field(name="🔻 Removed Amount", value=f"```-${amount_to_remove:,}```", inline=True)
+    embed.add_field(name="🏦 New Balance", value=f"```${new_bal:,}```", inline=True)
+    
+    embed.set_thumbnail(url=user.display_avatar.url)
+    embed.set_image(url="https://media.tenor.com/EA84s3occX8AAAAC/burning-money-money.gif") # Money Burning GIF
+    embed.set_footer(text="Secure Banking System | Action Irreversible")
+
+    await interaction.response.send_message(embed=embed)
         
 
 # ================== SAY ACCESS MANAGER (PREMIUM) ==================
