@@ -7757,9 +7757,6 @@ C_GREEN = 0x00FF00
 C_DARK = 0x2B2D31
 
 # ================== 🌐 WEBSITE BACKEND ==================
-@app.route('/')
-def shop_home():
-    return render_template('index.html')
 
 @app.route('/ping')
 def ping_check():
