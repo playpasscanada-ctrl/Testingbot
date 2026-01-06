@@ -7682,20 +7682,6 @@ async def on_command_error(ctx, error):
         return
     print(f"⚠️ Command Error: {error}")
 
-# ================== OPTIMIZED KEEP ALIVE (RAM SAVER) ==================
-def keep_alive():
-    while True:
-        try:
-            # Sleep time badha diya (25s -> 45s) taaki load kam pade
-            time.sleep(60) 
-            requests.get(f"{RENDER_URL}/ping", timeout=10)
-        except:
-            pass
-
-# Flask ko "Single Thread" mode me chalayenge taaki Errno 11 na aaye
-threading.Thread(target=lambda: app.run("0.0.0.0", 10000, threaded=False, use_reloader=False)).start()
-threading.Thread(target=keep_alive, daemon=True).start()
-
 # 👇 ISKO UPDATE KARO (Purana hata kar ye lagao)
 async def roblox_info(uid):
     url = f"https://users.roblox.com/v1/users/{uid}"
@@ -7960,11 +7946,37 @@ async def check_lottery(i: discord.Interaction):
         text += f"👤 {t['user_name']} | 🎫 {t['ticket_type']}\n"
     await i.response.send_message(text, ephemeral=False)
 
-# --- 4. START FLASK SERVER ---
-def run_server():
-    app.run(host='0.0.0.0', port=5000)
+# ==================================================================
+# 👇 IS PURE CODE KO FILE KE EKDAM END ME PASTE KARO (Pura replace karke) 👇
+# ==================================================================
 
-threading.Thread(target=run_server, daemon=True).start()
+# 1. Ping Route (Purane keep_alive ke liye)
+@app.route('/ping')
+def ping():
+    return jsonify({"status": "Alive", "time": datetime.utcnow().isoformat()})
 
-        
-bot.run(DISCORD_TOKEN)
+# 2. Self Pinger (Ye Bot ko sone nahi dega - Replacement for loop)
+def self_ping():
+    while True:
+        # Har 45 second me khud ko jagayega
+        time.sleep(45) 
+        try:
+            # Apni website ka link (Jo aapke screenshot me tha)
+            url = os.getenv("RENDER_URL", "https://tingbot-q1jb.onrender.com")
+            requests.get(f"{url}/ping")
+            print("✅ Ping sent to keep bot alive")
+        except Exception as e:
+            pass
+
+# 3. Server Starter (Ye Shop aur Website chalayega)
+def run_flask():
+    # Render port 10000 use karta hai
+    app.run(host='0.0.0.0', port=10000)
+
+# 4. Threads Start (Dono kaam background me honge)
+threading.Thread(target=run_flask, daemon=True).start()  # Website Start
+threading.Thread(target=self_ping, daemon=True).start()  # Pinger Start
+
+# 5. BOT START (Ye Line SABSE AAKHIRI honi chahiye)
+# Iske niche kuch mat likhna!
+bot.run(os.getenv("DISCORD_TOKEN"))
