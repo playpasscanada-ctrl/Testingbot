@@ -7859,6 +7859,74 @@ async def iq_test(i: discord.Interaction):
     
     await i.response.send_message(embed=embed, view=view)
 
+# ================== 💸 MONEY TRANSFER SYSTEM (TAX LOGIC) ==================
+
+@bot.tree.command(name="pay", description="💸 Transfer Money to another player (VIPs pay 0% Tax)")
+@app_commands.describe(user="Paisa kisko dena hai?", amount="Kitna paisa bhejna hai?")
+async def pay(interaction: discord.Interaction, user: discord.Member, amount: int):
+    
+    # 1. Basic Checks
+    if user.id == interaction.user.id:
+        return await interaction.response.send_message("❌ Khud ko paise transfer nahi kar sakte!", ephemeral=True)
+    
+    if user.bot:
+        return await interaction.response.send_message("❌ Bots ko paise nahi de sakte!", ephemeral=True)
+        
+    if amount <= 0:
+        return await interaction.response.send_message("❌ Positive number daalo!", ephemeral=True)
+
+    # 2. Sender Data Fetch
+    sender_data = await get_data(interaction.user.id)
+    
+    # Balance Check
+    if sender_data['balance'] < amount:
+        return await interaction.response.send_message(f"❌ **Insufficient Balance!** Aapke paas itne paise nahi hain.", ephemeral=True)
+
+    # 3. 👑 VIP TAX CHECK LOGIC
+    tax_rate = 0.10 # Default 10% Tax
+    tax_status = "10% (Normal User)"
+    is_vip = False
+    
+    vip_expiry = sender_data.get('vip_expiry')
+    if vip_expiry:
+        try:
+            # Check Lifetime or Active VIP
+            if vip_expiry.startswith("9999") or datetime.utcnow() < datetime.fromisoformat(vip_expiry):
+                is_vip = True
+                tax_rate = 0.0 # 0% Tax for VIP
+                tax_status = "0% (👑 VIP Power)"
+        except: pass
+
+    # 4. Calculation
+    tax_amount = int(amount * tax_rate)
+    final_amount = amount - tax_amount
+
+    # 5. Transaction Execution
+    # Sender se pura amount kato
+    await update_balance(interaction.user.id, -amount)
+    
+    # Receiver ko tax katne ke baad wala amount do
+    await update_balance(user.id, final_amount)
+
+    # 6. Success Embed
+    embed = discord.Embed(title="💸 MONEY TRANSFER SUCCESSFUL", color=0x00FF00)
+    embed.add_field(name="📤 Sender", value=f"{interaction.user.mention}", inline=True)
+    embed.add_field(name="📥 Receiver", value=f"{user.mention}", inline=True)
+    
+    embed.add_field(name="💰 Sent Amount", value=f"`${amount:,}`", inline=False)
+    
+    if is_vip:
+        embed.add_field(name="🛡️ Tax (VIP)", value=f"~~${int(amount*0.10):,}~~ **$0** (No Tax)", inline=True)
+    else:
+        embed.add_field(name="📉 Tax (10%)", value=f"-${tax_amount:,}", inline=True)
+        
+    embed.add_field(name="✅ Received", value=f"**${final_amount:,}**", inline=True)
+    
+    embed.set_footer(text=f"Tax Status: {tax_status}")
+    embed.set_thumbnail(url="https://media.tenor.com/J3i6jGgFqsgAAAAC/money-transfer.gif")
+
+    await interaction.response.send_message(embed=embed)
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
