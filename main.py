@@ -7709,7 +7709,7 @@ async def roblox_info(uid):
 # ==================================================================
 # 💰 PURE ECONOMY & WEB SHOP SYSTEM (NO EXTRA GAMES)
 # ==================================================================
-import discord
+ import discord
 from discord.ext import commands
 from discord import app_commands
 import os
@@ -7723,37 +7723,34 @@ from flask import Flask, request, jsonify, render_template
 from supabase import create_client, Client
 
 # ================== ⚙️ CONFIGURATION ==================
-# Ye IDs sahi daalna, warna error aayega
 LOG_CHANNEL_ID = 1451973589342621791  
 OWNER_ID = 804687084249284618         
-
-# Database Connection
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Bot Setup
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 app = Flask(__name__)
 
-# Colors for Embeds
-COLOR_SUCCESS = 0x00FF00  # Green
-COLOR_ERROR = 0xFF0000    # Red
-COLOR_GOLD = 0xFFD700     # Gold (Premium)
-COLOR_DARK = 0x2B2D31     # Discord Dark
+# Premium Colors
+C_GOLD = 0xFFD700
+C_RED = 0xFF0000
+C_GREEN = 0x00FF00
+C_DARK = 0x2B2D31
 
 # ================== 🛍️ SHOP ITEMS (FULL LIST) ==================
 SHOP_ITEMS = {
-    # --- SPECIAL ITEMS ---
+    # Special Items
     "izzat":      {"name": "🧼 Izzat Wapasi", "price": 100000, "type": "special"},
-    "landmine":   {"name": "💣 Landmine (Trap)", "price": 25000, "type": "item"},
+    "landmine":   {"name": "💣 Landmine", "price": 25000, "type": "item"},
     "life":       {"name": "💖 Extra Life", "price": 50000, "type": "item"},
     "cctv":       {"name": "📹 CCTV Camera", "price": 150000, "type": "item"},
 
-    # --- VIP (TIME BASED) ---
+    # VIP Access
     "vip_10m":    {"name": "⚡ 10 Mins Escape", "price": 200000, "type": "vip", "min": 10},
     "vip_1h":     {"name": "👑 1 Hour VIP", "price": 1000000, "type": "vip", "min": 60},
     "vip_6h":     {"name": "🛡️ 6 Hours VIP", "price": 3000000, "type": "vip", "min": 360},
@@ -7762,14 +7759,7 @@ SHOP_ITEMS = {
     "vip_1w":     {"name": "🔥 1 Week VIP", "price": 25000000, "type": "vip", "min": 10080},
     "vip_life":   {"name": "♾️ Lifetime VIP", "price": 7000000000, "type": "vip", "life": True},
 
-    # --- LOTTERY ---
-    "lotto_10k":  {"name": "🎟️ 10k Ticket", "price": 10000, "type": "lotto", "win": 100000, "chance": 10},
-    "lotto_50k":  {"name": "🎟️ 50k Ticket", "price": 50000, "type": "lotto", "win": 400000, "chance": 8},
-    "lotto_100k": {"name": "🎟️ 100k Ticket", "price": 100000, "type": "lotto", "win": 1000000, "chance": 5},
-    "lotto_mega": {"name": "🎫 MEGA JACKPOT", "price": 500000, "type": "lotto", "win": 10000000, "chance": 2},
-    "lotto_god":  {"name": "🎰 GOD TICKET", "price": 5000000, "type": "lotto", "win": 500000000, "chance": 1},
-
-    # --- PREMIUM ROLES ---
+    # Roles (Emoji hatake role name match karega)
     "hitman":     {"name": "🗡️ Hitman", "price": 5000000, "type": "role"},
     "hacker":     {"name": "💻 Hacker", "price": 8000000, "type": "role"},
     "gambler":    {"name": "🎲 Gambler", "price": 10000000, "type": "role"},
@@ -7781,117 +7771,135 @@ SHOP_ITEMS = {
     "oil":        {"name": "🛢️ Oil Prince", "price": 1000000000, "type": "role"},
     "god":        {"name": "🛐 Server God", "price": 10000000000, "type": "role"},
     "immortal":   {"name": "🧟 Immortal", "price": 50000000000, "type": "role"},
+
+    # Lottery
+    "lotto_10k":  {"name": "🎟️ 10k Ticket", "price": 10000, "type": "lotto", "win": 100000, "chance": 10},
+    "lotto_50k":  {"name": "🎟️ 50k Ticket", "price": 50000, "type": "lotto", "win": 400000, "chance": 8},
+    "lotto_100k": {"name": "🎟️ 100k Ticket", "price": 100000, "type": "lotto", "win": 1000000, "chance": 5},
+    "lotto_mega": {"name": "🎫 MEGA JACKPOT", "price": 500000, "type": "lotto", "win": 10000000, "chance": 2},
+    "lotto_god":  {"name": "🎰 GOD TICKET", "price": 5000000, "type": "lotto", "win": 500000000, "chance": 1},
 }
 
-# ================== 🌐 FLASK BACKEND (WEBSITE) ==================
+# ================== 🌐 WEBSITE BACKEND ==================
 @app.route('/')
 def shop_home():
     return render_template('index.html')
 
 @app.route('/ping')
 def ping_check():
-    return jsonify({"status": "Alive", "time": datetime.utcnow().isoformat()})
+    return jsonify({"status": "Alive"})
 
 @app.route('/buy', methods=['POST'])
 def buy_item():
     try:
         data = request.json
         uid = str(data.get('uid'))
+        cid = data.get('cid') # Channel ID (NOTIFICATION FIX)
         item_id = data.get('item_id')
         
-        if item_id not in SHOP_ITEMS: return jsonify({"status": "error", "msg": "Item Unavailable"})
+        if item_id not in SHOP_ITEMS: return jsonify({"status": "error", "msg": "Invalid Item"})
         
-        # 1. Fetch User
+        # 1. Fetch User Data (Fresh)
         res = supabase.table("economy").select("*").eq("user_id", uid).execute()
         if not res.data: return jsonify({"status": "error", "msg": "Account Not Found! Use /balance first."})
         
         user_data = res.data[0]
         item = SHOP_ITEMS[item_id]
         
-        # 2. Check Money
+        # 2. Check Balance
         if user_data['balance'] < item['price']:
-            return jsonify({"status": "error", "msg": f"Insufficient Funds! Need ${item['price']-user_data['balance']:,} more."})
+            return jsonify({"status": "error", "msg": f"Garib! Need ${item['price'] - user_data['balance']:,} more."})
         
-        # 3. Deduct Money
-        new_bal = user_data['balance'] - item['price']
+        # 3. Deduct Money IMMEDIATELY (BALANCE FIX)
+        new_bal = int(user_data['balance']) - int(item['price'])
         
-        # 4. Process Item
-        result_text = "✅ Purchase Successful"
+        # Initial Update to lock funds
+        supabase.table("economy").update({"balance": new_bal}).eq("user_id", uid).execute()
         
+        result_text = f"✅ Bought {item['name']}"
+        
+        # 4. Handle Item Logic
         if item['type'] == "lotto":
             if random.randint(1, 100) <= item['chance']:
                 new_bal += item['win']
-                result_text = f"🎉 JACKPOT! You Won ${item['win']:,}!"
+                # Update Win
+                supabase.table("economy").update({"balance": new_bal}).eq("user_id", uid).execute()
+                result_text = f"🎉 JACKPOT! Won ${item['win']:,}!"
             else:
-                result_text = "😢 Bad Luck! You lost the ticket."
+                result_text = "😢 Bad Luck! Better luck next time."
                 
         elif item['type'] == "item":
             inv = user_data.get('inventory') or {}
             inv[item_id] = inv.get(item_id, 0) + 1
             supabase.table("economy").update({"inventory": inv}).eq("user_id", uid).execute()
-            result_text = f"📦 {item['name']} added to inventory."
             
         elif item['type'] == "vip":
             if item.get('life'): expiry = "9999-12-31T23:59:59"
             else: expiry = (datetime.utcnow() + dt.timedelta(minutes=item['min'])).isoformat()
             supabase.table("economy").update({"vip_expiry": expiry}).eq("user_id", uid).execute()
-            result_text = f"👑 VIP Status Activated: {item['name']}"
 
-        # 5. Update Balance
-        supabase.table("economy").update({"balance": new_bal}).eq("user_id", uid).execute()
-        
-        # 6. Discord Notification
-        asyncio.run_coroutine_threadsafe(send_log(uid, item['name'], item['price'], result_text), bot.loop)
+        # 5. Discord Effects (Role/Nick/Message)
+        if cid:
+            asyncio.run_coroutine_threadsafe(
+                handle_purchase_effects(uid, cid, item['name'], item['price'], result_text), 
+                bot.loop
+            )
         
         return jsonify({"status": "success", "msg": result_text, "bal": new_bal})
         
     except Exception as e:
-        return jsonify({"status": "error", "msg": f"Server Error: {str(e)}"})
+        print(f"Buy Error: {e}")
+        return jsonify({"status": "error", "msg": "Server Error"})
 
-async def send_log(uid, item_name, price, result):
-    channel = bot.get_channel(LOG_CHANNEL_ID)
-    if not channel: return
+async def handle_purchase_effects(uid, cid, item_name, price, result_text):
     try:
         user = await bot.fetch_user(int(uid))
-        embed = discord.Embed(title="🛒 BLACK MARKET TRANSACTION", color=COLOR_SUCCESS, timestamp=datetime.utcnow())
-        embed.set_thumbnail(url=user.display_avatar.url)
-        embed.add_field(name="👤 Customer", value=f"{user.mention}\n`{user.name}`", inline=True)
-        embed.add_field(name="📦 Item Bought", value=f"**{item_name}**", inline=True)
-        embed.add_field(name="💸 Amount Paid", value=f"```${price:,}```", inline=False)
-        embed.add_field(name="📝 Receipt Status", value=f"*{result}*", inline=False)
-        embed.set_footer(text="Dark Store Automation", icon_url=bot.user.avatar.url)
+        channel = bot.get_channel(int(cid))
         
-        # Auto Role
-        guild = channel.guild
-        member = guild.get_member(user.id)
-        if member and "role" in str(SHOP_ITEMS.get(next((k for k, v in SHOP_ITEMS.items() if v["name"] == item_name), None), {})):
-            role_name = item_name.split(" ", 1)[1]
-            role = discord.utils.get(guild.roles, name=role_name)
-            if role: await member.add_roles(role)
+        # 1. Send Receipt (NOTIFICATION FIX)
+        if channel:
+            embed = discord.Embed(title="🛒 SHOP RECEIPT", color=C_GOLD)
+            embed.set_thumbnail(url=user.display_avatar.url)
+            embed.description = f"👤 **Buyer:** {user.mention}\n📦 **Item:** {item_name}\n💸 **Paid:** `${price:,}`\n📝 **Status:** {result_text}"
+            await channel.send(embed=embed)
             
-        await channel.send(embed=embed)
-    except: pass
+        # 2. Roles & Nicknames
+        if channel:
+            guild = channel.guild
+            member = guild.get_member(user.id)
+            if member:
+                # Izzat Wapasi
+                if "Izzat" in item_name:
+                    try: await member.edit(nick=None)
+                    except: pass
+                
+                # Role Logic (Fix: Splits emoji from name)
+                item_info = next((v for k, v in SHOP_ITEMS.items() if v["name"] == item_name), None)
+                if item_info and item_info['type'] == 'role':
+                    # "🗡️ Hitman" -> "Hitman"
+                    role_name = item_name.split(" ", 1)[1] if " " in item_name else item_name
+                    role = discord.utils.get(guild.roles, name=role_name)
+                    if role:
+                        try: await member.add_roles(role)
+                        except: await channel.send(f"⚠️ Error: Role `{role_name}` hierarchy issue.")
 
-# ================== 🎮 DISCORD COMMANDS (PREMIUM) ==================
+    except Exception as e:
+        print(f"Effect Error: {e}")
 
-@bot.tree.command(name="shop", description="🛒 Open the Global Black Market")
+# ================== 🎮 DISCORD COMMANDS ==================
+
+@bot.tree.command(name="shop", description="🛒 Open Premium Store")
 async def shop_cmd(i: discord.Interaction):
-    render_url = os.getenv("RENDER_URL", "https://tingbot-q1jb.onrender.com")
-    url = f"{render_url}/?uid={i.user.id}"
+    base_url = os.getenv("RENDER_URL", "https://tingbot-q1jb.onrender.com")
+    # Passing Channel ID (cid) is IMPORTANT
+    url = f"{base_url}/?uid={i.user.id}&cid={i.channel_id}"
     
-    embed = discord.Embed(title="⚜️ GLOBAL BLACK MARKET ⚜️", description="Welcome to the underground store.\nBuy Roles, VIP Access, and Illegal Items here.", color=COLOR_GOLD)
-    embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/3144/3144456.png") # Shopping Cart Icon
-    embed.add_field(name="💳 Status", value="`ONLINE`", inline=True)
-    embed.add_field(name="👤 User", value=f"{i.user.mention}", inline=True)
-    embed.set_image(url="https://i.imgur.com/8Q6W6XQ.png") # Dark Theme Banner (Optional)
-    
+    embed = discord.Embed(title="⚜️ GLOBAL BLACK MARKET", description="Underground store access granted.\nClick button to buy illegal items & roles.", color=C_GOLD)
     view = discord.ui.View()
-    btn = discord.ui.Button(label="🌐 ENTER DARK STORE", url=url, style=discord.ButtonStyle.link, emoji="🛒")
-    view.add_item(btn)
-    
+    view.add_item(discord.ui.Button(label="🌐 OPEN STORE", url=url, style=discord.ButtonStyle.link, emoji="🛒"))
     await i.response.send_message(embed=embed, view=view)
 
-@bot.tree.command(name="balance", description="💰 View your Financial Status")
+@bot.tree.command(name="balance", description="💰 View Wallet, Bank & Inventory")
 async def balance(i: discord.Interaction, user: discord.Member = None):
     u = user or i.user
     res = supabase.table("economy").select("*").eq("user_id", str(u.id)).execute()
@@ -7903,146 +7911,157 @@ async def balance(i: discord.Interaction, user: discord.Member = None):
     
     total = d['balance'] + d['bank']
     
-    embed = discord.Embed(title=f"🏦 BANK OF {u.name.upper()}", color=COLOR_DARK)
+    embed = discord.Embed(title=f"🏦 WEALTH: {u.name.upper()}", color=C_DARK)
     embed.set_thumbnail(url=u.display_avatar.url)
+    embed.add_field(name="💳 Wallet", value=f"`${d['balance']:,}`", inline=True)
+    embed.add_field(name="🏦 Bank", value=f"`${d['bank']:,}`", inline=True)
+    embed.add_field(name="💎 Net Worth", value=f"**${total:,}**", inline=False)
     
-    embed.add_field(name="💸 Wallet", value=f"```yaml\n${d['balance']:,}```", inline=True)
-    embed.add_field(name="🏦 Bank", value=f"```yaml\n${d['bank']:,}```", inline=True)
-    embed.add_field(name="💎 Net Worth", value=f"```fix\n${total:,}```", inline=False)
-    
+    # Inventory Display (NEW LOGIC)
+    inv = d.get('inventory', {}) or {}
     inv_text = ""
-    inv = d.get('inventory', {})
-    if inv.get('landmine', 0) > 0: inv_text += f"💣 Landmines: {inv['landmine']}\n"
-    if inv.get('cctv', 0) > 0: inv_text += f"📹 CCTV: {inv['cctv']}\n"
-    if inv.get('life', 0) > 0: inv_text += f"💖 Extra Lives: {inv['life']}\n"
+    # Map IDs to Display Names
+    for k, v in inv.items():
+        if v > 0:
+            name = SHOP_ITEMS.get(k, {}).get('name', k.title())
+            inv_text += f"{name}: **x{v}**\n"
     
-    if inv_text: embed.add_field(name="🎒 Secret Inventory", value=inv_text, inline=False)
+    # Check VIP
+    vip_end = d.get('vip_expiry')
+    if vip_end and vip_end > datetime.utcnow().isoformat():
+        inv_text += f"👑 **VIP ACTIVE**"
+        
+    if inv_text: embed.add_field(name="🎒 Inventory", value=inv_text, inline=False)
     
     await i.response.send_message(embed=embed)
 
-@bot.tree.command(name="deposit", description="🏦 Secure money in Bank")
+@bot.tree.command(name="deposit", description="🏦 Deposit money (Safe)")
 async def deposit(i: discord.Interaction, amount: str):
     uid = str(i.user.id)
     res = supabase.table("economy").select("*").eq("user_id", uid).execute()
+    if not res.data: return await i.response.send_message("❌ Account nahi hai.", ephemeral=True)
     d = res.data[0]
     
-    amt = d['balance'] if amount.lower() == "all" else int(amount)
-    
-    if amt <= 0:
-        return await i.response.send_message(embed=discord.Embed(description="❌ **Invalid Amount!**", color=COLOR_ERROR), ephemeral=True)
-    if d['balance'] < amt:
-        return await i.response.send_message(embed=discord.Embed(description="❌ **You are broke!** Not enough cash.", color=COLOR_ERROR), ephemeral=True)
+    # Fix: Deposit All vs Number logic
+    if amount.lower() == "all": amt = int(d['balance'])
+    else: 
+        try: amt = int(amount)
+        except: return await i.response.send_message("❌ Number likho!", ephemeral=True)
         
-    supabase.table("economy").update({"balance": d['balance']-amt, "bank": d['bank']+amt}).eq("user_id", uid).execute()
+    if amt <= 0: return await i.response.send_message("❌ 0 deposit nahi hoga.", ephemeral=True)
+    if d['balance'] < amt: return await i.response.send_message("❌ Wallet me itna paisa nahi hai!", ephemeral=True)
     
-    embed = discord.Embed(description=f"✅ **Deposited** `${amt:,}` to Bank.", color=COLOR_SUCCESS)
+    supabase.table("economy").update({"balance": int(d['balance'])-amt, "bank": int(d['bank'])+amt}).eq("user_id", uid).execute()
+    
+    embed = discord.Embed(description=f"✅ **Deposited:** `${amt:,}`", color=C_GREEN)
     await i.response.send_message(embed=embed)
 
-@bot.tree.command(name="withdraw", description="🏦 Take money from Bank")
+@bot.tree.command(name="withdraw", description="🏦 Withdraw money")
 async def withdraw(i: discord.Interaction, amount: str):
     uid = str(i.user.id)
     res = supabase.table("economy").select("*").eq("user_id", uid).execute()
     d = res.data[0]
     
-    amt = d['bank'] if amount.lower() == "all" else int(amount)
-    
-    if amt <= 0 or d['bank'] < amt:
-        return await i.response.send_message(embed=discord.Embed(description="❌ **Bank is Empty!**", color=COLOR_ERROR), ephemeral=True)
+    if amount.lower() == "all": amt = int(d['bank'])
+    else: 
+        try: amt = int(amount)
+        except: return await i.response.send_message("❌ Number likho!", ephemeral=True)
         
-    supabase.table("economy").update({"balance": d['balance']+amt, "bank": d['bank']-amt}).eq("user_id", uid).execute()
+    if amt <= 0: return await i.response.send_message("❌ 0 withdraw nahi hoga.", ephemeral=True)
+    if d['bank'] < amt: return await i.response.send_message("❌ Bank khali hai!", ephemeral=True)
     
-    embed = discord.Embed(description=f"✅ **Withdrawn** `${amt:,}` from Bank.", color=COLOR_SUCCESS)
+    supabase.table("economy").update({"balance": int(d['balance'])+amt, "bank": int(d['bank'])-amt}).eq("user_id", uid).execute()
+    
+    embed = discord.Embed(description=f"✅ **Withdrawn:** `${amt:,}`", color=C_GREEN)
     await i.response.send_message(embed=embed)
 
-@bot.tree.command(name="rob", description="🔫 Rob a user (High Risk!)")
+@bot.tree.command(name="rob", description="🔫 Rob User (1H Cooldown, Victim needs 100k)")
+@app_commands.checks.cooldown(1, 3600) # 1 Hour Cooldown
 async def rob(i: discord.Interaction, victim: discord.Member):
-    if i.user.id == victim.id or victim.bot:
-        return await i.response.send_message(embed=discord.Embed(description="❌ **Invalid Target!**", color=COLOR_ERROR), ephemeral=True)
+    if i.user.id == victim.id or victim.bot: return await i.response.send_message("❌ Cannot rob yourself/bots", ephemeral=True)
     
-    # Data Fetch
+    # Fetch Data
     vic_data = supabase.table("economy").select("*").eq("user_id", str(victim.id)).execute().data
     rob_data = supabase.table("economy").select("*").eq("user_id", str(i.user.id)).execute().data
     
-    if not vic_data: return await i.response.send_message(embed=discord.Embed(description="❌ Target has no money!", color=COLOR_ERROR), ephemeral=True)
-    vic, robber = vic_data[0], rob_data[0]
+    if not vic_data: return await i.response.send_message("❌ Victim ke paas account hi nahi hai", ephemeral=True)
+    vic = vic_data[0]
+    robber = rob_data[0]
     
-    if vic['balance'] < 500:
-        return await i.response.send_message(embed=discord.Embed(description=f"❌ **{victim.name}** is too poor to rob!", color=COLOR_ERROR), ephemeral=True)
-
-    # 🛑 CHECK LANDMINE
+    # 1. Minimum Balance Check (100k) (USER REQUEST)
+    if vic['balance'] < 100000:
+        return await i.response.send_message(f"⚠️ **Safe:** {victim.name} ke paas 100k se kam hain. Loot bekar hai.", ephemeral=True)
+        
+    # 2. Landmine Trap Check
     if vic.get('inventory', {}).get('landmine', 0) > 0:
         inv = vic['inventory']
         inv['landmine'] -= 1
-        fine = int(robber['balance'] * 0.30) # 30% Fine
+        fine = int(robber['balance'] * 0.3) # 30% Fine
         
         supabase.table("economy").update({"inventory": inv, "balance": vic['balance'] + fine}).eq("user_id", str(victim.id)).execute()
         supabase.table("economy").update({"balance": robber['balance'] - fine}).eq("user_id", str(i.user.id)).execute()
         
-        embed = discord.Embed(title="💥 BOOM! LANDMINE!", description=f"💀 You stepped on a Landmine at **{victim.name}'s** house!\n🏥 Hospital Bill: `${fine:,}` paid to victim.", color=COLOR_ERROR)
+        embed = discord.Embed(title="💥 BOOM! LANDMINE!", color=C_RED)
+        embed.description = f"💀 **{i.user.mention}** stepped on a Landmine!\n💸 You paid `${fine:,}` hospital bill to **{victim.name}**."
         embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/1166/1166469.png")
         return await i.response.send_message(embed=embed)
 
-    # 🎰 NORMAL ROBBERY LOGIC
-    if random.choice([True, False]): # 50% Win
-        loot = int(vic['balance'] * random.uniform(0.1, 0.5))
+    # 3. Normal Robbery Logic
+    if random.choice([True, False]):
+        loot = int(vic['balance'] * random.uniform(0.2, 0.5)) # Loot 20-50%
         supabase.table("economy").update({"balance": vic['balance'] - loot}).eq("user_id", str(victim.id)).execute()
         supabase.table("economy").update({"balance": robber['balance'] + loot}).eq("user_id", str(i.user.id)).execute()
         
-        embed = discord.Embed(title="💰 ROBBERY SUCCESSFUL", description=f"😈 You stole `${loot:,}` from **{victim.mention}**!", color=COLOR_GOLD)
+        embed = discord.Embed(title="💰 ROBBERY SUCCESS", color=C_GOLD)
+        embed.description = f"😈 You stole `${loot:,}` from **{victim.mention}**!"
         await i.response.send_message(embed=embed)
-    else: # Fail
-        fine = 2000
+    else:
+        fine = 5000
         supabase.table("economy").update({"balance": robber['balance'] - fine}).eq("user_id", str(i.user.id)).execute()
         
-        embed = discord.Embed(title="🚔 POLICE ARREST", description=f"👮 You were caught robbing **{victim.name}**!\n💸 Fine Paid: `${fine:,}`", color=COLOR_ERROR)
+        embed = discord.Embed(title="🚔 POLICE ARREST", color=C_RED)
+        embed.description = f"👮 Police caught you robbing **{victim.name}**!\n💸 Fine Paid: `$5,000`"
         await i.response.send_message(embed=embed)
 
-@bot.tree.command(name="give_money", description="💸 (Owner) Add Money to User")
+@rob.error
+async def rob_error(i: discord.Interaction, error):
+    if isinstance(error, app_commands.CommandOnCooldown):
+        min_left = int(error.retry_after // 60)
+        await i.response.send_message(f"⏳ **Cooldown:** Police is watching! Try again in **{min_left} minutes**.", ephemeral=True)
+
+@bot.tree.command(name="give_money", description="💸 (Owner) Add Money")
 async def give_money(i: discord.Interaction, user: discord.Member, amount: int):
-    if i.user.id != OWNER_ID:
-        return await i.response.send_message(embed=discord.Embed(description="❌ **Access Denied!** Only Owner.", color=COLOR_ERROR), ephemeral=True)
+    if i.user.id != OWNER_ID: return await i.response.send_message("❌ Owner Only!", ephemeral=True)
     
     res = supabase.table("economy").select("*").eq("user_id", str(user.id)).execute()
     if not res.data:
-        supabase.table("economy").insert({"user_id": str(user.id), "balance": amount, "bank": 0}).execute()
+        supabase.table("economy").insert({"user_id": str(user.id), "balance": amount, "bank": 0, "inventory": {}}).execute()
     else:
         new_bal = res.data[0]['balance'] + amount
         supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(user.id)).execute()
         
-    embed = discord.Embed(description=f"✅ Added `${amount:,}` to {user.mention}", color=COLOR_SUCCESS)
-    await i.response.send_message(embed=embed)
+    await i.response.send_message(f"✅ Gave `${amount:,}` to {user.mention}")
 
 @bot.tree.command(name="check_lottery", description="🔒 (Owner) Check Logs")
 async def check_lottery(i: discord.Interaction):
     if i.user.id != OWNER_ID: return await i.response.send_message("❌ Admin Only", ephemeral=True)
     await i.response.send_message("ℹ️ Website Lottery is Instant. No pending tickets.", ephemeral=True)
 
-# ================== 🔌 SERVER KEEP ALIVE (DOUBLE ENGINE) ==================
-
-# 1. Pinger (Bot ko jagaye rakhega)
+# ================== 🚀 SERVER START ==================
 def self_ping():
     while True:
         time.sleep(45)
-        try:
-            url = os.getenv("RENDER_URL", "http://127.0.0.1:10000")
-            requests.get(f"{url}/ping")
-            print("📡 Ping Sent")
+        try: requests.get(f"{os.getenv('RENDER_URL')}/ping")
         except: pass
 
-# 2. Flask Server (Website + Shop)
 def run_server():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=10000)
 
-# ================== 🚀 STARTUP ==================
 @bot.event
 async def on_ready():
-    print(f"🔥 {bot.user} IS ONLINE!")
+    print(f"🔥 Logged in as {bot.user}")
     await bot.tree.sync()
-    
-# Start Threads
+
 threading.Thread(target=run_server, daemon=True).start()
 threading.Thread(target=self_ping, daemon=True).start()
-
-# Start Bot (LAST LINE)
 bot.run(os.getenv("DISCORD_TOKEN"))
