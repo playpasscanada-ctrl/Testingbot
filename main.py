@@ -7706,27 +7706,10 @@ async def roblox_info(uid):
             pass
         return "Unknown", "Unknown"
 
-# ==================================================================
 # 💰 PURE ECONOMY & WEB SHOP SYSTEM (NO EXTRA GAMES)
-# ==================================================================
-import discord
-from discord.ext import commands
-from discord import app_commands
-import os
-import random
-import asyncio
-import threading
-import requests
-import datetime as dt
-from datetime import datetime
-from flask import Flask, request, jsonify, render_template
-from supabase import create_client, Client
 
-# ================== ⚙️ CONFIGURATION ==================
 LOG_CHANNEL_ID = 1451973589342621791  
 OWNER_ID = 804687084249284618         
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
