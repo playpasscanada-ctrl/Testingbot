@@ -4,7 +4,8 @@ import aiohttp
 from discord.ext import commands
 from gtts import gTTS
 import edge_tts
-from flask import jsonify, render_template
+from flask import Flask, request, jsonify, render_template
+
 
 import discord
 from discord import app_commands
