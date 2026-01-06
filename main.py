@@ -8726,8 +8726,10 @@ class PentathlonGameView(discord.ui.View):
         if is_win:
             # ✅ ROUND PASSED
             if saved:
-                try: await interaction.followup.send(f"😰 **Close Call!** {save_msg}", ephemeral=True)
-            except: pass
+                try:
+                    await interaction.followup.send(f"😰 **Close Call!** {save_msg}", ephemeral=True)
+                except:
+                    pass
             
             self.round_index += 1
             await self.load_round()
