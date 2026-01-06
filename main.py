@@ -4771,7 +4771,7 @@ async def say(i: discord.Interaction, message: str, mode: app_commands.Choice[st
     except Exception as e:
         await i.followup.send(f"❌ **System Error:** `{e}`")
 
-# ================== 🧠 FLIP & PAIR MEMORY GAME (ECONOMY + VIP) ==================
+# ================== 🧠 FLIP & PAIR MEMORY GAME (PREMIUM TIERS) ==================
 
 class MemoryGameView(discord.ui.View):
     def __init__(self, user, level):
@@ -4782,21 +4782,32 @@ class MemoryGameView(discord.ui.View):
         self.pairs_found = 0
         self.game_over = False
         
-        # --- CONFIGURATION ---
-        configs = {
-            1: (2, 2), # 4 Cards
-            2: (2, 3), # 6 Cards
-            3: (2, 4), # 8 Cards
-            4: (3, 4), # 12 Cards
-            5: (4, 4), # 16 Cards
-            6: (4, 5), # 20 Cards
-            7: (5, 5), # 25 Cards (3 BOMBS) 🔥
+        # --- LEVEL CONFIGURATION (Grid Size) ---
+        self.grid_config = {
+            1: (2, 2), # 4 Cards (Baby)
+            2: (2, 3), # 6 Cards (Easy)
+            3: (2, 4), # 8 Cards (Medium)
+            4: (3, 4), # 12 Cards (Hard)
+            5: (4, 4), # 16 Cards (Expert)
+            6: (4, 5), # 20 Cards (Master)
+            7: (5, 5), # 25 Cards (GOD MODE)
         }
         
-        self.rows, self.cols = configs.get(level, (2, 2))
+        # --- THEME & REWARD CONFIGURATION (Premium Looks) ---
+        self.level_data = {
+            1: {"reward": 10000, "color": 0x2ecc71, "title": "👶 LEVEL 1: BABY STEPS", "icon": "🍼"},
+            2: {"reward": 15000, "color": 0x3498db, "title": "🔹 LEVEL 2: EASY PEASY", "icon": "🧊"},
+            3: {"reward": 30000, "color": 0xf1c40f, "title": "🔸 LEVEL 3: MEDIUM GRIND", "icon": "🧀"},
+            4: {"reward": 60000, "color": 0xe67e22, "title": "🔥 LEVEL 4: HARD CORE", "icon": "🌶️"},
+            5: {"reward": 80000, "color": 0xe74c3c, "title": "🧠 LEVEL 5: EXPERT MIND", "icon": "🥊"},
+            6: {"reward": 100000, "color": 0x9b59b6, "title": "🔮 LEVEL 6: MASTER CLASS", "icon": "🧞"},
+            7: {"reward": 10000000000, "color": 0x000000, "title": "☠️ LEVEL 7: GOD MODE", "icon": "👑"},
+        }
+
+        self.rows, self.cols = self.grid_config.get(level, (2, 2))
         
         # --- DECK GENERATION ---
-        all_emojis = ["🍎", "🍌", "🍒", "🍇", "🍉", "🍓", "🍍", "🥝", "🥑", "🌽", "🥕", "🥦", "🍄", "🥜", "🥐", "🥨", "🍔", "🍕", "🌭", "🌮", "🍬", "🍭", "🧊"]
+        all_emojis = ["🍎", "🍌", "🍒", "🍇", "🍉", "🍓", "🍍", "🥝", "🥑", "🌽", "🥕", "🥦", "🍄", "🥜", "🥐", "🥨", "🍔", "🍕", "🌭", "🌮", "🍬", "🍭", "🧊", "🍩", "🍪"]
         
         if level == 7:
             # Level 7: 3 BOMBS Logic 
@@ -4812,7 +4823,6 @@ class MemoryGameView(discord.ui.View):
         random.shuffle(self.deck)
         
         # --- STATE ---
-        self.board_state = [False] * len(self.deck)
         self.matched_indices = []
         self.flipped = []
         
@@ -4831,7 +4841,7 @@ class MemoryGameView(discord.ui.View):
                 btn = discord.ui.Button(label=self.deck[i], style=style, disabled=False, row=row_num)
             else:
                 if self.game_over: 
-                    # Game over pe sab disable aur grey/red
+                    # Game over pe sab disable
                     style = discord.ButtonStyle.danger if self.deck[i] == "💣" else discord.ButtonStyle.secondary
                     btn = discord.ui.Button(label=self.deck[i], style=style, disabled=True, row=row_num)
                 else:
@@ -4840,18 +4850,37 @@ class MemoryGameView(discord.ui.View):
             
             self.add_item(btn)
 
-    async def get_embed(self):
-        color = 0xFFA500
-        desc = f"Cards match karo! (Level {self.level})\n"
+    async def get_embed(self, status="PLAYING"):
+        data = self.level_data[self.level]
+        
+        title = f"{data['icon']} {data['title']}"
+        color = data['color']
+        
+        desc = f"**Difficulty:** Level {self.level}\n**Potential Reward:** `${data['reward']:,}`\n\n"
         
         if self.level == 7:
-            desc += "☠️ **DANGER:** Isme **3 BOMBS (💣)** chupe hain!\nEk galti aur Game Over.\n"
+            desc += "⚠️ **WARNING:** Isme **3 BOMBS (💣)** chupe hain!\nEk galti aur Game Over.\n\n"
 
-        desc += f"\n**📊 Stats:**\n🎯 Pairs: `{self.pairs_found}/{self.total_pairs}`\n🔄 Moves: `{self.moves}`"
+        desc += f"**📊 Stats:**\n🎯 Pairs Found: `{self.pairs_found}/{self.total_pairs}`\n🔄 Moves Used: `{self.moves}`"
         
-        embed = discord.Embed(title=f"🧩 Memory Puzzle: Level {self.level}", description=desc, color=color)
+        if status == "WON":
+            title = f"🎉 LEVEL {self.level} CONQUERED!"
+            color = 0x00FF00 # Bright Green for Win
+            desc = f"### 🏆 VICTORY!\n\n**Player:** {self.user.mention}\n**Moves:** `{self.moves}`\n\n💰 **REWARD:** `${data['reward']:,}` Coins Added!"
+        
+        elif status == "LOST":
+            title = "💀 WASTED"
+            color = 0xFF0000 # Red for Loss
+            desc = f"### 💥 BOOM!\n**{self.user.mention}** bomb se ud gaya!\n\n❌ **Reward:** $0\nTry again if you dare."
+
+        embed = discord.Embed(title=title, description=desc, color=color)
         embed.set_thumbnail(url=self.user.display_avatar.url)
-        embed.set_footer(text=f"Player: {self.user.name} | 3 Bombs Edition")
+        
+        if status == "PLAYING":
+            embed.set_footer(text=f"Find all {self.total_pairs} pairs to win!")
+        else:
+            embed.set_footer(text="Game Over")
+            
         return embed
 
     async def card_callback(self, interaction: discord.Interaction):
@@ -4869,11 +4898,13 @@ class MemoryGameView(discord.ui.View):
             self.flipped.append(idx)
             self.create_grid()
             
-            # 🔥 PUNISHMENT LOGIC (With VIP Check) 🔥
-            punish_msg = await smart_timeout(interaction, self.user, 3600, "Memory Bomb Death") # 1 Hour Mute
+            # 🔥 PUNISHMENT LOGIC 🔥
+            punish_msg = await smart_timeout(interaction, self.user, 3600, "Memory Bomb Death")
             
-            embed = discord.Embed(title="💥 BOOM! Game Over!", description=f"**{self.user.mention}** ne **Bomb** par pair rakh diya!\n\n❌ **YOU DIED**\n(Total 3 Bombs the isme!)\n\n{punish_msg}", color=0xFF0000)
+            embed = await self.get_embed(status="LOST")
+            embed.description += f"\n\n{punish_msg}"
             embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
+            
             await interaction.response.edit_message(embed=embed, view=self)
             return
 
@@ -4892,22 +4923,22 @@ class MemoryGameView(discord.ui.View):
                 self.pairs_found += 1
                 self.flipped = []
                 
+                # Check Win
                 if self.pairs_found == self.total_pairs:
                     self.game_over = True
                     self.create_grid()
                     
-                    # 💰 REWARD LOGIC 💰
-                    reward = 500000 # Default (Level 1-4)
-                    if self.level == 7: reward = 10000000 # 1 Crore (God Mode)
-                    elif self.level >= 5: reward = 2000000 # 20 Lakh (Expert)
-                    
+                    # 💰 REWARD SYSTEM (UPDATED) 💰
+                    reward = self.level_data[self.level]["reward"]
                     await update_balance(self.user.id, reward)
 
-                    embed = await self.get_embed()
-                    embed.title = "🏆 GOD LEVEL CLEARED!"
-                    embed.color = 0x00FF00
-                    embed.description = f"**INCREDIBLE!** {self.user.mention} ne **3 BOMBS** se bachkar Level 7 clear kar liya! 🤯\n\n🔥 Moves: `{self.moves}`\n💰 **Reward:** ${reward:,}"
-                    embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
+                    embed = await self.get_embed(status="WON")
+                    
+                    # Special GIF for Level 7
+                    if self.level == 7:
+                        embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
+                    else:
+                        embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
                     
                     for child in self.children: child.disabled = True
                     await interaction.edit_original_response(embed=embed, view=self)
@@ -4920,23 +4951,23 @@ class MemoryGameView(discord.ui.View):
                 # ❌ NO MATCH
                 for item in self.children: item.disabled = True
                 await interaction.edit_original_response(view=self)
-                await asyncio.sleep(1.5)
+                await asyncio.sleep(1.5) # Wait for user to see cards
                 self.flipped = []
                 self.create_grid()
                 await interaction.edit_original_response(embed=await self.get_embed(), view=self)
 
 # ================== 🎮 COMMAND UPDATE ==================
 
-@bot.tree.command(name="memory", description="🧠 Play Flip & Pair Memory Game (Max 25 Cards)")
+@bot.tree.command(name="memory", description="🧠 Play Memory Game (New Rewards System)")
 @app_commands.describe(level="Difficulty Level chuno (1-7)")
 @app_commands.choices(level=[
-    app_commands.Choice(name="Level 1: Baby (2x2)", value=1),
-    app_commands.Choice(name="Level 2: Easy (2x3)", value=2),
-    app_commands.Choice(name="Level 3: Medium (2x4)", value=3),
-    app_commands.Choice(name="Level 4: Hard (3x4)", value=4),
-    app_commands.Choice(name="Level 5: Expert (4x4)", value=5),
-    app_commands.Choice(name="Level 6: Master (4x5)", value=6),
-    app_commands.Choice(name="Level 7: GOD MODE (5x5 + 3 Bombs 💣)", value=7),
+    app_commands.Choice(name="Level 1: Baby ($10k)", value=1),
+    app_commands.Choice(name="Level 2: Easy ($15k)", value=2),
+    app_commands.Choice(name="Level 3: Medium ($30k)", value=3),
+    app_commands.Choice(name="Level 4: Hard ($60k)", value=4),
+    app_commands.Choice(name="Level 5: Expert ($80k)", value=5),
+    app_commands.Choice(name="Level 6: Master ($100k)", value=6),
+    app_commands.Choice(name="Level 7: GOD MODE ($10 Billion 💣)", value=7),
 ])
 async def memory_game(interaction: discord.Interaction, level: int):
     view = MemoryGameView(interaction.user, level)
