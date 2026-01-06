@@ -110,6 +110,95 @@ async def get_evil_roast_data():
 async def db_call(func):
     return await asyncio.to_thread(func)
 
+# ================== 🛠️ MISSING ECONOMY HELPERS (PASTE AFTER db_call) ==================
+
+# 1. Update Money (Balance add/remove karne ke liye)
+async def update_balance(user_id, amount):
+    try:
+        uid = str(user_id)
+        # Check current balance
+        res = await db_call(lambda: supabase.table("economy").select("*").eq("user_id", uid).execute())
+        
+        if not res.data:
+            # Agar user nahi hai, naya banao
+            await db_call(lambda: supabase.table("economy").insert({"user_id": uid, "balance": amount, "bank": 0, "inventory": {}}).execute())
+        else:
+            # Agar hai, to update karo
+            current_bal = res.data[0]['balance']
+            new_bal = current_bal + amount
+            await db_call(lambda: supabase.table("economy").update({"balance": new_bal}).eq("user_id", uid).execute())
+            
+    except Exception as e:
+        print(f"💰 Balance Update Error: {e}")
+
+# 2. Get User Data (Inventory check karne ke liye)
+async def get_data(user_id):
+    try:
+        uid = str(user_id)
+        res = await db_call(lambda: supabase.table("economy").select("*").eq("user_id", uid).execute())
+        if res.data:
+            return res.data[0]
+        else:
+            return {"balance": 0, "bank": 0, "inventory": {}, "vip_expiry": None}
+    except:
+        return {"balance": 0, "bank": 0, "inventory": {}, "vip_expiry": None}
+
+# 3. Smart Timeout (VIP aur Extra Life check karne ke liye)
+async def smart_timeout(interaction, member, seconds, reason):
+    # A. Check VIP List (Ram Cache)
+    if member.id in ATTITUDE_BYPASS_CACHE:
+        return "🛡️ **VIP SAVED:** Punishment Bypassed! (VIP Power)"
+
+    # B. Check Extra Life in Inventory
+    try:
+        data = await get_data(member.id)
+        inv = data.get('inventory', {}) or {}
+        
+        # 'life' wo ID hai jo shop items me "Extra Life" ki hai
+        if inv.get('life', 0) > 0:
+            inv['life'] -= 1
+            # Update Inventory
+            await db_call(lambda: supabase.table("economy").update({"inventory": inv}).eq("user_id", str(member.id)).execute())
+            return f"💖 **Extra Life Used:** You survived! (Remaining: {inv['life']})"
+    except Exception as e:
+        print(f"Inventory Check Error: {e}")
+
+    # C. Apply Timeout (Agar upar se nahi bacha)
+    try:
+        # Admin Check
+        if member.guild_permissions.administrator:
+            return "⚠️ **Admin Safe:** Cannot mute admins."
+            
+        duration = dt.timedelta(seconds=seconds)
+        await member.timeout(duration, reason=reason)
+        
+        minutes = int(seconds / 60)
+        if minutes < 1: 
+            return f"🔇 **Muted:** {seconds} Seconds"
+        return f"🔇 **Muted:** {minutes} Minutes"
+        
+    except Exception as e:
+        return f"⚠️ **Bot Error:** I can't mute this user. (Missing Permissions)"
+
+# 4. Update Inventory (Item ghataane/badhane ke liye)
+async def update_inventory(user_id, item_id, qty):
+    try:
+        data = await get_data(user_id)
+        inv = data.get('inventory', {}) or {}
+        
+        current_qty = inv.get(item_id, 0)
+        new_qty = current_qty + qty
+        
+        if new_qty <= 0:
+            if item_id in inv: del inv[item_id]
+        else:
+            inv[item_id] = new_qty
+            
+        await db_call(lambda: supabase.table("economy").update({"inventory": inv}).eq("user_id", str(user_id)).execute())
+    except Exception as e:
+        print(f"Inventory Update Error: {e}")
+
+
 from flask import Flask, jsonify
 from supabase import create_client, Client
 
