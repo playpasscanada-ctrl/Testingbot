@@ -7728,36 +7728,40 @@ async def roblox_info(uid):
 app = Flask(__name__)
 
 SHOP_ITEMS = {
-    # Special & Traps
+    # --- SPECIAL ITEMS ---
     "izzat":      {"name": "🧼 Izzat Wapasi", "price": 100000, "type": "special"},
     "landmine":   {"name": "💣 Landmine (Trap)", "price": 25000, "type": "item"},
     "life":       {"name": "💖 Extra Life", "price": 50000, "type": "item"},
-    
-    # VIPs
+    "cctv":       {"name": "📹 CCTV Camera", "price": 150000, "type": "item"}, # NEW
+
+    # --- VIP (TIME BASED) ---
+    "vip_10m":    {"name": "⚡ 10 Mins Escape", "price": 200000, "type": "vip", "min": 10}, # NEW
     "vip_1h":     {"name": "👑 1 Hour VIP", "price": 1000000, "type": "vip", "min": 60},
-    "vip_1d":     {"name": "👑 1 Day VIP", "price": 5000000, "type": "vip", "min": 1440},
-    "vip_1w":     {"name": "👑 1 Week VIP", "price": 25000000, "type": "vip", "min": 10080},
+    "vip_6h":     {"name": "🛡️ 6 Hours VIP", "price": 3000000, "type": "vip", "min": 360}, # NEW
+    "vip_1d":     {"name": "💎 1 Day VIP", "price": 5000000, "type": "vip", "min": 1440},
+    "vip_3d":     {"name": "🗓️ 3 Days VIP", "price": 12000000, "type": "vip", "min": 4320}, # NEW
+    "vip_1w":     {"name": "🔥 1 Week VIP", "price": 25000000, "type": "vip", "min": 10080},
     "vip_life":   {"name": "♾️ Lifetime VIP", "price": 7000000000, "type": "vip", "life": True},
 
-    # Roles
+    # --- LOTTERY (RISK HAI TO ISHQ HAI) ---
+    "lotto_10k":  {"name": "🎟️ 10k Ticket", "price": 10000, "type": "lotto", "win": 100000, "chance": 10},
+    "lotto_50k":  {"name": "🎟️ 50k Ticket", "price": 50000, "type": "lotto", "win": 400000, "chance": 8},
+    "lotto_100k": {"name": "🎟️ 100k Ticket", "price": 100000, "type": "lotto", "win": 1000000, "chance": 5},
+    "lotto_mega": {"name": "🎫 MEGA JACKPOT", "price": 500000, "type": "lotto", "win": 10000000, "chance": 2}, # NEW
+    "lotto_god":  {"name": "🎰 GOD TICKET", "price": 5000000, "type": "lotto", "win": 500000000, "chance": 1}, # NEW
+
+    # --- PREMIUM ROLES ---
     "hitman":     {"name": "🗡️ Hitman", "price": 5000000, "type": "role"},
-    "gambler":    {"name": "🎲 Gambler", "price": 5000000, "type": "role"},
+    "hacker":     {"name": "💻 Hacker", "price": 8000000, "type": "role"}, # NEW
+    "gambler":    {"name": "🎲 Gambler", "price": 10000000, "type": "role"},
     "peaky":      {"name": "🚬 Peaky Blinders", "price": 20000000, "type": "role"},
-    "million":    {"name": "💰 Millionaire", "price": 25000000, "type": "role"},
-    "yakuza":     {"name": "👺 Yakuza", "price": 30000000, "type": "role"},
-    "rich":       {"name": "💸 Rich Kid", "price": 50000000, "type": "role"},
-    "yamraj":     {"name": "💀 Yamraj", "price": 50000000, "type": "role"},
-    "lucifer":    {"name": "😈 Lucifer", "price": 100000000, "type": "role"},
-    "mafia":      {"name": "🕶️ Mafia", "price": 500000000, "type": "role"},
+    "shadow":     {"name": "👻 Shadow", "price": 35000000, "type": "role"}, # NEW
+    "yakuza":     {"name": "👺 Yakuza", "price": 50000000, "type": "role"},
+    "mafia":      {"name": "🕶️ Mafia Boss", "price": 100000000, "type": "role"},
+    "king":       {"name": "👑 Kingpin", "price": 500000000, "type": "role"}, # NEW
     "oil":        {"name": "🛢️ Oil Prince", "price": 1000000000, "type": "role"},
     "god":        {"name": "🛐 Server God", "price": 10000000000, "type": "role"},
-    "impossible": {"name": "♾️ IMPOSSIBLE", "price": 1000000000000000000, "type": "role"},
-
-    # Lottery
-    "lotto_10k":  {"name": "🎟️ 10k Ticket", "price": 10000, "type": "lotto", "win": 100000, "chance": 10},
-    "lotto_20k":  {"name": "🎟️ 20k Ticket", "price": 20000, "type": "lotto", "win": 150000, "chance": 8},
-    "lotto_50k":  {"name": "🎟️ 50k Ticket", "price": 50000, "type": "lotto", "win": 400000, "chance": 5},
-    "lotto_100k": {"name": "🎟️ 100k Ticket", "price": 100000, "type": "lotto", "win": 5000000, "chance": 2},
+    "immortal":   {"name": "🧟 Immortal", "price": 50000000000, "type": "role"}, # NEW
 }
 
 # --- 2. FLASK ROUTES (WEBSITE BACKEND) ---
