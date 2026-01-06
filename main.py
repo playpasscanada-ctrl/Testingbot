@@ -148,42 +148,67 @@ async def get_data(user_id):
     except:
         return {"balance": 0, "bank": 0, "inventory": {}, "vip_expiry": None}
 
-# 3. Smart Timeout (VIP aur Extra Life check karne ke liye)
-async def smart_timeout(interaction, member, seconds, reason):
-    # A. Check VIP List (Ram Cache)
-    if member.id in ATTITUDE_BYPASS_CACHE:
-        return "🛡️ **VIP SAVED:** Punishment Bypassed! (VIP Power)"
+# ================== 🛡️ UNIVERSAL PUNISHMENT SYSTEM (ALL GAMES) ==================
 
-    # B. Check Extra Life in Inventory
+async def smart_timeout(interaction, member, seconds, reason):
+    """
+    Ye function har game (Roulette, Memory, Fight, Slots) me punishment handle karega.
+    Priority: VIP > Extra Life > Mute
+    """
     try:
+        # 1. Database se taaza data nikalo
         data = await get_data(member.id)
+        
+        # ---------------------------------------------------------
+        # 👑 STEP A: VIP CHECK (Sabse Pehle)
+        # ---------------------------------------------------------
+        vip_expiry_str = data.get('vip_expiry')
+        
+        if vip_expiry_str:
+            try:
+                # 1. Lifetime VIP Check (Year 9999)
+                if vip_expiry_str.startswith("9999"):
+                    return "👑 **LIFETIME VIP:** Punishment Bypassed! (Immortal Logic)"
+                
+                # 2. Normal Time VIP Check
+                expire_dt = datetime.fromisoformat(vip_expiry_str)
+                if datetime.utcnow() < expire_dt:
+                    return "👑 **VIP ACTIVE:** Punishment Bypassed! (VIP Power Saves You)"
+            except Exception as e:
+                print(f"VIP Error: {e}")
+
+        # ---------------------------------------------------------
+        # 💖 STEP B: EXTRA LIFE CHECK (Agar VIP nahi hai tab)
+        # ---------------------------------------------------------
         inv = data.get('inventory', {}) or {}
         
-        # 'life' wo ID hai jo shop items me "Extra Life" ki hai
+        # 'life' item check karo (Shop ID 'life' honi chahiye)
         if inv.get('life', 0) > 0:
-            inv['life'] -= 1
-            # Update Inventory
-            await db_call(lambda: supabase.table("economy").update({"inventory": inv}).eq("user_id", str(member.id)).execute())
-            return f"💖 **Extra Life Used:** You survived! (Remaining: {inv['life']})"
-    except Exception as e:
-        print(f"Inventory Check Error: {e}")
+            # Life Inventory se hatao
+            await update_inventory(member.id, 'life', -1)
+            remaining = inv.get('life', 0) - 1
+            return f"💖 **Extra Life Used:** Maut ko chhukar wapis aa gaye! (Lives Left: {remaining})"
 
-    # C. Apply Timeout (Agar upar se nahi bacha)
-    try:
-        # Admin Check
+        # ---------------------------------------------------------
+        # 🔇 STEP C: ASLI SAZA (TIMEOUT)
+        # ---------------------------------------------------------
+        
+        # Admin ko mute nahi kar sakte
         if member.guild_permissions.administrator:
-            return "⚠️ **Admin Safe:** Cannot mute admins."
+            return "⚠️ **Admin Safe:** I cannot mute admins."
             
+        # Timeout laga do
         duration = dt.timedelta(seconds=seconds)
         await member.timeout(duration, reason=reason)
         
         minutes = int(seconds / 60)
-        if minutes < 1: 
-            return f"🔇 **Muted:** {seconds} Seconds"
-        return f"🔇 **Muted:** {minutes} Minutes"
+        if minutes < 1:
+            return f"🔇 **Muted:** {seconds} Seconds (No VIP, No Life)"
+        return f"🔇 **Muted:** {minutes} Minutes (Hospitalized)"
         
     except Exception as e:
-        return f"⚠️ **Bot Error:** I can't mute this user. (Missing Permissions)"
+        print(f"Timeout Error: {e}")
+        return f"⚠️ **System Error:** Punishment Failed (Check Bot Role Position)"
 
 # 4. Update Inventory (Item ghataane/badhane ke liye)
 async def update_inventory(user_id, item_id, qty):
