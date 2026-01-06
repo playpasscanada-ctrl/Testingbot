@@ -23,6 +23,11 @@ SHOP_ITEMS = {
     "life":       {"name": "💖 Extra Life", "price": 50000, "type": "item"},
     "cctv":       {"name": "📹 CCTV Camera", "price": 150000, "type": "item"},
 
+    # 👇 FIGHT CLUB ITEMS (Inhe list me add karo) 👇
+    "knife":      {"name": "🔪 Combat Knife", "price": 50000, "type": "item"},
+    "armor":      {"name": "🛡️ Kevlar Vest", "price": 80000, "type": "item"},
+    "steroids":   {"name": "💉 Steroids", "price": 20000, "type": "item"},
+
     # VIP Access
     "vip_10m":    {"name": "⚡ 10 Mins Escape", "price": 200000, "type": "vip", "min": 10},
     "vip_1h":     {"name": "👑 1 Hour VIP", "price": 1000000, "type": "vip", "min": 60},
@@ -4770,6 +4775,269 @@ async def say(i: discord.Interaction, message: str, mode: app_commands.Choice[st
         await i.followup.send(f"❌ **Permission Error:** Bot ko {target_channel.mention} me message bhejne ki permission nahi hai.")
     except Exception as e:
         await i.followup.send(f"❌ **System Error:** `{e}`")
+
+# ================== 🥊 UNDERGROUND FIGHT CLUB (PREMIUM) ==================
+
+class FightArenaView(discord.ui.View):
+    def __init__(self, p1, p2, p1_data, p2_data, bet):
+        super().__init__(timeout=180)
+        self.p1 = p1
+        self.p2 = p2
+        self.bet = bet
+        self.turn = p1.id # P1 starts
+        self.logs = "🔥 **MATCH STARTED!** Fight for glory!"
+        
+        # --- PLAYER STATS SETUP ---
+        self.stats = {
+            p1.id: self.setup_stats(p1, p1_data),
+            p2.id: self.setup_stats(p2, p2_data)
+        }
+        
+    def setup_stats(self, user, data):
+        # Base Stats
+        hp = 100
+        min_dmg = 8
+        max_dmg = 15
+        
+        # 1. ROLE BONUSES
+        roles = [r.name.lower() for r in user.roles]
+        if "mafia" in roles or "god" in roles:
+            hp = 150 
+        if "hitman" in roles:
+            min_dmg += 5
+            max_dmg += 10
+            
+        # 2. INVENTORY BONUSES (Ab asli items check honge)
+        inv = data.get('inventory', {})
+        
+        # 🗡️ KNIFE: Increases Damage
+        if inv.get('knife', 0) > 0:
+            min_dmg += 5
+            max_dmg += 5
+            
+        # 🛡️ ARMOR: Increases HP
+        if inv.get('armor', 0) > 0:
+            hp += 50 # 100 -> 150 HP
+            
+        # 💉 STEROIDS: Big Damage Boost (One time use logic can be added later)
+        if inv.get('steroids', 0) > 0:
+            min_dmg += 10
+            
+        has_life = inv.get('life', 0) > 0
+        
+        return {
+            "hp": hp,
+            "max_hp": hp, # Max HP updated if Armor used
+            "min_dmg": min_dmg,
+            "max_dmg": max_dmg,
+            "has_life": has_life,
+            "heals": 2,
+            "defending": False,
+            "user": user
+        }
+
+    def get_hp_bar(self, current, maximum):
+        percent = current / maximum
+        filled = int(percent * 10)
+        bar = "█" * filled + "░" * (10 - filled)
+        return f"[{bar}] {current}/{maximum}"
+
+    async def get_embed(self, winner=None):
+        color = 0xFF0000 # Blood Red
+        if winner: color = 0xFFD700 # Gold
+        
+        s1 = self.stats[self.p1.id]
+        s2 = self.stats[self.p2.id]
+        
+        desc = f"💰 **Pot:** `${(self.bet * 2):,}`\n\n"
+        
+        # Player 1 Bar
+        desc += f"🥊 **{self.p1.name}**\n{self.get_hp_bar(s1['hp'], s1['max_hp'])}\n"
+        if s1['defending']: desc += "🛡️ **Block Active**\n"
+        
+        desc += "\n⚡ **VS** ⚡\n\n"
+        
+        # Player 2 Bar
+        desc += f"🥊 **{self.p2.name}**\n{self.get_hp_bar(s2['hp'], s2['max_hp'])}\n"
+        if s2['defending']: desc += "🛡️ **Block Active**\n"
+        
+        desc += f"\n📝 **Battle Log:**\n`{self.logs}`"
+        
+        if not winner:
+            current_player = self.p1 if self.turn == self.p1.id else self.p2
+            desc += f"\n\n👉 **Turn:** {current_player.mention}"
+
+        embed = discord.Embed(title="🩸 UNDERGROUND FIGHT CLUB", description=desc, color=color)
+        if winner:
+            embed.set_image(url="https://media.tenor.com/M6Lw1wD2t40AAAAC/wwe-winner.gif")
+        return embed
+
+    async def check_death(self, interaction, victim_id):
+        victim_stats = self.stats[victim_id]
+        
+        if victim_stats['hp'] <= 0:
+            # 💖 EXTRA LIFE CHECK
+            if victim_stats['has_life']:
+                victim_stats['has_life'] = False # Consume life
+                victim_stats['hp'] = 30 # Revive with 30 HP
+                
+                # Update Inventory (Remove Life)
+                inv = await get_data(victim_id)
+                new_inv = inv.get('inventory', {})
+                if new_inv.get('life', 0) > 0:
+                    new_inv['life'] -= 1
+                    await db_call(lambda: supabase.table("economy").update({"inventory": new_inv}).eq("user_id", str(victim_id)).execute())
+
+                self.logs = f"💖 **MIRACLE!** {victim_stats['user'].name} used Extra Life and revived!"
+                return False # Not dead
+            
+            return True # Dead
+        return False
+
+    async def end_game(self, interaction, winner_id, loser_id):
+        winner_user = self.stats[winner_id]['user']
+        loser_user = self.stats[loser_id]['user']
+        
+        # Money Logic
+        win_amount = self.bet * 2
+        await update_balance(winner_id, win_amount) # Winner gets pot
+        # Loser ka paisa already start me kat gaya tha
+        
+        # 🏥 Hospital Logic (Mute Loser)
+        punish = await smart_timeout(interaction, loser_user, 600, "Lost Fight Club") # 10 Min
+        
+        embed = await self.get_embed(winner=winner_user)
+        embed.description += f"\n\n🏆 **WINNER:** {winner_user.mention}\n💰 **Won:** `${win_amount:,}`\n💀 **Loser:** {loser_user.mention} is in Hospital ({punish})"
+        
+        for child in self.children: child.disabled = True
+        await interaction.response.edit_message(embed=embed, view=self)
+        self.stop()
+
+    # --- BUTTONS ---
+    
+    @discord.ui.button(label="⚔️ ATTACK", style=discord.ButtonStyle.danger)
+    async def attack(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.turn: return await interaction.response.send_message("Wait your turn!", ephemeral=True)
+        
+        attacker_id = self.turn
+        defender_id = self.p2.id if attacker_id == self.p1.id else self.p1.id
+        
+        att = self.stats[attacker_id]
+        defe = self.stats[defender_id]
+        
+        # Damage Calc
+        dmg = random.randint(att['min_dmg'], att['max_dmg'])
+        
+        # Crit Chance (Hitman logic)
+        is_crit = random.randint(1, 100) <= 20 # 20% Crit Chance
+        if is_crit: dmg = int(dmg * 1.5)
+        
+        # Defense Check
+        if defe['defending']:
+            dmg = int(dmg / 2)
+            defe['defending'] = False # Block used
+            self.logs = f"🛡️ {defe['user'].name} blocked the attack! Only -{dmg} HP"
+        else:
+            if is_crit: self.logs = f"💥 **CRITICAL HIT!** {att['user'].name} dealt -{dmg} HP!"
+            else: self.logs = f"⚔️ {att['user'].name} hit for -{dmg} HP"
+        
+        defe['hp'] -= dmg
+        
+        # Check Death
+        is_dead = await self.check_death(interaction, defender_id)
+        if is_dead:
+            await self.end_game(interaction, attacker_id, defender_id)
+        else:
+            self.turn = defender_id # Switch turn
+            await interaction.response.edit_message(embed=await self.get_embed(), view=self)
+
+    @discord.ui.button(label="🛡️ DEFEND", style=discord.ButtonStyle.primary)
+    async def defend(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.turn: return await interaction.response.send_message("Wait your turn!", ephemeral=True)
+        
+        self.stats[self.turn]['defending'] = True
+        self.logs = f"🛡️ {interaction.user.name} is preparing to block!"
+        
+        self.turn = self.p2.id if self.turn == self.p1.id else self.p1.id
+        await interaction.response.edit_message(embed=await self.get_embed(), view=self)
+
+    @discord.ui.button(label="💉 HEAL ($500)", style=discord.ButtonStyle.success)
+    async def heal(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.turn: return await interaction.response.send_message("Wait your turn!", ephemeral=True)
+        
+        me = self.stats[self.turn]
+        
+        if me['heals'] <= 0:
+            return await interaction.response.send_message("❌ No meds left!", ephemeral=True)
+            
+        heal_amt = random.randint(15, 25)
+        me['hp'] = min(me['hp'] + heal_amt, me['max_hp'])
+        me['heals'] -= 1
+        
+        self.logs = f"💉 {interaction.user.name} used a stimpack! +{heal_amt} HP"
+        
+        # Cost Logic (Optional - abhi free rakha hai inventory logic simple rakhne ke liye)
+        # await update_balance(self.turn, -500) 
+        
+        self.turn = self.p2.id if self.turn == self.p1.id else self.p1.id
+        await interaction.response.edit_message(embed=await self.get_embed(), view=self)
+
+# --- CHALLENGE VIEW (Isse game start hoga) ---
+class FightChallengeView(discord.ui.View):
+    def __init__(self, p1, p2, bet):
+        super().__init__(timeout=60)
+        self.p1 = p1
+        self.p2 = p2
+        self.bet = bet
+    
+    @discord.ui.button(label="✅ ACCEPT FIGHT", style=discord.ButtonStyle.success)
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.p2.id: return await interaction.response.send_message("Ye challenge apke liye nahi hai!", ephemeral=True)
+        
+        # Check Money P2
+        p2_d = await get_data(self.p2.id)
+        if p2_d['balance'] < self.bet:
+            return await interaction.response.send_message("❌ Gareeb! Paise nahi hai fight ke liye.", ephemeral=True)
+            
+        # Deduct Money from Both (Escrow)
+        await update_balance(self.p1.id, -self.bet)
+        await update_balance(self.p2.id, -self.bet)
+        
+        # Get Fresh Data for Game
+        p1_data = await get_data(self.p1.id)
+        p2_data = await get_data(self.p2.id)
+        
+        # Start Game
+        game_view = FightArenaView(self.p1, self.p2, p1_data, p2_data, self.bet)
+        await interaction.response.edit_message(content=None, embed=await game_view.get_embed(), view=game_view)
+
+    @discord.ui.button(label="❌ DECLINE", style=discord.ButtonStyle.danger)
+    async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id == self.p2.id:
+            await interaction.response.edit_message(content=f"🚫 **{self.p2.name}** dar gaya! Fight cancelled.", view=None, embed=None)
+        elif interaction.user.id == self.p1.id:
+            await interaction.response.edit_message(content="🚫 Fight Cancelled by challenger.", view=None, embed=None)
+
+# ================== 🎮 FIGHT COMMAND ==================
+
+@bot.tree.command(name="fight", description="🥊 Challenge user to Fight Club (Winner takes all)")
+async def fight(i: discord.Interaction, opponent: discord.Member, amount: int):
+    if i.user.id == opponent.id or opponent.bot:
+        return await i.response.send_message("❌ Khud se nahi lad sakte!", ephemeral=True)
+        
+    if amount < 500:
+        return await i.response.send_message("❌ Minimum Bet: $500", ephemeral=True)
+        
+    # Check Money P1
+    p1_data = await get_data(i.user.id)
+    if p1_data['balance'] < amount:
+        return await i.response.send_message("❌ Apke paas paise nahi hai!", ephemeral=True)
+        
+    embed = discord.Embed(title="🥊 FIGHT CHALLENGE", description=f"{i.user.mention} wants to fight **{opponent.mention}**!\n\n💰 **Bet:** `${amount:,}`\n💀 **Loser:** Goes to Hospital (Mute)\n\nAccept?", color=0xFFD700)
+    
+    view = FightChallengeView(i.user, opponent, amount)
+    await i.response.send_message(f"{opponent.mention}", embed=embed, view=view)
+
 
 # ================== 🧠 FLIP & PAIR MEMORY GAME (PREMIUM TIERS) ==================
 
