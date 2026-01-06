@@ -5715,100 +5715,127 @@ async def western_duel(i: discord.Interaction, opponent: discord.Member):
     # Start Logic in Background
     asyncio.create_task(view.start_game_logic(i))
 
-# # ================== 💣 HOT POTATO BOMB (VIP SUPPORT) ==================
+# ================== 💣 HOT POTATO BOMB GAME (PREMIUM) ==================
 
 class BombPassView(discord.ui.View):
     def __init__(self, holder, interaction):
-        super().__init__(timeout=180)
+        super().__init__(timeout=120)
         self.holder = holder
         self.origin_interaction = interaction
         self.exploded = False
-        # Bomb time: 20 to 40 seconds (Random)
-        self.explode_time = dt.datetime.now().timestamp() + random.randint(20, 40)
         
-        asyncio.create_task(self.bomb_timer())
+        # Bomb Timer: Random between 20s to 45s
+        # User ko pata nahi chalega kab phatega
+        self.explode_time = dt.datetime.now().timestamp() + random.randint(20, 45)
+        
+        # Start Timer Loop
+        self.timer_task = asyncio.create_task(self.bomb_timer())
 
     async def bomb_timer(self):
         while not self.exploded:
             await asyncio.sleep(1)
+            # Check Time
             if dt.datetime.now().timestamp() >= self.explode_time:
                 self.exploded = True
                 await self.trigger_explosion()
                 break
 
     async def trigger_explosion(self):
-        # --- 🛡️ SMART PUNISHMENT (VIP CHECK) ---
-        # 5 Minute Mute (300 Seconds)
-        # Paisa ka len-den nahi hai, bas saza milegi.
-        punish_msg = await smart_timeout(self.origin_interaction, self.holder, 300, "Bomb Exploded in Hand")
+        # --- 🛡️ PUNISHMENT LOGIC (Universal) ---
+        # 5 Minute Mute (300s)
+        punish_msg = await smart_timeout(self.origin_interaction, self.holder, 300, "Holding the Bomb")
 
-        embed = discord.Embed(title="💥 BOMB PHAT GAYA!", color=0xFF0000)
+        embed = discord.Embed(title="💥 BOMB PHAT GAYA!", color=0x000000) # Pitch Black
         embed.description = (
-            f"# 💣 BOOOOM!\n\n"
-            f"**{self.holder.mention}** bomb pass karne mein slow nikla!\n"
-            f"Chithde udd gaye. ☠️\n\n"
-            f"{punish_msg}"
+            f"# ☠️ KABOOOM!\n\n"
+            f"**{self.holder.mention}** react karne mein slow nikla!\n"
+            f"Shareer ke chithde udd gaye.\n\n"
+            f"🏥 **STATUS:**\n{punish_msg}"
         )
+        embed.set_thumbnail(url=self.holder.display_avatar.url)
         embed.set_image(url="https://media.tenor.com/8p1jZ5jG4yQAAAAC/explosion-boom.gif")
+        embed.set_footer(text="Game Over | Cost: $30k")
         
-        # Disable Selection
+        # Sab disable kar do
         self.clear_items()
         
         try:
-            await self.origin_interaction.edit_original_response(content=None, embed=embed, view=None)
-        except:
-            pass
+            # Edit original message with dead embed
+            await self.origin_interaction.edit_original_response(content=f"💀 **R.I.P** {self.holder.mention}", embed=embed, view=None)
+        except: pass
 
-    @discord.ui.select(placeholder="Bomb kisko fekna hai? (Select User)", cls=discord.ui.UserSelect, max_values=1)
+    @discord.ui.select(placeholder="🔥 JALDI FEKO! (Select Victim)", cls=discord.ui.UserSelect, max_values=1)
     async def pass_bomb(self, interaction: discord.Interaction, select: discord.ui.UserSelect):
         if self.exploded: 
             return await interaction.response.send_message("❌ Bomb phat chuka hai, ab kya fayda!", ephemeral=True)
 
+        # Check: Kya bomb inke paas hai?
         if interaction.user.id != self.holder.id:
             return await interaction.response.send_message("❌ Bomb tere haath mein nahi hai, hero mat ban!", ephemeral=True)
 
         target = select.values[0]
         
-        # Validation
+        # --- VALIDATION ---
         if target.bot:
-            return await interaction.response.send_message("❌ Bots immune hote hain, kisi insan ko do!", ephemeral=True)
+            return await interaction.response.send_message("❌ Bots immune hote hain, kisi insaan ko do!", ephemeral=True)
         if target.id == interaction.user.id:
             return await interaction.response.send_message("❌ Khud ko pass karke kya milega? Marne ka shauk hai?", ephemeral=True)
 
-        # Successful Pass
+        # ✅ SUCCESSFUL PASS
         self.holder = target
         
         # Intense Embed Update
-        embed = discord.Embed(title="💣 BOMB PASSED!", color=0xFFA500)
+        embed = discord.Embed(title="💣 HOT POTATO! BOMB PASSED!", color=0xFFA500) # Panic Orange
         embed.description = (
             f"### 🏃💨 BHAAGO!\n"
-            f"**{interaction.user.name}** ne bomb **{target.mention}** ki taraf fek diya!\n\n"
-            f"⏱️ **Tik.. Tok.. Tik.. Tok..**\n"
-            f"Jaldi pass karo!"
+            f"**{interaction.user.name}** ne maut **{target.mention}** ki taraf fek di!\n\n"
+            f"⏱️ **Timer:** *Tik.. Tok.. Tik.. Tok..*\n"
+            f"🛑 **Target Locked:** {target.name}\n\n"
+            f"👇 **Jaldi Dropdown se next victim chuno!**"
         )
         embed.set_thumbnail(url=target.display_avatar.url)
         embed.set_image(url="https://media.tenor.com/G5m6K_1u_mIAAAAC/bomb-ticking.gif")
         
-        # Edit message to alert new target
-        await interaction.response.edit_message(content=f"🚨 **URGENT:** {target.mention} TERE PAAS BOMB HAI! JALDI FEK!", embed=embed, view=self)
+        # Edit message to alert new target (Ping them hard)
+        await interaction.response.edit_message(
+            content=f"🚨 **URGENT:** {target.mention} TERE PAAS BOMB HAI! JALDI FEK! 💣", 
+            embed=embed, 
+            view=self
+        )
 
 
-@bot.tree.command(name="bomb_start", description="💣 Hot Potato Bomb Game (Group Masti)")
+@bot.tree.command(name="bomb_start", description="💣 Start Bomb Game ($30k Fee)")
 async def start_bomb(i: discord.Interaction):
+    # 1. Permission Check
     if not i.guild.me.guild_permissions.moderate_members:
-        return await i.response.send_message("❌ Mere paas Mute Power nahi hai, game nahi chalega.", ephemeral=True)
+        return await i.response.send_message("❌ Mere paas 'Timeout' permission nahi hai!", ephemeral=True)
 
-    embed = discord.Embed(title="💣 ACTIVE BOMB SPOTTED!", color=0xFF4500)
+    # 2. Economy Check ($30k Fee)
+    cost = 30000
+    data = await get_data(i.user.id)
+    
+    if data["balance"] < cost:
+        return await i.response.send_message(f"❌ **Gareeb!** Bomb kharidne ke liye **${cost:,}** chahiye.\n💳 Balance: `${data['balance']:,}`", ephemeral=True)
+    
+    # Deduct Money
+    await update_balance(i.user.id, -cost)
+
+    # 3. Game Start Embed
+    embed = discord.Embed(title="💣 ACTIVE BOMB PLANTED!", color=0xFF4500) # Red Orange
     embed.description = (
-        f"**{i.user.mention}** ne pin nikaal di hai!\n\n"
-        f"👇 **Dropdown se kisi dushman ko select karo aur bomb feko!**\n"
-        f"Jo aakhri mein pakda gaya, wo gaya kaam se.\n\n"
-        f"*(No Money involved, Sirf Maut)*"
+        f"**{i.user.mention}** ne **$30,000** dekar pin nikaal di hai!\n\n"
+        f"💀 **Situation:** Critical\n"
+        f"⏳ **Timer:** Random (Kabhi bhi phatega)\n"
+        f"🔇 **Penalty:** 5 Min Mute (Hospital)\n\n"
+        f"👇 **Niche Dropdown se kisi dushman ko select karo aur bomb feko!**"
     )
     embed.set_image(url="https://media.tenor.com/pyk_eO99u_0AAAAC/bomb-bomb-timer.gif")
+    embed.set_footer(text="Game Started by: " + i.user.name)
     
     view = BombPassView(i.user, i)
-    await i.response.send_message(embed=embed, view=view)
+    await i.response.send_message(f"🚨 **WARNING:** {i.user.mention} HAS THE BOMB!", embed=embed, view=view)
+
+
 
 # ================== 🎰 DEVIL SLOTS (HIGH STAKES) ==================
 
@@ -6122,7 +6149,7 @@ async def dalgona(i: discord.Interaction):
     view = DalgonaLobbyView(i.user)
     await i.response.send_message(embed=embed, view=view)
 
-# ================== 🪢 TUG OF WAR (ECONOMY + VIP) ==================
+# ================== 🪢 PREMIUM TUG OF WAR (FIXED) ==================
 
 class TugOfWarGame(discord.ui.View):
     def __init__(self, red_team, blue_team, interaction):
@@ -6132,65 +6159,85 @@ class TugOfWarGame(discord.ui.View):
         self.interaction = interaction
         
         self.score = 0 
-        self.win_threshold = 20
+        self.win_threshold = 20 # 20 Points to Win
         self.game_active = True
         
         # Setup Buttons
-        self.add_item(discord.ui.Button(label="💪 PULL RED", style=discord.ButtonStyle.danger, custom_id="pull_red"))
-        self.add_item(discord.ui.Button(label="💪 PULL BLUE", style=discord.ButtonStyle.primary, custom_id="pull_blue"))
+        self.add_item(discord.ui.Button(label="🔥 PULL RED", style=discord.ButtonStyle.danger, custom_id="pull_red", emoji="🔴"))
+        self.add_item(discord.ui.Button(label="🔥 PULL BLUE", style=discord.ButtonStyle.primary, custom_id="pull_blue", emoji="🔵"))
         
         self.children[0].callback = self.red_pull
         self.children[1].callback = self.blue_pull
         
+        # Visual Loop (Sirf Bar Update karega, Win logic Button me hai)
         self.updater_task = asyncio.create_task(self.update_game_state())
 
     def get_progress_bar(self):
-        scaled_score = int((self.score / self.win_threshold) * 10)
-        scaled_score = max(-10, min(10, scaled_score))
+        # Scale score between -10 and 10
+        scaled = int((self.score / self.win_threshold) * 10)
+        scaled = max(-10, min(10, scaled))
         
-        p = 10 + scaled_score 
-        marker = "🚩"
-        track = ["➖"] * 21
-        track[p] = marker
+        # Center point shifting
+        center_idx = 10 + scaled 
         
-        return f"`🔴 {''.join(track)} 🔵`"
+        # 🎨 PREMIUM ROPE DESIGN
+        rope_char = "═" 
+        center_marker = "🪢" # Knot
+        
+        # Create Track (21 Blocks)
+        track = [rope_char] * 21
+        track[center_idx] = center_marker # Knot moves based on score
+        
+        # Visual Construction
+        # Example: 🔴 ══════════🪢══════════ 🔵
+        bar = "".join(track)
+        return f"🔴 `{bar}` 🔵"
 
     async def get_embed(self, winner=None):
         if winner:
             color = 0xE74C3C if winner == "RED" else 0x3498DB
-            desc = f"🏆 **WINNER:** TEAM {winner}!\n\n**Red Team:** {len(self.red_team)} Players\n**Blue Team:** {len(self.blue_team)} Players"
-            title = "🎉 MATCH OVER!"
+            desc = f"### 🏆 VICTORY FOR TEAM {winner}!\n\n**🔴 Red Team:** {len(self.red_team)} Players\n**🔵 Blue Team:** {len(self.blue_team)} Players"
+            title = "🎉 ROPE SNAPPED! MATCH OVER!"
+            image = "https://media.tenor.com/M6Lw1wD2t40AAAAC/wwe-winner.gif"
         else:
             color = 0xFFA500
-            title = "🪢 TUG OF WAR: PULL NOW!"
+            title = "🔥 TUG OF WAR: PULL HARDER!"
+            
+            # Dynamic Commentary
+            commentary = "MATCH IS EVEN!"
+            if self.score > 5: commentary = "🔵 BLUE IS DOMINATING!"
+            elif self.score < -5: commentary = "🔴 RED IS DOMINATING!"
+            elif self.score > 15: commentary = "🔵 BLUE IS ABOUT TO WIN!"
+            elif self.score < -15: commentary = "🔴 RED IS ABOUT TO WIN!"
+
             desc = (
                 f"{self.get_progress_bar()}\n\n"
-                f"🔴 **RED Power:** {abs(min(0, self.score))}\n"
-                f"🔵 **BLUE Power:** {max(0, self.score)}\n\n"
-                f"👇 **Jaldi Button Dabao!**"
+                f"📢 **Status:** `{commentary}`\n"
+                f"🔴 **RED Power:** `{abs(min(0, self.score))}`\n"
+                f"🔵 **BLUE Power:** `{max(0, self.score)}`\n\n"
+                f"👇 **BUTTON SPAM KARO! RUKNA MAT!**"
             )
+            image = None
             
         embed = discord.Embed(title=title, description=desc, color=color)
+        if image: embed.set_image(url=image)
+        
         if not winner:
-            embed.set_footer(text="Spam Click! Jo rukega wo harega!")
+            embed.set_footer(text=f"Goal: Reach {self.win_threshold} Points | Time Left: 60s")
+            
         return embed
 
     async def update_game_state(self):
+        # Ye loop sirf visuals update karega taaki rate limit na lage
         while self.game_active:
-            await asyncio.sleep(1.5)
-            
-            if self.score <= -self.win_threshold:
-                await self.end_game("RED")
-                break
-            elif self.score >= self.win_threshold:
-                await self.end_game("BLUE")
-                break
-            
+            await asyncio.sleep(2.0) # Har 2 sec me embed refresh
             try:
                 await self.interaction.edit_original_response(embed=await self.get_embed(), view=self)
             except: pass
 
     async def end_game(self, winner_team_name):
+        if not self.game_active: return # Double end hone se rokega
+        
         self.game_active = False
         self.updater_task.cancel()
         
@@ -6198,36 +6245,60 @@ class TugOfWarGame(discord.ui.View):
         winning_team = self.red_team if winner_team_name == "RED" else self.blue_team
         losing_team = self.blue_team if winner_team_name == "RED" else self.red_team
         
-        # 1. Reward Winners ($20,000 Each)
+        # 1. Reward Winners
         prize = 20000
         for member in winning_team:
             await update_balance(member.id, prize)
 
-        # 2. Punish Losers (Smart Timeout)
+        # 2. Punish Losers (Universal Smart Timeout)
         status_report = []
         for member in losing_team:
-            msg = await smart_timeout(self.interaction, member, 300, "Lost Tug of War") # 5 Min Mute
+            msg = await smart_timeout(self.interaction, member, 300, "Lost Tug of War")
             status_report.append(f"{member.name}: {msg}")
 
-        for child in self.children: child.disabled = True
+        # Disable buttons
+        for child in self.children: 
+            child.disabled = True
+            child.style = discord.ButtonStyle.secondary
         
         embed = await self.get_embed(winner_team_name)
-        embed.description += f"\n\n💰 **Reward:** ${prize:,} (Each Winner)\n\n🔇 **Losers Status:**\n" + "\n".join(status_report[:10]) # Show top 10 logs
-        if len(status_report) > 10: embed.description += "\n...(and more)"
+        
+        # Report Field
+        logs = "\n".join(status_report[:8])
+        if len(status_report) > 8: logs += "\n...and more"
+        
+        embed.add_field(name="💰 Winners Reward", value=f"${prize:,} (Each)", inline=True)
+        embed.add_field(name="💀 Losers Status", value=logs if logs else "No Losers?", inline=False)
         
         await self.interaction.edit_original_response(embed=embed, view=self)
 
-    # --- BUTTON CALLBACKS ---
+    # --- BUTTON CALLBACKS (Instant Check Fix) ---
     async def red_pull(self, interaction: discord.Interaction):
         if interaction.user not in self.red_team:
             return await interaction.response.send_message("❌ Tum Red Team mein nahi ho!", ephemeral=True)
+        
+        if not self.game_active: return await interaction.response.defer()
+        
         self.score -= 1 
-        await interaction.response.defer() 
+        
+        # ✅ INSTANT WIN CHECK (Yahan fix kiya hai)
+        if self.score <= -self.win_threshold:
+            await self.end_game("RED")
+        
+        await interaction.response.defer() # Message update mat karo, loop karega
 
     async def blue_pull(self, interaction: discord.Interaction):
         if interaction.user not in self.blue_team:
             return await interaction.response.send_message("❌ Tum Blue Team mein nahi ho!", ephemeral=True)
+            
+        if not self.game_active: return await interaction.response.defer()
+        
         self.score += 1 
+        
+        # ✅ INSTANT WIN CHECK
+        if self.score >= self.win_threshold:
+            await self.end_game("BLUE")
+
         await interaction.response.defer()
 
 
@@ -6241,49 +6312,48 @@ class TugLobbyView(discord.ui.View):
         self.started = False
 
     def get_embed(self):
-        r_list = "\n".join([u.name for u in self.red_team]) or "Waiting..."
-        b_list = "\n".join([u.name for u in self.blue_team]) or "Waiting..."
+        r_list = "\n".join([f"🔴 {u.name}" for u in self.red_team]) or "Waiting..."
+        b_list = "\n".join([f"🔵 {u.name}" for u in self.blue_team]) or "Waiting..."
         
-        embed = discord.Embed(title="🪢 TUG OF WAR: LOBBY", description=f"Apni Team Chuno!\n💰 **Prize:** $20,000 (Each)\n🔇 **Penalty:** 5 Min Mute", color=0x95a5a6)
+        embed = discord.Embed(title="🪢 TUG OF WAR: LOBBY", description=f"**Host:** {self.host.mention}\n\n💰 **Prize:** $20,000\n🔇 **Penalty:** 5 Min Mute\n\nApni team choose karo 👇", color=0x95a5a6)
         embed.add_field(name=f"🔴 TEAM RED ({len(self.red_team)})", value=r_list, inline=True)
         embed.add_field(name=f"🔵 TEAM BLUE ({len(self.blue_team)})", value=b_list, inline=True)
         embed.set_image(url="https://media.tenor.com/J3t_A2lO-w0AAAAC/squid-game-tug-of-war.gif")
         return embed
 
-    @discord.ui.button(label="Join RED 🔴", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="JOIN RED", style=discord.ButtonStyle.danger, emoji="🔴")
     async def join_red(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user in self.red_team or interaction.user in self.blue_team:
-            return await interaction.response.send_message("Already joined a team!", ephemeral=True)
+            return await interaction.response.send_message("Already in a team!", ephemeral=True)
         self.red_team.append(interaction.user)
         await interaction.response.edit_message(embed=self.get_embed(), view=self)
 
-    @discord.ui.button(label="Join BLUE 🔵", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="JOIN BLUE", style=discord.ButtonStyle.primary, emoji="🔵")
     async def join_blue(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user in self.red_team or interaction.user in self.blue_team:
-            return await interaction.response.send_message("Already joined a team!", ephemeral=True)
+            return await interaction.response.send_message("Already in a team!", ephemeral=True)
         self.blue_team.append(interaction.user)
         await interaction.response.edit_message(embed=self.get_embed(), view=self)
 
-    @discord.ui.button(label="🚀 START MATCH", style=discord.ButtonStyle.success, row=1)
+    @discord.ui.button(label="START MATCH", style=discord.ButtonStyle.success, row=1, emoji="🚀")
     async def start_game(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.host.id: return await interaction.response.send_message("Sirf Host start kar sakta hai.", ephemeral=True)
+        if interaction.user.id != self.host.id: return await interaction.response.send_message("❌ Sirf Host start kar sakta hai.", ephemeral=True)
         if len(self.red_team) == 0 or len(self.blue_team) == 0:
-            return await interaction.response.send_message("Dono teams mein players hone chahiye!", ephemeral=True)
+            return await interaction.response.send_message("⚠️ Dono taraf players hone chahiye!", ephemeral=True)
         
         self.started = True
         game_view = TugOfWarGame(self.red_team, self.blue_team, interaction)
         await interaction.response.edit_message(embed=await game_view.get_embed(), view=game_view)
 
 
-@bot.tree.command(name="tug_of_war", description="🪢 Team Battle: Spam Click to Win")
+@bot.tree.command(name="tug_of_war", description="🪢 Team Battle: Spam Buttons to Win")
 async def tug_of_war(i: discord.Interaction):
+    # Permission Check
     if not i.guild.me.guild_permissions.moderate_members:
-        return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
+        return await i.response.send_message("❌ Mere paas 'Timeout' permission nahi hai!", ephemeral=True)
     
     view = TugLobbyView(i.user)
-    await i.response.send_message(embed=view.get_embed(), view=view)
-
-        
+    await i.response.send_message(embed=view.get_embed(), view=view)        
         
 # ================== 🔮 SQUID GAME: MARBLES (ECONOMY + VIP) ==================
 
