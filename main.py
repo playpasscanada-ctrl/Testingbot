@@ -1226,20 +1226,23 @@ async def on_message(msg):
         embed.set_footer(text="Whitelist Access Granted")
         await msg.reply(embed=embed)
 
-        # F. LOG CHANNEL (Admin ke liye)
+                # F. LOG CHANNEL (Admin ke liye)
         try:
-            log_ch = bot.get_channel(1451973589342621791) # <-- Log Channel ID sahi rakhn            if log_ch:
-                log = discord.Embed(title="📥 New Verification", color=0x3498db)
+            log_ch = bot.get_channel(1451973589342621791) # <--- ID Check kar lena
+            
+            if log_ch: # <--- Ye check zaroori hai
+                log = discord.Embed(title="🚨 New Verification", color=0x3498db)
                 log.set_author(name=msg.author.name, icon_url=msg.author.display_avatar.url)
-                log.add_field(name="Discord User", value=f"{msg.author.mention} (`{msg.author.id}`)", inline=False)
+                log.add_field(name="Discord User", value=f"{msg.author.mention} ({msg.author.id})", inline=False)
                 # Saari details yahan bhi
-                log.add_field(name="🆔 Roblox ID", value=f"`{user_id}`", inline=True)
-                log.add_field(name="👤 Username", value=f"**{username}**", inline=True)
+                log.add_field(name="👾 Roblox ID", value=f"{user_id}", inline=True)
+                log.add_field(name="👤 Username", value=f"{username}", inline=True)
                 log.add_field(name="✨ Display", value=f"{display}", inline=True)
                 log.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
                 log.timestamp = datetime.utcnow()
                 await log_ch.send(embed=log)
-        except:
+        except Exception as e:
+            print(f"Log Error: {e}")
             pass
             
       # ❌ Purana galat indentation wala hatao
