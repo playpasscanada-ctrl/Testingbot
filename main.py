@@ -50,6 +50,16 @@ SHOP_ITEMS = {
     "god":        {"name": "🛐 Server God", "price": 10000000000, "type": "role"},
     "immortal":   {"name": "🧟 Immortal", "price": 50000000000, "type": "role"},
 
+    # 👇 VERIFICATION SECTION (NEW) 👇
+    "verify_1d":  {"name": "✅ Verify (1 Day)",   "price": 5000000,        "type": "verification", "duration": 86400},
+    "verify_3d":  {"name": "✅ Verify (3 Days)",  "price": 15000000,       "type": "verification", "duration": 259200},
+    "verify_5d":  {"name": "✅ Verify (5 Days)",  "price": 50000000,       "type": "verification", "duration": 432000},
+    "verify_1w":  {"name": "✅ Verify (1 Week)",  "price": 100000000,      "type": "verification", "duration": 604800},
+    "verify_10d": {"name": "✅ Verify (10 Days)", "price": 150000000,      "type": "verification", "duration": 864000},
+    "verify_15d": {"name": "✅ Verify (15 Days)", "price": 300000000,      "type": "verification", "duration": 1296000},
+    "verify_1m":  {"name": "✅ Verify (1 Month)", "price": 1000000000000,  "type": "verification", "duration": 2592000}, # 1000 Billion
+    "verify_perm": {"name": "♾️ Verify (Lifetime)","price": 10000000000000, "type": "verification", "duration": "perm"}, # 10000 Billion
+
     # Lottery
     "lotto_10k":  {"name": "🎟️ 10k Ticket", "price": 10000, "type": "lotto", "win": 100000, "chance": 10},
     "lotto_50k":  {"name": "🎟️ 50k Ticket", "price": 50000, "type": "lotto", "win": 400000, "chance": 8},
@@ -8397,68 +8407,128 @@ async def handle_purchase_effects(uid, cid, item_name, price, result_text):
             try: await member.edit(nick=None)
             except: pass
 
-        # 5. PREMIUM AUTO-ROLE SYSTEM 🎨
+        # --- ITEM DATA FETCH ---
         item_data = next((v for k, v in SHOP_ITEMS.items() if v["name"] == item_name), None)
-        
-        if item_data and item_data.get('type') == 'role':
-            # Name Cleaning (Emoji Hatana)
-            # Example: "🚬 Peaky Blinders" -> "Peaky Blinders"
-            role_name = item_name.split(" ", 1)[1].strip() if " " in item_name else item_name
 
-            # Step A: Role Dhundo
-            role = discord.utils.get(guild.roles, name=role_name)
+        # ====================================================
+        # 5. 🛡️ VERIFICATION SYSTEM (1 Day to Lifetime)
+        # ====================================================
+        if item_data and item_data.get('type') == 'verification':
+            # A. Current Expiry Check from DB
+            data = await get_data(uid)
+            current_expiry_str = data.get('verify_expiry')
             
-            # Step B: Auto-Create (With Custom Colors)
+            duration = item_data['duration']
+            new_expiry = None
+            expiry_msg = ""
+
+            # B. Duration Calculation
+            if duration == "perm":
+                new_expiry = dt.datetime(9999, 12, 31) # Lifetime Date
+                expiry_msg = "**♾️ LIFETIME** (Amar ho gaye!)"
+            else:
+                # Agar pehle se verify hai, to extend karo
+                if current_expiry_str and not current_expiry_str.startswith("9999"):
+                    try:
+                        current_dt = dt.datetime.fromisoformat(current_expiry_str)
+                        if current_dt > dt.datetime.utcnow():
+                            # Future me expire ho raha hai, wahan se add karo
+                            new_expiry = current_dt + dt.timedelta(seconds=duration)
+                        else:
+                            # Expire ho chuka hai, abhi se add karo
+                            new_expiry = dt.datetime.utcnow() + dt.timedelta(seconds=duration)
+                    except:
+                        new_expiry = dt.datetime.utcnow() + dt.timedelta(seconds=duration)
+                else:
+                    # First time verify
+                    new_expiry = dt.datetime.utcnow() + dt.timedelta(seconds=duration)
+                
+                expiry_msg = f"Valid till: `{new_expiry.strftime('%d %b %Y')}`"
+
+            # C. Database Update
+            await db_call(lambda: supabase.table("economy").update({"verify_expiry": str(new_expiry)}).eq("user_id", str(uid)).execute())
+
+            # D. Give 'Verified' Role (Agar server me hai to)
+            # Make sure server me "Verified" ya "✅ Verified" naam ka role ho
+            v_role = discord.utils.get(guild.roles, name="Verified")
+            if not v_role: v_role = discord.utils.get(guild.roles, name="✅ Verified")
+            
+            if v_role:
+                try: await member.add_roles(v_role)
+                except: pass
+            
+            await channel.send(f"✅ **Verification Successful!**\n👤 {member.mention} is now Verified.\n📅 {expiry_msg}")
+
+
+        # ====================================================
+        # 6. PREMIUM ROLES (WITH EMOJIS & COLORS) 🎨
+        # ====================================================
+        if item_data and item_data.get('type') == 'role':
+            
+            # Step A: Clean Name nikalo (Comparison ke liye)
+            # Example: "🚬 Peaky Blinders" -> "Peaky Blinders"
+            clean_name = item_name.split(" ", 1)[1].strip() if " " in item_name else item_name
+
+            # Step B: Configuration (Emoji Name + Color Mapping)
+            # Yahan hum define karenge ki role ka EXACT naam aur color kya hona chahiye
+            role_config = {
+                "Hitman":         {"name": "🗡️ Hitman",         "color": 0x8B0000}, # Dark Red
+                "Hacker":         {"name": "💻 Hacker",         "color": 0x00FF00}, # Neon Green
+                "Gambler":        {"name": "🎲 Gambler",        "color": 0x9B59B6}, # Purple
+                "Peaky Blinders": {"name": "🚬 Peaky Blinders", "color": 0x2C3E50}, # Dark Grey
+                "Yakuza":         {"name": "👹 Yakuza",         "color": 0xFF0000}, # Bright Red
+                "Mafia Boss":     {"name": "🕶️ Mafia Boss",     "color": 0x010101}, # Pitch Black
+                "Kingpin":        {"name": "🦁 Kingpin",        "color": 0xE67E22}, # Bronze/Orange
+                "Oil Prince":     {"name": "🛢️ Oil Prince",     "color": 0xDAA520}, # GoldenRod
+                "Server God":     {"name": "⚡ Server God",     "color": 0xFFD700}, # Pure Gold
+                "Immortal":       {"name": "🔮 Immortal",       "color": 0x00FFFF}, # Cyan
+            }
+
+            # Decide Final Name & Color
+            if clean_name in role_config:
+                target_role_name = role_config[clean_name]["name"] # Emoji wala naam
+                target_color_code = role_config[clean_name]["color"]
+            else:
+                # Agar list me nahi hai, to Shop Item wala naam hi use karo
+                target_role_name = item_name 
+                import random
+                target_color_code = random.randint(0, 0xFFFFFF)
+
+            # Step C: Role Dhundo (Emoji wale naam se)
+            role = discord.utils.get(guild.roles, name=target_role_name)
+            
+            # Step D: Auto-Create if missing
             if not role:
                 try:
-                    # 🎨 COLOR PALETTE (Jo aapne list di thi)
-                    premium_colors = {
-                        "Hitman": 0x8B0000,          # Dark Red (Blood)
-                        "Hacker": 0x00FF00,          # Neon Green (Matrix)
-                        "Gambler": 0x9B59B6,         # Purple (Casino vibe)
-                        "Peaky Blinders": 0x2C3E50,  # Dark Grey/Blue (Classy)
-                        "Yakuza": 0xFF0000,          # Bright Red (Japanese Sun)
-                        "Mafia Boss": 0x010101,      # Pitch Black (Darkness)
-                        "Kingpin": 0xE67E22,         # Dark Orange/Bronze
-                        "Oil Prince": 0xDAA520,      # GoldenRod (Rich Oil)
-                        "Server God": 0xFFD700,      # Pure Gold (Divine)
-                        "Immortal": 0x00FFFF,        # Cyan (Soul/Spirit)
-                    }
-                    
-                    # Agar list me naam hai to wahi color, nahi to Random
-                    color_code = premium_colors.get(role_name)
-                    if not color_code:
-                        import random
-                        color_code = random.randint(0, 0xFFFFFF)
-                    
-                    role_color = discord.Color(color_code)
+                    role_color = discord.Color(target_color_code)
 
-                    # ✅ Hoist=True: Role list me alag dikhega
+                    # ✅ Hoist=True (List me alag dikhega)
                     role = await guild.create_role(
-                        name=role_name, 
+                        name=target_role_name, 
                         color=role_color, 
                         hoist=True, 
-                        reason="Shop Premium Role"
+                        reason="Shop Premium Role Auto-Create"
                     )
-                    await channel.send(f"🛠️ **Premium Role Created:** `{role_name}` (Color Set!)")
+                    await channel.send(f"🛠️ **Premium Role Created:** `{target_role_name}` (Color Set!)")
                     
                 except discord.Forbidden:
-                    await channel.send(f"🚫 **Error:** Main `{role_name}` banana chahta tha, par Permission nahi hai!")
+                    await channel.send(f"🚫 **Error:** Main `{target_role_name}` banana chahta tha, par 'Manage Roles' permission nahi hai!")
                     return
 
-            # Step C: Assign Role
+            # Step E: Assign Role
             if role:
                 try:
                     if role not in member.roles:
                         await member.add_roles(role)
-                        await channel.send(f"🎉 **Role Equipped:** {member.mention} is now `{role_name}`!")
+                        await channel.send(f"🎉 **Role Equipped:** {member.mention} is now `{target_role_name}`!")
                     else:
-                        await channel.send(f"ℹ️ **Info:** Inke paas pehle se `{role_name}` role tha.")
+                        await channel.send(f"ℹ️ **Info:** Inke paas pehle se `{target_role_name}` role tha.")
                 except discord.Forbidden:
-                    await channel.send(f"🚫 **Hierarchy Error:** Mera role `{role_name}` se neeche hai. Upar karo!")
+                    await channel.send(f"🚫 **Hierarchy Error:** Mera role `{target_role_name}` se neeche hai. Mere role ko upar karo!")
 
     except Exception as e:
         print(f"Effect Error: {e}")
+                        
 
 # ================== 🎮 DISCORD COMMANDS ==================
 
