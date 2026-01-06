@@ -3,91 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dark Premium Store</title>
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <title>Underground Black Market</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #050505; color: #fff; font-family: 'Rajdhani', sans-serif; text-align: center; padding: 20px; margin: 0; }
-        
-        /* Header Styling */
-        h1 { 
-            font-size: 3em; 
-            margin-bottom: 5px; 
-            background: -webkit-linear-gradient(#FFD700, #B8860B);
+        :root {
+            --gold: #FFD700;
+            --dark: #0a0a0a;
+            --card-bg: #111;
+            --border: #333;
+            --neon-red: #ff3333;
+            --neon-green: #00ff00;
+            --neon-blue: #00ccff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+        body {
+            background-color: var(--dark);
+            background-image: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #000 100%);
+            color: white;
+            font-family: 'Rajdhani', sans-serif;
+            padding: 20px;
+            text-align: center;
+            min-height: 100vh;
+        }
+
+        /* --- Header --- */
+        h1 {
+            font-size: 2.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, #fff, var(--gold), #fff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            text-shadow: 0px 0px 20px rgba(255, 215, 0, 0.3);
+            margin-bottom: 5px;
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.3));
+        }
+
+        .subtitle { color: #888; font-size: 1rem; margin-bottom: 20px; letter-spacing: 1px; }
+
+        /* --- Status Bar --- */
+        #status-bar {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            padding: 10px 20px;
+            border-radius: 50px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+            backdrop-filter: blur(5px);
+        }
+        .status-dot { height: 10px; width: 10px; background: red; border-radius: 50%; box-shadow: 0 0 10px red; }
+        .connected .status-dot { background: var(--neon-green); box-shadow: 0 0 10px var(--neon-green); }
+
+        /* --- Filters --- */
+        .filters { margin-bottom: 30px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .filter-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: #888;
+            padding: 8px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            text-transform: uppercase;
+            transition: 0.3s;
+        }
+        .filter-btn.active, .filter-btn:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+            background: rgba(255, 215, 0, 0.1);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+        }
+
+        /* --- Grid --- */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* --- Card Design --- */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s, border-color 0.3s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+        }
+
+        .card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
         }
         
-        /* Status Bar */
-        #status { 
-            padding: 10px 20px; border-radius: 30px; display: inline-block; margin-bottom: 40px; 
-            font-weight: bold; letter-spacing: 1px; font-size: 1.1em;
-            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        /* Category Colors */
+        .card.special::before { background: var(--neon-red); }
+        .card.vip::before { background: var(--gold); }
+        .card.role::before { background: var(--neon-blue); }
+        .card.lotto::before { background: var(--neon-green); }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #555;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
-        .connected { background: rgba(0, 255, 127, 0.1); border: 1px solid #00ff7f; color: #00ff7f; }
-        .disconnected { background: rgba(255, 69, 58, 0.1); border: 1px solid #ff453a; color: #ff453a; }
 
-        /* Grid Layout */
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
-
-        /* Card Design */
-        .card { 
-            background: #111; border: 1px solid #222; border-radius: 15px; padding: 20px; 
-            display: flex; flex-direction: column; justify-content: space-between; height: 100%;
-            transition: 0.3s; position: relative; overflow: hidden;
+        .card-type {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #555;
+            margin-bottom: 10px;
+            text-align: left;
         }
-        .card:hover { transform: translateY(-7px); border-color: #ffd700; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        
-        /* Category Lines */
-        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; }
-        .special::before { background: #2ecc71; box-shadow: 0 0 10px #2ecc71; }
-        .vip::before { background: #9b59b6; box-shadow: 0 0 10px #9b59b6; }
-        .role::before { background: #3498db; box-shadow: 0 0 10px #3498db; }
-        .lotto::before { background: #e74c3c; box-shadow: 0 0 10px #e74c3c; }
 
-        .type-label { font-size: 0.8em; text-transform: uppercase; letter-spacing: 2px; opacity: 0.5; margin-bottom: 5px; }
-        h3 { margin: 5px 0; font-size: 1.4em; }
-        .price { color: #ffd700; font-size: 1.3em; font-weight: bold; margin: 15px 0; text-shadow: 0 0 10px rgba(255, 215, 0, 0.2); }
-
-        /* Buttons */
-        button { 
-            background: linear-gradient(45deg, #FFD700, #DAA520); color: black; border: none; 
-            padding: 12px; width: 100%; font-weight: bold; font-family: 'Rajdhani', sans-serif; font-size: 1.1em;
-            cursor: pointer; border-radius: 8px; transition: 0.2s; 
+        .card-name {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: left;
+            line-height: 1.2;
         }
-        button:hover { background: linear-gradient(45deg, #fff, #FFD700); box-shadow: 0 0 15px #FFD700; }
-        button:disabled { background: #333; color: #666; cursor: not-allowed; box-shadow: none; }
+
+        .card-price {
+            font-size: 1.5rem;
+            color: var(--gold);
+            font-weight: 600;
+            text-align: right;
+            margin: 15px 0;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+        }
+
+        button.buy-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(45deg, #b8860b, var(--gold));
+            border: none;
+            color: black;
+            font-weight: 800;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: 0.2s;
+        }
+
+        button.buy-btn:hover {
+            filter: brightness(1.2);
+            box-shadow: 0 0 15px var(--gold);
+        }
+
+        button.buy-btn:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* --- Responsive --- */
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; }
+            .grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
 
-    <h1>⚜️ GLOBAL BLACK MARKET ⚜️</h1>
-    <div id="status" class="disconnected">Waiting for Connection...</div>
+    <h1>Global Black Market</h1>
+    <div class="subtitle">SECURE • ANONYMOUS • INSTANT</div>
+
+    <div id="status-bar">
+        <div class="status-dot"></div>
+        <span id="status-text">Disconnected</span>
+    </div>
+
+    <div class="filters">
+        <button class="filter-btn active" onclick="filterItems('all')">All</button>
+        <button class="filter-btn" onclick="filterItems('special')">Items</button>
+        <button class="filter-btn" onclick="filterItems('vip')">VIP Access</button>
+        <button class="filter-btn" onclick="filterItems('role')">Roles</button>
+        <button class="filter-btn" onclick="filterItems('lotto')">Lottery</button>
+    </div>
 
     <div class="grid" id="container"></div>
 
     <script>
+        // 1. Get Params from URL
         const params = new URLSearchParams(window.location.search);
         const uid = params.get('uid');
-        const statusDiv = document.getElementById('status');
+        const cid = params.get('cid');
 
+        // 2. Update Status Bar
+        const statusText = document.getElementById('status-text');
+        const statusBar = document.getElementById('status-bar');
+        
         if (uid) {
-            statusDiv.innerText = "⚡ Connected: " + uid;
-            statusDiv.className = "connected";
+            statusBar.classList.add('connected');
+            statusText.innerHTML = `Connected as: <span style="color:var(--gold)">${uid}</span>`;
         } else {
-            statusDiv.innerText = "❌ Not Logged In (Use /shop in Discord)";
-            statusDiv.className = "disconnected";
+            statusText.innerHTML = `⚠️ ACCESS DENIED: Use /shop in Discord`;
         }
 
-        // Must match Python SHOP_ITEMS keys exactly!
+        // 3. Item Database (EXACTLY MATCHING MAIN.PY)
         const items = [
-            // --- ITEMS ---
+            // Special
             {id: 'izzat', name: '🧼 Izzat Wapasi', price: 100000, type: 'special'},
             {id: 'landmine', name: '💣 Landmine', price: 25000, type: 'special'},
             {id: 'life', name: '💖 Extra Life', price: 50000, type: 'special'},
-            {id: 'cctv', name: '📹 CCTV Cam', price: 150000, type: 'special'},
+            {id: 'cctv', name: '📹 CCTV Camera', price: 150000, type: 'special'},
 
-            // --- VIP ---
+            // VIP
             {id: 'vip_10m', name: '⚡ 10 Mins Escape', price: 200000, type: 'vip'},
             {id: 'vip_1h', name: '👑 1 Hour VIP', price: 1000000, type: 'vip'},
             {id: 'vip_6h', name: '🛡️ 6 Hours VIP', price: 3000000, type: 'vip'},
@@ -96,14 +233,7 @@
             {id: 'vip_1w', name: '🔥 1 Week VIP', price: 25000000, type: 'vip'},
             {id: 'vip_life', name: '♾️ Lifetime VIP', price: 7000000000, type: 'vip'},
 
-            // --- LOTTERY ---
-            {id: 'lotto_10k', name: '🎟️ 10k Ticket (Win 100k)', price: 10000, type: 'lotto'},
-            {id: 'lotto_50k', name: '🎟️ 50k Ticket (Win 400k)', price: 50000, type: 'lotto'},
-            {id: 'lotto_100k', name: '🎟️ 100k Ticket (Win 1M)', price: 100000, type: 'lotto'},
-            {id: 'lotto_mega', name: '🎫 MEGA POT (Win 10M)', price: 500000, type: 'lotto'},
-            {id: 'lotto_god', name: '🎰 GOD TICKET (Win 500M)', price: 5000000, type: 'lotto'},
-
-            // --- ROLES ---
+            // Roles
             {id: 'hitman', name: '🗡️ Hitman', price: 5000000, type: 'role'},
             {id: 'hacker', name: '💻 Hacker', price: 8000000, type: 'role'},
             {id: 'gambler', name: '🎲 Gambler', price: 10000000, type: 'role'},
@@ -115,29 +245,52 @@
             {id: 'oil', name: '🛢️ Oil Prince', price: 1000000000, type: 'role'},
             {id: 'god', name: '🛐 Server God', price: 10000000000, type: 'role'},
             {id: 'immortal', name: '🧟 Immortal', price: 50000000000, type: 'role'},
+
+            // Lotto
+            {id: 'lotto_10k', name: '🎟️ 10k Ticket', price: 10000, type: 'lotto'},
+            {id: 'lotto_50k', name: '🎟️ 50k Ticket', price: 50000, type: 'lotto'},
+            {id: 'lotto_100k', name: '🎟️ 100k Ticket', price: 100000, type: 'lotto'},
+            {id: 'lotto_mega', name: '🎫 MEGA JACKPOT', price: 500000, type: 'lotto'},
+            {id: 'lotto_god', name: '🎰 GOD TICKET', price: 5000000, type: 'lotto'}
         ];
 
         const container = document.getElementById('container');
-        items.forEach(item => {
-            container.innerHTML += `
-            <div class="card ${item.type}">
-                <div>
-                    <div class="type-label">${item.type.toUpperCase()}</div>
-                    <h3>${item.name}</h3>
-                </div>
-                <div>
-                    <div class="price">$${item.price.toLocaleString()}</div>
-                    <button onclick="buy('${item.id}')">BUY NOW</button>
-                </div>
-            </div>`;
-        });
 
-        async function buy(itemId) {
-            if (!uid) return alert("❌ Not Logged In! Open link from Discord.");
-            
-            const btn = event.target;
+        // 4. Render Function
+        function renderItems(filter = 'all') {
+            container.innerHTML = '';
+            items.forEach(item => {
+                if (filter === 'all' || item.type === filter) {
+                    const card = document.createElement('div');
+                    card.className = `card ${item.type}`;
+                    card.innerHTML = `
+                        <div class="card-type">${item.type.toUpperCase()}</div>
+                        <div class="card-name">${item.name}</div>
+                        <div class="card-price">$${item.price.toLocaleString()}</div>
+                        <button class="buy-btn" onclick="buy('${item.id}', this)">PURCHASE</button>
+                    `;
+                    container.appendChild(card);
+                }
+            });
+        }
+
+        // 5. Filter Logic
+        function filterItems(category) {
+            // Update buttons visual
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderItems(category);
+        }
+
+        // 6. Buy Logic
+        async function buy(itemId, btn) {
+            if (!uid) {
+                alert("❌ ERROR: Please open this link from Discord using /shop command.");
+                return;
+            }
+
             const originalText = btn.innerText;
-            btn.innerText = "Processing...";
+            btn.innerText = "PROCESSING...";
             btn.disabled = true;
             btn.style.background = "#333";
 
@@ -145,23 +298,36 @@
                 const res = await fetch('/buy', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ uid: uid, item_id: itemId })
+                    body: JSON.stringify({ uid: uid, cid: cid, item_id: itemId })
                 });
                 const data = await res.json();
-                
+
                 if (data.status === 'success') {
-                    alert("✅ " + data.msg + "\nRemaining: $" + data.bal.toLocaleString());
+                    // Success Animation/Feedback
+                    btn.innerText = "SUCCESS";
+                    btn.style.background = "var(--neon-green)";
+                    alert(`✅ ${data.msg}\n💰 New Balance: $${data.bal.toLocaleString()}`);
                 } else {
-                    alert("❌ Error: " + data.msg);
+                    // Error Feedback
+                    btn.innerText = "FAILED";
+                    btn.style.background = "var(--neon-red)";
+                    alert(`❌ ERROR: ${data.msg}`);
                 }
             } catch (err) {
-                alert("⚠️ Server Error or Bot Offline");
+                alert("⚠️ Server Error: Please try again later.");
             }
-            
-            btn.innerText = originalText;
-            btn.disabled = false;
-            btn.style.background = "linear-gradient(45deg, #FFD700, #DAA520)";
+
+            // Reset Button after 2 seconds
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+                btn.style.background = ""; // Reset to CSS default
+            }, 2000);
         }
+
+        // Initial Render
+        renderItems();
+
     </script>
 </body>
 </html>
