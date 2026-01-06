@@ -8271,35 +8271,90 @@ def buy_item():
 
 async def handle_purchase_effects(uid, cid, item_name, price, result_text):
     try:
-        user = await bot.fetch_user(int(uid))
+        # 1. User & Channel Fetch
+        try: user = await bot.fetch_user(int(uid))
+        except: return
+
         channel = bot.get_channel(int(cid))
+        if not channel: return
+        guild = channel.guild
         
-        # 1. Send Receipt (NOTIFICATION FIX)
-        if channel:
-            embed = discord.Embed(title="🛒 SHOP RECEIPT", color=C_GOLD)
-            embed.set_thumbnail(url=user.display_avatar.url)
-            embed.description = f"👤 **Buyer:** {user.mention}\n📦 **Item:** {item_name}\n💸 **Paid:** `${price:,}`\n📝 **Status:** {result_text}"
-            await channel.send(embed=embed)
+        # 2. Member Fetch
+        try: member = await guild.fetch_member(user.id)
+        except: 
+            await channel.send(f"⚠️ **Warning:** {user.name} server me nahi mila!")
+            return
+
+        # 3. Receipt Send
+        embed = discord.Embed(title="🛒 SHOP RECEIPT", color=C_GOLD)
+        embed.set_thumbnail(url=user.display_avatar.url)
+        embed.description = f"👤 **Buyer:** {user.mention}\n📦 **Item:** {item_name}\n💸 **Paid:** `${price:,}`\n📝 **Status:** {result_text}"
+        await channel.send(embed=embed)
+
+        # 4. Izzat Wapasi Logic
+        if "Izzat" in item_name:
+            try: await member.edit(nick=None)
+            except: pass
+
+        # 5. PREMIUM AUTO-ROLE SYSTEM 🎨
+        item_data = next((v for k, v in SHOP_ITEMS.items() if v["name"] == item_name), None)
+        
+        if item_data and item_data.get('type') == 'role':
+            # Name Cleaning (Emoji Hatana)
+            # Example: "🚬 Peaky Blinders" -> "Peaky Blinders"
+            role_name = item_name.split(" ", 1)[1].strip() if " " in item_name else item_name
+
+            # Step A: Role Dhundo
+            role = discord.utils.get(guild.roles, name=role_name)
             
-        # 2. Roles & Nicknames
-        if channel:
-            guild = channel.guild
-            member = guild.get_member(user.id)
-            if member:
-                # Izzat Wapasi
-                if "Izzat" in item_name:
-                    try: await member.edit(nick=None)
-                    except: pass
-                
-                # Role Logic (Fix: Splits emoji from name)
-                item_info = next((v for k, v in SHOP_ITEMS.items() if v["name"] == item_name), None)
-                if item_info and item_info['type'] == 'role':
-                    # "🗡️ Hitman" -> "Hitman"
-                    role_name = item_name.split(" ", 1)[1] if " " in item_name else item_name
-                    role = discord.utils.get(guild.roles, name=role_name)
-                    if role:
-                        try: await member.add_roles(role)
-                        except: await channel.send(f"⚠️ Error: Role `{role_name}` hierarchy issue.")
+            # Step B: Auto-Create (With Custom Colors)
+            if not role:
+                try:
+                    # 🎨 COLOR PALETTE (Jo aapne list di thi)
+                    premium_colors = {
+                        "Hitman": 0x8B0000,          # Dark Red (Blood)
+                        "Hacker": 0x00FF00,          # Neon Green (Matrix)
+                        "Gambler": 0x9B59B6,         # Purple (Casino vibe)
+                        "Peaky Blinders": 0x2C3E50,  # Dark Grey/Blue (Classy)
+                        "Yakuza": 0xFF0000,          # Bright Red (Japanese Sun)
+                        "Mafia Boss": 0x010101,      # Pitch Black (Darkness)
+                        "Kingpin": 0xE67E22,         # Dark Orange/Bronze
+                        "Oil Prince": 0xDAA520,      # GoldenRod (Rich Oil)
+                        "Server God": 0xFFD700,      # Pure Gold (Divine)
+                        "Immortal": 0x00FFFF,        # Cyan (Soul/Spirit)
+                    }
+                    
+                    # Agar list me naam hai to wahi color, nahi to Random
+                    color_code = premium_colors.get(role_name)
+                    if not color_code:
+                        import random
+                        color_code = random.randint(0, 0xFFFFFF)
+                    
+                    role_color = discord.Color(color_code)
+
+                    # ✅ Hoist=True: Role list me alag dikhega
+                    role = await guild.create_role(
+                        name=role_name, 
+                        color=role_color, 
+                        hoist=True, 
+                        reason="Shop Premium Role"
+                    )
+                    await channel.send(f"🛠️ **Premium Role Created:** `{role_name}` (Color Set!)")
+                    
+                except discord.Forbidden:
+                    await channel.send(f"🚫 **Error:** Main `{role_name}` banana chahta tha, par Permission nahi hai!")
+                    return
+
+            # Step C: Assign Role
+            if role:
+                try:
+                    if role not in member.roles:
+                        await member.add_roles(role)
+                        await channel.send(f"🎉 **Role Equipped:** {member.mention} is now `{role_name}`!")
+                    else:
+                        await channel.send(f"ℹ️ **Info:** Inke paas pehle se `{role_name}` role tha.")
+                except discord.Forbidden:
+                    await channel.send(f"🚫 **Hierarchy Error:** Mera role `{role_name}` se neeche hai. Upar karo!")
 
     except Exception as e:
         print(f"Effect Error: {e}")
