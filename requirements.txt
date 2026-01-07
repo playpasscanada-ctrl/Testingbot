@@ -9,3 +9,4 @@ PyNaCl
 gTTS
 ffmpeg-python
 edge-tts
+Pillow
