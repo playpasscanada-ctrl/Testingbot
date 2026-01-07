@@ -13323,24 +13323,25 @@ class NeetBioView(discord.ui.View):
 async def neet_biology(i: discord.Interaction):
     user_id = i.user.id
     
-    # 1. Check & Filter Unique Questions
-    used_ids = USER_USED_QUESTIONS.get(user_id, [])
-    # Make sure BIO_QUESTIONS list exist kare, ya generic list use karo
-    # Agar alag alag lists hain (Structural, Cell, etc) to unhe combine kar lena yahan
-    # Example: ALL_QUESTIONS = STRUCTURAL_ORG_QUESTIONS + CELL_UNIT_QUESTIONS + ...
-    # Yahan main maan ke chal raha hu aapne saare questions ek list me ya DB me daal diye hain.
-    # Agar nahi, to temporary fix ke liye main ek dummy variable use kar raha hu:
+    # --- 1. DIRECT LINK TO YOUR LIST ---
+    # Ab ye seedha aapki 'BIO_QUESTIONS' list ko hi uthayega without confusion
+    if 'BIO_QUESTIONS' not in globals():
+         return await i.response.send_message("❌ **Error:** Code me 'BIO_QUESTIONS' list nahi mili!", ephemeral=True)
     
-    # IMPORTANT: Apni main.py me saare questions ki list ka naam yahan likho 👇
-    available_qs = [q for q in STRUCTURAL_ORG_QUESTIONS + CELL_UNIT_QUESTIONS + BIOMOLECULES_QUESTIONS + CELL_CYCLE_QUESTIONS if q["id"] not in used_ids] 
+    # --- 2. PER USER UNIQUE CHECK ---
+    used_ids = USER_USED_QUESTIONS.get(user_id, [])
+    
+    # Sirf wahi sawal filter karo jo user ne nahi kiye
+    available_qs = [q for q in BIO_QUESTIONS if q["id"] not in used_ids]
     
     if len(available_qs) < 10:
-        return await i.response.send_message("❌ **Sawal Khatam!** Tumne saare questions solve kar liye. (Wait for update)", ephemeral=True)
+        return await i.response.send_message("❌ **Sawal Khatam!** Tumne saare available questions solve kar liye hain.\nWait for new update!", ephemeral=True)
     
-    # 2. Pick 10 Random from Available
+    # --- 3. START GAME ---
+    # Random 10 sawal select karo
     game_questions = random.sample(available_qs, 10)
     
-    # 🛠️ FIX: PEHLA SAWAL YAHIN DIKHANA HAI
+    # Pehla sawal Embed me dikhane ke liye
     first_q_text = game_questions[0]["q"]
     
     embed = discord.Embed(title="🧬 NEET BIOLOGY EXAM", color=0x2ECC71)
