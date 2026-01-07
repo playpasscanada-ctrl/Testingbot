@@ -11591,7 +11591,6 @@ BIO_QUESTIONS = [
     {"id": 1816, "q": "When the inhibitor closely resembles the substrate and competes for the active site, it is called:", "o": ["Competitive inhibition", "Non-competitive inhibition", "Allosteric inhibition", "Feedback inhibition"], "a": "Competitive inhibition"},
     {"id": 1817, "q": "Inhibition of Succinic dehydrogenase by Malonate is an example of:", "o": ["Competitive inhibition", "Non-competitive inhibition", "Allosteric inhibition", "Permanent inhibition"], "a": "Competitive inhibition"},
     {"id": 1818, "q": "Malonate closely resembles the substrate:", "o": ["Succinate", "Fumarate", "Citrate", "Malate"], "a": "Succinate"},
-    ,
     {"id": 1819, "q": "Competitive inhibitors are often used in the control of:", "o": ["Bacterial pathogens", "Viral infections", "Fungal growth", "Plant growth"], "a": "Bacterial pathogens"},
     {"id": 1820, "q": "In Competitive inhibition, Km ______ and Vmax ______.", "o": ["Increases; Remains same", "Remains same; Decreases", "Decreases; Increases", "Both decrease"], "a": "Increases; Remains same"}, # (Deep Concept)
 
