@@ -13165,9 +13165,9 @@ class NeetBioView(discord.ui.View):
         self.interaction = interaction
         self.questions = game_questions # List of 10 unique questions
         self.current_index = 0
-        self.game_ended = False # Bug Fix Flag
+        self.game_ended = False
         
-        # Load First Question
+        # Load First Question Logic (Buttons set karne ke liye)
         self.load_question()
 
     def load_question(self):
@@ -13184,7 +13184,12 @@ class NeetBioView(discord.ui.View):
         # Create Buttons
         labels = ["A", "B", "C", "D"]
         for i, opt in enumerate(self.options):
-            btn = discord.ui.Button(label=f"{labels[i]}: {opt}", style=discord.ButtonStyle.secondary, custom_id=opt)
+            # Button Text limit fix (Discord button max 80 chars)
+            label_text = f"{labels[i]}: {opt}"
+            if len(label_text) > 80:
+                label_text = label_text[:77] + "..."
+                
+            btn = discord.ui.Button(label=label_text, style=discord.ButtonStyle.secondary, custom_id=opt)
             btn.callback = self.answer_callback
             self.add_item(btn)
 
@@ -13216,7 +13221,6 @@ class NeetBioView(discord.ui.View):
 
         if self.game_ended: return
         
-        # 🟢 RESET TIMER LOGIC: Har jawab ke baad view refresh hota hai, timer reset ho jata hai
         selected_ans = interaction.data["custom_id"]
         
         # 1. WRONG ANSWER CHECK
@@ -13243,7 +13247,6 @@ class NeetBioView(discord.ui.View):
             return
 
         # 2. MARK QUESTION AS USED
-        # User ki history me ID daal do taaki repeat na ho
         if self.player.id not in USER_USED_QUESTIONS:
             USER_USED_QUESTIONS[self.player.id] = []
         USER_USED_QUESTIONS[self.player.id].append(self.q_id)
@@ -13267,7 +13270,7 @@ class NeetBioView(discord.ui.View):
                 f"🎓 **Status:** MBBS Confirm\n"
                 f"🤑 **Reward:** $500,000"
             )
-            embed.set_image(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif") # Doctor GIF laga lena
+            embed.set_image(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif") 
             
             await interaction.response.edit_message(embed=embed, view=self)
             self.stop()
@@ -13294,8 +13297,6 @@ class NeetBioView(discord.ui.View):
         data = await get_data(self.player.id)
         is_safe = False
         
-        # 🚫 NO VIP CHECK (User Request: VIP doesn't matter)
-        
         # Check Extra Life
         if data.get("inventory", {}).get("life", 0) > 0:
             await update_inventory(self.player.id, "life", -1)
@@ -13303,7 +13304,7 @@ class NeetBioView(discord.ui.View):
             await self.interaction.followup.send("💖 **Extra Life Used!** Izzat bach gayi.", ephemeral=True)
 
         if not is_safe:
-            # 1. 📛 RENAME USER (The Main Punishment)
+            # 1. 📛 RENAME USER (Bas yahi punishment rahegi ab)
             try:
                 shame_names = ["Unpad Gawar", "Fail Student", "Angutha Chaap", "Bio Fail", "Chhapri"]
                 new_nick = random.choice(shame_names)
@@ -13314,8 +13315,8 @@ class NeetBioView(discord.ui.View):
             except Exception as e:
                 print(f"Rename Error: {e}")
 
-            # 2. Timeout (Mute)
-            await smart_timeout(self.interaction, self.player, 60, "Failed NEET Quiz")
+            # 🛑 TIMEOUT REMOVED (Jaisa aapne kaha)
+            # await smart_timeout(...)  <-- Hata diya
 
 
 @bot.tree.command(name="neet_biology", description="🧬 10 Non-stop Biology Questions (Win $500k)")
@@ -13324,15 +13325,23 @@ async def neet_biology(i: discord.Interaction):
     
     # 1. Check & Filter Unique Questions
     used_ids = USER_USED_QUESTIONS.get(user_id, [])
-    available_qs = [q for q in BIO_QUESTIONS if q["id"] not in used_ids]
+    # Make sure BIO_QUESTIONS list exist kare, ya generic list use karo
+    # Agar alag alag lists hain (Structural, Cell, etc) to unhe combine kar lena yahan
+    # Example: ALL_QUESTIONS = STRUCTURAL_ORG_QUESTIONS + CELL_UNIT_QUESTIONS + ...
+    # Yahan main maan ke chal raha hu aapne saare questions ek list me ya DB me daal diye hain.
+    # Agar nahi, to temporary fix ke liye main ek dummy variable use kar raha hu:
+    
+    # IMPORTANT: Apni main.py me saare questions ki list ka naam yahan likho 👇
+    available_qs = [q for q in STRUCTURAL_ORG_QUESTIONS + CELL_UNIT_QUESTIONS + BIOMOLECULES_QUESTIONS + CELL_CYCLE_QUESTIONS if q["id"] not in used_ids] 
     
     if len(available_qs) < 10:
-        # Agar unique sawal khatam ho gaye, to reset kar sakte ho ya error de sakte ho
-        # Option: Reset user history if they want to play again
         return await i.response.send_message("❌ **Sawal Khatam!** Tumne saare questions solve kar liye. (Wait for update)", ephemeral=True)
     
     # 2. Pick 10 Random from Available
     game_questions = random.sample(available_qs, 10)
+    
+    # 🛠️ FIX: PEHLA SAWAL YAHIN DIKHANA HAI
+    first_q_text = game_questions[0]["q"]
     
     embed = discord.Embed(title="🧬 NEET BIOLOGY EXAM", color=0x2ECC71)
     embed.description = (
@@ -13340,9 +13349,10 @@ async def neet_biology(i: discord.Interaction):
         f"📚 **Subject:** Biology (NCERT Based)\n"
         f"🔥 **Challenge:** 10 Questions Non-stop\n"
         f"💰 **Prize:** $500,000\n\n"
-        f"⚠️ **WARNING:**\n"
-        f"Agar galat jawab diya aur **Extra Life** nahi hui...\n"
-        f"To tumhara naam **'Unpad'** rakh diya jayega!"
+        f"⚠️ **WARNING:** Galat jawab diya to naam **'Unpad'** rakh diya jayega!\n"
+        f"-----------------------------------------\n"
+        f"**Q1:** {first_q_text}\n\n"
+        f"⚡ **15 Seconds!**"
     )
     
     view = NeetBioView(i.user, 0, i, game_questions)
