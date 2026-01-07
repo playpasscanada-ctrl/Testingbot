@@ -8861,7 +8861,7 @@ async def pentathlon(i: discord.Interaction):
 
 # ================== 📟 MATRIX CYBER TERMINAL (LEVEL SELECTOR) ==================
 
-# ⚙️ GLOBAL CONFIG (Taaki Menu aur Game dono access kar sakein)
+# ⚙️ GLOBAL CONFIG
 MATRIX_LEVELS = {
     1: {"size": 3, "green": 3, "bomb": 0, "time": 8,  "prize": 10000,  "label": "Level 1 (Easy)"},
     2: {"size": 4, "green": 4, "bomb": 0, "time": 8,  "prize": 20000,  "label": "Level 2 (Medium)"},
@@ -8893,7 +8893,7 @@ class MatrixTerminalView(discord.ui.View):
         super().__init__(timeout=180)
         self.player = player
         self.interaction = interaction
-        self.level = level # Selected Level
+        self.level = level 
         self.game_active = True
         self.rows = "ABCDEFG"
         
@@ -8909,7 +8909,7 @@ class MatrixTerminalView(discord.ui.View):
         all_coords = []
         for r in range(grid_size):
             for c in range(grid_size):
-                all_coords.append(f"{self.rows[r]}{c+1}") # A1, A2...
+                all_coords.append(f"{self.rows[r]}{c+1}") 
         
         self.correct_coords = random.sample(all_coords, config["green"])
         remaining = [x for x in all_coords if x not in self.correct_coords]
@@ -8928,7 +8928,7 @@ class MatrixTerminalView(discord.ui.View):
         self.clear_items()
         await self.interaction.edit_original_response(embed=embed, view=self)
         
-        await asyncio.sleep(config["time"]) # Wait time
+        await asyncio.sleep(config["time"]) 
         
         # 3. INPUT PHASE (Hidden)
         grid_str = self.generate_grid_str(show=False)
@@ -8939,7 +8939,6 @@ class MatrixTerminalView(discord.ui.View):
             f"📝 Example: `{self.correct_coords[0]} {self.correct_coords[1]}`"
         )
         
-        # Add Input Button
         self.clear_items()
         btn = discord.ui.Button(label="🔓 OPEN TERMINAL INPUT", style=discord.ButtonStyle.success, emoji="⌨️")
         btn.callback = self.open_modal
@@ -8970,7 +8969,8 @@ class MatrixTerminalView(discord.ui.View):
                 
                 row_line += f" {icon}"
             board.append(row_line)
-            return "\n".join(board)
+        
+        return "\n".join(board) # ✅ FIX: Isko loop se bahar nikal diya hai
 
     async def open_modal(self, interaction: discord.Interaction):
         if interaction.user.id != self.player.id:
@@ -9000,7 +9000,6 @@ class MatrixTerminalView(discord.ui.View):
         elif wrong_input: await self.game_over("WRONG")
         elif correct_hits < config["green"]: await self.game_over("INCOMPLETE")
         else:
-            # ✅ WIN LOGIC (Direct Prize, No Next Level)
             await update_balance(self.player.id, config["prize"])
             await self.game_win(config["prize"])
 
@@ -9015,7 +9014,6 @@ class MatrixTerminalView(discord.ui.View):
         elif reason == "INCOMPLETE": txt = "⚠️ **ERROR!** Not enough codes entered."
         else: txt = "💀 **DISCONNECTED.**"
 
-        # Punishment
         data = await get_data(self.player.id)
         is_safe = False
         footer_txt = "💀 Penalty: 30s Timeout"
@@ -9048,7 +9046,7 @@ class MatrixTerminalView(discord.ui.View):
         await self.interaction.edit_original_response(embed=embed, view=None)
 
 
-# --- 🕹️ NEW: LEVEL SELECTION VIEW ---
+# --- 🕹️ LEVEL SELECTION VIEW ---
 class LevelSelectView(discord.ui.View):
     def __init__(self, player):
         super().__init__(timeout=60)
@@ -9068,21 +9066,18 @@ class LevelSelectView(discord.ui.View):
         selected_lvl = int(select.values[0])
         fee = 5000
         
-        # Balance Check & Deduct here
         data = await get_data(interaction.user.id)
         if data["balance"] < fee:
             return await interaction.response.send_message(f"❌ Entry Fee ${fee:,} chahiye!", ephemeral=True)
             
         await update_balance(interaction.user.id, -fee)
         
-        # Start Game View
         game_view = MatrixTerminalView(interaction.user, interaction, selected_lvl)
         await interaction.response.edit_message(content=f"🚀 **Starting Level {selected_lvl}...** (-${fee:,})", embed=None, view=game_view)
 
 
 @bot.tree.command(name="matrix_terminal", description="📟 Select a Security Level & Hack the Grid (Cost: $5k)")
 async def matrix_terminal(i: discord.Interaction):
-    # Sirf Menu Dikhao, paise select karne ke baad katenge
     embed = discord.Embed(title="📟 MATRIX TERMINAL ACCESS", color=0x2ECC71)
     embed.description = (
         "**Welcome, Hacker.**\n"
@@ -9091,10 +9086,16 @@ async def matrix_terminal(i: discord.Interaction):
         "💀 **Risk:** Wrong Code = Timeout!"
     )
     view = LevelSelectView(i.user)
-    await i.response.send_message(embed=embed, view=view)    
+    await i.response.send_message(embed=embed, view=view)      
+        
         
 # ================== 🧑‍💻 THE HACKER RUN (TYPING SPEED GAME) ==================
 import io
+import string  # ✅ YE MISSING THA (Isiliye crash ho raha tha)
+import random  # ✅ YE BHI ZAROORI HAI
+import asyncio
+import discord
+from discord import app_commands
 from PIL import Image, ImageDraw, ImageFont # pip install pillow
 
 # ================== 🧑‍💻 HACKER RUN (IMAGE BASED) ==================
@@ -9128,7 +9129,6 @@ def generate_hacker_image(text):
         font = ImageFont.load_default() # Fallback
 
     # 4. Center Text Calculation
-    # PIL ke naye versions me textbbox use hota hai, purane me textsize
     try:
         bbox = draw.textbbox((0, 0), text, font=font)
         text_w = bbox[2] - bbox[0]
@@ -9175,7 +9175,7 @@ class HackerInputModal(discord.ui.Modal, title="⌨️ ENTER SECURITY CODE"):
 
 class HackerRunView(discord.ui.View):
     def __init__(self, player, interaction, level_id):
-        super().__init__(timeout=180) # View ka timeout lamba rakha hai, asli timer logic me hai
+        super().__init__(timeout=180) 
         self.player = player
         self.interaction = interaction
         self.level_id = level_id
@@ -9184,6 +9184,7 @@ class HackerRunView(discord.ui.View):
         asyncio.create_task(self.start_game())
 
     def generate_code(self, length):
+        # YAHAN CRASH HO RAHA THA KYUNKI 'string' IMPORTED NAHI THA
         chars = string.ascii_letters + string.digits
         return ''.join(random.choice(chars) for _ in range(length))
 
@@ -9202,7 +9203,7 @@ class HackerRunView(discord.ui.View):
             f"👇 **Niche Photo dekho aur Code Type karo!**\n"
             f"⏳ **Time Limit:** {self.config['time']} Seconds"
         )
-        embed.set_image(url="attachment://security_code.png") # Image yahan attach hogi
+        embed.set_image(url="attachment://security_code.png")
         embed.set_footer(text="Copy-Paste Protected System 🛡️")
 
         self.clear_items()
@@ -9265,7 +9266,6 @@ class HackerRunView(discord.ui.View):
         )
         embed.set_footer(text=footer_txt)
         
-        # Purani image hata kar Glitch GIF lagate hain
         embed.set_image(url="https://media.tenor.com/J3i6jGgFqsgAAAAC/money-transfer.gif") 
         
         await interaction.edit_original_response(embed=embed, view=None, attachments=[])
@@ -9314,7 +9314,7 @@ async def hacker_run(i: discord.Interaction):
         "💀 **Risk:** Galat code = Timeout."
     )
     view = HackerLevelSelectView(i.user)
-    await i.response.send_message(embed=embed, view=view) 
+    await i.response.send_message(embed=embed, view=view)
 
 # ================== 🧠 INSANE TRIVIA (UPSC LEVEL) ==================
 
