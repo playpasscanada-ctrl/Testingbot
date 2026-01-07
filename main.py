@@ -8021,9 +8021,9 @@ async def iq_test(i: discord.Interaction):
     await i.response.send_message(embed=embed, view=view)
 
 # ================== 💸 MONEY TRANSFER SYSTEM (TAX LOGIC) ==================
-
-@bot.tree.command(name="pay", description="💸 Transfer Money to another player (VIPs pay 0% Tax)")
+@bot.tree.command(name="pay", description="💸 Transfer Money (15 Min Cooldown | >200k = 50% Tax)")
 @app_commands.describe(user="Paisa kisko dena hai?", amount="Kitna paisa bhejna hai?")
+@app_commands.checks.cooldown(1, 900.0, key=lambda i: i.user.id) # 1 use per 900s (15 Mins)
 async def pay(interaction: discord.Interaction, user: discord.Member, amount: int):
     
     # 1. Basic Checks
@@ -8043,50 +8043,71 @@ async def pay(interaction: discord.Interaction, user: discord.Member, amount: in
     if sender_data['balance'] < amount:
         return await interaction.response.send_message(f"❌ **Insufficient Balance!** Aapke paas itne paise nahi hain.", ephemeral=True)
 
-    # 3. 👑 VIP TAX CHECK LOGIC
-    tax_rate = 0.10 # Default 10% Tax
-    tax_status = "10% (Normal User)"
+    # 3. 🛡️ TAX CALCULATION LOGIC
     is_vip = False
-    
     vip_expiry = sender_data.get('vip_expiry')
     if vip_expiry:
         try:
-            # Check Lifetime or Active VIP
             if vip_expiry.startswith("9999") or datetime.utcnow() < datetime.fromisoformat(vip_expiry):
                 is_vip = True
-                tax_rate = 0.0 # 0% Tax for VIP
-                tax_status = "0% (👑 VIP Power)"
         except: pass
+
+    tax_rate = 0.10 # Default
+    tax_status = "10% (Normal User)"
+    
+    # Tax Logic
+    if amount > 200000:
+        tax_rate = 0.50 
+        tax_status = "50% (⚠️ High Value Tax)"
+    elif is_vip:
+        tax_rate = 0.0
+        tax_status = "0% (👑 VIP Power)"
+    else:
+        tax_rate = 0.10
+        tax_status = "10% (Normal User)"
 
     # 4. Calculation
     tax_amount = int(amount * tax_rate)
     final_amount = amount - tax_amount
 
     # 5. Transaction Execution
-    # Sender se pura amount kato
     await update_balance(interaction.user.id, -amount)
-    
-    # Receiver ko tax katne ke baad wala amount do
     await update_balance(user.id, final_amount)
 
     # 6. Success Embed
     embed = discord.Embed(title="💸 MONEY TRANSFER SUCCESSFUL", color=0x00FF00)
     embed.add_field(name="📤 Sender", value=f"{interaction.user.mention}", inline=True)
     embed.add_field(name="📥 Receiver", value=f"{user.mention}", inline=True)
-    
     embed.add_field(name="💰 Sent Amount", value=f"`${amount:,}`", inline=False)
     
-    if is_vip:
+    if tax_rate == 0.50:
+        embed.color = 0xFFA500
+        embed.add_field(name="🚨 HEAVY TAX (50%)", value=f"-${tax_amount:,} (Amount > 200k)", inline=True)
+    elif tax_rate == 0.0:
         embed.add_field(name="🛡️ Tax (VIP)", value=f"~~${int(amount*0.10):,}~~ **$0** (No Tax)", inline=True)
     else:
         embed.add_field(name="📉 Tax (10%)", value=f"-${tax_amount:,}", inline=True)
         
     embed.add_field(name="✅ Received", value=f"**${final_amount:,}**", inline=True)
-    
     embed.set_footer(text=f"Tax Status: {tax_status}")
     embed.set_thumbnail(url="https://media.tenor.com/J3i6jGgFqsgAAAAC/money-transfer.gif")
 
     await interaction.response.send_message(embed=embed)
+
+# --- ⏳ COOLDOWN ERROR HANDLER (Isko pay command ke niche hi lagana) ---
+@pay.error
+async def pay_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.CommandOnCooldown):
+        # Seconds ko Minutes:Seconds me convert karna
+        minutes, seconds = divmod(int(error.retry_after), 60)
+        await interaction.response.send_message(
+            f"⏳ **Cooldown Active!** Bhai thoda saans le le.\n"
+            f"Agli payment **{minutes} min {seconds} sec** baad karna.",
+            ephemeral=True
+        )
+    else:
+        # Koi aur error ho to print karo
+        print(f"Pay Error: {error}")
 
 # ================== 🔪 HIDE & SEEK: NIGHT MASSACRE ==================
 
@@ -8838,7 +8859,18 @@ async def pentathlon(i: discord.Interaction):
     view = PentaLobby(i.user)
     await i.response.send_message(embed=view.get_embed(), view=view)
 
-# ================== 📟 MATRIX CYBER TERMINAL (7x7 GRID) ==================
+# ================== 📟 MATRIX CYBER TERMINAL (LEVEL SELECTOR) ==================
+
+# ⚙️ GLOBAL CONFIG (Taaki Menu aur Game dono access kar sakein)
+MATRIX_LEVELS = {
+    1: {"size": 3, "green": 3, "bomb": 0, "time": 8,  "prize": 10000,  "label": "Level 1 (Easy)"},
+    2: {"size": 4, "green": 4, "bomb": 0, "time": 8,  "prize": 20000,  "label": "Level 2 (Medium)"},
+    3: {"size": 4, "green": 5, "bomb": 1, "time": 10, "prize": 30000,  "label": "Level 3 (Hard)"},
+    4: {"size": 5, "green": 6, "bomb": 2, "time": 12, "prize": 50000,  "label": "Level 4 (Expert)"},
+    5: {"size": 6, "green": 7, "bomb": 3, "time": 15, "prize": 100000, "label": "Level 5 (Master)"},
+    6: {"size": 7, "green": 8, "bomb": 5, "time": 18, "prize": 150000, "label": "Level 6 (Grandmaster)"},
+    7: {"size": 7, "green": 10,"bomb": 8, "time": 20, "prize": 200000, "label": "Level 7 (GOD MODE)"},
+}
 
 class MatrixInputModal(discord.ui.Modal, title="📟 TERMINAL ACCESS"):
     answer = discord.ui.TextInput(
@@ -8857,33 +8889,21 @@ class MatrixInputModal(discord.ui.Modal, title="📟 TERMINAL ACCESS"):
 
 
 class MatrixTerminalView(discord.ui.View):
-    def __init__(self, player, interaction):
+    def __init__(self, player, interaction, level):
         super().__init__(timeout=180)
         self.player = player
         self.interaction = interaction
-        self.level = 1
+        self.level = level # Selected Level
         self.game_active = True
-        
-        # ⚙️ LEVEL CONFIG (7 LEVELS)
-        self.levels = {
-            1: {"size": 3, "green": 3, "bomb": 0, "time": 8,  "prize": 10000},
-            2: {"size": 4, "green": 4, "bomb": 0, "time": 8,  "prize": 20000},
-            3: {"size": 4, "green": 5, "bomb": 1, "time": 10, "prize": 30000},
-            4: {"size": 5, "green": 6, "bomb": 2, "time": 12, "prize": 50000},
-            5: {"size": 6, "green": 7, "bomb": 3, "time": 15, "prize": 100000},
-            6: {"size": 7, "green": 8, "bomb": 5, "time": 18, "prize": 150000},
-            7: {"size": 7, "green": 10,"bomb": 8, "time": 20, "prize": 200000}, # 7x7 Hardest
-        }
-        
         self.rows = "ABCDEFG"
-        asyncio.create_task(self.start_level())
+        
+        asyncio.create_task(self.start_game())
 
-    async def start_level(self):
+    async def start_game(self):
         if not self.game_active: return
         
-        config = self.levels[self.level]
+        config = MATRIX_LEVELS[self.level]
         grid_size = config["size"]
-        total_cells = grid_size * grid_size
         
         # 1. Generate Pattern
         all_coords = []
@@ -8897,15 +8917,15 @@ class MatrixTerminalView(discord.ui.View):
         
         # 2. SHOW PHASE (Memorize)
         grid_str = self.generate_grid_str(show=True)
-        embed = discord.Embed(title=f"📟 SYSTEM HACK: LEVEL {self.level}", color=0x00FF00)
+        embed = discord.Embed(title=f"📟 HACKING: LEVEL {self.level}", color=0x00FF00)
         embed.description = (
             f"```\n{grid_str}\n```\n"
-            f"💰 **Reward:** ${config['prize']:,}\n"
+            f"💰 **Potential Win:** ${config['prize']:,}\n"
             f"🟩 **TARGETS:** {config['green']}\n"
             f"🟥 **BOMBS:** {config['bomb']}\n\n"
             f"⏳ **Memorize Pattern: {config['time']} Seconds!**"
         )
-        self.clear_items() # No buttons during memorize
+        self.clear_items()
         await self.interaction.edit_original_response(embed=embed, view=self)
         
         await asyncio.sleep(config["time"]) # Wait time
@@ -8928,34 +8948,29 @@ class MatrixTerminalView(discord.ui.View):
         await self.interaction.edit_original_response(embed=embed, view=self)
 
     def generate_grid_str(self, show=False):
-        config = self.levels[self.level]
+        config = MATRIX_LEVELS[self.level]
         size = config["size"]
         
-        # Header (1 2 3...)
         header = "   " + " ".join([str(i+1) for i in range(size)])
         board = [header]
         
         for r in range(size):
             row_char = self.rows[r]
-            row_line = f"{row_char} " # Row Label (A, B...)
+            row_line = f"{row_char} "
             
             for c in range(size):
                 coord = f"{row_char}{c+1}"
                 
                 if show:
-                    if coord in self.correct_coords:
-                        icon = "🟩"
-                    elif coord in self.bomb_coords:
-                        icon = "🟥"
-                    else:
-                        icon = "⬛"
+                    if coord in self.correct_coords: icon = "🟩"
+                    elif coord in self.bomb_coords: icon = "🟥"
+                    else: icon = "⬛"
                 else:
-                    icon = "🔳" # Locked state
+                    icon = "🔳"
                 
                 row_line += f" {icon}"
             board.append(row_line)
-            
-        return "\n".join(board)
+            return "\n".join(board)
 
     async def open_modal(self, interaction: discord.Interaction):
         if interaction.user.id != self.player.id:
@@ -8965,10 +8980,9 @@ class MatrixTerminalView(discord.ui.View):
     async def check_answer(self, interaction: discord.Interaction, answer_str: str):
         await interaction.response.defer()
         
-        # Parse Input (e.g., "a1 A2 b3" -> ["A1", "A2", "B3"])
         user_inputs = answer_str.upper().replace(",", " ").split()
+        config = MATRIX_LEVELS[self.level]
         
-        # Logic
         correct_hits = 0
         hit_bomb = False
         wrong_input = False
@@ -8980,47 +8994,32 @@ class MatrixTerminalView(discord.ui.View):
             elif inp in self.correct_coords:
                 correct_hits += 1
             else:
-                wrong_input = True # Clicked empty black tile
+                wrong_input = True
         
-        # WIN/LOSE CHECK
-        config = self.levels[self.level]
-        
-        if hit_bomb:
-            await self.game_over("BOMB")
-        elif wrong_input:
-            await self.game_over("WRONG")
-        elif correct_hits < config["green"]:
-            await self.game_over("INCOMPLETE") # Saare type nahi kiye
+        if hit_bomb: await self.game_over("BOMB")
+        elif wrong_input: await self.game_over("WRONG")
+        elif correct_hits < config["green"]: await self.game_over("INCOMPLETE")
         else:
-            # ✅ LEVEL CLEARED
+            # ✅ WIN LOGIC (Direct Prize, No Next Level)
             await update_balance(self.player.id, config["prize"])
-            
-            if self.level == 7:
-                await self.game_win()
-            else:
-                self.level += 1
-                await interaction.followup.send(f"🎉 **Access Granted!** Won ${config['prize']:,}. Next Level...", ephemeral=True)
-                await self.start_level()
+            await self.game_win(config["prize"])
 
     async def game_over(self, reason):
         self.game_active = False
         self.clear_items()
         
-        # Reveal Map
         final_grid = self.generate_grid_str(show=True)
         
-        # Reason Text
         if reason == "BOMB": txt = "💣 **SYSTEM FAILURE!** Bomb Detected!"
         elif reason == "WRONG": txt = "❌ **ACCESS DENIED!** Wrong Coordinates."
         elif reason == "INCOMPLETE": txt = "⚠️ **ERROR!** Not enough codes entered."
         else: txt = "💀 **DISCONNECTED.**"
 
-        # --- PUNISHMENT LOGIC ---
+        # Punishment
         data = await get_data(self.player.id)
         is_safe = False
         footer_txt = "💀 Penalty: 30s Timeout"
         
-        # Check VIP/Life
         if data.get("vip_expiry"): 
             is_safe = True
             footer_txt = "🛡️ VIP Access: Punishment Bypassed"
@@ -9033,43 +9032,135 @@ class MatrixTerminalView(discord.ui.View):
 
         embed = discord.Embed(title="🚫 HACK FAILED", description=f"{txt}\n\n**Correct Pattern:**\n```\n{final_grid}\n```", color=0xFF0000)
         embed.set_footer(text=footer_txt)
-        
         await self.interaction.edit_original_response(embed=embed, view=None)
 
-    async def game_win(self):
+    async def game_win(self, amount):
         self.game_active = False
         self.clear_items()
         
-        embed = discord.Embed(title="🕴️ SYSTEM OVERRIDE COMPLETE", color=0xFFD700)
+        embed = discord.Embed(title="✅ SYSTEM BYPASSED!", color=0xFFD700)
         embed.description = (
-            f"🎉 **GODLIKE!** Tumne saare 7 Levels hack kar liye.\n"
-            f"🌐 **Global Black Market** ab tumhare control mein hai!\n\n"
-            f"💸 **Total Earnings:** HUGE!"
+            f"🎉 **SUCCESS!** Level {self.level} Hacked.\n"
+            f"💾 **Data Extracted.**\n"
+            f"💸 **Earned:** ${amount:,}"
         )
         embed.set_image(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif")
         await self.interaction.edit_original_response(embed=embed, view=None)
 
 
-@bot.tree.command(name="matrix_terminal", description="📟 7x7 Grid Hacking (Type Coordinates to Win)")
+# --- 🕹️ NEW: LEVEL SELECTION VIEW ---
+class LevelSelectView(discord.ui.View):
+    def __init__(self, player):
+        super().__init__(timeout=60)
+        self.player = player
+
+    @discord.ui.select(
+        placeholder="Choose Security Level to Hack...",
+        options=[
+            discord.SelectOption(label=info["label"], value=str(lvl), description=f"Prize: ${info['prize']:,} | Size: {info['size']}x{info['size']}")
+            for lvl, info in MATRIX_LEVELS.items()
+        ]
+    )
+    async def select_level(self, interaction: discord.Interaction, select: discord.ui.Select):
+        if interaction.user.id != self.player.id:
+            return await interaction.response.send_message("❌ Apna game start karo!", ephemeral=True)
+        
+        selected_lvl = int(select.values[0])
+        fee = 5000
+        
+        # Balance Check & Deduct here
+        data = await get_data(interaction.user.id)
+        if data["balance"] < fee:
+            return await interaction.response.send_message(f"❌ Entry Fee ${fee:,} chahiye!", ephemeral=True)
+            
+        await update_balance(interaction.user.id, -fee)
+        
+        # Start Game View
+        game_view = MatrixTerminalView(interaction.user, interaction, selected_lvl)
+        await interaction.response.edit_message(content=f"🚀 **Starting Level {selected_lvl}...** (-${fee:,})", embed=None, view=game_view)
+
+
+@bot.tree.command(name="matrix_terminal", description="📟 Select a Security Level & Hack the Grid (Cost: $5k)")
 async def matrix_terminal(i: discord.Interaction):
-    fee = 5000
-    data = await get_data(i.user.id)
-    if data["balance"] < fee:
-        return await i.response.send_message(f"❌ Entry Fee ${fee:,} chahiye!", ephemeral=True)
-    
-    await update_balance(i.user.id, -fee)
-    
-    view = MatrixTerminalView(i.user, i)
-    await i.response.send_message(f"📟 **Initializing Terminal...** (-${fee:,})", view=view)
-
+    # Sirf Menu Dikhao, paise select karne ke baad katenge
+    embed = discord.Embed(title="📟 MATRIX TERMINAL ACCESS", color=0x2ECC71)
+    embed.description = (
+        "**Welcome, Hacker.**\n"
+        "Security Level select karein jo aap todna chahte hain.\n\n"
+        "💸 **Entry Fee:** $5,000 (Flat)\n"
+        "💀 **Risk:** Wrong Code = Timeout!"
+    )
+    view = LevelSelectView(i.user)
+    await i.response.send_message(embed=embed, view=view)    
+        
 # ================== 🧑‍💻 THE HACKER RUN (TYPING SPEED GAME) ==================
+import io
+from PIL import Image, ImageDraw, ImageFont # pip install pillow
 
-import string
+# ================== 🧑‍💻 HACKER RUN (IMAGE BASED) ==================
+
+# ⚙️ LEVEL CONFIGURATION
+HACKER_LEVELS = {
+    1: {"len": 5,  "time": 15, "fee": 5000,  "prize": 10000,  "label": "Level 1 (Script Kiddie)"},
+    2: {"len": 7,  "time": 15, "fee": 10000, "prize": 25000,  "label": "Level 2 (Code Breaker)"},
+    3: {"len": 9,  "time": 20, "fee": 20000, "prize": 50000,  "label": "Level 3 (Professional)"},
+    4: {"len": 12, "time": 25, "fee": 50000, "prize": 120000, "label": "Level 4 (Elite Hacker)"},
+    5: {"len": 15, "time": 30, "fee": 100000,"prize": 300000, "label": "Level 5 (GOD MODE)"},
+}
+
+# 🖼️ HELPER FUNCTION: Text to Image Generator
+def generate_hacker_image(text):
+    # 1. Image Settings
+    width = 400
+    height = 100
+    background_color = (0, 0, 0) # Black
+    text_color = (0, 255, 0) # Hacker Green
+    
+    # 2. Create Image
+    image = Image.new('RGB', (width, height), color=background_color)
+    draw = ImageDraw.Draw(image)
+    
+    # 3. Load Font (Default agar custom nahi hai)
+    try:
+        # Koshish karenge bada font lene ki
+        font = ImageFont.truetype("arial.ttf", 40)
+    except:
+        font = ImageFont.load_default() # Fallback
+
+    # 4. Center Text Calculation
+    # PIL ke naye versions me textbbox use hota hai, purane me textsize
+    try:
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_w = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
+    except:
+        text_w, text_h = draw.textsize(text, font=font)
+        
+    x = (width - text_w) / 2
+    y = (height - text_h) / 2
+
+    # 5. Draw Text & Noise (Lines to prevent OCR)
+    draw.text((x, y), text, font=font, fill=text_color)
+    
+    # Thodi lines bana dete hain taaki koi OCR tool use na kar paye
+    for _ in range(5):
+        x1 = random.randint(0, width)
+        y1 = random.randint(0, height)
+        x2 = random.randint(0, width)
+        y2 = random.randint(0, height)
+        draw.line([(x1, y1), (x2, y2)], fill=(0, 100, 0), width=1)
+
+    # 6. Convert to Bytes for Discord
+    buffer = io.BytesIO()
+    image.save(buffer, format='PNG')
+    buffer.seek(0)
+    return discord.File(buffer, filename="security_code.png")
+
 
 class HackerInputModal(discord.ui.Modal, title="⌨️ ENTER SECURITY CODE"):
     answer = discord.ui.TextInput(
-        label="TYPE THE CODE EXACTLY",
-        placeholder="Case Sensitive (Jaisa dikha waisa likho)",
+        label="TYPE THE CODE FROM IMAGE",
+        placeholder="Case Sensitive (Jaisa photo me hai waisa likho)",
         required=True,
         max_length=30
     )
@@ -9083,147 +9174,147 @@ class HackerInputModal(discord.ui.Modal, title="⌨️ ENTER SECURITY CODE"):
 
 
 class HackerRunView(discord.ui.View):
-    def __init__(self, player, interaction):
-        super().__init__(timeout=60)
+    def __init__(self, player, interaction, level_id):
+        super().__init__(timeout=180) # View ka timeout lamba rakha hai, asli timer logic me hai
         self.player = player
         self.interaction = interaction
-        self.level = 1
-        self.game_active = True
+        self.level_id = level_id
+        self.config = HACKER_LEVELS[level_id]
         
-        # Level Logic: Length starts at 4, increases by 2 every level
-        # Reward: Level * 20,000
-        
-        asyncio.create_task(self.start_level())
+        asyncio.create_task(self.start_game())
 
     def generate_code(self, length):
-        # Generates a random string (Letters + Numbers)
         chars = string.ascii_letters + string.digits
         return ''.join(random.choice(chars) for _ in range(length))
 
-    async def start_level(self):
-        if not self.game_active: return
+    async def start_game(self):
+        # 1. Generate Logic
+        self.current_code = self.generate_code(self.config["len"])
         
-        # Calculate Difficulty & Reward
-        code_length = 4 + (self.level - 1) * 2  # L1=4, L2=6, L3=8...
-        self.current_reward = self.level * 20000
-        self.current_code = self.generate_code(code_length)
+        # 2. Generate Image
+        file = generate_hacker_image(self.current_code)
         
-        # Embed Design (Terminal Style)
-        embed = discord.Embed(title=f"🧑‍💻 HACKER RUN: LEVEL {self.level}/10", color=0x00FF00)
+        # 3. Embed
+        embed = discord.Embed(title=f"🧑‍💻 HACKER RUN: {self.config['label']}", color=0x00FF00)
         embed.description = (
-            f"💰 **Potential Reward:** ${self.current_reward:,}\n"
-            f"🔒 **Security Level:** {code_length} Characters\n\n"
-            f"👇 **CODE KO EXACT TYPE KARO:**"
+            f"💰 **Prize:** ${self.config['prize']:,}\n"
+            f"🔒 **Security:** {self.config['len']} Characters\n\n"
+            f"👇 **Niche Photo dekho aur Code Type karo!**\n"
+            f"⏳ **Time Limit:** {self.config['time']} Seconds"
         )
-        
-        # Anti-Copy Visual (Code Block with unique formatting)
-        # Hum ise Code Block me daal rahe hain taaki alag dikhe
-        embed.add_field(name="🔑 SECURITY KEY", value=f"```fix\n{self.current_code}\n```", inline=False)
-        embed.set_footer(text="Galti ki toh 20s Timeout! | VIPs Safe")
+        embed.set_image(url="attachment://security_code.png") # Image yahan attach hogi
+        embed.set_footer(text="Copy-Paste Protected System 🛡️")
 
-        # Update Buttons
         self.clear_items()
-        btn = discord.ui.Button(label="⌨️ TYPE CODE", style=discord.ButtonStyle.primary, emoji="📟")
+        btn = discord.ui.Button(label="⌨️ TYPE CODE NOW", style=discord.ButtonStyle.success, emoji="📟")
         btn.callback = self.open_modal
         self.add_item(btn)
         
-        await self.interaction.edit_original_response(embed=embed, view=self)
+        await self.interaction.edit_original_response(embed=embed, view=self, attachments=[file])
 
     async def open_modal(self, interaction: discord.Interaction):
         if interaction.user.id != self.player.id:
             return await interaction.response.send_message("❌ Apna game khelo!", ephemeral=True)
-        
         await interaction.response.send_modal(HackerInputModal(self))
 
     async def check_code(self, interaction: discord.Interaction, user_input: str):
-        if not self.game_active: return
-        
         # Case Sensitive Check
         if user_input == self.current_code:
-            # ✅ CORRECT
+            # ✅ WIN
             await interaction.response.defer()
+            await update_balance(self.player.id, self.config["prize"])
             
-            # Pay Reward Immediately
-            await update_balance(self.player.id, self.current_reward)
+            embed = discord.Embed(title="✅ SYSTEM HACKED!", color=0xFFD700)
+            embed.description = (
+                f"🎉 **ACCESS GRANTED!**\n"
+                f"Tumne firewall tod diya.\n\n"
+                f"💸 **Earned:** ${self.config['prize']:,}"
+            )
+            embed.set_image(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif")
+            await interaction.edit_original_response(embed=embed, view=None, attachments=[])
             
-            if self.level == 10:
-                await self.game_win(interaction)
-            else:
-                self.level += 1
-                # Show success briefly then next level
-                await interaction.followup.send(f"✅ **Bypass Successful!** +${self.current_reward:,}", ephemeral=True)
-                await self.start_level()
         else:
-            # ❌ WRONG
+            # ❌ LOSE
             await self.game_over(interaction, user_input)
 
     async def game_over(self, interaction: discord.Interaction, wrong_input):
-        self.game_active = False
         self.clear_items()
         
         # --- PUNISHMENT LOGIC ---
         data = await get_data(self.player.id)
         is_safe = False
-        save_msg = "💀 **SYSTEM LOCKDOWN!** (You failed)"
+        footer_txt = "💀 Penalty: 30s Timeout"
         
-        # 1. VIP Check
         if data.get("vip_expiry"):
             is_safe = True
-            save_msg = "🛡️ **VIP Firewall:** Punishment blocked."
-            
-        # 2. Extra Life
+            footer_txt = "🛡️ VIP Access: Saved"
         elif data.get("inventory", {}).get("life", 0) > 0:
             await update_inventory(self.player.id, "life", -1)
             is_safe = True
-            save_msg = "💖 **Extra Life:** System restore activated."
+            footer_txt = "💖 Extra Life: Saved"
 
-        # Apply Punishment if not safe
-        punish_txt = ""
         if not is_safe:
-            await smart_timeout(self.interaction, self.player, 20, "Hacker Run Failed")
-            punish_txt = "\n🚫 **Penalty:** 20 Seconds Timeout"
+            await smart_timeout(self.interaction, self.player, 30, "Hack Failed")
 
         embed = discord.Embed(title="🚫 ACCESS DENIED", color=0xFF0000)
         embed.description = (
-            f"❌ **Wrong Code!**\n"
+            f"❌ **Incorrect Code!**\n"
             f"📝 You Typed: `{wrong_input}`\n"
-            f"🔑 Correct Was: `{self.current_code}`\n\n"
-            f"{save_msg}{punish_txt}"
+            f"🔑 Real Code: `{self.current_code}`\n\n"
+            f"💸 **Fee Lost:** ${self.config['fee']:,}"
         )
-        embed.set_image(url="https://media.tenor.com/J3i6jGgFqsgAAAAC/money-transfer.gif") # Glitch GIF laga dena better rahega
+        embed.set_footer(text=footer_txt)
         
-        await self.interaction.edit_original_response(embed=embed, view=None)
-
-    async def game_win(self, interaction):
-        self.game_active = False
-        self.clear_items()
+        # Purani image hata kar Glitch GIF lagate hain
+        embed.set_image(url="https://media.tenor.com/J3i6jGgFqsgAAAAC/money-transfer.gif") 
         
-        embed = discord.Embed(title="🕴️ ULTIMATE HACKER!", color=0xFFD700)
-        embed.description = (
-            f"🎉 **MISSION COMPLETE!**\n"
-            f"Tumne Level 10 Firewall tod diya.\n"
-            f"💸 **Total Earnings:** Bahut saara paisa!\n"
-            f"🌐 **Status:** LEGEND"
-        )
-        embed.set_image(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif")
-        await self.interaction.edit_original_response(embed=embed, view=None)
+        await interaction.edit_original_response(embed=embed, view=None, attachments=[])
 
 
-@bot.tree.command(name="hacker_run", description="🧑‍💻 Type the code to hack the system (10 Levels)")
+# --- 🕹️ SELECTOR VIEW ---
+class HackerLevelSelectView(discord.ui.View):
+    def __init__(self, player):
+        super().__init__(timeout=60)
+        self.player = player
+
+    @discord.ui.select(
+        placeholder="Select Difficulty Level...",
+        options=[
+            discord.SelectOption(label=info["label"], value=str(lvl), description=f"Fee: ${info['fee']:,} | Prize: ${info['prize']:,}")
+            for lvl, info in HACKER_LEVELS.items()
+        ]
+    )
+    async def select_level(self, interaction: discord.Interaction, select: discord.ui.Select):
+        if interaction.user.id != self.player.id:
+            return await interaction.response.send_message("❌ Apna game start karo!", ephemeral=True)
+        
+        lvl_id = int(select.values[0])
+        config = HACKER_LEVELS[lvl_id]
+        
+        # Balance Check
+        data = await get_data(interaction.user.id)
+        if data["balance"] < config["fee"]:
+            return await interaction.response.send_message(f"❌ Is level ke liye ${config['fee']:,} chahiye!", ephemeral=True)
+            
+        await update_balance(interaction.user.id, -config["fee"])
+        
+        # Start Game
+        game_view = HackerRunView(interaction.user, interaction, lvl_id)
+        await interaction.response.edit_message(content=f"🚀 **Initializing Attack Sequence...**", embed=None, view=game_view)
+
+
+@bot.tree.command(name="hacker_run", description="🧑‍💻 Hack the system by typing the code from Image")
 async def hacker_run(i: discord.Interaction):
-    entry_fee = 20000
-    
-    # Balance Check
-    data = await get_data(i.user.id)
-    if data["balance"] < entry_fee:
-        return await i.response.send_message(f"❌ Entry Fee ${entry_fee:,} chahiye!", ephemeral=True)
-    
-    # Deduct Fee
-    await update_balance(i.user.id, -entry_fee)
-    
-    # Start Game
-    view = HackerRunView(i.user, i)
-    await i.response.send_message(f"📟 **Initializing Hack...** (-${entry_fee:,})", view=view)
+    embed = discord.Embed(title="🧑‍💻 HACKER RUN (ANTI-BOT SYSTEM)", color=0x2ECC71)
+    embed.description = (
+        "**Welcome, Black Hat.**\n"
+        "Security Level select karo.\n\n"
+        "📸 **Rule:** Ek Image (Photo) aayegi, uska code dekh kar type karna hai.\n"
+        "🚫 **No Copy Paste:** Text copy nahi hoga, photo hai!\n"
+        "💀 **Risk:** Galat code = Timeout."
+    )
+    view = HackerLevelSelectView(i.user)
+    await i.response.send_message(embed=embed, view=view) 
 
 # ================== 🧠 INSANE TRIVIA (UPSC LEVEL) ==================
 
@@ -10636,23 +10727,32 @@ TRIVIA_QUESTIONS = [
     }
 ]
 
-class TriviaGameView(discord.ui.View):
-    def __init__(self, player, bet, interaction, question_data):
-        super().__init__(timeout=15) # ⚡ AB 15 SECONDS KA TIMER
+# ================== 🧠 TRIVIA GAUNTLET (7 ROUNDS) ==================
+
+class TriviaGauntletView(discord.ui.View):
+    def __init__(self, player, bet, interaction, questions_list):
+        super().__init__(timeout=10) # ⚡ 10 SECONDS PER QUESTION
         self.player = player
         self.bet = bet
         self.interaction = interaction
-        self.q_data = question_data
+        self.questions = questions_list # List of 7 questions
+        self.current_index = 0
+        self.game_ended = False # Bug Fix ke liye flag
         
-        # Shuffle Options Logic
-        self.options = self.q_data["o"].copy()
-        random.shuffle(self.options)
-        self.correct_ans = self.q_data["a"]
-        
-        # Create Buttons dynamically
-        self.create_buttons()
+        # Load First Question
+        self.load_question()
 
-    def create_buttons(self):
+    def load_question(self):
+        self.clear_items() # Purane buttons hatao
+        
+        current_q_data = self.questions[self.current_index]
+        self.correct_ans = current_q_data["a"]
+        
+        # Shuffle Options
+        self.options = current_q_data["o"].copy()
+        random.shuffle(self.options)
+        
+        # Create New Buttons
         labels = ["A", "B", "C", "D"]
         for i, opt in enumerate(self.options):
             btn = discord.ui.Button(label=f"{labels[i]}: {opt}", style=discord.ButtonStyle.secondary, custom_id=opt)
@@ -10660,122 +10760,156 @@ class TriviaGameView(discord.ui.View):
             self.add_item(btn)
 
     async def on_timeout(self):
-        # ⌛ AGAR 15 SECOND ME JAWAB NAHI DIYA
-        for item in self.children:
-            item.disabled = True
+        if self.game_ended: return # Agar game pehle hi khatam ho gaya to ignore karo
+
+        self.game_ended = True
+        for item in self.children: item.disabled = True
         
         # --- PUNISHMENT LOGIC ---
-        data = await get_data(self.player.id)
-        is_safe = False
-        footer_txt = "💀 Penalty: 1 Hour Mute"
+        await self.apply_punishment("Too Slow (Timeout)")
         
-        if data.get("vip_expiry"):
-            is_safe = True
-            footer_txt = "🛡️ VIP Saved you from Mute"
-        elif data.get("inventory", {}).get("life", 0) > 0:
-            await update_inventory(self.player.id, "life", -1)
-            is_safe = True
-            footer_txt = "💖 Extra Life Used"
-
-        if not is_safe:
-            # Time up hone par bhi mute lagega
-            await smart_timeout(self.interaction, self.player, 3600, "Trivia Timeout") 
-
         embed = discord.Embed(title="⌛ TIME'S UP!", color=0xFF0000)
         embed.description = (
-            f"❌ **Sochne mein waqt nikal gaya!**\n"
-            f"15 Seconds khatam ho gaye.\n\n"
-            f"💸 **Lost:** ${self.bet:,}\n"
-            f"🏥 **Status:** {footer_txt}"
+            f"❌ **Bahut slow ho!** 10 Second nikal gaye.\n"
+            f"📉 **Stage:** {self.current_index + 1}/7 par haar gaye.\n"
+            f"💸 **Lost:** ${self.bet:,}"
         )
+        embed.set_footer(text="Penalty: 1 Hour Mute applied!")
         embed.set_thumbnail(url="https://media.tenor.com/images/3e877e504c35e320f7725964f4040939/tenor.gif")
         
         try:
             await self.interaction.edit_original_response(embed=embed, view=self)
         except:
             pass
+        self.stop()
 
     async def answer_callback(self, interaction: discord.Interaction):
         if interaction.user.id != self.player.id:
-            return await interaction.response.send_message("❌ Doosron ke mamle mein mat bolo!", ephemeral=True)
+            return await interaction.response.send_message("❌ Apna game khelo!", ephemeral=True)
 
+        if self.game_ended: return
+        
         selected_ans = interaction.data["custom_id"]
         
-        # Disable buttons
-        for item in self.children:
-            item.disabled = True
-            if item.custom_id == self.correct_ans:
-                item.style = discord.ButtonStyle.success 
-            elif item.custom_id == selected_ans:
-                item.style = discord.ButtonStyle.danger 
-
-        if selected_ans == self.correct_ans:
-            # ✅ WIN
-            winnings = self.bet * 3
-            await update_balance(self.player.id, winnings)
+        # 1. WRONG ANSWER CHECK
+        if selected_ans != self.correct_ans:
+            self.game_ended = True
             
-            embed = discord.Embed(title="🧠 GENIUS LEVEL: 100", color=0x00FF00)
-            embed.description = (
-                f"🎉 **Correct Answer!**\n"
-                f"Sahi jawaab aur sahi waqt par!\n\n"
-                f"💰 **Bet:** ${self.bet:,}\n"
-                f"🤑 **Won:** ${winnings:,} (3x)"
-            )
-            embed.set_thumbnail(url="https://media.tenor.com/images/1c8c87e28e66487a5611357591605a6c/tenor.gif")
-        
-        else:
-            # ❌ LOSE
-            data = await get_data(self.player.id)
-            is_safe = False
-            footer_txt = "💀 Penalty: 1 Hour Mute"
+            # Button Red karo
+            for item in self.children:
+                item.disabled = True
+                if item.custom_id == selected_ans: item.style = discord.ButtonStyle.danger
+                if item.custom_id == self.correct_ans: item.style = discord.ButtonStyle.success
+
+            await self.apply_punishment("Wrong Answer")
             
-            if data.get("vip_expiry"):
-                is_safe = True
-                footer_txt = "🛡️ VIP Saved you from Mute"
-            elif data.get("inventory", {}).get("life", 0) > 0:
-                await update_inventory(self.player.id, "life", -1)
-                is_safe = True
-                footer_txt = "💖 Extra Life Used"
-
-            if not is_safe:
-                await smart_timeout(self.interaction, self.player, 3600, "Failed Trivia Question")
-
             embed = discord.Embed(title="🚫 WRONG ANSWER!", color=0xFF0000)
             embed.description = (
-                f"❌ **Galat Jawab!**\n"
-                f"Correct Answer: **{self.correct_ans}**\n\n"
-                f"💸 **Lost:** ${self.bet:,}\n"
-                f"🏥 **Status:** {footer_txt}"
+                f"❌ **Galat Jawab!** Khel Khatam.\n"
+                f"✅ Correct: **{self.correct_ans}**\n"
+                f"📉 **Failed at Stage:** {self.current_index + 1}/7\n"
+                f"💸 **Lost:** ${self.bet:,}"
             )
+            embed.set_footer(text="Penalty: 1 Hour Mute applied!")
             embed.set_thumbnail(url="https://media.tenor.com/images/3e877e504c35e320f7725964f4040939/tenor.gif")
             
-        await interaction.response.edit_message(embed=embed, view=self)
+            await interaction.response.edit_message(embed=embed, view=self)
+            self.stop() # 🛑 Timer yahi rook do
+            return
+
+        # 2. CORRECT ANSWER CHECK
+        # Kya ye last question tha (7th)?
+        if self.current_index == 6:
+            self.game_ended = True
+            
+            # JACKPOT WIN (10x Reward)
+            winnings = self.bet * 10
+            await update_balance(self.player.id, winnings)
+            
+            for item in self.children:
+                item.disabled = True
+                if item.custom_id == selected_ans: item.style = discord.ButtonStyle.success
+
+            embed = discord.Embed(title="🏆 ULTIMATE CHAMPION!", color=0xFFD700)
+            embed.description = (
+                f"🎉 **INCREDIBLE!** Tumne lagatar 7 Hard Sawal sahi diye!\n"
+                f"🤯 **IQ Level:** God Mode\n\n"
+                f"💰 **Bet:** ${self.bet:,}\n"
+                f"🤑 **JACKPOT WON:** ${winnings:,} (10x)"
+            )
+            embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
+            
+            await interaction.response.edit_message(embed=embed, view=self)
+            self.stop() # 🛑 Timer rook do
+        
+        else:
+            # NEXT QUESTION
+            self.current_index += 1
+            self.load_question() # Load next buttons
+            
+            q_text = self.questions[self.current_index]["q"]
+            
+            embed = discord.Embed(title=f"🧠 STAGE {self.current_index + 1} / 7", color=0x9B59B6)
+            embed.description = (
+                f"**Player:** {self.player.mention}\n"
+                f"💰 **Pot:** ${self.bet:,} (Win 7/7 to get 10x)\n\n"
+                f"❓ **{q_text}**\n\n"
+                f"⚡ **10 Seconds Left!**"
+            )
+            embed.set_footer(text="Ek galti aur game over!")
+            
+            await interaction.response.edit_message(embed=embed, view=self)
+            # Note: View ka timer interaction hone par apne aap reset ho jata hai 10s par.
+
+    async def apply_punishment(self, reason):
+        data = await get_data(self.player.id)
+        is_safe = False
+        
+        if data.get("vip_expiry"):
+            is_safe = True
+        elif data.get("inventory", {}).get("life", 0) > 0:
+            await update_inventory(self.player.id, "life", -1)
+            is_safe = True
+
+        if not is_safe:
+            await smart_timeout(self.interaction, self.player, 3600, reason)
 
 
-@bot.tree.command(name="quiz", description="🧠 Bet on your Intelligence (3x Reward)")
+@bot.tree.command(name="quiz", description="🧠 The Gauntlet: Answer 7 Hard Questions in a row (10x Reward)")
 @app_commands.describe(bet="Amount to bet")
 async def quiz(i: discord.Interaction, bet: int):
+    # Min Bet Validation
     if bet < 5000:
         return await i.response.send_message("❌ Min Bet: $5,000 (Ye bacchon ka khel nahi hai)", ephemeral=True)
-        
+    
+    # Check Balance
     data = await get_data(i.user.id)
     if data["balance"] < bet:
         return await i.response.send_message("❌ Paise nahi hain!", ephemeral=True)
         
+    # Check if enough questions exist
+    if len(TRIVIA_QUESTIONS) < 7:
+        return await i.response.send_message("❌ Not enough questions in database!", ephemeral=True)
+
+    # Deduct Money
     await update_balance(i.user.id, -bet)
     
-    question = random.choice(TRIVIA_QUESTIONS)
+    # Pick 7 Random Unique Questions
+    gauntlet_questions = random.sample(TRIVIA_QUESTIONS, 7)
     
-    embed = discord.Embed(title="🧠 HIGH IQ QUIZ", color=0x9B59B6)
+    # Show First Question
+    first_q = gauntlet_questions[0]
+    
+    embed = discord.Embed(title="🧠 STAGE 1 / 7", color=0x9B59B6)
     embed.description = (
         f"**Player:** {i.user.mention}\n"
-        f"💰 **Bet:** ${bet:,} | **Win:** ${bet*3:,}\n\n"
-        f"❓ **{question['q']}**\n\n"
-        f"⏳ **Time:** 15 Seconds"
+        f"💰 **Bet:** ${bet:,} | **Jackpot:** ${bet*10:,}\n\n"
+        f"❓ **{first_q['q']}**\n\n"
+        f"⚡ **Time:** 10 Seconds per question!"
     )
-    embed.set_footer(text="Warning: Wrong Answer = 1 Hour Mute!")
+    embed.set_footer(text="Rule: 7 Continuous Correct Answers or GAME OVER!")
     
-    view = TriviaGameView(i.user, bet, i, question)
+    view = TriviaGauntletView(i.user, bet, i, gauntlet_questions)
     await i.response.send_message(embed=embed, view=view)
 
 # ================== OPTIMIZED FLASK BACKEND ==================
