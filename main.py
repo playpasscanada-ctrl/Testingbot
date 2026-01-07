@@ -10638,7 +10638,7 @@ TRIVIA_QUESTIONS = [
 
 class TriviaGameView(discord.ui.View):
     def __init__(self, player, bet, interaction, question_data):
-        super().__init__(timeout=5) # ⚡ SIRF 5 SECONDS KA TIMER
+        super().__init__(timeout=15) # ⚡ AB 15 SECONDS KA TIMER
         self.player = player
         self.bet = bet
         self.interaction = interaction
@@ -10660,11 +10660,11 @@ class TriviaGameView(discord.ui.View):
             self.add_item(btn)
 
     async def on_timeout(self):
-        # ⌛ AGAR 5 SECOND ME JAWAB NAHI DIYA
+        # ⌛ AGAR 15 SECOND ME JAWAB NAHI DIYA
         for item in self.children:
             item.disabled = True
         
-        # --- PUNISHMENT LOGIC (SAME AS WRONG ANSWER) ---
+        # --- PUNISHMENT LOGIC ---
         data = await get_data(self.player.id)
         is_safe = False
         footer_txt = "💀 Penalty: 1 Hour Mute"
@@ -10683,8 +10683,8 @@ class TriviaGameView(discord.ui.View):
 
         embed = discord.Embed(title="⌛ TIME'S UP!", color=0xFF0000)
         embed.description = (
-            f"❌ **Bahut slow ho tum!**\n"
-            f"5 Second khatam ho gaye.\n\n"
+            f"❌ **Sochne mein waqt nikal gaya!**\n"
+            f"15 Seconds khatam ho gaye.\n\n"
             f"💸 **Lost:** ${self.bet:,}\n"
             f"🏥 **Status:** {footer_txt}"
         )
@@ -10717,7 +10717,7 @@ class TriviaGameView(discord.ui.View):
             embed = discord.Embed(title="🧠 GENIUS LEVEL: 100", color=0x00FF00)
             embed.description = (
                 f"🎉 **Correct Answer!**\n"
-                f"Tumhara dimaag bijli se bhi tez hai!\n\n"
+                f"Sahi jawaab aur sahi waqt par!\n\n"
                 f"💰 **Bet:** ${self.bet:,}\n"
                 f"🤑 **Won:** ${winnings:,} (3x)"
             )
@@ -10771,9 +10771,9 @@ async def quiz(i: discord.Interaction, bet: int):
         f"**Player:** {i.user.mention}\n"
         f"💰 **Bet:** ${bet:,} | **Win:** ${bet*3:,}\n\n"
         f"❓ **{question['q']}**\n\n"
-        f"⚡ **JALDI KARO! SIRF 5 SECONDS HAIN!**"
+        f"⏳ **Time:** 15 Seconds"
     )
-    embed.set_footer(text="Warning: Wrong or Slow = 1 Hour Mute!")
+    embed.set_footer(text="Warning: Wrong Answer = 1 Hour Mute!")
     
     view = TriviaGameView(i.user, bet, i, question)
     await i.response.send_message(embed=embed, view=view)
