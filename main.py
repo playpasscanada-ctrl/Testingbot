@@ -11935,7 +11935,6 @@ BIO_QUESTIONS = [
     {"id": 1518, "q": "Which structure causes movement of surrounding fluid or the cell itself?", "o": ["Cilia", "Microvilli", "Pili", "Fimbriae"], "a": "Cilia"},
     {"id": 1519, "q": "Compared to cilia, flagella are:", "o": ["Longer", "Shorter", "Same size", "Thicker"], "a": "Longer"},
     {"id": 1520, "q": "The core of the cilium/flagellum is called:", "o": ["Axoneme", "Centriole", "Basal body", "Hub"], "a": "Axoneme"},
-    ,
     {"id": 1521, "q": "The Axoneme possesses a number of microtubules running parallel to the long axis in an arrangement of:", "o": ["9 + 2", "9 + 0", "9 + 1", "8 + 2"], "a": "9 + 2"},
     {"id": 1522, "q": "The 9+2 arrangement means:", "o": ["9 doublets of radial microtubules and one central pair", "9 singlets and 2 central", "9 central and 2 radial", "9 triplets and 2 central"], "a": "9 doublets of radial microtubules and one central pair"},
     {"id": 1523, "q": "The central tubules are connected by bridges and enclosed by a:", "o": ["Central sheath", "Plasma membrane", "Nuclear envelope", "Capsule"], "a": "Central sheath"},
