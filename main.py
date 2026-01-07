@@ -10638,7 +10638,7 @@ TRIVIA_QUESTIONS = [
 
 class TriviaGameView(discord.ui.View):
     def __init__(self, player, bet, interaction, question_data):
-        super().__init__(timeout=45) # 45 Seconds to think
+        super().__init__(timeout=5) # ⚡ SIRF 5 SECONDS KA TIMER
         self.player = player
         self.bet = bet
         self.interaction = interaction
@@ -10653,12 +10653,47 @@ class TriviaGameView(discord.ui.View):
         self.create_buttons()
 
     def create_buttons(self):
-        # A, B, C, D labels
         labels = ["A", "B", "C", "D"]
         for i, opt in enumerate(self.options):
             btn = discord.ui.Button(label=f"{labels[i]}: {opt}", style=discord.ButtonStyle.secondary, custom_id=opt)
             btn.callback = self.answer_callback
             self.add_item(btn)
+
+    async def on_timeout(self):
+        # ⌛ AGAR 5 SECOND ME JAWAB NAHI DIYA
+        for item in self.children:
+            item.disabled = True
+        
+        # --- PUNISHMENT LOGIC (SAME AS WRONG ANSWER) ---
+        data = await get_data(self.player.id)
+        is_safe = False
+        footer_txt = "💀 Penalty: 1 Hour Mute"
+        
+        if data.get("vip_expiry"):
+            is_safe = True
+            footer_txt = "🛡️ VIP Saved you from Mute"
+        elif data.get("inventory", {}).get("life", 0) > 0:
+            await update_inventory(self.player.id, "life", -1)
+            is_safe = True
+            footer_txt = "💖 Extra Life Used"
+
+        if not is_safe:
+            # Time up hone par bhi mute lagega
+            await smart_timeout(self.interaction, self.player, 3600, "Trivia Timeout") 
+
+        embed = discord.Embed(title="⌛ TIME'S UP!", color=0xFF0000)
+        embed.description = (
+            f"❌ **Bahut slow ho tum!**\n"
+            f"5 Second khatam ho gaye.\n\n"
+            f"💸 **Lost:** ${self.bet:,}\n"
+            f"🏥 **Status:** {footer_txt}"
+        )
+        embed.set_thumbnail(url="https://media.tenor.com/images/3e877e504c35e320f7725964f4040939/tenor.gif")
+        
+        try:
+            await self.interaction.edit_original_response(embed=embed, view=self)
+        except:
+            pass
 
     async def answer_callback(self, interaction: discord.Interaction):
         if interaction.user.id != self.player.id:
@@ -10666,13 +10701,13 @@ class TriviaGameView(discord.ui.View):
 
         selected_ans = interaction.data["custom_id"]
         
-        # Disable all buttons
+        # Disable buttons
         for item in self.children:
             item.disabled = True
             if item.custom_id == self.correct_ans:
-                item.style = discord.ButtonStyle.success # Show Correct (Green)
+                item.style = discord.ButtonStyle.success 
             elif item.custom_id == selected_ans:
-                item.style = discord.ButtonStyle.danger # Show Wrong (Red)
+                item.style = discord.ButtonStyle.danger 
 
         if selected_ans == self.correct_ans:
             # ✅ WIN
@@ -10682,15 +10717,14 @@ class TriviaGameView(discord.ui.View):
             embed = discord.Embed(title="🧠 GENIUS LEVEL: 100", color=0x00FF00)
             embed.description = (
                 f"🎉 **Correct Answer!**\n"
-                f"Tumhara IQ kamaal ka hai.\n\n"
+                f"Tumhara dimaag bijli se bhi tez hai!\n\n"
                 f"💰 **Bet:** ${self.bet:,}\n"
                 f"🤑 **Won:** ${winnings:,} (3x)"
             )
-            embed.set_thumbnail(url="https://media.tenor.com/images/1c8c87e28e66487a5611357591605a6c/tenor.gif") # Mind Blown gif
+            embed.set_thumbnail(url="https://media.tenor.com/images/1c8c87e28e66487a5611357591605a6c/tenor.gif")
         
         else:
             # ❌ LOSE
-            # Check VIP/Life
             data = await get_data(self.player.id)
             is_safe = False
             footer_txt = "💀 Penalty: 1 Hour Mute"
@@ -10704,7 +10738,7 @@ class TriviaGameView(discord.ui.View):
                 footer_txt = "💖 Extra Life Used"
 
             if not is_safe:
-                await smart_timeout(self.interaction, self.player, 3600, "Failed Trivia Question") # 1 Hour
+                await smart_timeout(self.interaction, self.player, 3600, "Failed Trivia Question")
 
             embed = discord.Embed(title="🚫 WRONG ANSWER!", color=0xFF0000)
             embed.description = (
@@ -10713,7 +10747,7 @@ class TriviaGameView(discord.ui.View):
                 f"💸 **Lost:** ${self.bet:,}\n"
                 f"🏥 **Status:** {footer_txt}"
             )
-            embed.set_thumbnail(url="https://media.tenor.com/images/3e877e504c35e320f7725964f4040939/tenor.gif") # Wrong buzzer
+            embed.set_thumbnail(url="https://media.tenor.com/images/3e877e504c35e320f7725964f4040939/tenor.gif")
             
         await interaction.response.edit_message(embed=embed, view=self)
 
@@ -10721,7 +10755,6 @@ class TriviaGameView(discord.ui.View):
 @bot.tree.command(name="quiz", description="🧠 Bet on your Intelligence (3x Reward)")
 @app_commands.describe(bet="Amount to bet")
 async def quiz(i: discord.Interaction, bet: int):
-    # Min Bet
     if bet < 5000:
         return await i.response.send_message("❌ Min Bet: $5,000 (Ye bacchon ka khel nahi hai)", ephemeral=True)
         
@@ -10731,7 +10764,6 @@ async def quiz(i: discord.Interaction, bet: int):
         
     await update_balance(i.user.id, -bet)
     
-    # Pick Random Hard Question
     question = random.choice(TRIVIA_QUESTIONS)
     
     embed = discord.Embed(title="🧠 HIGH IQ QUIZ", color=0x9B59B6)
@@ -10739,9 +10771,9 @@ async def quiz(i: discord.Interaction, bet: int):
         f"**Player:** {i.user.mention}\n"
         f"💰 **Bet:** ${bet:,} | **Win:** ${bet*3:,}\n\n"
         f"❓ **{question['q']}**\n\n"
-        f"👇 **Sahi jawab chuno (45s)**"
+        f"⚡ **JALDI KARO! SIRF 5 SECONDS HAIN!**"
     )
-    embed.set_footer(text="Warning: Wrong answer = 1 Hour Mute!")
+    embed.set_footer(text="Warning: Wrong or Slow = 1 Hour Mute!")
     
     view = TriviaGameView(i.user, bet, i, question)
     await i.response.send_message(embed=embed, view=view)
