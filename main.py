@@ -13397,80 +13397,93 @@ async def quiz(i: discord.Interaction, bet: int):
     view = TriviaGauntletView(i.user, bet, i, gauntlet_questions)
     await i.response.send_message(embed=embed, view=view)
 
-# --- VIEW CLASS FOR REFRESH BUTTON ---
+# --- VIEW CLASS (Refresh Button) ---
 class LeaderboardView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=60)
 
     @discord.ui.button(label="🔄 Refresh List", style=discord.ButtonStyle.primary, emoji="📊")
     async def refresh_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Refresh click hone par dobara function call hoga
         await show_leaderboard(interaction, is_refresh=True)
 
-# --- MAIN LEADERBOARD FUNCTION ---
+# --- MAIN FUNCTION (With Supabase Logic) ---
 async def show_leaderboard(interaction: discord.Interaction, is_refresh=False):
-    # 1. CHECK IF DATA EXISTS
-    if not users:
-        await interaction.response.send_message("❌ Abhi tak kisi ne account nahi khola hai!", ephemeral=True)
+    # 1. FETCH DATA FROM SUPABASE
+    try:
+        # 'economy' table se saara data mangwa rahe hain
+        response = supabase.table("economy").select("*").execute()
+        db_data = response.data # Ye list of dictionaries hai
+    except Exception as e:
+        print(f"Supabase Error: {e}")
+        return await interaction.response.send_message("❌ Database connection error!", ephemeral=True)
+
+    if not db_data:
+        msg = "❌ Database khaali hai! Abhi kisi ne account nahi banaya."
+        if is_refresh:
+            await interaction.response.edit_message(content=msg, embed=None, view=None)
+        else:
+            await interaction.response.send_message(msg, ephemeral=True)
         return
 
-    # 2. SORTING LOGIC (Sahi tareeka: Wallet + Bank)
-    # Hum list banayenge: [(user_id, total_amount), ...]
+    # 2. PROCESS DATA (Wallet + Bank)
     leaderboard_data = []
     
-    for user_id, data in users.items():
-        total_money = data.get("wallet", 0) + data.get("bank", 0)
-        leaderboard_data.append((user_id, total_money))
+    for row in db_data:
+        # Column names wahi hone chahiye jo Supabase me hain
+        uid = row.get('user_id') 
+        wallet = row.get('wallet', 0)
+        bank = row.get('bank', 0)
+        
+        total_net_worth = wallet + bank
+        leaderboard_data.append((uid, total_net_worth))
     
-    # Sort from Highest to Lowest
+    # 3. SORT (Highest to Lowest)
     sorted_users = sorted(leaderboard_data, key=lambda x: x[1], reverse=True)
     
-    # 3. SERVER STATS
-    total_economy = sum(amount for _, amount in sorted_users)
-    top_10 = sorted_users[:10] # Sirf top 10 log
+    # 4. SERVER ECONOMY (GDP)
+    total_economy = sum(x[1] for x in sorted_users)
+    top_10 = sorted_users[:10]
     
-    # 4. BUILD LIST DISPLAY
+    # 5. BUILD DISPLAY LIST
     desc = ""
     medals = ["🥇", "🥈", "🥉"]
     
     for rank, (user_id, amount) in enumerate(top_10):
         formatted_bal = f"${amount:,}"
         
-        # Top 3 ke liye mast formatting
         if rank < 3:
             rank_icon = medals[rank]
             line = f"{rank_icon} **<@{user_id}>**\n👑 Net Worth: **{formatted_bal}**\n"
         else:
             line = f"`#{rank+1}` • <@{user_id}>\n💸 `{formatted_bal}`\n"
-            
+        
         desc += line + "\n"
 
-    # 5. FIND USER'S OWN RANK
+    # 6. FIND USER'S OWN RANK
     user_rank = "N/A"
     user_bal = 0
     
-    # User ka rank dhoondo
+    target_id = str(interaction.user.id) # Comparison ke liye String banaya
+    
     for rank, (uid, amount) in enumerate(sorted_users):
-        # ID ko string me convert karke compare karna safe rehta hai
-        if str(uid) == str(interaction.user.id):
+        if str(uid) == target_id:
             user_rank = f"#{rank+1}"
             user_bal = amount
             break
 
-    # 6. CREATE EMBED
-    embed = discord.Embed(title="🏆 WORLD RICHEST PLAYERS", color=0xFFD700)
-    
-    # Optional: GIF laga do ameeeri wali
+    # 7. CREATE EMBED
+    embed = discord.Embed(title="🏆 GLOBAL RICH LIST", color=0xFFD700)
     embed.set_thumbnail(url="https://media.tenor.com/J3i6jGgFqsgAAAAC/money-transfer.gif")
     
     embed.add_field(
-        name="🌍 Server GDP (Total Money)", 
+        name="🌍 Global Economy (GDP)", 
         value=f"```fix\n${total_economy:,}\n```", 
         inline=False
     )
     
     embed.description = desc
     
-    # Footer me user ka khud ka status
     embed.set_footer(
         text=f"🫵 Your Rank: {user_rank} • Net Worth: ${user_bal:,}", 
         icon_url=interaction.user.display_avatar.url
@@ -13485,9 +13498,10 @@ async def show_leaderboard(interaction: discord.Interaction, is_refresh=False):
 
 
 # --- SLASH COMMAND ---
-@bot.tree.command(name="leaderboard", description="🏆 See the Top 10 Richest Players")
+@bot.tree.command(name="leaderboard", description="🏆 Top 10 Richest Players (Supabase)")
 async def leaderboard(interaction: discord.Interaction):
     await show_leaderboard(interaction)
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
