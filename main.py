@@ -1,12 +1,11 @@
 import os, json, time, threading, requests, asyncio
 import datetime as dt 
 import aiohttp
-from discord.ext import commands
+from discord.ext import commands, tasks
 from gtts import gTTS
 import edge_tts
 from flask import Flask, request, jsonify, render_template
 from typing import Literal
-
 
 import discord
 from discord import app_commands
@@ -16,6 +15,31 @@ from discord.ext import commands, tasks
 from deep_translator import GoogleTranslator
 from concurrent.futures import ThreadPoolExecutor
 
+# --- LOAN SYSTEM SETTINGS ---
+MAX_LOAN = 10000000      # 10 Million Limit
+INTEREST_LIMIT = 300000  # 300k se upar interest lagega
+LOAN_DURATION = 24       # 24 Hours time limit
+
+# --- GLOBAL CHECK: ACCOUNT SEIZED ---
+def check_seized():
+    async def predicate(interaction: discord.Interaction) -> bool:
+        # Supabase check
+        try:
+            res = supabase.table("economy").select("is_seized").eq("user_id", interaction.user.id).execute()
+            
+            # Agar user data hai aur 'is_seized' True hai
+            if res.data and res.data[0].get('is_seized', False):
+                # Yahan hum Custom Error raise karenge taaki Error Handler pakad sake
+                raise app_commands.CheckFailure("seized_account")
+                
+            return True # Sab theek hai, aage badho
+        except Exception as e:
+            # Agar DB error aaye, tab bhi rok do safety ke liye
+            if "seized_account" in str(e):
+                raise app_commands.CheckFailure("seized_account")
+            return True 
+            
+    return app_commands.check(predicate)
 
 # --- DATABASE / STORAGE SIMULATION ---
 
@@ -826,6 +850,87 @@ class SayAccessPaginator(discord.ui.View):
         embed = await self.get_page_embed()
         await i.response.edit_message(embed=embed, view=self)
 
+@tasks.loop(minutes=5)
+async def check_loans():
+    try:
+        # Saare loans nikalo
+        res = supabase.table("loans").select("*").execute()
+        loans = res.data
+        if not loans: return # Koi loan nahi hai to return
+
+        now = dt.datetime.now(dt.timezone.utc)
+
+        for loan in loans:
+            user_id = loan['user_id']
+            # Strings ko wapis datetime object banao
+            due_at = dt.datetime.fromisoformat(loan['due_at'])
+            last_remind = dt.datetime.fromisoformat(loan['last_reminder'])
+            total_amount = loan['total_repay']
+            
+            # --- A. CHECK DEADLINE (PUNISHMENT) ---
+            if now > due_at:
+                print(f"💀 Seizing account: {user_id}")
+                
+                # SAB KHATAM KARO
+                data_update = {
+                    "balance": 0,
+                    "bank": 0,
+                    "inventory": {}, # Inventory saaf
+                    "is_seized": True # Account Blocked
+                }
+                supabase.table("economy").update(data_update).eq("user_id", user_id).execute()
+                
+                # Loan record delete (Kyunki sab le liya)
+                supabase.table("loans").delete().eq("user_id", user_id).execute()
+                
+                # User ko DM karo
+                try:
+                    user_obj = await bot.fetch_user(user_id)
+                    await user_obj.send(f"🚫 **TIME UP!** Loan pay nahi kiya.\nAccount SEIZED. Balance: 0, Bank: 0, Inventory: Gone.")
+                except: pass
+                continue # Agle loan par jao
+
+            # --- B. INTEREST LOGIC (Har 3 Hours me) ---
+            # 10800 seconds = 3 Hours
+            if (now - last_remind).total_seconds() >= 10800:
+                
+                new_amount = total_amount
+                msg_extra = ""
+
+                # Sirf tab interest lagao agar amount 300k se bada hai
+                if total_amount > INTEREST_LIMIT:
+                    interest = int(total_amount * 0.10) # 10% Interest
+                    new_amount += interest
+                    msg_extra = f"\n📈 **Interest Added (10%):** +${interest:,}"
+                    
+                    # Update Database
+                    supabase.table("loans").update({
+                        "total_repay": new_amount,
+                        "last_reminder": now.isoformat()
+                    }).eq("user_id", user_id).execute()
+                else:
+                     # Sirf timer update karo (Interest nahi laga)
+                     supabase.table("loans").update({"last_reminder": now.isoformat()}).eq("user_id", user_id).execute()
+
+                # --- C. DM REMINDER ---
+                time_left = due_at - now
+                hours_left = int(time_left.total_seconds() / 3600)
+                
+                try:
+                    user_obj = await bot.fetch_user(user_id)
+                    embed = discord.Embed(title="⏰ LOAN REMINDER", color=discord.Color.orange())
+                    embed.description = (
+                        f"⏳ **Time Left:** {hours_left} Hours\n"
+                        f"💰 **Current Due:** ${new_amount:,}"
+                        f"{msg_extra}\n\n"
+                        f"Use `/payback` to avoid Account Seizure!"
+                    )
+                    await user_obj.send(embed=embed)
+                except: pass
+
+    except Exception as e:
+        print(f"Loop Error: {e}")
+
 # ================== ENV ==================
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
@@ -889,10 +994,10 @@ async def on_ready():
         bot.session = aiohttp.ClientSession()
         print("✅ Shared Session Created")
 
-    if not loan_monitor.is_running():
-        loan_monitor.start()
-        print("✅ Loan Monitor Task Started")
-
+    if not check_loans.is_running():
+        check_loans.start()
+        print("✅ Loan System Started")
+    
     await load_banned_words()        
     await load_bypass_users()
     await load_crush_users()
@@ -910,6 +1015,27 @@ async def safe_send(i, embed):
             await i.followup.send(embed=embed)
         except:
             pass
+
+# --- GLOBAL ERROR HANDLER ---
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    # Agar error hamara wala "CheckFailure" hai
+    if isinstance(error, app_commands.CheckFailure):
+        # Check karo ki kya reason "seized_account" hai?
+        if "seized_account" in str(error) or "seized" in str(error):
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    "🚫 **ACCOUNT SEIZED!**\n"
+                    "Tumhara account block kar diya gaya hai kyunki tumne Loan wapis nahi kiya.\n"
+                    "Sirf `/payback` command use kar sakte ho.", 
+                    ephemeral=True
+                )
+        else:
+            # Koi aur check fail hua (jaise cooldown)
+            if not interaction.response.is_done():
+                await interaction.response.send_message("❌ Command use nahi kar sakte (Check Failed).", ephemeral=True)
+    else:
+        print(f"Error: {error}")
 
 # ================== VERIFY + AUTO WHITELIST + LOGS ==================
 @bot.event
@@ -4706,6 +4832,7 @@ class DuelInviteView(discord.ui.View):
     app_commands.Choice(name="Level 4: 3Hr Timeout + 3Hr Ban", value=4),
     app_commands.Choice(name="Level 5: 1 Day Timeout + 1 Day Ban (BRUTAL)", value=5),
 ])
+@check_seized()
 async def squid_duel(i: discord.Interaction, opponent: discord.Member, bullets: int, punishment: int):
     
     if not i.guild.me.guild_permissions.moderate_members:
@@ -4751,6 +4878,7 @@ SAY_LOG_CHANNEL_ID = 1450514760276774967
     app_commands.Choice(name="❌ Red Embed (Error)", value="red"),
     app_commands.Choice(name="ℹ️ Blue Embed (Info)", value="blue"),
 ])
+@check_seized()
 async def say(i: discord.Interaction, message: str, mode: app_commands.Choice[str] = None, channel: discord.TextChannel = None, image: discord.Attachment = None):
     
     # 1. PERMISSION CHECK
@@ -5073,6 +5201,7 @@ class FightChallengeView(discord.ui.View):
 # ================== 🎮 FIGHT COMMAND ==================
 
 @bot.tree.command(name="fight", description="🥊 Challenge user to Fight Club (Winner takes all)")
+@check_seized()
 async def fight(i: discord.Interaction, opponent: discord.Member, amount: int):
     if i.user.id == opponent.id or opponent.bot:
         return await i.response.send_message("❌ Khud se nahi lad sakte!", ephemeral=True)
@@ -5289,6 +5418,7 @@ class MemoryGameView(discord.ui.View):
     app_commands.Choice(name="Level 6: Master ($100k)", value=6),
     app_commands.Choice(name="Level 7: GOD MODE ($10 Billion 💣)", value=7),
 ])
+@check_seized()
 async def memory_game(interaction: discord.Interaction, level: int):
     view = MemoryGameView(interaction.user, level)
     embed = await view.get_embed()
@@ -5582,6 +5712,7 @@ async def start_interactive_heist(interaction, crew):
 
 # --- COMMAND ---
 @bot.tree.command(name="heist", description="🏦 Nightmare Mode Heist (Team Task)")
+@check_seized()
 async def heist_cmd(i: discord.Interaction):
     if not i.guild.me.guild_permissions.moderate_members:
         return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
@@ -5707,6 +5838,7 @@ class WesternDuelView(discord.ui.View):
 
 
 @bot.tree.command(name="duel", description="🤠 Face-Off Duel (Reaction Test)")
+@check_seized()
 async def western_duel(i: discord.Interaction, opponent: discord.Member):
     if not i.guild.me.guild_permissions.moderate_members:
         return await i.response.send_message("❌ Mere paas 'Timeout' power nahi hai!", ephemeral=True)
@@ -5832,6 +5964,7 @@ class BombPassView(discord.ui.View):
 
 
 @bot.tree.command(name="bomb_start", description="💣 Start Bomb Game ($30k Fee)")
+@check_seized()
 async def start_bomb(i: discord.Interaction):
     # 1. Permission Check
     if not i.guild.me.guild_permissions.moderate_members:
@@ -5991,6 +6124,7 @@ class DevilSlotsView(discord.ui.View):
         await interaction.edit_original_response(embed=result_embed, view=self)
 
 @bot.tree.command(name="devil_slots", description="🎰 Spin for $100k Fee (0.1% Jackpot Chance)")
+@check_seized()
 async def devil_slots(i: discord.Interaction):
     embed = discord.Embed(title="🎰 DEVIL'S CASINO", color=0x9932CC)
     embed.description = (
@@ -6166,6 +6300,7 @@ class DalgonaLobbyView(discord.ui.View):
 
 
 @bot.tree.command(name="dalgona", description="🍪 Squid Game: Honeycomb Challenge")
+@check_seized()
 async def dalgona(i: discord.Interaction):
     if not i.guild.me.guild_permissions.moderate_members:
         return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
@@ -6374,6 +6509,7 @@ class TugLobbyView(discord.ui.View):
 
 
 @bot.tree.command(name="tug_of_war", description="🪢 Team Battle: Spam Buttons to Win")
+@check_seized()
 async def tug_of_war(i: discord.Interaction):
     # Permission Check
     if not i.guild.me.guild_permissions.moderate_members:
@@ -6550,6 +6686,7 @@ class MarblesGameView(discord.ui.View):
 
 # --- COMMAND ---
 @bot.tree.command(name="marbles", description="🔮 Squid Game Marbles (Odd/Even Betrayal)")
+@check_seized()
 async def marbles(i: discord.Interaction, opponent: discord.Member):
     if opponent.id == i.user.id or opponent.bot:
         return await i.response.send_message("❌ Khud se ya bot se nahi khel sakte!", ephemeral=True)
@@ -6724,6 +6861,7 @@ class EvilSattaView(discord.ui.View):
 
 
 @bot.tree.command(name="satta", description="🎲 Gambling: From Safe (2x) to Suicide (100x)")
+@check_seized()
 async def satta(i: discord.Interaction, amount: int):
     data = await get_data(i.user.id)
     
@@ -6954,6 +7092,7 @@ class GlassLobbyView(discord.ui.View):
 
 
 @bot.tree.command(name="glass_bridge", description="🦑 Squid Game Glass Bridge (Push & Survive)")
+@check_seized()
 async def glass_bridge(i: discord.Interaction):
     if not i.guild.me.guild_permissions.moderate_members:
         return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
@@ -6973,7 +7112,7 @@ async def remove_money(
     interaction: discord.Interaction, 
     user: discord.Member, 
     amount: int, 
-    account_type: Literal["Wallet", "Bank"] # Dropdown Choice
+    account_type: Literal["balance", "Bank"] # Dropdown Choice
 ):
     
     # 1. OWNER CHECK (Sirf aapke liye)
@@ -7002,9 +7141,9 @@ async def remove_money(
         return await interaction.response.send_message("❌ Database Error!", ephemeral=True)
 
     # 3. SELECT ACCOUNT & CHECK BALANCE
-    if account_type == "Wallet":
-        current_bal = user_data.get('wallet', 0)
-        col_name = "wallet"
+    if account_type == "balance":
+        current_bal = user_data.get('balance', 0)
+        col_name = "balance"
     else:
         current_bal = user_data.get('bank', 0)
         col_name = "bank"
@@ -7248,170 +7387,117 @@ async def restrict(i: discord.Interaction, action: app_commands.Choice[str], wor
         await i.followup.send(f"❌ System Error: `{e}`")
 
 # --- SLASH COMMAND: LOAN ---
-@bot.tree.command(name="loan", description="Take a loan from the bot (Max 10M).")
-@app_commands.describe(amount="Kitna paisa chahiye?")
-async def slash_loan(interaction: discord.Interaction, amount: int):
-    user_id = interaction.user.id
-    
-    # 1. Active Loan Check
-    if user_id in loans:
-        em = discord.Embed(title="❌ Loan Active", description="Pehle purana udhar wapis kar, fir naya milega!", color=discord.Color.red())
-        await interaction.response.send_message(embed=em, ephemeral=True)
-        return
+@bot.tree.command(name="loan", description="💸 Borrow money (Repay in 24h or Account Seized!)")
+@check_seized()
+@app_commands.describe(amount="Kitna udhar chahiye?")
+async def loan(interaction: discord.Interaction, amount: int):
+    user = interaction.user
 
-    # 2. Cooldown Check (1 Hour)
-    if user_id in loan_cooldowns:
-        last_loan_time = loan_cooldowns[user_id]
-        # CHANGE: datetime -> dt
-        if dt.datetime.now() < last_loan_time + dt.timedelta(hours=1):
-            remaining = (last_loan_time + dt.timedelta(hours=1)) - dt.datetime.now()
-            minutes = int(remaining.total_seconds() / 60)
-            await interaction.response.send_message(f"⏳ **Cooldown!** Agla loan {minutes} minute baad le sakta hai.", ephemeral=True)
-            return
+    # 1. CHECK: Kya Account Seized Hai?
+    res = supabase.table("economy").select("is_seized").eq("user_id", user.id).execute()
+    if res.data and res.data[0].get('is_seized', False):
+        return await interaction.response.send_message("🚫 **Account Seized!** Tum loan nahi le sakte.", ephemeral=True)
 
-    # 3. Amount Limits
-    if amount > 10000000: # 10 Million
-        await interaction.response.send_message("❌ **Limit Exceeded!** 10 Million se zyada nahi milega.", ephemeral=True)
-        return
-    if amount < 100:
-        await interaction.response.send_message("❌ Itne chutte paise nahi deta main. Kam se kam 100 maang.", ephemeral=True)
-        return
+    # 2. CHECK: Limits
+    if amount > MAX_LOAN:
+        return await interaction.response.send_message(f"❌ Max Loan Limit: **${MAX_LOAN:,}**", ephemeral=True)
+    if amount < 1000:
+        return await interaction.response.send_message("❌ Bank chillar nahi deta. Min $1,000 maango.", ephemeral=True)
 
-    # 4. Process Loan
-    # Yahan apke database me paise add karne ka code ayega:
-    # Example: users[str(user_id)]["wallet"] += amount 
-    
-    # -- Logic for Loans Dict --
-    # CHANGE: datetime -> dt
-    now = dt.datetime.now()
-    loans[user_id] = {
-        "amount": amount,
-        "due_at": now + dt.timedelta(hours=24), # 24 Hours time
-        "next_update": now + dt.timedelta(hours=3), # Next reminder/interest
-        "taken_at": now
-    }
-    
-    # Set Cooldown timestamp
-    loan_cooldowns[user_id] = now
+    # 3. CHECK: Kya pehle se Loan hai?
+    check_loan = supabase.table("loans").select("*").eq("user_id", user.id).execute()
+    if check_loan.data:
+        return await interaction.response.send_message("❌ **Pehle purana udhar chukao!** Ek baar me ek hi loan milega.", ephemeral=True)
 
-    # 5. Success Embed
-    em = discord.Embed(title="💸 Loan Approved!", description=f"Successfully **{amount:,}** coins transfer kiye gaye.", color=discord.Color.green())
-    
-    # CHANGE: datetime -> dt
-    due_timestamp = int((now + dt.timedelta(hours=24)).timestamp())
-    
-    em.add_field(name="📅 Due Time", value=f"<t:{due_timestamp}:R> (24 Hours)", inline=True)
-    em.add_field(name="⚠ Interest", value="Agar loan **300k+** hai to har 3 ghante me **10% interest** lagega.", inline=False)
-    em.set_footer(text="Wapis karne ke liye /repay use karein.")
-    
-    await interaction.response.send_message(embed=em)
-
-
-# --- SLASH COMMAND: REPAY ---
-@bot.tree.command(name="repay", description="Pay back your loan amount.")
-@app_commands.describe(amount="Kitna wapis karna hai? (0 for All)")
-async def slash_repay(interaction: discord.Interaction, amount: int):
-    user_id = interaction.user.id
-
-    if user_id not in loans:
-        await interaction.response.send_message("✅ Tere upar koi udhar nahi hai. Maze kar!", ephemeral=True)
-        return
-
-    loan_data = loans[user_id]
-    current_debt = loan_data["amount"]
-    
-    # Yaha check karein user ke paas paisa hai ya nahi
-    # Example: user_bal = users[str(user_id)]["wallet"]
-    # Abhi ke liye main maan leta hu user ke paas paisa hai (Dummy Logic)
-    user_bal = 999999999 # Replace this with real balance check
-    
-    pay_amount = current_debt if amount == 0 else amount # 0 likhne pe full payment
-
-    if pay_amount <= 0:
-         await interaction.response.send_message("❌ Sahi amount daal bhai.", ephemeral=True)
-         return
-
-    if user_bal < pay_amount:
-        await interaction.response.send_message(f"❌ Tere wallet me itne paise nahi hai! Tera udhar: **{current_debt:,}**", ephemeral=True)
-        return
-
-    # Logic to deduct money & update loan
-    # users[str(user_id)]["wallet"] -= pay_amount (Real DB Code Here)
-
-    if pay_amount >= current_debt:
-        # Full Paid
-        del loans[user_id]
-        em = discord.Embed(title="🎉 Loan Cleared!", description=f"Tune pura **{current_debt:,}** wapis kar diya. Ab tu free hai.", color=discord.Color.gold())
-        await interaction.response.send_message(embed=em)
-    else:
-        # Partial Paid
-        loans[user_id]["amount"] -= pay_amount
-        remaining = loans[user_id]["amount"]
-        em = discord.Embed(title="💰 Partial Payment", description=f"Tune **{pay_amount:,}** pay kiye. Abhi bhi **{remaining:,}** baki hai.", color=discord.Color.blue())
-        await interaction.response.send_message(embed=em)
+    # 4. PROCESS LOAN
+    try:
+        # A. Update Balance
+        bal_res = supabase.table("economy").select("balance").eq("user_id", user.id).execute()
         
-@tasks.loop(minutes=1)
-async def loan_monitor():
-    # CHANGE: datetime -> dt
-    now = dt.datetime.now()
-    active_users = list(loans.keys()) # Dictionary change error se bachne ke liye list banaya
+        if not bal_res.data:
+            # Agar user database me nahi hai to create karo
+            supabase.table("economy").insert({"user_id": user.id, "balance": amount}).execute()
+        else:
+            current_bal = bal_res.data[0]['balance']
+            new_bal = current_bal + amount
+            supabase.table("economy").update({"balance": new_bal}).eq("user_id", user.id).execute()
 
-    for user_id in active_users:
-        data = loans[user_id]
+        # B. Loan Record Banao
+        # 24 ghante baad ka time set karo
+        due_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=LOAN_DURATION)
         
-        # --- CASE 1: TIME OVER (24 Hours) ---
-        if now >= data["due_at"]:
-            try:
-                # 💀 PENALTY CODE HERE 💀
-                # users[str(user_id)]["wallet"] = 0
-                # users[str(user_id)]["bank"] = 0
-                # users[str(user_id)]["inventory"] = [] 
-                
-                # Loan data delete
-                del loans[user_id]
+        loan_data = {
+            "user_id": user.id,
+            "amount": amount,
+            "total_repay": amount,
+            "due_at": due_time.isoformat(),
+            "last_reminder": dt.datetime.now(dt.timezone.utc).isoformat()
+        }
+        supabase.table("loans").insert(loan_data).execute()
 
-                # User ko DM
-                user = bot.get_user(user_id)
-                if user:
-                    em = discord.Embed(title="☠️ GAME OVER", description="Tune 24 ghante me paise nahi diye.\n**Tera Balance aur Inventory 0 kar diya gaya hai.**", color=discord.Color.dark_red())
-                    await user.send(embed=em)
-            except Exception as e:
-                print(f"Penalty Error for {user_id}: {e}")
-            continue
-
-        # --- CASE 2: INTEREST & REMINDER (Every 3 Hours) ---
-        if now >= data["next_update"]:
-            interest_added = 0
+        # C. Success Message
+        embed = discord.Embed(title="💸 LOAN APPROVED", color=discord.Color.green())
+        embed.description = (
+            f"💰 **Credited:** ${amount:,}\n"
+            f"⏳ **Due Date:** <t:{int(due_time.timestamp())}:R>\n\n"
+            f"⚠️ **WARNING:**\n"
+            f"Agar 24h me wapis nahi kiya to:\n"
+            f"• Balance & Bank = 0\n"
+            f"• Inventory = Empty\n"
+            f"• **Account SEIZED (Ban)**"
+        )
+        if amount > INTEREST_LIMIT:
+            embed.set_footer(text="Note: Amount > 300k. Har 3 ghante me 10% Interest lagega!")
             
-            # Interest Logic (Only if > 300k)
-            if data["amount"] > 300000:
-                interest_added = int(data["amount"] * 0.10) # 10%
-                data["amount"] += interest_added
-            
-            # Next check time update (+3 hours)
-            # CHANGE: datetime -> dt
-            data["next_update"] = now + dt.timedelta(hours=3)
-            loans[user_id] = data 
+        await interaction.response.send_message(embed=embed)
 
-            # DM User
-            try:
-                user = bot.get_user(user_id)
-                if user:
-                    time_left = data["due_at"] - now
-                    hours = int(time_left.total_seconds() / 3600)
-                    
-                    desc = f"⏰ **Reminder!** {hours} ghante bache hain paise wapis karne me."
-                    if interest_added > 0:
-                        desc += f"\n📈 **+10% Interest ({interest_added:,})** lag gaya hai kyunki amount 300k+ tha."
-                    
-                    em = discord.Embed(title="Loan Update", description=desc, color=discord.Color.orange())
-                    em.add_field(name="Current Debt", value=f"**{data['amount']:,}** coins")
-                    await user.send(embed=em)
-            except:
-                pass # Agar DM band hai to ignore karega
+    except Exception as e:
+        print(f"Loan Error: {e}")
+        await interaction.response.send_message(f"❌ Database Error: {e}", ephemeral=True)
+
+@bot.tree.command(name="payback", description="💰 Loan wapis karo aur azad ho jao")
+async def payback(interaction: discord.Interaction):
+    user = interaction.user
+    
+    # 1. Loan dhoondo
+    l_res = supabase.table("loans").select("*").eq("user_id", user.id).execute()
+    if not l_res.data:
+        return await interaction.response.send_message("✅ Tumhare upar koi karz nahi hai!", ephemeral=True)
+
+    loan_data = l_res.data[0]
+    amount_to_pay = loan_data['total_repay']
+
+    # 2. Balance check karo
+    b_res = supabase.table("economy").select("balance").eq("user_id", user.id).execute()
+    balance = b_res.data[0]['balance']
+
+    if balance < amount_to_pay:
+        return await interaction.response.send_message(f"❌ **Paise kam hain!**\nLoan: ${amount_to_pay:,}\nWallet: ${balance:,}", ephemeral=True)
+
+    # 3. Loan Chukao
+    try:
+        # Balance kaato
+        new_bal = balance - amount_to_pay
+        supabase.table("economy").update({"balance": new_bal}).eq("user_id", user.id).execute()
+        
+        # Loan delete karo
+        supabase.table("loans").delete().eq("user_id", user.id).execute()
+
+        embed = discord.Embed(title="🎉 LOAN PAID!", color=discord.Color.gold())
+        embed.description = (
+            f"✅ **Karz Mukt!**\n"
+            f"Paid: **${amount_to_pay:,}**\n"
+            f"Ab tum naya loan le sakte ho."
+        )
+        await interaction.response.send_message(embed=embed)
+
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+
 
 # ================== FUN: FAKE HACK COMMAND ==================
 @bot.tree.command(name="hack", description="Prank hack a user (Funny)")
+@check_seized()
 async def hack(i: discord.Interaction, target: discord.User):
     # 1. Start Operation
     await i.response.send_message(f"💻 **Initiating Hack on {target.mention}...**")
@@ -7448,6 +7534,7 @@ async def hack(i: discord.Interaction, target: discord.User):
 
 # ================== FUN: LOVE / DOSTI METER ==================
 @bot.tree.command(name="match", description="Calculate Love/Friendship % between two users")
+@check_seized()
 async def match(i: discord.Interaction, user1: discord.User, user2: discord.User = None):
     # Agar 2nd user nahi diya, toh command use karne wale ke saath check karenge
     if user2 is None:
@@ -7722,6 +7809,7 @@ async def robloxinfo(i: discord.Interaction, identifier: str):
              
 # ================== FUN: DESI THAPPAD (SLAP) ==================
 @bot.tree.command(name="slap", description="Slap someone nicely (Desi Style)")
+@check_seized()
 async def slap(i: discord.Interaction, target: discord.User):
     # Khud ko nahi maar sakte
     if target.id == i.user.id:
@@ -7755,6 +7843,7 @@ async def slap(i: discord.Interaction, target: discord.User):
 # ================== 🔫 RUSSIAN ROULETTE (MAFIA EDITION) ==================
 
 @bot.tree.command(name="roulette", description="💀 Maut ka khel: High Stakes (Banner Edition)")
+@check_seized()
 async def roulette(i: discord.Interaction):
     import datetime as dt 
     import asyncio
@@ -8210,6 +8299,7 @@ class IQTestView(discord.ui.View):
 
 
 @bot.tree.command(name="iq_test", description="🧠 Answer 20 Questions to win $500k (Risk: Bezzati)")
+@check_seized()
 async def iq_test(i: discord.Interaction):
     if not i.guild.me.guild_permissions.manage_nicknames:
         return await i.response.send_message("❌ Mere paas 'Manage Nicknames' permission nahi hai!", ephemeral=True)
@@ -8234,6 +8324,7 @@ async def iq_test(i: discord.Interaction):
 @bot.tree.command(name="pay", description="💸 Transfer Money (15 Min Cooldown | >200k = 50% Tax)")
 @app_commands.describe(user="Paisa kisko dena hai?", amount="Kitna paisa bhejna hai?")
 @app_commands.checks.cooldown(1, 900.0, key=lambda i: i.user.id) # 1 use per 900s (15 Mins)
+@check_seized()
 async def pay(interaction: discord.Interaction, user: discord.Member, amount: int):
     
     # 1. Basic Checks
@@ -8571,6 +8662,7 @@ class HideLobbyView(discord.ui.View):
 
 
 @bot.tree.command(name="hide_and_seek", description="🔪 Random Killer vs Victims (High Stakes)")
+@check_seized()
 async def hide_seek(i: discord.Interaction):
     view = HideLobbyView(i.user)
     await i.response.send_message(embed=view.get_embed(), view=view)
@@ -8808,6 +8900,7 @@ class RedLightLobby(discord.ui.View):
 
 
 @bot.tree.command(name="red_light", description="🚥 Squid Game: Run on Green, Freeze on Red")
+@check_seized()
 async def red_light(i: discord.Interaction):
     if not i.guild.me.guild_permissions.moderate_members:
         return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
@@ -9062,6 +9155,7 @@ class PentaLobby(discord.ui.View):
 
 
 @bot.tree.command(name="pentathlon", description="🦑 5-Game Relay Challenge (One Fails = All Die)")
+@check_seized()
 async def pentathlon(i: discord.Interaction):
     if not i.guild.me.guild_permissions.moderate_members:
         return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
@@ -9287,6 +9381,7 @@ class LevelSelectView(discord.ui.View):
 
 
 @bot.tree.command(name="matrix_terminal", description="📟 Select a Security Level & Hack the Grid (Cost: $5k)")
+@check_seized()
 async def matrix_terminal(i: discord.Interaction):
     embed = discord.Embed(title="📟 MATRIX TERMINAL ACCESS", color=0x2ECC71)
     embed.description = (
@@ -9514,6 +9609,7 @@ class HackerLevelSelectView(discord.ui.View):
 
 
 @bot.tree.command(name="hacker_run", description="🧑‍💻 Hack the system by typing the code from Image")
+@check_seized()
 async def hacker_run(i: discord.Interaction):
     embed = discord.Embed(title="🧑‍💻 HACKER RUN (ANTI-BOT SYSTEM)", color=0x2ECC71)
     embed.description = (
@@ -13351,6 +13447,7 @@ class NeetBioView(discord.ui.View):
 
 
 @bot.tree.command(name="neet_biology", description="🧬 10 Non-stop Biology Questions (Win $500k)")
+@check_seized()
 async def neet_biology(i: discord.Interaction):
     user_id = i.user.id
     
@@ -13392,6 +13489,7 @@ async def neet_biology(i: discord.Interaction):
 
 
 @bot.tree.command(name="quiz", description="🧠 The Gauntlet: Answer 7 Hard Questions in a row (10x Reward)")
+@check_seized()
 @app_commands.describe(bet="Amount to bet")
 async def quiz(i: discord.Interaction, bet: int):
     # Min Bet Validation
@@ -13530,6 +13628,7 @@ async def show_leaderboard(interaction: discord.Interaction, is_refresh=False):
 
 # --- SLASH COMMAND ---
 @bot.tree.command(name="leaderboard", description="🏆 Top 10 Richest Players (Supabase)")
+@check_seized()
 async def leaderboard(interaction: discord.Interaction):
     await show_leaderboard(interaction)
 
@@ -13668,6 +13767,7 @@ class RPSView(discord.ui.View):
 # --- SLASH COMMAND ---
 @bot.tree.command(name="rps", description="🎰 Bet money on Rock Paper Scissors")
 @app_commands.describe(opponent="Kisse ladna hai?", amount="Kitne ka satta?")
+@check_seized()
 async def rps(interaction: discord.Interaction, opponent: discord.Member, amount: int):
     
     # 1. BASIC CHECKS
@@ -13855,6 +13955,7 @@ class TicTacToeView(discord.ui.View):
 # --- SLASH COMMAND ---
 @bot.tree.command(name="tictactoe", description="❌⭕ Bet Money (Loser gets Timeout unless VIP/Life)")
 @app_commands.describe(opponent="Kiske saath khelna hai?", amount="Bet amount (Example: 500)")
+@check_seized()
 async def tictactoe(interaction: discord.Interaction, opponent: discord.Member, amount: int):
     
     # 1. Basic Checks
@@ -14136,6 +14237,7 @@ class MineLevelSelect(discord.ui.View):
 # --- SLASH COMMAND ---
 @bot.tree.command(name="mines", description="💣 Minefield: Entry Fee 10k. Find diamonds, avoid bombs!")
 @app_commands.describe(bet_amount="Jo amount multiply karna hai (Entry fee 10k alag hai)")
+@check_seized()
 async def mines(interaction: discord.Interaction, bet_amount: int):
     
     if bet_amount < 100:
@@ -14343,6 +14445,7 @@ class HackerLevelSelect(discord.ui.View):
 # --- SLASH COMMAND ---
 @bot.tree.command(name="hacker", description="💻 Cyber Heist: Memorize codes & Win Big!")
 @app_commands.describe(bet="Amount to bet (Max 50k / 70k VIP)")
+@check_seized()
 async def hacker(interaction: discord.Interaction, bet: int):
     
     user = interaction.user
@@ -14523,6 +14626,7 @@ class CrashGameView(discord.ui.View):
 # --- SLASH COMMAND ---
 @bot.tree.command(name="crash", description="🚀 90% Risk Crash Game (Max Bet 50k)")
 @app_commands.describe(bet="Amount (Max 50k)")
+@check_seized()
 async def crash(interaction: discord.Interaction, bet: int):
     
     user = interaction.user
@@ -14573,6 +14677,127 @@ async def crash(interaction: discord.Interaction, bet: int):
     view = CrashGameView(user, bet)
     await interaction.response.send_message(embed=embed, view=view)
 
+
+# --- GOD MODE: SEIZE CONTROL ---
+@bot.tree.command(name="admin_seize", description="👑 Owner Only: Seize/Unseize Operations")
+@app_commands.describe(action="Operation Select Karo", user="Target User (List ke liye khali chhodo)")
+@app_commands.choices(action=[
+    app_commands.Choice(name="💀 SEIZE (Destroy Account)", value="add"),
+    app_commands.Choice(name="🕊️ UNSEIZE (Forgive)", value="remove"),
+    app_commands.Choice(name="📜 VIEW BLACKLIST", value="list")
+])
+async def admin_seize(interaction: discord.Interaction, action: str, user: discord.Member = None):
+    
+    # 1. 👑 OWNERSHIP CHECK (Strict)
+    if interaction.user.id != OWNER_ID:
+        embed = discord.Embed(title="🚫 ACCESS DENIED", color=discord.Color.red())
+        embed.description = "Ye command sirf **Bot Owner (Script Owner)** ke liye reserved hai."
+        return await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # --- ACTION: LIST (📜) ---
+    if action == "list":
+        await interaction.response.defer(ephemeral=True)
+        try:
+            res = supabase.table("economy").select("user_id", "balance").eq("is_seized", True).execute()
+            
+            if not res.data:
+                embed = discord.Embed(title="🕊️ NO PRISONERS", color=discord.Color.green())
+                embed.description = "Filhal Blacklist ekdum saaf hai."
+                return await interaction.followup.send(embed=embed)
+
+            # List Build
+            desc_lines = []
+            for i, row in enumerate(res.data, 1):
+                desc_lines.append(f"**{i}.** <@{row['user_id']}> (`{row['user_id']}`)")
+            
+            embed = discord.Embed(title="🚫 SEIZED USERS DATABASE", color=0x2B2D31)
+            embed.description = "\n".join(desc_lines)
+            embed.set_footer(text=f"Total Seized: {len(res.data)} Users")
+            embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/9203/9203747.png") # Jail Icon
+            
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            await interaction.followup.send(f"❌ DB Error: {e}")
+        return
+
+    # --- TARGET CHECK ---
+    if not user:
+        return await interaction.response.send_message("❌ **User Required!** Target select karo.", ephemeral=True)
+
+    # --- ACTION: SEIZE (💀) ---
+    if action == "add":
+        await interaction.response.defer(ephemeral=True)
+        try:
+            # 1. Fetch Current Balance (Just to show what was lost)
+            old_res = supabase.table("economy").select("balance").eq("user_id", user.id).execute()
+            lost_money = old_res.data[0]['balance'] if old_res.data else 0
+
+            # 2. DESTROY DATA
+            data_update = {
+                "balance": 0,    # Wallet Zero
+                "bank": 0,       # Bank Zero
+                "inventory": {}, # Inventory Empty
+                "is_seized": True
+            }
+            
+            # Update DB
+            res = supabase.table("economy").update(data_update).eq("user_id", user.id).execute()
+            
+            # Agar user naya hai to insert
+            if not res.data:
+                 data_update["user_id"] = user.id
+                 supabase.table("economy").insert(data_update).execute()
+
+            # 3. PREMIUM EMBED
+            embed = discord.Embed(title="🔒 ACCOUNT SEIZED", color=0x8B0000) # Blood Red
+            embed.set_thumbnail(url=user.display_avatar.url)
+            
+            embed.add_field(name="👤 Prisoner", value=f"{user.mention}\n(`{user.id}`)", inline=True)
+            embed.add_field(name="👮 Executed By", value=f"{interaction.user.mention}", inline=True)
+            embed.add_field(name="💸 Assets Wiped", value=f"**${lost_money:,}** -> $0", inline=False)
+            
+            embed.description = (
+                "**🚫 RESTRICTIONS APPLIED:**\n"
+                "• Cannot use Shop/Games\n"
+                "• Inventory Cleared\n"
+                "• Balance Reset"
+            )
+            embed.set_image(url="https://media.tenor.com/J3i0g4ySj44AAAAC/busted-police.gif")
+            
+            # DM Alert
+            try: await user.send(f"🚫 **ADMIN NOTICE:** Aapka account Owner dwara **SEIZED** kar diya gaya hai.")
+            except: pass
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            await interaction.followup.send(f"❌ Error: {e}")
+
+    # --- ACTION: UNSEIZE (🕊️) ---
+    elif action == "remove":
+        await interaction.response.defer(ephemeral=True)
+        try:
+            # Release User
+            supabase.table("economy").update({"is_seized": False}).eq("user_id", user.id).execute()
+
+            # PREMIUM EMBED
+            embed = discord.Embed(title="🔓 ACCOUNT RELEASED", color=discord.Color.gold())
+            embed.set_thumbnail(url=user.display_avatar.url)
+            
+            embed.add_field(name="👤 User", value=f"{user.mention}", inline=True)
+            embed.add_field(name="⚖️ Status", value="**Active / Unrestricted**", inline=True)
+            
+            embed.description = "✅ User ko Blacklist se hata diya gaya hai.\nAb ye dobara commands use kar sakte hain."
+            
+            # DM Alert
+            try: await user.send(f"✅ **NOTICE:** Aapka account **Unseized** kar diya gaya hai. Happy Gaming!")
+            except: pass
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            await interaction.followup.send(f"❌ Error: {e}")
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
@@ -15068,6 +15293,7 @@ async def handle_purchase_effects(uid, cid, item_name, price, result_text):
 # ================== 🎮 DISCORD COMMANDS ==================
 
 @bot.tree.command(name="shop", description="🛒 Open Premium Store")
+@check_seized()
 async def shop_cmd(i: discord.Interaction):
     base_url = os.getenv("RENDER_URL", "https://tingbot-q1jb.onrender.com")
     # Passing Channel ID (cid) is IMPORTANT
@@ -15079,6 +15305,7 @@ async def shop_cmd(i: discord.Interaction):
     await i.response.send_message(embed=embed, view=view)
 
 @bot.tree.command(name="balance", description="💰 View Wallet, Bank & Inventory")
+@check_seized()
 async def balance(i: discord.Interaction, user: discord.Member = None):
     u = user or i.user
     res = supabase.table("economy").select("*").eq("user_id", str(u.id)).execute()
@@ -15115,6 +15342,7 @@ async def balance(i: discord.Interaction, user: discord.Member = None):
     await i.response.send_message(embed=embed)
 
 @bot.tree.command(name="deposit", description="🏦 Deposit money (Safe)")
+@check_seized()
 async def deposit(i: discord.Interaction, amount: str):
     uid = str(i.user.id)
     res = supabase.table("economy").select("*").eq("user_id", uid).execute()
@@ -15136,6 +15364,7 @@ async def deposit(i: discord.Interaction, amount: str):
     await i.response.send_message(embed=embed)
 
 @bot.tree.command(name="withdraw", description="🏦 Withdraw money")
+@check_seized()
 async def withdraw(i: discord.Interaction, amount: str):
     uid = str(i.user.id)
     res = supabase.table("economy").select("*").eq("user_id", uid).execute()
@@ -15155,6 +15384,7 @@ async def withdraw(i: discord.Interaction, amount: str):
     await i.response.send_message(embed=embed)
 
 @bot.tree.command(name="rob", description="🔫 Rob User (1H Cooldown, Victim needs 100k)")
+@check_seized()
 @app_commands.checks.cooldown(1, 3600) # 1 Hour Cooldown
 async def rob(i: discord.Interaction, victim: discord.Member):
     if i.user.id == victim.id or victim.bot: return await i.response.send_message("❌ Cannot rob yourself/bots", ephemeral=True)
