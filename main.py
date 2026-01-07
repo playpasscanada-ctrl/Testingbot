@@ -5,6 +5,7 @@ from discord.ext import commands
 from gtts import gTTS
 import edge_tts
 from flask import Flask, request, jsonify, render_template
+from typing import Literal
 
 
 import discord
@@ -6962,14 +6963,23 @@ async def glass_bridge(i: discord.Interaction):
 
 # ================== 📉 ADMIN: REMOVE MONEY (ASSET SEIZURE) ==================
 
-@bot.tree.command(name="remove_money", description="👮‍♂️ Admin: Kisi user ke wallet se paise remove karo")
-@app_commands.describe(user="Kiske paise kaatne hain?", amount="Kitna amount remove karna hai?")
-@app_commands.default_permissions(administrator=True) # Sirf Admin ke liye
-async def remove_money(interaction: discord.Interaction, user: discord.Member, amount: int):
+@bot.tree.command(name="remove_money", description="👮‍♂️ Owner Only: User ke Wallet ya Bank se paise remove karo")
+@app_commands.describe(
+    user="Kiske paise kaatne hain?", 
+    amount="Kitna amount remove karna hai?",
+    account_type="Kahan se remove karna hai?"
+)
+async def remove_money(
+    interaction: discord.Interaction, 
+    user: discord.Member, 
+    amount: int, 
+    account_type: Literal["Wallet", "Bank"] # Dropdown Choice
+):
     
-    # 1. Security Check (Waise to default_permissions sambhal lega, par double safety)
-    if not interaction.user.guild_permissions.administrator:
-        return await interaction.response.send_message("❌ **Access Denied:** Sirf Admins ye command use kar sakte hain!", ephemeral=True)
+    # 1. OWNER CHECK (Sirf aapke liye)
+    # Make sure 'OWNER_ID' variable aapke code me defined ho
+    if interaction.user.id != int(OWNER_ID):
+        return await interaction.response.send_message("❌ **Access Denied:** Ye command sirf **Bot Owner** use kar sakta hai!", ephemeral=True)
 
     if amount <= 0:
         return await interaction.response.send_message("❌ Positive number daalo (e.g. 5000)", ephemeral=True)
@@ -6977,39 +6987,60 @@ async def remove_money(interaction: discord.Interaction, user: discord.Member, a
     if user.bot:
         return await interaction.response.send_message("❌ Bots ke paas paise nahi hote.", ephemeral=True)
 
-    # 2. Data Fetch
-    data = await get_data(user.id)
-    current_bal = data['balance']
-    
-    if current_bal <= 0:
-        return await interaction.response.send_message(f"❌ **Already Broke:** {user.name} ke paas pehle se $0 hain.", ephemeral=True)
+    # 2. DATA FETCH (Supabase se latest data)
+    try:
+        response = supabase.table("economy").select("*").eq("user_id", user.id).execute()
+        data = response.data
+        
+        if not data:
+            return await interaction.response.send_message(f"❌ **No Data:** {user.name} ka account nahi bana hai.", ephemeral=True)
+            
+        user_data = data[0]
+        
+    except Exception as e:
+        print(f"DB Error: {e}")
+        return await interaction.response.send_message("❌ Database Error!", ephemeral=True)
 
-    # 3. Calculation (Negative Balance Protection)
-    # Agar 500 hain aur 1000 nikal rahe ho, to sirf 500 hi niklenge (Bal = 0)
+    # 3. SELECT ACCOUNT & CHECK BALANCE
+    if account_type == "Wallet":
+        current_bal = user_data.get('wallet', 0)
+        col_name = "wallet"
+    else:
+        current_bal = user_data.get('bank', 0)
+        col_name = "bank"
+
+    if current_bal <= 0:
+        return await interaction.response.send_message(f"❌ **Already Broke:** {user.name} ke {account_type} me pehle se $0 hain.", ephemeral=True)
+
+    # 4. CALCULATION (Negative Balance Protection)
+    # Agar balance 500 hai aur aap 1000 nikal rahe ho, to sirf 500 niklenge (0 ho jayega)
     amount_to_remove = min(current_bal, amount)
     new_bal = current_bal - amount_to_remove
 
-    # 4. Database Update
-    await update_balance(user.id, -amount_to_remove)
+    # 5. DATABASE UPDATE (Specific Column)
+    try:
+        supabase.table("economy").update({col_name: new_bal}).eq("user_id", user.id).execute()
+    except Exception as e:
+        return await interaction.response.send_message(f"❌ Update Failed: {e}", ephemeral=True)
 
-    # 5. PREMIUM EMBED
+    # 6. PREMIUM EMBED (TAX RAID STYLE)
     embed = discord.Embed(title="📉 ASSET SEIZURE (TAX RAID)", color=0x8B0000) # Dark Red
     embed.description = (
         f"# 👮‍♂️ ORDER EXECUTED\n"
-        f"**Authority:** {interaction.user.mention}\n"
-        f"**Target:** {user.mention}\n\n"
+        f"**Authority:** {interaction.user.mention} (Owner)\n"
+        f"**Target:** {user.mention}\n"
+        f"**Source:** 🏦 {account_type}\n\n"
         f"Official action ke tehat inke account se funds zabt kar liye gaye hain."
     )
     
     embed.add_field(name="🔻 Removed Amount", value=f"```-${amount_to_remove:,}```", inline=True)
-    embed.add_field(name="🏦 New Balance", value=f"```${new_bal:,}```", inline=True)
+    embed.add_field(name=f"💰 New {account_type} Balance", value=f"```${new_bal:,}```", inline=True)
     
     embed.set_thumbnail(url=user.display_avatar.url)
-    embed.set_image(url="https://media.tenor.com/EA84s3occX8AAAAC/burning-money-money.gif") # Money Burning GIF
+    embed.set_image(url="https://media.tenor.com/EA84s3occX8AAAAC/burning-money-money.gif") 
     embed.set_footer(text="Secure Banking System | Action Irreversible")
 
     await interaction.response.send_message(embed=embed)
-        
 
 # ================== SAY ACCESS MANAGER (PREMIUM) ==================
 @bot.tree.command(name="sayaccess", description="Manage who can use /say command (Owner Only)")
