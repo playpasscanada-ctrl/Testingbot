@@ -14551,14 +14551,10 @@ async def crash(interaction: discord.Interaction, bet: int):
         
         new_bal = res.data[0]['wallet'] - bet
         supabase.table("economy").update({"wallet": new_bal}).eq("user_id", user.id).execute()
-# Purana Code:
-# except:
-#     return await interaction.response.send_message("❌ DB Error", ephemeral=True)
 
-# Naya Code (Error Print karega):
-except Exception as e:
-    print(f"🔴 DATABASE ERROR: {e}") # Ye line terminal me error dikhayegi
-    return await interaction.response.send_message(f"❌ DB Error: {e}", ephemeral=True)
+    except Exception as e:
+        print(f"🔴 DATABASE ERROR: {e}") # Ye line terminal me error dikhayegi
+        return await interaction.response.send_message(f"❌ DB Error: {e}", ephemeral=True)
 
     # 4. START GAME
     crash_cooldowns[user.id] = dt.datetime.now()
