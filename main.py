@@ -13457,16 +13457,16 @@ async def show_leaderboard(interaction: discord.Interaction, is_refresh=False):
             await interaction.response.send_message(msg, ephemeral=True)
         return
 
-    # 2. PROCESS DATA (Wallet + Bank)
+    # 2. PROCESS DATA (balance + Bank)
     leaderboard_data = []
     
     for row in db_data:
         # Column names wahi hone chahiye jo Supabase me hain
         uid = row.get('user_id') 
-        wallet = row.get('wallet', 0)
+        balance = row.get('balance', 0)
         bank = row.get('bank', 0)
         
-        total_net_worth = wallet + bank
+        total_net_worth = balance + bank
         leaderboard_data.append((uid, total_net_worth))
     
     # 3. SORT (Highest to Lowest)
@@ -13587,16 +13587,16 @@ class RPSView(discord.ui.View):
             try:
                 # 1. Deduct from Loser
                 # Pehle loser ka data lo
-                l_res = supabase.table("economy").select("wallet").eq("user_id", loser_id).execute()
-                l_bal = l_res.data[0]['wallet']
+                l_res = supabase.table("economy").select("balance").eq("user_id", loser_id).execute()
+                l_bal = l_res.data[0]['balance']
                 new_l_bal = l_bal - self.bet
-                supabase.table("economy").update({"wallet": new_l_bal}).eq("user_id", loser_id).execute()
+                supabase.table("economy").update({"balance": new_l_bal}).eq("user_id", loser_id).execute()
 
                 # 2. Add to Winner
-                w_res = supabase.table("economy").select("wallet").eq("user_id", winner_id).execute()
-                w_bal = w_res.data[0]['wallet']
+                w_res = supabase.table("economy").select("balance").eq("user_id", winner_id).execute()
+                w_bal = w_res.data[0]['balance']
                 new_w_bal = w_bal + self.bet
-                supabase.table("economy").update({"wallet": new_w_bal}).eq("user_id", winner_id).execute()
+                supabase.table("economy").update({"balance": new_w_bal}).eq("user_id", winner_id).execute()
                 
                 winner_obj = self.p1 if result == "p1_win" else self.p2
                 db_text = f"💸 **Transaction:** ${self.bet:,} transfer ho gaye **{winner_obj.name}** ke account me!"
@@ -13683,13 +13683,13 @@ async def rps(interaction: discord.Interaction, opponent: discord.Member, amount
     # 2. BALANCE CHECK (DATABASE)
     try:
         # Check User 1
-        res1 = supabase.table("economy").select("wallet").eq("user_id", interaction.user.id).execute()
-        if not res1.data or res1.data[0]['wallet'] < amount:
+        res1 = supabase.table("economy").select("balance").eq("user_id", interaction.user.id).execute()
+        if not res1.data or res1.data[0]['balance'] < amount:
             return await interaction.response.send_message(f"❌ Tere paas itne paise nahi hain! Balance check kar.", ephemeral=True)
 
         # Check User 2 (Opponent)
-        res2 = supabase.table("economy").select("wallet").eq("user_id", opponent.id).execute()
-        if not res2.data or res2.data[0]['wallet'] < amount:
+        res2 = supabase.table("economy").select("balance").eq("user_id", opponent.id).execute()
+        if not res2.data or res2.data[0]['balance'] < amount:
             return await interaction.response.send_message(f"❌ **{opponent.name}** gareeb hai! Uske paas itne paise nahi hain.", ephemeral=True)
             
     except Exception as e:
@@ -13786,14 +13786,14 @@ class TicTacToeView(discord.ui.View):
             # --- 1. MONEY TRANSFER (Supabase) ---
             try:
                 # Winner ko paise do
-                w_data = supabase.table("economy").select("wallet").eq("user_id", winner.id).execute()
-                new_w = w_data.data[0]['wallet'] + self.bet
-                supabase.table("economy").update({"wallet": new_w}).eq("user_id", winner.id).execute()
+                w_data = supabase.table("economy").select("balance").eq("user_id", winner.id).execute()
+                new_w = w_data.data[0]['balance'] + self.bet
+                supabase.table("economy").update({"balance": new_w}).eq("user_id", winner.id).execute()
 
                 # Loser se paise kaato
-                l_data = supabase.table("economy").select("wallet").eq("user_id", loser.id).execute()
-                new_l = l_data.data[0]['wallet'] - self.bet
-                supabase.table("economy").update({"wallet": new_l}).eq("user_id", loser.id).execute()
+                l_data = supabase.table("economy").select("balance").eq("user_id", loser.id).execute()
+                new_l = l_data.data[0]['balance'] - self.bet
+                supabase.table("economy").update({"balance": new_l}).eq("user_id", loser.id).execute()
             except Exception as e:
                 print(f"DB Error: {e}")
 
@@ -13868,13 +13868,13 @@ async def tictactoe(interaction: discord.Interaction, opponent: discord.Member, 
     # 2. Balance Check (Supabase)
     try:
         # Check Challenger
-        res1 = supabase.table("economy").select("wallet").eq("user_id", interaction.user.id).execute()
-        if not res1.data or res1.data[0]['wallet'] < amount:
+        res1 = supabase.table("economy").select("balance").eq("user_id", interaction.user.id).execute()
+        if not res1.data or res1.data[0]['balance'] < amount:
             return await interaction.response.send_message("❌ Tere paas paise nahi hain!", ephemeral=True)
 
         # Check Opponent
-        res2 = supabase.table("economy").select("wallet").eq("user_id", opponent.id).execute()
-        if not res2.data or res2.data[0]['wallet'] < amount:
+        res2 = supabase.table("economy").select("balance").eq("user_id", opponent.id).execute()
+        if not res2.data or res2.data[0]['balance'] < amount:
             return await interaction.response.send_message(f"❌ **{opponent.name}** ke paas paise nahi hain!", ephemeral=True)
             
     except Exception as e:
@@ -14044,9 +14044,9 @@ class MinefieldGameView(discord.ui.View):
             
             # DB Update
             try:
-                res = supabase.table("economy").select("wallet").eq("user_id", self.player.id).execute()
-                new_bal = res.data[0]['wallet'] + winnings
-                supabase.table("economy").update({"wallet": new_bal}).eq("user_id", self.player.id).execute()
+                res = supabase.table("economy").select("balance").eq("user_id", self.player.id).execute()
+                new_bal = res.data[0]['balance'] + winnings
+                supabase.table("economy").update({"balance": new_bal}).eq("user_id", self.player.id).execute()
             except: pass
 
             embed = discord.Embed(title="💰 CASHOUT SUCCESSFUL", color=discord.Color.gold())
@@ -14077,9 +14077,9 @@ class MinefieldGameView(discord.ui.View):
 
             # DB Update
             try:
-                res = supabase.table("economy").select("wallet").eq("user_id", self.player.id).execute()
-                new_bal = res.data[0]['wallet'] + winnings
-                supabase.table("economy").update({"wallet": new_bal}).eq("user_id", self.player.id).execute()
+                res = supabase.table("economy").select("balance").eq("user_id", self.player.id).execute()
+                new_bal = res.data[0]['balance'] + winnings
+                supabase.table("economy").update({"balance": new_bal}).eq("user_id", self.player.id).execute()
             except: pass
 
             embed = discord.Embed(title="💎 JACKPOT HIT!", color=discord.Color.purple())
@@ -14146,9 +14146,9 @@ async def mines(interaction: discord.Interaction, bet_amount: int):
 
     # 1. BALANCE CHECK & DEDUCTION
     try:
-        res = supabase.table("economy").select("wallet").eq("user_id", interaction.user.id).execute()
+        res = supabase.table("economy").select("balance").eq("user_id", interaction.user.id).execute()
         
-        if not res.data or res.data[0]['wallet'] < total_needed:
+        if not res.data or res.data[0]['balance'] < total_needed:
             return await interaction.response.send_message(
                 f"❌ **Funds Kam Hain!**\n"
                 f"Entry Fee: **$10,000**\n"
@@ -14156,8 +14156,8 @@ async def mines(interaction: discord.Interaction, bet_amount: int):
                 f"Total Needed: **${total_needed:,}**", ephemeral=True)
         
         # Paisa kaato (Entry Fee + Bet donon gaye abhi ke liye)
-        new_bal = res.data[0]['wallet'] - total_needed
-        supabase.table("economy").update({"wallet": new_bal}).eq("user_id", interaction.user.id).execute()
+        new_bal = res.data[0]['balance'] - total_needed
+        supabase.table("economy").update({"balance": new_bal}).eq("user_id", interaction.user.id).execute()
 
     except Exception as e:
         return await interaction.response.send_message("❌ Database Error!", ephemeral=True)
@@ -14248,9 +14248,9 @@ class HackerGameView(discord.ui.View):
         
         # DB Update
         try:
-            res = supabase.table("economy").select("wallet").eq("user_id", self.player.id).execute()
-            new_bal = res.data[0]['wallet'] + winnings
-            supabase.table("economy").update({"wallet": new_bal}).eq("user_id", self.player.id).execute()
+            res = supabase.table("economy").select("balance").eq("user_id", self.player.id).execute()
+            new_bal = res.data[0]['balance'] + winnings
+            supabase.table("economy").update({"balance": new_bal}).eq("user_id", self.player.id).execute()
         except: pass
 
         embed = discord.Embed(title="🔓 SYSTEM BREACH SUCCESSFUL", color=discord.Color.green())
@@ -14374,12 +14374,12 @@ async def hacker(interaction: discord.Interaction, bet: int):
 
     # 3. DEDUCT MONEY
     try:
-        w_res = supabase.table("economy").select("wallet").eq("user_id", user.id).execute()
-        if not w_res.data or w_res.data[0]['wallet'] < bet:
+        w_res = supabase.table("economy").select("balance").eq("user_id", user.id).execute()
+        if not w_res.data or w_res.data[0]['balance'] < bet:
             return await interaction.response.send_message("❌ Paise nahi hain account me!", ephemeral=True)
         
-        new_bal = w_res.data[0]['wallet'] - bet
-        supabase.table("economy").update({"wallet": new_bal}).eq("user_id", user.id).execute()
+        new_bal = w_res.data[0]['balance'] - bet
+        supabase.table("economy").update({"balance": new_bal}).eq("user_id", user.id).execute()
         
     except:
         return await interaction.response.send_message("❌ Database Error!", ephemeral=True)
@@ -14464,9 +14464,9 @@ class CrashGameView(discord.ui.View):
             winnings = int(self.bet * multiplier)
             
             try:
-                res = supabase.table("economy").select("wallet").eq("user_id", self.player.id).execute()
-                new_bal = res.data[0]['wallet'] + winnings
-                supabase.table("economy").update({"wallet": new_bal}).eq("user_id", self.player.id).execute()
+                res = supabase.table("economy").select("balance").eq("user_id", self.player.id).execute()
+                new_bal = res.data[0]['balance'] + winnings
+                supabase.table("economy").update({"balance": new_bal}).eq("user_id", self.player.id).execute()
             except: pass
 
             embed = discord.Embed(title="🪂 SURVIVED IMPOSSIBLE ODDS!", color=discord.Color.green())
@@ -14545,12 +14545,12 @@ async def crash(interaction: discord.Interaction, bet: int):
 
     # 3. BALANCE DEDUCT
     try:
-        res = supabase.table("economy").select("wallet").eq("user_id", user.id).execute()
-        if not res.data or res.data[0]['wallet'] < bet:
+        res = supabase.table("economy").select("balance").eq("user_id", user.id).execute()
+        if not res.data or res.data[0]['balance'] < bet:
             return await interaction.response.send_message("❌ Paise nahi hain!", ephemeral=True)
         
-        new_bal = res.data[0]['wallet'] - bet
-        supabase.table("economy").update({"wallet": new_bal}).eq("user_id", user.id).execute()
+        new_bal = res.data[0]['balance'] - bet
+        supabase.table("economy").update({"balance": new_bal}).eq("user_id", user.id).execute()
 
     except Exception as e:
         print(f"🔴 DATABASE ERROR: {e}") # Ye line terminal me error dikhayegi
