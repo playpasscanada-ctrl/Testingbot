@@ -14696,7 +14696,8 @@ async def admin_seize(interaction: discord.Interaction, action: str, user: disco
 
     # --- ACTION: LIST (📜) ---
     if action == "list":
-        await interaction.response.defer(ephemeral=True)
+        # Yahan ephemeral=False kar diya (Sabko dikhega)
+        await interaction.response.defer(ephemeral=False)
         try:
             res = supabase.table("economy").select("user_id", "balance").eq("is_seized", True).execute()
             
@@ -14727,7 +14728,8 @@ async def admin_seize(interaction: discord.Interaction, action: str, user: disco
 
     # --- ACTION: SEIZE (💀) ---
     if action == "add":
-        await interaction.response.defer(ephemeral=True)
+        # Yahan ephemeral=False kar diya (Sabko dikhega)
+        await interaction.response.defer(ephemeral=False)
         try:
             # 1. Fetch Current Balance (Just to show what was lost)
             old_res = supabase.table("economy").select("balance").eq("user_id", user.id).execute()
@@ -14776,7 +14778,8 @@ async def admin_seize(interaction: discord.Interaction, action: str, user: disco
 
     # --- ACTION: UNSEIZE (🕊️) ---
     elif action == "remove":
-        await interaction.response.defer(ephemeral=True)
+        # Yahan ephemeral=False kar diya (Sabko dikhega)
+        await interaction.response.defer(ephemeral=False)
         try:
             # Release User
             supabase.table("economy").update({"is_seized": False}).eq("user_id", user.id).execute()
@@ -14799,6 +14802,7 @@ async def admin_seize(interaction: discord.Interaction, action: str, user: disco
         except Exception as e:
             await interaction.followup.send(f"❌ Error: {e}")
 
+     
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
 import time
