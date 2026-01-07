@@ -10874,6 +10874,2313 @@ class TriviaGauntletView(discord.ui.View):
         if not is_safe:
             await smart_timeout(self.interaction, self.player, 3600, reason)
 
+# ================== 🧬 NEET BIOLOGY GAUNTLET (UNIQUE QUESTIONS) ==================
+
+# 💾 USER QUESTION HISTORY (Taaki sawal repeat na hon)
+# Isko database me save karna behtar hoga, abhi RAM me hai.
+USER_USED_QUESTIONS = {} # {user_id: [q_id1, q_id2, ...]}
+
+# 📚 BIOLOGY QUESTION BANK (IDs zaroori hain unique check ke liye)
+BIO_QUESTIONS = [
+    {"id": 1, "q": "Which of the following is not a feature of the plasmids?", "o": ["Transferable", "Single-stranded", "Independent replication", "Circular structure"], "a": "Single-stranded"},
+    {"id": 2, "q": "Which one of the following is not a constituent of cell membrane?", "o": ["Glycolipids", "Proline", "Phospholipids", "Cholesterol"], "a": "Proline"},
+    {"id": 101, "q": "Which of the following are the twin characteristics of growth?", "o": ["Increase in mass and increase in number", "Increase in height and width", "Differentiation and dedifferentiation", "Metabolism and catabolism"], "a": "Increase in mass and increase in number"},
+    {"id": 102, "q": "In which organisms does growth and reproduction refer to the same event?", "o": ["Multicellular organisms", "Higher plants", "Unicellular organisms like Amoeba", "All animals"], "a": "Unicellular organisms like Amoeba"},
+    {"id": 103, "q": "Which of the following is a defining property of living organisms without exception?", "o": ["Growth", "Reproduction", "Consciousness/Metabolism", "Self-replication"], "a": "Consciousness/Metabolism"},
+    {"id": 104, "q": "Photoperiod affects reproduction in:", "o": ["Seasonal breeders, both plants and animals", "Only seasonal breeder plants", "Only seasonal breeder animals", "Continuous breeders"], "a": "Seasonal breeders, both plants and animals"},
+    {"id": 105, "q": "The sum total of all chemical reactions occurring in our body is known as:", "o": ["Anabolism", "Catabolism", "Metabolism", "Digestion"], "a": "Metabolism"},
+    {"id": 106, "q": "Which of the following organisms do NOT reproduce?", "o": ["Mules", "Sterile worker bees", "Infertile human couples", "All of the above"], "a": "All of the above"},
+    {"id": 107, "q": "Metabolic reactions can be demonstrated outside the body in cell-free systems. These isolated reactions are:", "o": ["Living things", "Non-living things", "Living reactions but not living things", "Neither living nor non-living"], "a": "Living reactions but not living things"},
+    {"id": 108, "q": "For higher plants and animals, growth and reproduction are:", "o": ["Mutually inclusive events", "Mutually exclusive events", "Synonymous events", "None of the above"], "a": "Mutually exclusive events"},
+
+    # --- TOPIC: DIVERSITY & NOMENCLATURE ---
+    {"id": 109, "q": "The number of species that are known and described range between:", "o": ["1.5 to 1.6 million", "1.7 to 1.8 million", "2.0 to 2.5 million", "1.0 to 1.2 million"], "a": "1.7 to 1.8 million"},
+    {"id": 110, "q": "ICBN stands for:", "o": ["International Code for Botanical Nomenclature", "Indian Code of Botanical Nomenclature", "International Code of Biological Naming", "International Classification of Biological Nomenclature"], "a": "International Code for Botanical Nomenclature"},
+    {"id": 111, "q": "The scientific name of Mango is correctly written as:", "o": ["Mangifera Indica", "Mangifera indica", "mangifera Indica", "Mangifera Indica Linn"], "a": "Mangifera indica"},
+    {"id": 112, "q": "In 'Mangifera indica Linn.', the word 'Linn' indicates:", "o": ["The species is extinct", "The variety of mango", "The author Linnaeus who first described it", "The place where it was found"], "a": "The author Linnaeus who first described it"},
+    {"id": 113, "q": "The system of providing a name with two components is called:", "o": ["Trinomial nomenclature", "Binomial nomenclature", "Polynomial nomenclature", "Chemotaxonomy"], "a": "Binomial nomenclature"},
+    {"id": 114, "q": "Biological names are generally in which language?", "o": ["Greek", "Latin", "English", "Sanskrit"], "a": "Latin"},
+    {"id": 115, "q": "The process of classification is based on:", "o": ["External and internal structure", "Cell structure", "Development process and ecological info", "All of the above"], "a": "All of the above"},
+    {"id": 116, "q": "The term 'Systematics' is derived from the Latin word 'systema' which means:", "o": ["System of naming", "Systematic arrangement of organisms", "Study of systems", "Evolutionary history"], "a": "Systematic arrangement of organisms"},
+    {"id": 117, "q": "Who wrote the book 'Systema Naturae'?", "o": ["Darwin", "Aristotle", "Linnaeus", "Bentham and Hooker"], "a": "Linnaeus"},
+    {"id": 118, "q": "The basic unit of classification is:", "o": ["Kingdom", "Family", "Species", "Genus"], "a": "Species"},
+
+    # --- TOPIC: TAXONOMIC CATEGORIES ---
+    {"id": 119, "q": "A group of related genera with still less number of similarities as compared to genus and species constitutes a:", "o": ["Order", "Class", "Family", "Division"], "a": "Family"},
+    {"id": 120, "q": "Which of the following suffixes is used for 'Family' in plants?", "o": ["-ales", "-aceae", "-idae", "-ae"], "a": "-aceae"},
+    {"id": 121, "q": "Which suffix is used for 'Order' in plants?", "o": ["-ales", "-aceae", "-phyta", "-opsida"], "a": "-ales"},
+    {"id": 122, "q": "Solanum, Petunia, and Datura are placed in which Family?", "o": ["Solanaceae", "Liliaceae", "Poaceae", "Fabaceae"], "a": "Solanaceae"},
+    {"id": 123, "q": "Order Polymoniales includes families like:", "o": ["Solanaceae and Convolvulaceae", "Solanaceae and Liliaceae", "Fabaceae and Poaceae", "Felidae and Canidae"], "a": "Solanaceae and Convolvulaceae"},
+    {"id": 124, "q": "The order 'Polymoniales' is mainly based on:", "o": ["Vegetative characters", "Floral characters", "Root system", "Stem modifications"], "a": "Floral characters"},
+    {"id": 125, "q": "As we go from Species to Kingdom, the number of common characteristics:", "o": ["Increases", "Decreases", "Remains same", "First increases then decreases"], "a": "Decreases"},
+    {"id": 126, "q": "Which of the following categories contains organisms with the least similar traits?", "o": ["Class", "Order", "Family", "Genus"], "a": "Class"},
+    {"id": 127, "q": "Panthera leo and Panthera tigris belong to the genus:", "o": ["Felis", "Panthera", "Canis", "Solanum"], "a": "Panthera"},
+    {"id": 128, "q": "Cats belong to the family:", "o": ["Canidae", "Felidae", "Hominidae", "Muscidae"], "a": "Felidae"},
+    {"id": 129, "q": "Dogs belong to the family:", "o": ["Canidae", "Felidae", "Ursidae", "Hominidae"], "a": "Canidae"},
+    {"id": 130, "q": "Which of the following is a correct sequence of taxonomic categories?", "o": ["Species -> Genus -> Order -> Family", "Species -> Genus -> Family -> Order", "Genus -> Species -> Family -> Order", "Family -> Order -> Genus -> Species"], "a": "Species -> Genus -> Family -> Order"},
+
+    # --- TOPIC: SPECIFIC EXAMPLES (TABLE 1.1 NCERT) ---
+    {"id": 131, "q": "What is the Family of Man (Homo sapiens)?", "o": ["Hominidae", "Primata", "Mammalia", "Chordata"], "a": "Hominidae"},
+    {"id": 132, "q": "What is the Order of Housefly (Musca domestica)?", "o": ["Diptera", "Insecta", "Arthropoda", "Muscidae"], "a": "Diptera"},
+    {"id": 133, "q": "What is the Class of Mango?", "o": ["Monocotyledonae", "Dicotyledonae", "Angiospermae", "Sapindales"], "a": "Dicotyledonae"},
+    {"id": 134, "q": "Wheat belongs to the Order:", "o": ["Sapindales", "Poales", "Polymoniales", "Diptera"], "a": "Poales"},
+    {"id": 135, "q": "What is the Phylum of Human beings?", "o": ["Mammalia", "Chordata", "Primata", "Hominidae"], "a": "Chordata"},
+    {"id": 136, "q": "The biological name of Wheat is:", "o": ["Triticum aestivum", "Oryza sativa", "Zea mays", "Mangifera indica"], "a": "Triticum aestivum"},
+    {"id": 137, "q": "Housefly belongs to which Class?", "o": ["Insecta", "Arthropoda", "Diptera", "Muscidae"], "a": "Insecta"},
+    {"id": 138, "q": "Mango belongs to the Order:", "o": ["Poales", "Sapindales", "Polymoniales", "Rosales"], "a": "Sapindales"},
+    {"id": 139, "q": "Which of the following represents 'Genus'?", "o": ["Solanum", "Tuberosum", "Nigrum", "Melongena"], "a": "Solanum"},
+    {"id": 140, "q": "Classes comprising animals like fishes, amphibians, reptiles, birds along with mammals constitute the next higher category called:", "o": ["Kingdom", "Phylum", "Division", "Order"], "a": "Phylum"},
+    {"id": 201, "q": "Who proposed the Five Kingdom Classification?", "o": ["R.H. Whittaker", "Carolus Linnaeus", "Aristotle", "Ernst Haeckel"], "a": "R.H. Whittaker"},
+    {"id": 202, "q": "The main criteria for Whittaker's classification did NOT include:", "o": ["Cell structure", "Thallus organisation", "Mode of nutrition", "Gross morphology"], "a": "Gross morphology"},
+    {"id": 203, "q": "In the Two Kingdom classification, bacteria, blue-green algae, and fungi were placed under:", "o": ["Animalia", "Plantae", "Monera", "Protista"], "a": "Plantae"},
+    {"id": 204, "q": "The three-domain system divides which Kingdom into two domains?", "o": ["Monera", "Protista", "Fungi", "Plantae"], "a": "Monera"},
+    {"id": 205, "q": "Who was the earliest to attempt a more scientific basis for classification?", "o": ["Linnaeus", "Aristotle", "Theophrastus", "Darwin"], "a": "Aristotle"},
+
+    # --- SYSTEMS OF CLASSIFICATION ---
+    {"id": 276, "q": "In Whittaker's classification, which kingdom has no defined boundaries?", "o": ["Monera", "Protista", "Fungi", "Plantae"], "a": "Protista"},
+    {"id": 277, "q": "The main basis for classification in the Five Kingdom system is:", "o": ["Structure of nucleus", "Mode of nutrition", "Structure of cell wall", "Asexual reproduction"], "a": "Mode of nutrition"},
+    {"id": 278, "q": "Chlamydomonas and Chlorella were earlier placed in Algae within Plants, but now they are in:", "o": ["Monera", "Protista", "Fungi", "Plantae"], "a": "Protista"},
+    {"id": 279, "q": "Which kingdom includes organisms that are exclusively heterotrophic?", "o": ["Monera", "Protista", "Fungi", "Plantae"], "a": "Fungi"},
+
+    # --- MONERA (BACTERIA DETAILS) ---
+    {"id": 280, "q": "Bacteria are grouped under four categories based on their:", "o": ["Respiration", "Shape", "Nutrition", "Reproduction"], "a": "Shape"},
+    {"id": 281, "q": "The rod-shaped bacteria are called:", "o": ["Coccus", "Bacillus", "Vibrio", "Spirillum"], "a": "Bacillus"},
+    {"id": 282, "q": "The comma-shaped bacteria are called:", "o": ["Coccus", "Bacillus", "Vibrio", "Spirillum"], "a": "Vibrio"},
+    {"id": 283, "q": "Which structure helps bacteria in motility?", "o": ["Pili", "Fimbriae", "Flagella", "Cilia"], "a": "Flagella"},
+    {"id": 284, "q": "The vast majority of bacteria are:", "o": ["Photosynthetic autotrophs", "Chemosynthetic autotrophs", "Heterotrophs", "Parasites"], "a": "Heterotrophs"},
+    {"id": 285, "q": "Bacteria reproduce mainly by:", "o": ["Fission", "Spore formation", "Sexual reproduction", "Budding"], "a": "Fission"},
+    {"id": 286, "q": "Under unfavorable conditions, bacteria produce:", "o": ["Cysts", "Spores", "Gametes", "Zygotes"], "a": "Spores"},
+    {"id": 287, "q": "Nostoc and Anabaena can fix atmospheric nitrogen in specialized cells called:", "o": ["Homocysts", "Heterocysts", "Akinetes", "Endospores"], "a": "Heterocysts"},
+    {"id": 288, "q": "Which of the following plays a great role in recycling nutrients like Nitrogen and Phosphorus?", "o": ["Chemosynthetic autotrophic bacteria", "Photosynthetic autotrophic bacteria", "Parasitic bacteria", "Symbiotic bacteria"], "a": "Chemosynthetic autotrophic bacteria"},
+    {"id": 289, "q": "Mycoplasma are pathogenic to:", "o": ["Only Animals", "Only Plants", "Both Plants and Animals", "None"], "a": "Both Plants and Animals"},
+    {"id": 290, "q": "The primitive bacteria living in salty areas are called:", "o": ["Methanogens", "Thermoacidophiles", "Halophiles", "Heliozoans"], "a": "Halophiles"},
+    {"id": 291, "q": "Methanogens are present in the gut of:", "o": ["Humans", "Birds", "Ruminants", "Carnivores"], "a": "Ruminants"},
+
+    # --- PROTISTA (DEEP DIVE) ---
+    {"id": 292, "q": "Chrysophytes include:", "o": ["Diatoms and Desmids", "Dinoflagellates and Euglenoids", "Slime moulds and Protozoans", "Bacteria and Blue-green algae"], "a": "Diatoms and Desmids"},
+    {"id": 293, "q": "Desmids are also known as:", "o": ["Red Algae", "Golden Algae", "Brown Algae", "Blue Algae"], "a": "Golden Algae"},
+    {"id": 294, "q": "In Diatoms, the cell walls form two thin overlapping shells which fit together as in a:", "o": ["Matchbox", "Soap box", "Tiffin box", "Shoe box"], "a": "Soap box"},
+    {"id": 295, "q": "The accumulation of cell wall deposits of Diatoms over billions of years is called:", "o": ["Coral reef", "Diatomaceous earth", "Siliceous earth", "Calcareous earth"], "a": "Diatomaceous earth"},
+    {"id": 296, "q": "Most of the Dinoflagellates have:", "o": ["Two flagella", "One flagellum", "Many flagella", "No flagella"], "a": "Two flagella"},
+    {"id": 297, "q": "Red tides are caused by rapid multiplication of:", "o": ["Gonyaulax", "Noctiluca", "Ceratium", "Gymnodinium"], "a": "Gonyaulax"},
+    {"id": 298, "q": "Euglenoids are found in:", "o": ["Marine water", "Stagnant fresh water", "Running fresh water", "Damp soil"], "a": "Stagnant fresh water"},
+    {"id": 299, "q": "Though Euglenoids are photosynthetic, in the absence of sunlight they behave like:", "o": ["Autotrophs", "Heterotrophs", "Chemotrophs", "Parasites"], "a": "Heterotrophs"},
+    {"id": 300, "q": "The pigments of Euglenoids are identical to those present in:", "o": ["Higher plants", "Lower plants", "Red algae", "Blue-green algae"], "a": "Higher plants"},
+    {"id": 301, "q": "Slime moulds are:", "o": ["Parasitic protists", "Saprophytic protists", "Autotrophic protists", "Symbiotic protists"], "a": "Saprophytic protists"},
+    {"id": 302, "q": "During unfavorable conditions, the plasmodium of slime moulds differentiates to form:", "o": ["Fruiting bodies bearing spores", "Zygote", "Gametes", "Cysts"], "a": "Fruiting bodies bearing spores"},
+    {"id": 303, "q": "The spores of slime moulds possess:", "o": ["No walls", "True walls", "Pseudowalls", "Silica walls"], "a": "True walls"},
+    {"id": 304, "q": "Protozoans are believed to be primitive relatives of:", "o": ["Plants", "Fungi", "Animals", "Monerans"], "a": "Animals"},
+    {"id": 305, "q": "Entamoeba histolytica is an example of:", "o": ["Flagellated protozoan", "Ciliated protozoan", "Amoeboid protozoan", "Sporozoan"], "a": "Amoeboid protozoan"},
+    {"id": 306, "q": "Which form of Entamoeba is a parasite?", "o": ["Marine forms", "Freshwater forms", "Terrestrial forms", "Endoparasitic forms"], "a": "Endoparasitic forms"},
+    {"id": 307, "q": "Trypanosoma is a:", "o": ["Ciliated protozoan", "Flagellated protozoan", "Amoeboid protozoan", "Sporozoan"], "a": "Flagellated protozoan"},
+    {"id": 308, "q": "Which of the following has a cavity (gullet) that opens to the outside of the cell surface?", "o": ["Amoeba", "Paramoecium", "Euglena", "Plasmodium"], "a": "Paramoecium"},
+    {"id": 309, "q": "The most notorious Sporozoan is:", "o": ["Plasmodium", "Monocystis", "Eimeria", "Babesia"], "a": "Plasmodium"},
+
+    # --- FUNGI (EXAMPLES & CLASSES) ---
+    {"id": 310, "q": "Fungi prefer to grow in:", "o": ["Cold and dry places", "Warm and humid places", "Hot and dry places", "Cold and wet places"], "a": "Warm and humid places"},
+    {"id": 311, "q": "The only fungus which is unicellular is:", "o": ["Mucor", "Yeast", "Penicillium", "Agaricus"], "a": "Yeast"},
+    {"id": 312, "q": "Vegetative reproduction in fungi takes place by:", "o": ["Fragmentation", "Fission", "Budding", "All of the above"], "a": "All of the above"},
+    {"id": 313, "q": "Asexual reproduction in fungi is by spores called:", "o": ["Conidia, Sporangiospores, Zoospores", "Oospores, Ascospores, Basidiospores", "Zygospores only", "Aplanospores only"], "a": "Conidia, Sporangiospores, Zoospores"},
+    {"id": 314, "q": "Sexual reproduction in fungi is by:", "o": ["Oospores, Ascospores, Basidiospores", "Conidia, Zoospores", "Sporangiospores", "Aplanospores"], "a": "Oospores, Ascospores, Basidiospores"},
+    {"id": 315, "q": "Fusion of two nuclei is called:", "o": ["Plasmogamy", "Karyogamy", "Meiosis", "Cytokinesis"], "a": "Karyogamy"},
+    {"id": 316, "q": "In which fungi does the fusion of two haploid cells immediately result in diploid cells?", "o": ["Phycomycetes", "Ascomycetes", "Basidiomycetes", "Deuteromycetes"], "a": "Phycomycetes"},
+    {"id": 317, "q": "Dikaryophase (n + n condition) is seen in:", "o": ["Phycomycetes and Ascomycetes", "Ascomycetes and Basidiomycetes", "Phycomycetes and Deuteromycetes", "Basidiomycetes and Deuteromycetes"], "a": "Ascomycetes and Basidiomycetes"},
+    {"id": 318, "q": "Phycomycetes are found in:", "o": ["Aquatic habitats", "Decaying wood", "Damp places", "All of the above"], "a": "All of the above"},
+    {"id": 319, "q": "The mycelium in Phycomycetes is:", "o": ["Septate and branched", "Aseptate and coenocytic", "Septate and unbranched", "Aseptate and uninucleate"], "a": "Aseptate and coenocytic"},
+    {"id": 320, "q": "Identify the Phycomycete parasitic on mustard:", "o": ["Rhizopus", "Mucor", "Albugo", "Penicillium"], "a": "Albugo"},
+    {"id": 321, "q": "The common name for Ascomycetes is:", "o": ["Sac fungi", "Club fungi", "Algal fungi", "Imperfect fungi"], "a": "Sac fungi"},
+    {"id": 322, "q": "Coprophilous fungi grow on:", "o": ["Wood", "Dung", "Soil", "Rocks"], "a": "Dung"},
+    {"id": 323, "q": "The asexual spores 'Conidia' are produced:", "o": ["Endogenously on conidiophores", "Exogenously on conidiophores", "Endogenously in sporangium", "Exogenously in sporangium"], "a": "Exogenously on conidiophores"},
+    {"id": 324, "q": "Sexual spores 'Ascospores' are produced:", "o": ["Endogenously in asci", "Exogenously in asci", "Exogenously on basidium", "Endogenously on basidium"], "a": "Endogenously in asci"},
+    {"id": 325, "q": "Which fungus is used in the production of antibiotics?", "o": ["Yeast", "Penicillium", "Rhizopus", "Agaricus"], "a": "Penicillium"},
+    {"id": 326, "q": "Neurospora is used extensively in:", "o": ["Alcohol industry", "Biochemical and genetic work", "Making bread", "Medicine"], "a": "Biochemical and genetic work"},
+    {"id": 327, "q": "Common name for Basidiomycetes is:", "o": ["Sac fungi", "Club fungi", "Dust fungi", "Algal fungi"], "a": "Club fungi"},
+    {"id": 328, "q": "The mycelium in Basidiomycetes is:", "o": ["Branched and septate", "Unbranched and septate", "Branched and aseptate", "Coenocytic"], "a": "Branched and septate"},
+    {"id": 329, "q": "Vegetative reproduction is very common in Basidiomycetes by:", "o": ["Budding", "Fragmentation", "Fission", "Spore formation"], "a": "Fragmentation"},
+    {"id": 330, "q": "Sex organs are absent, but plasmogamy is brought about by fusion of two vegetative cells in:", "o": ["Phycomycetes", "Ascomycetes", "Basidiomycetes", "Deuteromycetes"], "a": "Basidiomycetes"},
+    {"id": 331, "q": "Karyogamy and meiosis take place in the Basidium producing:", "o": ["Two basidiospores", "Four basidiospores", "Eight basidiospores", "Infinite basidiospores"], "a": "Four basidiospores"},
+    {"id": 332, "q": "Basidiospores are produced:", "o": ["Endogenously", "Exogenously", "Inside ascus", "Inside sporangium"], "a": "Exogenously"},
+    {"id": 333, "q": "Puccinia causes:", "o": ["Wheat rust", "Smut", "White spots", "Blight"], "a": "Wheat rust"},
+    {"id": 334, "q": "Ustilago causes:", "o": ["Rust", "Smut", "Rot", "Wilt"], "a": "Smut"},
+    {"id": 335, "q": "Deuteromycetes reproduce only by asexual spores known as:", "o": ["Conidia", "Oospores", "Zoospores", "Ascospores"], "a": "Conidia"},
+    {"id": 336, "q": "Once the sexual stage of members of Deuteromycetes were discovered, they were moved to:", "o": ["Phycomycetes and Ascomycetes", "Ascomycetes and Basidiomycetes", "Basidiomycetes and Phycomycetes", "Protista"], "a": "Ascomycetes and Basidiomycetes"},
+    {"id": 337, "q": "Which class of fungi helps largely in mineral cycling?", "o": ["Phycomycetes", "Ascomycetes", "Basidiomycetes", "Deuteromycetes"], "a": "Deuteromycetes"},
+    {"id": 338, "q": "Colletotrichum, Alternaria, and Trichoderma belong to:", "o": ["Deuteromycetes", "Ascomycetes", "Basidiomycetes", "Phycomycetes"], "a": "Deuteromycetes"},
+
+    # --- VIRUS, VIROIDS, LICHENS (DETAILS) ---
+    {"id": 339, "q": "Viruses did not find a place in classification because:", "o": ["They are too small", "They are not considered truly living", "They cause diseases", "They have no nucleus"], "a": "They are not considered truly living"},
+    {"id": 340, "q": "A virus is a:", "o": ["Nucleoprotein", "Lipoprotein", "Glycoprotein", "Phosphoprotein"], "a": "Nucleoprotein"},
+    {"id": 341, "q": "The genetic material of a virus is:", "o": ["DNA only", "RNA only", "Either DNA or RNA", "Both DNA and RNA"], "a": "Either DNA or RNA"},
+    {"id": 342, "q": "Viruses that infect plants usually have:", "o": ["Single stranded RNA", "Double stranded RNA", "Double stranded DNA", "Single stranded DNA"], "a": "Single stranded RNA"},
+    {"id": 343, "q": "Viruses that infect animals may have:", "o": ["Single or double stranded RNA or double stranded DNA", "Only single stranded DNA", "Only double stranded RNA", "Only single stranded RNA"], "a": "Single or double stranded RNA or double stranded DNA"},
+    {"id": 344, "q": "Bacteriophages (viruses infecting bacteria) are usually:", "o": ["Single stranded RNA viruses", "Double stranded RNA viruses", "Single stranded DNA viruses", "Double stranded DNA viruses"], "a": "Double stranded DNA viruses"},
+    {"id": 345, "q": "Capsomeres are arranged in:", "o": ["Helical or Polyhedral geometric forms", "Linear forms", "Circular forms", "Random forms"], "a": "Helical or Polyhedral geometric forms"},
+    {"id": 346, "q": "Mumps, Smallpox, Herpes, and Influenza are caused by:", "o": ["Bacteria", "Viruses", "Fungi", "Protozoa"], "a": "Viruses"},
+    {"id": 347, "q": "In humans, AIDS is caused by a:", "o": ["Bacterium", "Fungus", "Virus", "Viroid"], "a": "Virus"},
+    {"id": 348, "q": "Symptoms of viral infection in plants include:", "o": ["Mosaic formation, leaf rolling, curling", "Yellowing and vein clearing", "Dwarfing and stunted growth", "All of the above"], "a": "All of the above"},
+    {"id": 349, "q": "Viroids were discovered in the year:", "o": ["1971", "1981", "1892", "1935"], "a": "1971"},
+    {"id": 350, "q": "The RNA of the viroid is of:", "o": ["High molecular weight", "Low molecular weight", "Same weight as virus", "None of these"], "a": "Low molecular weight"},
+    {"id": 351, "q": "Lichens are mutually useful associations between:", "o": ["Algae and Fungi", "Algae and Bacteria", "Fungi and Roots", "Bacteria and Roots"], "a": "Algae and Fungi"},
+    {"id": 352, "q": "The algal component of lichen is called:", "o": ["Phycobiont", "Mycobiont", "Symbiont", "Parasite"], "a": "Phycobiont"},
+    {"id": 353, "q": "The fungal component of lichen is called:", "o": ["Phycobiont", "Mycobiont", "Autotroph", "Producer"], "a": "Mycobiont"},
+    {"id": 354, "q": "In Lichens, algae prepare food and fungi provide:", "o": ["Shelter and absorb mineral nutrients/water", "Only water", "Only minerals", "Only protection"], "a": "Shelter and absorb mineral nutrients/water"},
+    {"id": 355, "q": "Lichens are very good pollution indicators as they do not grow in:", "o": ["Clean areas", "Polluted areas", "High altitude areas", "Water"], "a": "Polluted areas"},
+
+    # --- SCIENTISTS & DISCOVERIES ---
+    {"id": 356, "q": "Who used simple morphological characters to classify plants into trees, shrubs, and herbs?", "o": ["Linnaeus", "Aristotle", "Whittaker", "Pasteur"], "a": "Aristotle"},
+    {"id": 357, "q": "Linnaeus's Two Kingdom system distinguished between:", "o": ["Plantae and Animalia", "Eukaryotes and Prokaryotes", "Unicellular and Multicellular", "Photosynthetic and Non-photosynthetic"], "a": "Plantae and Animalia"},
+    {"id": 358, "q": "The 'Contagium vivum fluidum' was proposed by:", "o": ["M.W. Beijerinck", "D.J. Ivanowsky", "W.M. Stanley", "Pasteur"], "a": "M.W. Beijerinck"},
+    {"id": 359, "q": "Who showed that viruses could be crystallized and crystals consist largely of proteins?", "o": ["W.M. Stanley", "Ivanowsky", "Beijerinck", "Diener"], "a": "W.M. Stanley"},
+
+    # --- KINGDOM MONERA (BACTERIA) ---
+    {"id": 206, "q": "Which organisms are the sole members of the Kingdom Monera?", "o": ["Viruses", "Bacteria", "Amoeba", "Fungi"], "a": "Bacteria"},
+    {"id": 207, "q": "Bacteria that can survive in extreme salty areas are called:", "o": ["Methanogens", "Thermoacidophiles", "Halophiles", "Cyanobacteria"], "a": "Halophiles"},
+    {"id": 208, "q": "Methanogens are responsible for the production of biogas from the dung of ruminants. They belong to:", "o": ["Eubacteria", "Archaebacteria", "Dinoflagellates", "Slime moulds"], "a": "Archaebacteria"},
+    {"id": 209, "q": "The cell wall of Archaebacteria differs from other bacteria, helping them survive in:", "o": ["Extreme conditions", "Fresh water", "Host body", "Air"], "a": "Extreme conditions"},
+    {"id": 210, "q": "Cyanobacteria are also known as:", "o": ["Golden Algae", "Blue-green Algae", "Slime Moulds", "Protozoans"], "a": "Blue-green Algae"},
+    {"id": 211, "q": "Specialized cells in Nostoc and Anabaena used for nitrogen fixation are called:", "o": ["Akinetes", "Heterocysts", "Hormogonia", "Endospores"], "a": "Heterocysts"},
+    {"id": 212, "q": "Citrus canker is a disease caused by:", "o": ["Virus", "Fungi", "Bacteria", "Mycoplasma"], "a": "Bacteria"},
+    {"id": 213, "q": "Mycoplasma are unique because they:", "o": ["Have a rigid cell wall", "Completely lack a cell wall", "Are multicellular", "Cannot survive without oxygen"], "a": "Completely lack a cell wall"},
+    {"id": 214, "q": "Which bacteria play a great role in recycling nutrients like N, P, Fe, and S?", "o": ["Photosynthetic autotrophs", "Chemosynthetic autotrophs", "Heterotrophs", "Pathogens"], "a": "Chemosynthetic autotrophs"},
+    {"id": 215, "q": "The smallest living cells known that can survive without oxygen are:", "o": ["Yeast", "Mycoplasma", "Virus", "Euglena"], "a": "Mycoplasma"},
+
+    # --- KINGDOM PROTISTA ---
+    {"id": 216, "q": "All single-celled eukaryotes are placed under:", "o": ["Monera", "Protista", "Fungi", "Animalia"], "a": "Protista"},
+    {"id": 217, "q": "The cell walls of Diatoms are embedded with:", "o": ["Calcium", "Chitin", "Silica", "Pectin"], "a": "Silica"},
+    {"id": 218, "q": "Diatomaceous earth is used in:", "o": ["Polishing and filtration", "Biogas production", "Nitrogen fixation", "Bread making"], "a": "Polishing and filtration"},
+    {"id": 219, "q": "Which organism is responsible for 'Red Tides'?", "o": ["Euglena", "Gonyaulax", "Trypanosoma", "Plasmodium"], "a": "Gonyaulax"},
+    {"id": 220, "q": "Euglenoids have a protein-rich layer instead of a cell wall called:", "o": ["Capsid", "Pellicle", "Cuticle", "Sheath"], "a": "Pellicle"},
+    {"id": 221, "q": "Slime moulds are:", "o": ["Saprophytic protists", "Parasitic fungi", "Autotrophic bacteria", "Photosynthetic protists"], "a": "Saprophytic protists"},
+    {"id": 222, "q": "Under suitable conditions, slime moulds form an aggregation called:", "o": ["Mycelium", "Plasmodium", "Fruiting body", "Spore"], "a": "Plasmodium"},
+    {"id": 223, "q": "Which protozoan causes Sleeping Sickness?", "o": ["Entamoeba", "Trypanosoma", "Paramecium", "Plasmodium"], "a": "Trypanosoma"},
+    {"id": 224, "q": "Which group of Protozoans moves by using pseudopodia?", "o": ["Flagellated", "Ciliated", "Amoeboid", "Sporozoans"], "a": "Amoeboid"},
+    {"id": 225, "q": "Paramecium moves using thousands of:", "o": ["Flagella", "Cilia", "Tentacles", "Pseudopodia"], "a": "Cilia"},
+    {"id": 226, "q": "The malarial parasite Plasmodium belongs to which group?", "o": ["Sporozoans", "Ciliated protozoans", "Flagellated protozoans", "Amoeboid protozoans"], "a": "Sporozoans"},
+    {"id": 227, "q": "Which of the following connects plants and animals (Mixotroph)?", "o": ["Slime Mould", "Euglena", "Amoeba", "Paramoecium"], "a": "Euglena"},
+
+    # --- KINGDOM FUNGI ---
+    {"id": 228, "q": "The cell wall of fungi is composed of:", "o": ["Cellulose", "Chitin and polysaccharides", "Peptidoglycan", "Pectin"], "a": "Chitin and polysaccharides"},
+    {"id": 229, "q": "A network of hyphae is known as:", "o": ["Thallus", "Mycelium", "Plasmodium", "Fruiting body"], "a": "Mycelium"},
+    {"id": 230, "q": "Association of fungi with roots of higher plants is called:", "o": ["Lichen", "Mycorrhiza", "Coralloid roots", "Rhizome"], "a": "Mycorrhiza"},
+    {"id": 231, "q": "Fusion of protoplasms between two motile or non-motile gametes is called:", "o": ["Karyogamy", "Plasmogamy", "Meiosis", "Syngamy"], "a": "Plasmogamy"},
+    {"id": 232, "q": "Phycomycetes are also known as:", "o": ["Sac fungi", "Club fungi", "Algal fungi", "Imperfect fungi"], "a": "Algal fungi"},
+    {"id": 233, "q": "Rhizopus (Bread mould) belongs to which class of fungi?", "o": ["Ascomycetes", "Phycomycetes", "Basidiomycetes", "Deuteromycetes"], "a": "Phycomycetes"},
+    {"id": 234, "q": "Yeast and Penicillium belong to:", "o": ["Phycomycetes", "Ascomycetes", "Basidiomycetes", "Deuteromycetes"], "a": "Ascomycetes"},
+    {"id": 235, "q": "Which fungus is used extensively in biochemical and genetic work?", "o": ["Neurospora", "Aspergillus", "Claviceps", "Mucor"], "a": "Neurospora"},
+    {"id": 236, "q": "Mushrooms, bracket fungi, and puffballs belong to:", "o": ["Phycomycetes", "Ascomycetes", "Basidiomycetes", "Deuteromycetes"], "a": "Basidiomycetes"},
+    {"id": 237, "q": "In Basidiomycetes, the sex organs are:", "o": ["Well developed", "Absent", "Unicellular", "Multicellular"], "a": "Absent"},
+    {"id": 238, "q": "Deuteromycetes are known as 'Imperfect Fungi' because:", "o": ["They cause diseases", "They have no cell wall", "Only asexual/vegetative phases are known", "They are autotrophic"], "a": "Only asexual/vegetative phases are known"},
+    {"id": 239, "q": "Trichoderma and Alternaria belong to:", "o": ["Phycomycetes", "Ascomycetes", "Deuteromycetes", "Basidiomycetes"], "a": "Deuteromycetes"},
+    {"id": 240, "q": "White spots seen on mustard leaves are due to a parasitic fungus:", "o": ["Albugo", "Mucor", "Rhizopus", "Puccinia"], "a": "Albugo"},
+    {"id": 241, "q": "Wheat Rust is caused by:", "o": ["Ustilago", "Puccinia", "Alternaria", "Colletotrichum"], "a": "Puccinia"},
+    {"id": 242, "q": "The dikaryophase (n + n) is a specific characteristic of:", "o": ["Phycomycetes and Ascomycetes", "Basidiomycetes and Deuteromycetes", "Ascomycetes and Basidiomycetes", "Phycomycetes and Deuteromycetes"], "a": "Ascomycetes and Basidiomycetes"},
+    {"id": 243, "q": "Morels and Truffles are edible delicacies belonging to:", "o": ["Basidiomycetes", "Ascomycetes", "Phycomycetes", "Deuteromycetes"], "a": "Ascomycetes"},
+
+    # --- VIRUSES, VIROIDS, PRIONS, LICHENS ---
+    {"id": 244, "q": "Viruses are:", "o": ["Living", "Non-living", "Connecting link", "Non-cellular organisms"], "a": "Non-cellular organisms"},
+    {"id": 245, "q": "The name 'virus' that means venom or poisonous fluid was given by:", "o": ["D.J. Ivanowsky", "M.W. Beijerinck", "Pasteur", "W.M. Stanley"], "a": "Pasteur"},
+    {"id": 246, "q": "Who demonstrated that the extract of infected tobacco plants could cause infection (Contagium vivum fluidum)?", "o": ["Ivanowsky", "Beijerinck", "Stanley", "Diener"], "a": "Beijerinck"},
+    {"id": 247, "q": "Who showed that viruses could be crystallised?", "o": ["W.M. Stanley", "Ivanowsky", "Beijerinck", "Pasteur"], "a": "W.M. Stanley"},
+    {"id": 248, "q": "The protein coat of a virus is called:", "o": ["Capsid", "Capsomere", "Envelope", "Sheath"], "a": "Capsid"},
+    {"id": 249, "q": "Viruses that infect bacteria are called:", "o": ["Tobacco Mosaic Virus", "Bacteriophages", "Retroviruses", "Viroids"], "a": "Bacteriophages"},
+    {"id": 250, "q": "The genetic material in Bacteriophages is usually:", "o": ["Single stranded RNA", "Single stranded DNA", "Double stranded DNA", "Double stranded RNA"], "a": "Double stranded DNA"},
+    {"id": 251, "q": "Viroids differ from viruses in having:", "o": ["DNA molecules without protein coat", "RNA molecules with protein coat", "RNA molecules without protein coat", "DNA molecules with protein coat"], "a": "RNA molecules without protein coat"},
+    {"id": 252, "q": "Potato Spindle Tuber disease is caused by:", "o": ["Virus", "Bacteria", "Viroid", "Prion"], "a": "Viroid"},
+    {"id": 253, "q": "Who discovered Viroids?", "o": ["T.O. Diener", "W.M. Stanley", "Pasteur", "Ivanowsky"], "a": "T.O. Diener"},
+    {"id": 254, "q": "Prions are known to cause which disease in cattle?", "o": ["Mad Cow Disease (BSE)", "Cr-Jacob Disease", "Foot and Mouth Disease", "Anthrax"], "a": "Mad Cow Disease (BSE)"},
+    {"id": 255, "q": "Prions consist of abnormally folded:", "o": ["DNA", "RNA", "Proteins", "Lipids"], "a": "Proteins"},
+    {"id": 256, "q": "The algal component of a Lichen is known as:", "o": ["Mycobiont", "Phycobiont", "Symbiont", "Parasite"], "a": "Phycobiont"},
+    {"id": 257, "q": "Lichens are very good pollution indicators because they:", "o": ["Grow rapidly in polluted areas", "Do not grow in polluted areas", "Change color in pollution", "Absorb all pollutants"], "a": "Do not grow in polluted areas"},
+
+    # --- ADVANCED / TRICKY / MATCHING TYPE LOGIC ---
+    {"id": 258, "q": "In which group of organisms is the cell wall forming two thin overlapping shells which fit together as in a soap box?", "o": ["Dinoflagellates", "Slime moulds", "Chrysophytes", "Euglenoids"], "a": "Chrysophytes"},
+    {"id": 259, "q": "The sexual cycle in fungi involves the following steps in correct order:", "o": ["Karyogamy -> Plasmogamy -> Meiosis", "Plasmogamy -> Karyogamy -> Meiosis", "Meiosis -> Plasmogamy -> Karyogamy", "Karyogamy -> Meiosis -> Plasmogamy"], "a": "Plasmogamy -> Karyogamy -> Meiosis"},
+    {"id": 260, "q": "Which of the following statement is correct about Viruses?", "o": ["They have both DNA and RNA", "They are obligate parasites", "They can reproduce outside a host", "Antibiotics kill them easily"], "a": "They are obligate parasites"},
+    {"id": 261, "q": "Coenocytic mycelium (multinucleate and aseptate) is found in:", "o": ["Deuteromycetes", "Phycomycetes", "Ascomycetes", "Basidiomycetes"], "a": "Phycomycetes"},
+    {"id": 262, "q": "Clamp connections are a characteristic feature of:", "o": ["Ascomycetes", "Basidiomycetes", "Phycomycetes", "Deuteromycetes"], "a": "Basidiomycetes"},
+    {"id": 263, "q": "Which of the following is NOT an example of Basidiomycetes?", "o": ["Agaricus", "Ustilago", "Puccinia", "Colletotrichum"], "a": "Colletotrichum"},
+    {"id": 264, "q": "The imperfect fungi which are decomposers of litter and help in mineral cycling belong to:", "o": ["Basidiomycetes", "Phycomycetes", "Ascomycetes", "Deuteromycetes"], "a": "Deuteromycetes"},
+    {"id": 265, "q": "Red Rot of Sugarcane is caused by Colletotrichum, which belongs to:", "o": ["Phycomycetes", "Deuteromycetes", "Basidiomycetes", "Ascomycetes"], "a": "Deuteromycetes"},
+    {"id": 266, "q": "Heterotrophic bacteria are most abundant in nature. The majority of them are:", "o": ["Important Decomposers", "Pathogens", "Nitrogen fixers", "Autotrophs"], "a": "Important Decomposers"},
+    {"id": 267, "q": "Kingdom Protista forms a link with:", "o": ["Plants only", "Animals only", "Plants, Animals and Fungi", "Monera only"], "a": "Plants, Animals and Fungi"},
+    {"id": 268, "q": "In which kingdom did Whittaker place Chlamydomonas and Chlorella?", "o": ["Plantae", "Monera", "Protista", "Algae"], "a": "Protista"},
+    {"id": 269, "q": "The protein coat of viruses (Capsid) is made of small subunits called:", "o": ["Peplomers", "Capsomeres", "Protomers", "Capsules"], "a": "Capsomeres"},
+    {"id": 270, "q": "Bacteriophages usually have:", "o": ["dsDNA", "ssDNA", "dsRNA", "ssRNA"], "a": "dsDNA"},
+    {"id": 271, "q": "Which of the following is an edible fungus?", "o": ["Mucor", "Penicillium", "Agaricus", "Rhizopus"], "a": "Agaricus"},
+    {"id": 272, "q": "Sexual reproduction is absent in:", "o": ["Ascomycetes", "Deuteromycetes", "Basidiomycetes", "Phycomycetes"], "a": "Deuteromycetes"},
+    {"id": 273, "q": "Identify the incorrect statement about Cyanobacteria:", "o": ["They are photoautotrophs", "They lack heterocysts", "They often form blooms in polluted water", "They are unicellular, colonial or filamentous"], "a": "They lack heterocysts"},
+    {"id": 274, "q": "Which pigment is present in Cyanobacteria similar to green plants?", "o": ["Chlorophyll b", "Chlorophyll a", "Xanthophyll", "Carotene"], "a": "Chlorophyll a"},
+    {"id": 275, "q": "Who showed that the virus is distinct from bacteria by passing them through bacteria-proof filters?", "o": ["Pasteur", "Ivanowsky", "Stanley", "Beijerinck"], "a": "Ivanowsky"},
+    {"id": 442, "q": "Bryophytes are commonly called 'Amphibians of the Plant Kingdom' because:", "o": ["They live in soil but depend on water for sexual reproduction", "They live in water but lay eggs on land", "They have vascular tissues", "They are aquatic only"], "a": "They live in soil but depend on water for sexual reproduction"},
+    {"id": 443, "q": "The plant body of Bryophytes is:", "o": ["Thallus-like and haploid", "Differentiated into roots and diploid", "Filamentous and diploid", "Having xylem and phloem"], "a": "Thallus-like and haploid"},
+    {"id": 444, "q": "The main plant body of the bryophyte is:", "o": ["Gametophyte", "Sporophyte", "Zygote", "Embryo"], "a": "Gametophyte"},
+    {"id": 445, "q": "The male sex organ in bryophytes is called:", "o": ["Antheridium", "Archegonium", "Oogonium", "Stamen"], "a": "Antheridium"},
+    {"id": 446, "q": "The female sex organ in bryophytes is flask-shaped and called:", "o": ["Archegonium", "Antheridium", "Ovary", "Carple"], "a": "Archegonium"},
+    {"id": 447, "q": "Antheridium produces:", "o": ["Biflagellate antherozoids", "Non-motile pollen", "Quadriflagellate spores", "Egg"], "a": "Biflagellate antherozoids"},
+    {"id": 448, "q": "In Bryophytes, the Sporophyte is:", "o": ["Attached to gametophyte and dependent on it", "Free-living", "Photosynthetic and independent", "Unicellular"], "a": "Attached to gametophyte and dependent on it"},
+    {"id": 449, "q": "Peat, used as fuel and packing material, is provided by:", "o": ["Sphagnum", "Funaria", "Marchantia", "Polytrichum"], "a": "Sphagnum"},
+    {"id": 450, "q": "Liverworts reproduce asexually by fragmentation or by specialized structures called:", "o": ["Gemmae", "Buds", "Tubers", "Conidia"], "a": "Gemmae"},
+    {"id": 451, "q": "Gemmae are:", "o": ["Green, multicellular, asexual buds", "Non-green, unicellular buds", "Sexual spores", "Roots"], "a": "Green, multicellular, asexual buds"},
+    {"id": 452, "q": "In Mosses, the predominant stage of the life cycle is:", "o": ["Gametophyte", "Sporophyte", "Prothallus", "Zygote"], "a": "Gametophyte"},
+    {"id": 453, "q": "The first stage of the moss gametophyte is called:", "o": ["Protonema", "Leafy stage", "Prothallus", "Capsule"], "a": "Protonema"},
+    {"id": 454, "q": "The leafy stage of moss develops from the secondary protonema as a:", "o": ["Lateral bud", "Apical bud", "Root", "Rhizoid"], "a": "Lateral bud"},
+    {"id": 455, "q": "Vegetative reproduction in mosses is by fragmentation and budding in the:", "o": ["Secondary protonema", "Primary protonema", "Sporophyte", "Capsule"], "a": "Secondary protonema"},
+    {"id": 456, "q": "Which of the following are examples of Mosses?", "o": ["Funaria, Polytrichum, Sphagnum", "Marchantia, Riccia", "Selaginella, Equisetum", "Cycas, Pinus"], "a": "Funaria, Polytrichum, Sphagnum"},
+
+    # --- GYMNOSPERMS ---
+    {"id": 473, "q": "Gymnosperms are plants in which the ovules are:", "o": ["Not enclosed by any ovary wall (Naked)", "Enclosed by ovary", "Absent", "Covered by fruit"], "a": "Not enclosed by any ovary wall (Naked)"},
+    {"id": 474, "q": "The giant redwood tree Sequoia is a:", "o": ["Gymnosperm", "Angiosperm", "Pteridophyte", "Bryophyte"], "a": "Gymnosperm"},
+    {"id": 475, "q": "Fungal association (Mycorrhiza) is found in the roots of:", "o": ["Pinus", "Cycas", "Cedrus", "Sequoia"], "a": "Pinus"},
+    {"id": 476, "q": "Coralloid roots associated with N2-fixing cyanobacteria are found in:", "o": ["Cycas", "Pinus", "Ginkgo", "Cedrus"], "a": "Cycas"},
+    {"id": 477, "q": "Branched stems are found in:", "o": ["Pinus and Cedrus", "Cycas", "All gymnosperms", "None"], "a": "Pinus and Cedrus"},
+    {"id": 478, "q": "Unbranched stems are found in:", "o": ["Cycas", "Pinus", "Cedrus", "Sequoia"], "a": "Cycas"},
+    {"id": 479, "q": "In Conifers, the needle-like leaves, thick cuticle, and sunken stomata help to:", "o": ["Reduce water loss", "Increase photosynthesis", "Increase transpiration", "Attract insects"], "a": "Reduce water loss"},
+    {"id": 480, "q": "Gymnosperms are:", "o": ["Heterosporous", "Homosporous", "Both", "None"], "a": "Heterosporous"},
+    {"id": 481, "q": "In Gymnosperms, the male and female cones may be borne on the same tree (Monoecious) in:", "o": ["Pinus", "Cycas", "Ginkgo", "Marchantia"], "a": "Pinus"},
+    {"id": 482, "q": "Male and female cones are borne on different trees (Dioecious) in:", "o": ["Cycas", "Pinus", "Cedrus", "Sequoia"], "a": "Cycas"},
+    {"id": 483, "q": "In Gymnosperms, the male gametophyte is highly reduced and is called:", "o": ["Pollen grain", "Antheridium", "Microspore", "Sperm"], "a": "Pollen grain"},
+    {"id": 484, "q": "Unlike Bryophytes and Pteridophytes, in Gymnosperms the male and female gametophytes:", "o": ["Do not have an independent free-living existence", "Are free-living", "Are photosynthetic", "Are dominant"], "a": "Do not have an independent free-living existence"},
+    {"id": 485, "q": "The pollination in Gymnosperms is generally by:", "o": ["Wind (Anemophily)", "Insects", "Water", "Animals"], "a": "Wind (Anemophily)"},
+    {"id": 486, "q": "In Gymnosperms, the embryo develops into:", "o": ["Seed", "Fruit", "Flower", "Cone"], "a": "Seed"},
+
+    # --- ANGIOSPERMS (GENERAL) ---
+    {"id": 487, "q": "The unique feature of Angiosperms is:", "o": ["Double Fertilization", "Naked seeds", "Presence of cones", "Dominant gametophyte"], "a": "Double Fertilization"},
+    {"id": 488, "q": "In Angiosperms, the male sex organ in a flower is:", "o": ["Stamen", "Pistil", "Carpel", "Sepal"], "a": "Stamen"},
+    {"id": 489, "q": "The female sex organ in a flower is:", "o": ["Pistil/Carpel", "Stamen", "Anther", "Filament"], "a": "Pistil/Carpel"},
+    {"id": 490, "q": "The embryo sac formation is preceded by:", "o": ["Meiosis", "Mitosis only", "Fertilization", "Pollination"], "a": "Meiosis"},
+    {"id": 491, "q": "A typical Embryo Sac is:", "o": ["7-celled and 8-nucleate", "8-celled and 7-nucleate", "7-celled and 7-nucleate", "8-celled and 8-nucleate"], "a": "7-celled and 8-nucleate"},
+    {"id": 492, "q": "One male gamete fuses with the egg cell (Syngamy) to form:", "o": ["Zygote", "Endosperm", "Embryo", "Seed"], "a": "Zygote"},
+    {"id": 493, "q": "The second male gamete fuses with the diploid secondary nucleus to form:", "o": ["Triploid Primary Endosperm Nucleus (PEN)", "Zygote", "Embryo", "Seed Coat"], "a": "Triploid Primary Endosperm Nucleus (PEN)"},
+    {"id": 494, "q": "The function of Endosperm is to:", "o": ["Provide nourishment to the developing embryo", "Protect the seed", "Form the fruit", "Attract insects"], "a": "Provide nourishment to the developing embryo"},
+    {"id": 495, "q": "After fertilization, the ovary develops into:", "o": ["Fruit", "Seed", "Embryo", "Pericarp"], "a": "Fruit"},
+    {"id": 496, "q": "After fertilization, ovules develop into:", "o": ["Seeds", "Fruits", "Ovary", "Flower"], "a": "Seeds"},
+
+
+    # --- PLOIDY & DNA CONTENT LOGIC (NEET FAVOURITE) ---
+    {"id": 2001, "q": "In a diploid cell (2n), at G1 phase, chromosomes are:", "o": ["2n", "n", "4n", "n/2"], "a": "2n"},
+    {"id": 2002, "q": "In a diploid cell (2n), at G1 phase, chromatids per chromosome is:", "o": ["1", "2", "4", "0"], "a": "1"},
+    {"id": 2003, "q": "After S phase, the chromosome number is ______ and chromatid number is ______.", "o": ["2n; Doubled", "4n; Doubled", "2n; Same", "n; Half"], "a": "2n; Doubled"},
+    {"id": 2004, "q": "At Metaphase of Mitosis, each chromosome has:", "o": ["2 Chromatids", "1 Chromatid", "4 Chromatids", "No Chromatids"], "a": "2 Chromatids"},
+    {"id": 2005, "q": "At Anaphase of Mitosis, the chromosome number temporarily becomes:", "o": ["4n (Tetraploid)", "2n", "n", "8n"], "a": "4n (Tetraploid)"},
+    {"id": 2006, "q": "At the end of Mitosis (Telophase), each daughter nucleus has:", "o": ["2n chromosomes, 2C DNA", "2n chromosomes, 4C DNA", "n chromosomes, 1C DNA", "4n chromosomes"], "a": "2n chromosomes, 2C DNA"},
+    {"id": 2007, "q": "In Meiosis, at Anaphase I, the ploidy of the cell is effectively:", "o": ["2n (but homologous move apart)", "n", "4n", "3n"], "a": "2n (but homologous move apart)"},
+    {"id": 2008, "q": "The product of Meiosis I (Dyad) has:", "o": ["n chromosomes, 2C DNA", "n chromosomes, 1C DNA", "2n chromosomes, 2C DNA", "2n chromosomes, 4C DNA"], "a": "n chromosomes, 2C DNA"},
+    {"id": 2009, "q": "At Anaphase II, the centromere splits. The chromosome number in the cell temporarily becomes:", "o": ["2n (from n)", "n", "4n", "8n"], "a": "2n (from n)"},
+    {"id": 2010, "q": "The final product of Meiosis II (Tetrad) has:", "o": ["n chromosomes, 1C DNA", "n chromosomes, 2C DNA", "2n chromosomes, 2C DNA", "n chromosomes, 4C DNA"], "a": "n chromosomes, 1C DNA"},
+    
+    # --- PHASE RECOGNITION (DIAGRAM BASED LOGIC) ---
+    {"id": 2011, "q": "Chromosomes cluster at opposite spindle poles and their identity is lost as discrete elements. This is:", "o": ["Telophase", "Anaphase", "Metaphase", "Prophase"], "a": "Telophase"},
+    {"id": 2012, "q": "Chromosomes are thickest and shortest at:", "o": ["Metaphase", "Prophase", "Anaphase", "Telophase"], "a": "Metaphase"},
+    {"id": 2013, "q": "Nuclear membrane, Golgi, ER disappear at end of:", "o": ["Prophase", "Metaphase", "Telophase", "Anaphase"], "a": "Prophase"},
+    {"id": 2014, "q": "Nuclear membrane, Golgi, ER reappear at:", "o": ["Telophase", "Prophase", "Anaphase", "Metaphase"], "a": "Telophase"},
+    {"id": 2015, "q": "Synaptonemal complex dissolves at:", "o": ["Diplotene", "Pachytene", "Zygotene", "Diakinesis"], "a": "Diplotene"},
+    
+    # --- TRICKY STATEMENTS ---
+    {"id": 2016, "q": "Statement: Interphase is the resting phase.", "o": ["True (but metabolically active)", "False", "Only G0 is resting", "It is M phase"], "a": "True (but metabolically active)"},
+    {"id": 2017, "q": "Statement: Meiosis increases the specific chromosome number of the species.", "o": ["False (It conserves it)", "True", "Doubles it", "Triples it"], "a": "False (It conserves it)"},
+    {"id": 2018, "q": "Statement: Variations are very important for the process of evolution.", "o": ["True", "False", "Only mutations matter", "Variations are bad"], "a": "True"},
+    {"id": 2019, "q": "Bivalent chromosomes align on the equatorial plate in:", "o": ["Metaphase I", "Metaphase II", "Metaphase of Mitosis", "Anaphase I"], "a": "Metaphase I"},
+    {"id": 2020, "q": "Univalent chromosomes (individual) align on the equator in:", "o": ["Metaphase of Mitosis and Metaphase II", "Metaphase I", "Anaphase I", "Prophase I"], "a": "Metaphase of Mitosis and Metaphase II"},
+    
+    # --- FINAL CHECK ---
+    {"id": 2021, "q": "The stage between Meiosis I and Meiosis II is:", "o": ["Interkinesis", "Interphase", "S phase", "G0"], "a": "Interkinesis"},
+    {"id": 2022, "q": "DNA replication occurs in Interkinesis.", "o": ["False", "True", "Sometimes", "Only in plants"], "a": "False"},
+    {"id": 2023, "q": "How many chromatids are present in a human cell at Metaphase I?", "o": ["92", "46", "23", "184"], "a": "92"}, # (46 chromosomes x 2 chromatids each)
+    {"id": 2024, "q": "How many centromeres are present in a human cell at Metaphase I?", "o": ["46", "92", "23", "10"], "a": "46"},
+    {"id": 2025, "q": "In a human cell, at Anaphase I, how many chromosomes move to each pole?", "o": ["23 (Double stranded)", "46", "23 (Single stranded)", "92"], "a": "23 (Double stranded)"},
+    # --- SPINDLE & APPARATUS ---
+    {"id": 1976, "q": "Spindle fibres are made up of:", "o": ["Tubulin protein", "Actin", "Myosin", "Flagellin"], "a": "Tubulin protein"},
+    {"id": 1977, "q": "The structure that initiates the formation of the spindle apparatus in animal cells is:", "o": ["Centrosome/Centriole", "Nucleolus", "Kinetochore", "Chromatid"], "a": "Centrosome/Centriole"},
+    {"id": 1978, "q": "Plant cells lack centrioles and asters, so their mitosis is called:", "o": ["Anastral", "Amphiastral", "Centric", "Astral"], "a": "Anastral"},
+    {"id": 1979, "q": "Animal mitosis is called ______ because of the presence of asters.", "o": ["Amphiastral", "Anastral", "Acentric", "Linear"], "a": "Amphiastral"},
+    {"id": 1980, "q": "Colchicine is a chemical that:", "o": ["Inhibits spindle formation", "Promotes DNA replication", "Inhibits cytokinesis", "Promotes pairing"], "a": "Inhibits spindle formation"},
+    {"id": 1981, "q": "Because Colchicine inhibits spindle formation, it arrests the cell at:", "o": ["Metaphase", "Prophase", "Anaphase", "Telophase"], "a": "Metaphase"},
+    {"id": 1982, "q": "Application of Colchicine results in:", "o": ["Polyploidy (Doubling of chromosomes)", "Haploidy", "Cell death", "Cancer"], "a": "Polyploidy (Doubling of chromosomes)"},
+
+    # --- CYTOKINESIS DETAILS ---
+    {"id": 1983, "q": "The precursor of the cell plate in plant cytokinesis is:", "o": ["Phragmoplast", "Spindle", "Centriole", "Chloroplast"], "a": "Phragmoplast"},
+    {"id": 1984, "q": "Cell plate formation proceeds in which direction?", "o": ["Centrifugal (Center to Periphery)", "Centripetal (Periphery to Center)", "Top to Bottom", "Random"], "a": "Centrifugal (Center to Periphery)"},
+    {"id": 1985, "q": "Animal cytokinesis (Furrow formation) proceeds in which direction?", "o": ["Centripetal (Periphery to Center)", "Centrifugal", "Bottom to Top", "Random"], "a": "Centripetal (Periphery to Center)"},
+    {"id": 1986, "q": "Mitochondria and Plastids get distributed between the two daughter cells during:", "o": ["Cytokinesis", "Karyokinesis", "S phase", "G2 phase"], "a": "Cytokinesis"},
+
+    # --- COMPARISON: MITOSIS VS MEIOSIS ---
+    {"id": 1987, "q": "DNA replication occurs:", "o": ["Only once before both Mitosis and Meiosis", "Twice in Meiosis", "Once in Mitosis, Twice in Meiosis", "Never"], "a": "Only once before both Mitosis and Meiosis"},
+    {"id": 1988, "q": "Homologous pairing is unique to:", "o": ["Meiosis", "Mitosis", "Amitosis", "Binary fission"], "a": "Meiosis"},
+    {"id": 1989, "q": "Sister chromatids separate in:", "o": ["Anaphase of Mitosis and Anaphase II", "Anaphase I", "Metaphase I", "Prophase I"], "a": "Anaphase of Mitosis and Anaphase II"},
+    {"id": 1990, "q": "The chromosome number is reduced to half in:", "o": ["Anaphase I", "Anaphase II", "Metaphase II", "Telophase II"], "a": "Anaphase I"},
+    {"id": 1991, "q": "Meiosis is also called:", "o": ["Reductional division", "Equational division", "Multiplication division", "Direct division"], "a": "Reductional division"},
+    {"id": 1992, "q": "Mitosis is also called:", "o": ["Equational division", "Reductional division", "Generative division", "Meiotic"], "a": "Equational division"},
+    {"id": 1993, "q": "Meiosis II is called equational division because:", "o": ["Chromosome number remains same as produced at end of Meiosis I", "DNA replicates", "Ploidy doubles", "Crossing over happens"], "a": "Chromosome number remains same as produced at end of Meiosis I"},
+
+    # --- SPECIFIC EXAMPLES ---
+    {"id": 1994, "q": "Best material to study Mitosis in laboratory is:", "o": ["Onion root tip", "Onion peel", "Anther", "Flower bud"], "a": "Onion root tip"},
+    {"id": 1995, "q": "Best material to study Meiosis in laboratory is:", "o": ["Young Anther (Flower bud)", "Root tip", "Shoot tip", "Leaf"], "a": "Young Anther (Flower bud)"},
+    {"id": 1996, "q": "In which organisms can Mitosis occur in haploid cells?", "o": ["Male Honey Bees (Drones) and some plants", "Humans", "Dogs", "Frogs"], "a": "Male Honey Bees (Drones) and some plants"},
+    {"id": 1997, "q": "Bacteria divide mainly by:", "o": ["Binary Fission (Amitosis)", "Mitosis", "Meiosis", "Spore formation"], "a": "Binary Fission (Amitosis)"},
+    {"id": 1998, "q": "Cancer cells are characterized by:", "o": ["Uncontrolled cell division (Loss of contact inhibition)", "Controlled division", "Meiosis", "Dormancy"], "a": "Uncontrolled cell division (Loss of contact inhibition)"},
+    {"id": 1999, "q": "A cell in G1 phase has 20 chromosomes. After S phase it will have:", "o": ["20 chromosomes", "40 chromosomes", "10 chromosomes", "80 chromosomes"], "a": "20 chromosomes"},
+    {"id": 2000, "q": "If a cell has 2C DNA in G1. What is DNA content in G2?", "o": ["4C", "2C", "1C", "8C"], "a": "4C"},
+    
+    # --- NUMERICALS (VERY IMP FOR NEET) ---
+    {"id": 1964, "q": "A cell has 2n=16 chromosomes. After S-phase, the number of chromosomes will be:", "o": ["16", "32", "8", "64"], "a": "16"},
+    {"id": 1965, "q": "A cell has 2n=16 chromosomes. After S-phase, the DNA content (C) changes from 2C to:", "o": ["4C", "2C", "1C", "8C"], "a": "4C"},
+    {"id": 1966, "q": "At Anaphase of Mitosis, if the cell starts with 16 chromosomes, how many chromosomes are present in the cell (before cytokinesis)?", "o": ["32", "16", "8", "64"], "a": "32"}, # (Centromeres split, so chromatids become chromosomes)
+    {"id": 1967, "q": "At Anaphase I of Meiosis, if 2n=16, how many chromosomes move to each pole?", "o": ["8 (n)", "16 (2n)", "32", "4"], "a": "8 (n)"},
+    {"id": 1968, "q": "How many meiotic divisions are required to produce 100 pollen grains?", "o": ["25", "50", "100", "10"], "a": "25"}, # (1 meiosis = 4 pollen)
+    {"id": 1969, "q": "How many mitotic divisions are required to form 128 cells from a single cell?", "o": ["7", "64", "127", "128"], "a": "7"}, # (2^7 = 128)
+
+    # --- CONCEPTUAL STATEMENTS ---
+    {"id": 1970, "q": "Identify the MISMATCH:", "o": ["Anaphase I - Splitting of Centromere", "Metaphase I - Bivalents align", "Zygotene - Synapsis", "Pachytene - Crossing Over"], "a": "Anaphase I - Splitting of Centromere"}, # (Splitting happens in Anaphase II or Mitosis)
+    {"id": 1971, "q": "Recombination nodules appear during:", "o": ["Pachytene", "Leptotene", "Zygotene", "Diakinesis"], "a": "Pachytene"},
+    {"id": 1972, "q": "The final stage of meiotic prophase I is:", "o": ["Diakinesis", "Diplotene", "Telophase", "Cytokinesis"], "a": "Diakinesis"},
+    {"id": 1973, "q": "Diakinesis is marked by:", "o": ["Terminalization of chiasmata", "Formation of chiasmata", "Synapsis", "Crossing over"], "a": "Terminalization of chiasmata"},
+    {"id": 1974, "q": "In oocytes, the special diplotene stage is called:", "o": ["Dictyotene", "Leptotene", "Zygotene", "Pachytene"], "a": "Dictyotene"}, # (Extra edge)
+    {"id": 1975, "q": "Which checkpoint controls the entry into S-phase?", "o": ["G1/S Checkpoint", "G2/M Checkpoint", "M Checkpoint", "G0 Checkpoint"], "a": "G1/S Checkpoint"},
+    
+    # --- MEIOSIS BASICS ---
+    {"id": 1941, "q": "Meiosis ensures the production of haploid phase in life cycle, while fertilization restores the:", "o": ["Diploid phase", "Haploid phase", "Polyploid phase", "Triploid phase"], "a": "Diploid phase"},
+    {"id": 1942, "q": "Meiosis involves:", "o": ["Two cycles of division but one cycle of DNA replication", "Two cycles of DNA replication", "One cycle of division", "No DNA replication"], "a": "Two cycles of division but one cycle of DNA replication"},
+    {"id": 1943, "q": "Pairing of homologous chromosomes and recombination occurs in:", "o": ["Meiosis I", "Meiosis II", "Mitosis", "Amitosis"], "a": "Meiosis I"},
+
+    # --- PROPHASE I (LZPDD - SEQUENCE IS KEY) ---
+    {"id": 1944, "q": "Which is the longest and most complex phase of Meiosis?", "o": ["Prophase I", "Metaphase I", "Anaphase I", "Prophase II"], "a": "Prophase I"},
+    {"id": 1945, "q": "The correct sequence of Prophase I is:", "o": ["Leptotene, Zygotene, Pachytene, Diplotene, Diakinesis", "Leptotene, Pachytene, Zygotene, Diakinesis, Diplotene", "Zygotene, Leptotene, Pachytene, Diplotene, Diakinesis", "Leptotene, Zygotene, Diplotene, Pachytene, Diakinesis"], "a": "Leptotene, Zygotene, Pachytene, Diplotene, Diakinesis"},
+    {"id": 1946, "q": "Compaction of chromosomes continues throughout:", "o": ["Leptotene", "Zygotene", "Pachytene", "Diplotene"], "a": "Leptotene"},
+    {"id": 1947, "q": "Synapsis (pairing of homologous chromosomes) occurs in:", "o": ["Zygotene", "Leptotene", "Pachytene", "Diplotene"], "a": "Zygotene"},
+    {"id": 1948, "q": "The complex formed by a pair of synapsed homologous chromosomes is called a:", "o": ["Bivalent or Tetrad", "Monad", "Dyad", "Triad"], "a": "Bivalent or Tetrad"},
+    {"id": 1949, "q": "Formation of Synaptonemal Complex is a characteristic of:", "o": ["Zygotene", "Leptotene", "Pachytene", "Diakinesis"], "a": "Zygotene"},
+    {"id": 1950, "q": "Crossing Over occurs during:", "o": ["Pachytene", "Zygotene", "Diplotene", "Diakinesis"], "a": "Pachytene"},
+    {"id": 1951, "q": "Crossing over is an enzyme-mediated process. The enzyme involved is:", "o": ["Recombinase", "Ligase", "Helicase", "Polymerase"], "a": "Recombinase"},
+    {"id": 1952, "q": "The X-shaped structures called 'Chiasmata' are seen in:", "o": ["Diplotene", "Pachytene", "Zygotene", "Diakinesis"], "a": "Diplotene"},
+    {"id": 1953, "q": "Dissolution of the synaptonemal complex occurs in:", "o": ["Diplotene", "Pachytene", "Zygotene", "Diakinesis"], "a": "Diplotene"},
+    {"id": 1954, "q": "In oocytes of some vertebrates, Diplotene can last for:", "o": ["Months or years", "Minutes", "Hours", "Days"], "a": "Months or years"},
+    {"id": 1955, "q": "Terminalization of chiasmata occurs in:", "o": ["Diakinesis", "Diplotene", "Pachytene", "Metaphase I"], "a": "Diakinesis"},
+
+    # --- MEIOSIS I (META, ANA, TELO) ---
+    {"id": 1956, "q": "In Metaphase I, the bivalent chromosomes align on the:", "o": ["Equatorial plate", "Poles", "Nucleus", "Membrane"], "a": "Equatorial plate"},
+    {"id": 1957, "q": "In Anaphase I, the homologous chromosomes separate, while sister chromatids:", "o": ["Remain associated at their centromeres", "Separate", "Dissolve", "Fuse"], "a": "Remain associated at their centromeres"},
+    {"id": 1958, "q": "The stage between two meiotic divisions is called:", "o": ["Interkinesis", "Interphase", "Cytokinesis", "Karyokinesis"], "a": "Interkinesis"},
+    {"id": 1959, "q": "Interkinesis is generally short lived and there is:", "o": ["NO replication of DNA", "Replication of DNA", "Protein synthesis only", "Cell growth"], "a": "NO replication of DNA"},
+
+    # --- MEIOSIS II ---
+    {"id": 1960, "q": "Meiosis II resembles:", "o": ["Mitosis", "Meiosis I", "Amitosis", "Fission"], "a": "Mitosis"},
+    {"id": 1961, "q": "In Anaphase II, splitting of the centromere occurs allowing:", "o": ["Sister chromatids to move to opposite poles", "Homologous chromosomes to separate", "Crossing over", "Synapsis"], "a": "Sister chromatids to move to opposite poles"},
+    {"id": 1962, "q": "Meiosis results in the formation of:", "o": ["Four haploid cells", "Two diploid cells", "Four diploid cells", "Two haploid cells"], "a": "Four haploid cells"},
+    {"id": 1963, "q": "Significance of Meiosis: It increases:", "o": ["Genetic variability", "Cell size", "Organelle number", "DNA content"], "a": "Genetic variability"},
+    
+    # --- PROPHASE ---
+    {"id": 1920, "q": "The first stage of karyokinesis is:", "o": ["Prophase", "Metaphase", "Anaphase", "Telophase"], "a": "Prophase"},
+    {"id": 1921, "q": "Prophase is marked by the:", "o": ["Initiation of condensation of chromosomal material", "Splitting of centromere", "Alignment of chromosomes", "Formation of nuclear membrane"], "a": "Initiation of condensation of chromosomal material"},
+    {"id": 1922, "q": "The centrosome, which had duplicated during S phase, begins to move towards:", "o": ["Opposite poles of the cell", "Center of the cell", "Nucleus", "Membrane"], "a": "Opposite poles of the cell"},
+    {"id": 1923, "q": "Two asters together with spindle fibres form the:", "o": ["Mitotic apparatus", "Centrosome", "Kinetochore", "Cytoskeleton"], "a": "Mitotic apparatus"},
+    {"id": 1924, "q": "Cells at the end of prophase, when viewed under microscope, do NOT show:", "o": ["Golgi, ER, Nucleolus and Nuclear envelope", "Chromosomes", "Centrioles", "Spindle fibres"], "a": "Golgi, ER, Nucleolus and Nuclear envelope"},
+
+    # --- METAPHASE ---
+    {"id": 1925, "q": "The complete disintegration of the nuclear envelope marks the start of:", "o": ["Metaphase", "Prophase", "Anaphase", "Telophase"], "a": "Metaphase"},
+    {"id": 1926, "q": "Condensation of chromosomes is completed and they can be observed clearly under microscope in:", "o": ["Metaphase", "Prophase", "Anaphase", "Telophase"], "a": "Metaphase"},
+    [attachment_0](attachment),
+    {"id": 1927, "q": "Which stage is best to study the morphology of chromosomes?", "o": ["Metaphase", "Prophase", "Anaphase", "Telophase"], "a": "Metaphase"},
+    {"id": 1928, "q": "Small disc-shaped structures at the surface of the centromeres are called:", "o": ["Kinetochores", "Satellites", "Telomeres", "Chromatids"], "a": "Kinetochores"},
+    {"id": 1929, "q": "The plane of alignment of the chromosomes at metaphase is referred to as the:", "o": ["Metaphase plate", "Cell plate", "Cleavage furrow", "Equator"], "a": "Metaphase plate"},
+
+    # --- ANAPHASE ---
+    {"id": 1930, "q": "The splitting of the centromere occurs during:", "o": ["Anaphase", "Metaphase", "Telophase", "Prophase"], "a": "Anaphase"},
+    {"id": 1931, "q": "During Anaphase, chromatids move to opposite poles. The centromere leads towards:", "o": ["The pole (leading edge)", "The equator", "The center", "Random direction"], "a": "The pole (leading edge)"},
+    {"id": 1932, "q": "The arms of the chromosome trail behind the centromere. This happens in:", "o": ["Anaphase", "Metaphase", "Prophase", "Telophase"], "a": "Anaphase"},
+
+    # --- TELOPHASE & CYTOKINESIS ---
+    {"id": 1933, "q": "The final stage of karyokinesis is:", "o": ["Telophase", "Anaphase", "Metaphase", "Prophase"], "a": "Telophase"},
+    {"id": 1934, "q": "In Telophase, the chromosomes:", "o": ["Decondense and lose their individuality", "Condense further", "Split", "Align"], "a": "Decondense and lose their individuality"},
+    {"id": 1935, "q": "Nuclear envelope reassembles around the chromosome clusters in:", "o": ["Telophase", "Anaphase", "Metaphase", "Prophase"], "a": "Telophase"},
+    {"id": 1936, "q": "In animal cells, cytokinesis is achieved by the appearance of a:", "o": ["Furrow in the plasma membrane", "Cell plate", "Middle lamella", "Spindle"], "a": "Furrow in the plasma membrane"},
+    {"id": 1937, "q": "In plant cells, cytokinesis starts with the formation of a:", "o": ["Cell plate", "Furrow", "Centriole", "Aster"], "a": "Cell plate"},
+    {"id": 1938, "q": "The Cell Plate represents the:", "o": ["Middle lamella", "Primary wall", "Secondary wall", "Plasma membrane"], "a": "Middle lamella"},
+    {"id": 1939, "q": "In some organisms, karyokinesis is not followed by cytokinesis, leading to a multinucleate condition called:", "o": ["Syncytium", "Coenocytic", "Polyploidy", "Aneuploidy"], "a": "Syncytium"},
+    {"id": 1940, "q": "Example of Syncytium is:", "o": ["Liquid endosperm in coconut", "Root tip", "Leaf cell", "Bacteria"], "a": "Liquid endosperm in coconut"},
+    
+    # --- BASIC PHASES ---
+    {"id": 1901, "q": "The sequence of events by which a cell duplicates its genome, synthesizes other constituents and eventually divides is:", "o": ["Cell Cycle", "Cell Division", "Karyokinesis", "Cytokinesis"], "a": "Cell Cycle"},
+    {"id": 1902, "q": "The correct sequence of phases in Cell Cycle is:", "o": ["G1 -> S -> G2 -> M", "G1 -> G2 -> S -> M", "M -> G1 -> G2 -> S", "S -> G1 -> G2 -> M"], "a": "G1 -> S -> G2 -> M"},
+    {"id": 1903, "q": "Human cells in culture divide approximately every:", "o": ["24 hours", "90 minutes", "20 minutes", "1 hour"], "a": "24 hours"},
+    {"id": 1904, "q": "Yeast cells can complete the cell cycle in about:", "o": ["90 minutes", "24 hours", "20 minutes", "12 hours"], "a": "90 minutes"},
+    {"id": 1905, "q": "Interphase lasts for more than ______ of the duration of the cell cycle.", "o": ["95%", "50%", "5%", "10%"], "a": "95%"},
+    {"id": 1906, "q": "M Phase starts with ______ and ends with ______.", "o": ["Nuclear division; Cytoplasm division", "Cytoplasm division; Nuclear division", "G1; G2", "S phase; G1"], "a": "Nuclear division; Cytoplasm division"},
+
+    # --- G1, S, G2 PHASES (THE TRICKY PART) ---
+    {"id": 1907, "q": "The interval between mitosis and initiation of DNA replication is:", "o": ["G1 Phase", "G2 Phase", "S Phase", "M Phase"], "a": "G1 Phase"},
+    {"id": 1908, "q": "In which phase is the cell metabolically active and continuously grows but does NOT replicate DNA?", "o": ["G1 Phase", "S Phase", "G2 Phase", "M Phase"], "a": "G1 Phase"},
+    {"id": 1909, "q": "DNA replication (synthesis) takes place in:", "o": ["S Phase", "G1 Phase", "G2 Phase", "M Phase"], "a": "S Phase"},
+    {"id": 1910, "q": "If the initial amount of DNA is 2C, what is the amount after S phase?", "o": ["4C", "2C", "1C", "8C"], "a": "4C"},
+    {"id": 1911, "q": "If the cell has 2n chromosomes at G1, how many chromosomes will it have after S phase?", "o": ["2n", "4n", "n", "8n"], "a": "2n"},
+    {"id": 1912, "q": "In animal cells, during S phase, DNA replication begins in the nucleus, and the ______ duplicates in the cytoplasm.", "o": ["Centriole", "Mitochondria", "Golgi", "Lysosome"], "a": "Centriole"},
+    {"id": 1913, "q": "Proteins needed for mitosis are synthesized in:", "o": ["G2 Phase", "G1 Phase", "S Phase", "M Phase"], "a": "G2 Phase"},
+
+    # --- G0 PHASE (QUIESCENT STAGE) ---
+    {"id": 1914, "q": "Cells that do not divide further exit G1 phase to enter an inactive stage called:", "o": ["Quiescent stage (G0)", "S phase", "G2 phase", "M phase"], "a": "Quiescent stage (G0)"},
+    {"id": 1915, "q": "Cells in G0 stage are:", "o": ["Metabolically active but do not proliferate", "Metabolically inactive", "Dead", "Dividing rapidly"], "a": "Metabolically active but do not proliferate"},
+    {"id": 1916, "q": "Heart cells generally do not divide. They are likely in:", "o": ["G0 Phase", "G1 Phase", "S Phase", "M Phase"], "a": "G0 Phase"},
+
+    # --- MITOSIS BASICS ---
+    {"id": 1917, "q": "Mitosis is usually restricted to ______ cells in animals.", "o": ["Diploid somatic", "Haploid germ", "Gametes", "None"], "a": "Diploid somatic"},
+    {"id": 1918, "q": "In plants, mitotic division is seen in:", "o": ["Both haploid and diploid cells", "Only diploid cells", "Only haploid cells", "Only roots"], "a": "Both haploid and diploid cells"},
+    {"id": 1919, "q": "Which phase involves the reorganization of virtually all cell components?", "o": ["M Phase", "Interphase", "S Phase", "G0 Phase"], "a": "M Phase"},
+    
+    # --- ENZYME KINETICS & KM VALUE (ADVANCED) ---
+    {"id": 1859, "q": "Km (Michaelis constant) represents the substrate concentration at which:", "o": ["Reaction velocity is half of Vmax", "Velocity is Vmax", "Reaction stops", "Enzyme is denatured"], "a": "Reaction velocity is half of Vmax"},
+    {"id": 1860, "q": "A lower Km value indicates:", "o": ["Higher affinity of enzyme for substrate", "Lower affinity", "Slower reaction", "Less active site"], "a": "Higher affinity of enzyme for substrate"}, # (Rank Booster Concept)
+    {"id": 1861, "q": "Competitive inhibition can be reversed by:", "o": ["Increasing substrate concentration", "Increasing inhibitor", "Decreasing temperature", "Removing enzyme"], "a": "Increasing substrate concentration"},
+    
+    # --- TRICKY NCERT STATEMENTS ---
+    {"id": 1862, "q": "Statement: All organic compounds in a living tissue are biomolecules.", "o": ["True", "False", "Only polymers", "Only soluble ones"], "a": "True"},
+    {"id": 1863, "q": "Statement: Living systems are at equilibrium.", "o": ["False (Systems at equilibrium cannot perform work)", "True", "Partially true", "Only in death"], "a": "False (Systems at equilibrium cannot perform work)"},
+    {"id": 1864, "q": "Statement: The living state is a non-equilibrium steady state to be able to perform work.", "o": ["True", "False", "It is equilibrium", "It is static"], "a": "True"},
+    {"id": 1865, "q": "Statement: Starch holds I2 molecules in the helical portion. Cellulose does not contain complex helices and cannot hold I2.", "o": ["True", "False", "Both hold I2", "Neither holds I2"], "a": "True"},
+    {"id": 1866, "q": "Adult human hemoglobin has:", "o": ["2 alpha and 2 beta chains", "4 alpha chains", "2 alpha and 2 delta chains", "4 beta chains"], "a": "2 alpha and 2 beta chains"},
+    {"id": 1867, "q": "Fetal hemoglobin (HbF) has higher affinity for oxygen than Adult hemoglobin (HbA).", "o": ["True", "False", "Same affinity", "No affinity"], "a": "True"}, # (Connected concept)
+    
+    # --- MOLECULAR WEIGHT & POOL LOGIC ---
+    {"id": 1868, "q": "Molecular weight of amino acids/sugars is roughly:", "o": ["18 to 800 Daltons", "10,000 Daltons", ">1000 Daltons", "1 Million Daltons"], "a": "18 to 800 Daltons"},
+    {"id": 1869, "q": "The acid insoluble fraction has only four types of organic compounds. Which one is the exception regarding molecular weight?", "o": ["Lipids (Small MW but insoluble)", "Proteins", "Nucleic acids", "Polysaccharides"], "a": "Lipids (Small MW but insoluble)"},
+    {"id": 1870, "q": "Lipids have a molecular weight not exceeding:", "o": ["800 Da", "10,000 Da", "50 Da", "2000 Da"], "a": "800 Da"},
+    
+    # --- BOND REVISION MATCHING ---
+    {"id": 1871, "q": "Bond in Polysaccharides:", "o": ["Glycosidic", "Peptide", "Phosphodiester", "Ester"], "a": "Glycosidic"},
+    {"id": 1872, "q": "Bond in Proteins:", "o": ["Peptide", "Glycosidic", "Hydrogen only", "Ionic only"], "a": "Peptide"},
+    {"id": 1873, "q": "Bond in Fats (Triglycerides):", "o": ["Ester", "Ether", "Peptide", "Glycosidic"], "a": "Ester"},
+    {"id": 1874, "q": "Bond in Nucleic Acid backbone:", "o": ["Phosphodiester", "Peptide", "Glycosidic", "Hydrogen"], "a": "Phosphodiester"},
+    {"id": 1875, "q": "Bond between Nitrogenous base and Pentose sugar:", "o": ["N-glycosidic", "O-glycosidic", "Peptide", "Ester"], "a": "N-glycosidic"},
+
+    # --- FINAL BOSS QUESTIONS ---
+    {"id": 1876, "q": "Which enzyme class catalyzes the interconversion of optical, geometric or positional isomers?", "o": ["Isomerases", "Ligases", "Lyases", "Transferases"], "a": "Isomerases"},
+    {"id": 1877, "q": "Which enzyme class catalyzes the removal of groups from substrates by mechanisms other than hydrolysis leaving double bonds?", "o": ["Lyases", "Ligases", "Hydrolases", "Transferases"], "a": "Lyases"},
+    {"id": 1878, "q": "Zinc is a cofactor for Carboxypeptidase. It is attached to the enzyme by:", "o": ["Coordination bonds", "Covalent bonds", "Hydrogen bonds", "Peptide bonds"], "a": "Coordination bonds"},
+    {"id": 1879, "q": "Niacin (Vitamin) is a component of:", "o": ["NAD and NADP", "FAD", "Coenzyme A", "ATP"], "a": "NAD and NADP"},
+    {"id": 1880, "q": "A non-protein constituent called cofactor is bound to the enzyme to make it:", "o": ["Catalytically active", "Inactive", "Stable", "Soluble"], "a": "Catalytically active"},
+    
+    # --- SECONDARY METABOLITES TABLE (RATTA MARO PART) ---
+    {"id": 1836, "q": "Match the category: Pigments", "o": ["Carotenoids, Anthocyanins", "Morphine, Codeine", "Monoterpenes", "Vinblastine"], "a": "Carotenoids, Anthocyanins"},
+    {"id": 1837, "q": "Match the category: Alkaloids", "o": ["Morphine, Codeine", "Abrin, Ricin", "Lemon grass oil", "Gums"], "a": "Morphine, Codeine"},
+    {"id": 1838, "q": "Match the category: Terpenoids", "o": ["Monoterpenes, Diterpenes", "Curcumin", "Concanavalin A", "Rubber"], "a": "Monoterpenes, Diterpenes"},
+    {"id": 1839, "q": "Match the category: Essential Oils", "o": ["Lemon grass oil", "Gingelly oil", "Castor oil", "Mustard oil"], "a": "Lemon grass oil"},
+    {"id": 1840, "q": "Match the category: Toxins", "o": ["Abrin, Ricin", "Vinblastine, Curcumin", "Morphine", "Cellulose"], "a": "Abrin, Ricin"},
+    {"id": 1841, "q": "Match the category: Lectins", "o": ["Concanavalin A", "Curcumin", "Codeine", "Ricin"], "a": "Concanavalin A"},
+    {"id": 1842, "q": "Match the category: Drugs", "o": ["Vinblastine, Curcumin", "Morphine, Codeine", "Abrin, Ricin", "Gums"], "a": "Vinblastine, Curcumin"},
+    {"id": 1843, "q": "Match the category: Polymeric substances", "o": ["Rubber, Gums, Cellulose", "Starch, Protein", "DNA, RNA", "Lipids"], "a": "Rubber, Gums, Cellulose"},
+
+    # --- METABOLIC BASIS FOR LIVING (CONCEPTUAL) ---
+    {"id": 1844, "q": "Metabolic pathways can be:", "o": ["Linear or Circular", "Only Linear", "Only Circular", "Random"], "a": "Linear or Circular"},
+    {"id": 1845, "q": "Metabolites flow in a dynamic state. This flow is called:", "o": ["Metabolic flux", "Equilibrium flow", "Static flow", "Passive flow"], "a": "Metabolic flux"},
+    {"id": 1846, "q": "In living systems, there is ______ uncatalyzed metabolic conversion.", "o": ["NO", "Some", "Mostly", "Always"], "a": "NO"},
+    {"id": 1847, "q": "Even the dissolving of CO2 in water is a:", "o": ["Catalyzed reaction in living systems", "Physical process", "Chemical equilibrium", "Passive process"], "a": "Catalyzed reaction in living systems"},
+    {"id": 1848, "q": "Anabolic pathways are ______; Catabolic pathways are ______.", "o": ["Biosynthetic (consume energy); Degradation (release energy)", "Degradation; Biosynthetic", "Exothermic; Endothermic", "Fast; Slow"], "a": "Biosynthetic (consume energy); Degradation (release energy)"},
+    {"id": 1849, "q": "Example of Anabolic pathway:", "o": ["Acetic acid -> Cholesterol", "Glucose -> Lactic acid", "Glucose -> CO2", "Protein -> Amino acid"], "a": "Acetic acid -> Cholesterol"},
+    {"id": 1850, "q": "Example of Catabolic pathway:", "o": ["Glucose -> Lactic acid (Glycolysis)", "Amino acids -> Protein", "Sugar -> Polysaccharide", "CO2 -> Glucose"], "a": "Glucose -> Lactic acid (Glycolysis)"},
+    {"id": 1851, "q": "The energy currency in living systems is:", "o": ["ATP (Adenosine Triphosphate)", "ADP", "DNA", "Glucose"], "a": "ATP (Adenosine Triphosphate)"},
+    {"id": 1852, "q": "The bond energy in ATP is stored in:", "o": ["High energy phosphate bonds", "Hydrogen bonds", "Glycosidic bonds", "Peptide bonds"], "a": "High energy phosphate bonds"},
+    {"id": 1853, "q": "Blood concentration of hormones is measured in:", "o": ["Nanograms/mL", "Mols/L", "Grams/L", "Kg/L"], "a": "Nanograms/mL"},
+    
+    # --- DEEP STRUCTURE & BONDS ---
+    [attachment_0](attachment),
+    {"id": 1854, "q": "Peptide bond (-CO-NH-) is formed between:", "o": ["Carboxyl group of one AA and Amino group of next AA", "Amino group of one and Amino group of next", "Carboxyl of one and Carboxyl of next", "R group and R group"], "a": "Carboxyl group of one AA and Amino group of next AA"},
+    {"id": 1855, "q": "Formation of a peptide bond involves the elimination of:", "o": ["Water moiety (Dehydration)", "CO2", "Ammonia", "Oxygen"], "a": "Water moiety (Dehydration)"},
+    {"id": 1856, "q": "Glycosidic bond is formed between two carbon atoms of adjacent monosaccharides by:", "o": ["Dehydration", "Hydration", "Oxidation", "Reduction"], "a": "Dehydration"},
+    {"id": 1857, "q": "In a nucleic acid, a phosphate moiety links the 3'-carbon of one sugar of one nucleotide to the 5'-carbon of the sugar of the succeeding nucleotide. This bond is:", "o": ["Phosphodiester bond", "Phosphoester bond", "Glycosidic bond", "Hydrogen bond"], "a": "Phosphodiester bond"},
+    {"id": 1858, "q": "Why is it called Phospho-DI-ester bond?", "o": ["Because there is one ester bond on each side of the phosphate (Two total)", "Because it has 2 phosphates", "Because it connects 2 sugars", "Because it is double strength"], "a": "Because there is one ester bond on each side of the phosphate (Two total)"},
+    
+    # --- ENZYME BASICS ---
+    {"id": 1796, "q": "Almost all enzymes are:", "o": ["Proteins", "Lipids", "Carbohydrates", "Vitamins"], "a": "Proteins"},
+    {"id": 1797, "q": "Nucleic acids that behave like enzymes are called:", "o": ["Ribozymes", "Apoenzymes", "Coenzymes", "Prosthetic groups"], "a": "Ribozymes"},
+    {"id": 1798, "q": "An active site of an enzyme is a:", "o": ["Crevice or pocket into which the substrate fits", "Linear chain", "Outer surface", "Lipid layer"], "a": "Crevice or pocket into which the substrate fits"},
+    {"id": 1799, "q": "Inorganic catalysts work efficiently at high temperatures, whereas enzymes:", "o": ["Get damaged at high temperatures (>40°C)", "Work better at 100°C", "Are unaffected", "Freeze"], "a": "Get damaged at high temperatures (>40°C)"},
+    {"id": 1800, "q": "Enzymes isolated from thermophilic organisms (like Taq polymerase) are:", "o": ["Thermally stable", "Unstable", "Inactive", "Denatured easily"], "a": "Thermally stable"},
+
+    # --- CHEMICAL REACTIONS & RATES ---
+    {"id": 1801, "q": "Rate of a reaction is defined as:", "o": ["Amount of product formed per unit time", "Amount of substrate used", "Temperature change", "Energy released"], "a": "Amount of product formed per unit time"},
+    {"id": 1802, "q": "Rule of thumb: Rate doubles or decreases by half for every:", "o": ["10°C change in temperature", "1°C change", "50°C change", "100°C change"], "a": "10°C change in temperature"},
+    {"id": 1803, "q": "Carbonic anhydrase accelerates the reaction of CO2 and H2O by:", "o": ["10 million times", "100 times", "1000 times", "2 times"], "a": "10 million times"},
+    {"id": 1804, "q": "Without Carbonic anhydrase, only ______ molecules of H2CO3 are formed per hour. With it, ______ molecules per second.", "o": ["200; 600,000", "600; 200", "100; 1000", "50; 500"], "a": "200; 600,000"},
+    {"id": 1805, "q": "A multistep chemical reaction where each step is catalyzed by the same or different enzymes is called a:", "o": ["Metabolic pathway", "Catabolic pathway", "Anabolic pathway", "Turnover"], "a": "Metabolic pathway"},
+
+    # --- ENZYME MECHANISM ---
+    {"id": 1806, "q": "The substrate binds to the enzyme at the:", "o": ["Active site", "Allosteric site", "C-terminal", "N-terminal"], "a": "Active site"},
+    {"id": 1807, "q": "Formation of the Enzyme-Substrate (ES) complex is:", "o": ["Transient and unstable", "Permanent", "Stable", "Slow"], "a": "Transient and unstable"},
+    {"id": 1808, "q": "The energy difference between average energy of substrate and transition state is called:", "o": ["Activation energy", "Potential energy", "Kinetic energy", "Free energy"], "a": "Activation energy"},
+    [attachment_1](attachment),
+    {"id": 1809, "q": "Enzymes catalyze reactions by:", "o": ["Lowering the activation energy", "Increasing activation energy", "Increasing temperature", "Changing equilibrium"], "a": "Lowering the activation energy"},
+    {"id": 1810, "q": "The essential concept of the 'Induced Fit' theory is that binding of substrate:", "o": ["Induces the enzyme to alter its shape to fit tightly", "Is rigid like a lock and key", "Does not change shape", "Breaks the enzyme"], "a": "Induces the enzyme to alter its shape to fit tightly"},
+
+    # --- FACTORS AFFECTING ACTIVITY ---
+    {"id": 1811, "q": "Enzymes show highest activity at a specific temperature and pH called:", "o": ["Optimum temperature/pH", "Maximum limit", "Minimum limit", "Transition point"], "a": "Optimum temperature/pH"},
+    {"id": 1812, "q": "Low temperature preserves the enzyme in a:", "o": ["Temporarily inactive state", "Denatured state", "Destroyed state", "Hyperactive state"], "a": "Temporarily inactive state"},
+    {"id": 1813, "q": "High temperature causes:", "o": ["Denaturation (destruction of structure)", "Inactivation", "Preservation", "Activation"], "a": "Denaturation (destruction of structure)"},
+    {"id": 1814, "q": "With the increase in substrate concentration, the velocity of the enzymatic reaction:", "o": ["Increases at first then reaches a maximum (Vmax)", "Decreases", "Remains constant", "Increases indefinitely"], "a": "Increases at first then reaches a maximum (Vmax)"},
+    {"id": 1815, "q": "The reaction reaches Vmax when:", "o": ["All enzyme molecules are saturated with substrate", "Substrate is finished", "Temperature is high", "pH is low"], "a": "All enzyme molecules are saturated with substrate"},
+    
+    # --- INHIBITION (VERY IMP) ---
+    {"id": 1816, "q": "When the inhibitor closely resembles the substrate and competes for the active site, it is called:", "o": ["Competitive inhibition", "Non-competitive inhibition", "Allosteric inhibition", "Feedback inhibition"], "a": "Competitive inhibition"},
+    {"id": 1817, "q": "Inhibition of Succinic dehydrogenase by Malonate is an example of:", "o": ["Competitive inhibition", "Non-competitive inhibition", "Allosteric inhibition", "Permanent inhibition"], "a": "Competitive inhibition"},
+    {"id": 1818, "q": "Malonate closely resembles the substrate:", "o": ["Succinate", "Fumarate", "Citrate", "Malate"], "a": "Succinate"},
+    ,
+    {"id": 1819, "q": "Competitive inhibitors are often used in the control of:", "o": ["Bacterial pathogens", "Viral infections", "Fungal growth", "Plant growth"], "a": "Bacterial pathogens"},
+    {"id": 1820, "q": "In Competitive inhibition, Km ______ and Vmax ______.", "o": ["Increases; Remains same", "Remains same; Decreases", "Decreases; Increases", "Both decrease"], "a": "Increases; Remains same"}, # (Deep Concept)
+
+    # --- CLASSIFICATION & COFACTORS ---
+    {"id": 1821, "q": "Enzymes are divided into how many classes?", "o": ["6", "4", "10", "5"], "a": "6"},
+    {"id": 1822, "q": "Oxidoreductases/Dehydrogenases catalyze:", "o": ["Oxidoreduction between two substrates", "Transfer of a group", "Hydrolysis", "Joining of bonds"], "a": "Oxidoreduction between two substrates"},
+    {"id": 1823, "q": "Transferases catalyze:", "o": ["Transfer of a group (other than hydrogen)", "Splitting of bonds", "Isomerization", "Oxidation"], "a": "Transfer of a group (other than hydrogen)"},
+    {"id": 1824, "q": "Hydrolases catalyze:", "o": ["Hydrolysis of ester, ether, peptide, glycosidic bonds", "Removal of groups", "Joining of bonds", "Transfer of H"], "a": "Hydrolysis of ester, ether, peptide, glycosidic bonds"},
+    {"id": 1825, "q": "Lyases catalyze:", "o": ["Removal of groups leaving double bonds", "Hydrolysis", "Joining bonds", "Isomerization"], "a": "Removal of groups leaving double bonds"},
+    {"id": 1826, "q": "Isomerases catalyze:", "o": ["Inter-conversion of optical, geometric or positional isomers", "Joining bonds", "Breaking bonds", "Oxidation"], "a": "Inter-conversion of optical, geometric or positional isomers"},
+    {"id": 1827, "q": "Ligases catalyze:", "o": ["Linking together of two compounds (C-O, C-S, C-N, P-O bonds)", "Breaking bonds", "Hydrolysis", "Transfer"], "a": "Linking together of two compounds (C-O, C-S, C-N, P-O bonds)"},
+    {"id": 1828, "q": "The protein part of the enzyme is called:", "o": ["Apoenzyme", "Cofactor", "Holoenzyme", "Prosthetic group"], "a": "Apoenzyme"},
+    {"id": 1829, "q": "Holoenzyme =", "o": ["Apoenzyme + Cofactor", "Apoenzyme + Substrate", "Cofactor + Product", "Protein only"], "a": "Apoenzyme + Cofactor"},
+    {"id": 1830, "q": "Prosthetic groups are organic compounds that are:", "o": ["Tightly bound to the apoenzyme", "Loosely bound", "Metal ions", "Transient"], "a": "Tightly bound to the apoenzyme"},
+    {"id": 1831, "q": "Haem is the prosthetic group in:", "o": ["Peroxidase and Catalase", "Carboxypeptidase", "Hexokinase", "Lipase"], "a": "Peroxidase and Catalase"},
+    {"id": 1832, "q": "Co-enzymes are organic compounds whose association with the apoenzyme is:", "o": ["Transient (only during catalysis)", "Permanent", "Tightly bound", "Covalent"], "a": "Transient (only during catalysis)"},
+    {"id": 1833, "q": "Essential chemical components of many coenzymes are:", "o": ["Vitamins", "Proteins", "Fats", "Minerals"], "a": "Vitamins"},
+    {"id": 1834, "q": "NAD and NADP contain the vitamin:", "o": ["Niacin", "Riboflavin", "Thiamine", "Vitamin A"], "a": "Niacin"},
+    {"id": 1835, "q": "Zinc is a cofactor for the proteolytic enzyme:", "o": ["Carboxypeptidase", "Peroxidase", "Catalase", "Amylase"], "a": "Carboxypeptidase"},
+
+    # --- NUCLEOTIDES BASICS ---
+    {"id": 1772, "q": "A nucleotide has three components: A nitrogenous base, a pentose sugar and:", "o": ["A phosphate group", "A lipid", "An amino acid", "A sulfate group"], "a": "A phosphate group"},
+    {"id": 1773, "q": "A nucleoside consists of:", "o": ["Sugar + Nitrogenous base", "Sugar + Phosphate", "Base + Phosphate", "Sugar only"], "a": "Sugar + Nitrogenous base"},
+    {"id": 1774, "q": "The nitrogenous base is linked to the pentose sugar by which bond?", "o": ["N-glycosidic linkage", "Phosphodiester linkage", "Peptide bond", "Hydrogen bond"], "a": "N-glycosidic linkage"},
+    {"id": 1775, "q": "The phosphate group is linked to the 5' OH of a nucleoside by which bond?", "o": ["Phosphoester linkage", "Phosphodiester linkage", "Glycosidic bond", "Hydrogen bond"], "a": "Phosphoester linkage"},
+    {"id": 1776, "q": "Two nucleotides are linked through 3'-5' ______ linkage to form a dinucleotide.", "o": ["Phosphodiester", "Phosphoester", "Glycosidic", "Peptide"], "a": "Phosphodiester"},
+    {"id": 1777, "q": "Adenine and Guanine are:", "o": ["Purines (Double ring)", "Pyrimidines (Single ring)", "Sugars", "Acids"], "a": "Purines (Double ring)"},
+    {"id": 1778, "q": "Cytosine, Uracil and Thymine are:", "o": ["Pyrimidines (Single ring)", "Purines", "Sugars", "Proteins"], "a": "Pyrimidines (Single ring)"},
+    {"id": 1779, "q": "Uracil is found in RNA, whereas Thymine is found in:", "o": ["DNA only", "Both DNA and RNA", "Proteins", "Lipids"], "a": "DNA only"},
+    {"id": 1780, "q": "Thymine is chemically known as:", "o": ["5-methyl uracil", "5-ethyl uracil", "3-methyl cytosine", "Demethylated uracil"], "a": "5-methyl uracil"},
+    {"id": 1781, "q": "The sugar found in DNA is ______ and in RNA is ______.", "o": ["Deoxyribose; Ribose", "Ribose; Deoxyribose", "Glucose; Fructose", "Ribose; Glucose"], "a": "Deoxyribose; Ribose"},
+
+    # --- DNA STRUCTURE (WATSON & CRICK) ---
+    {"id": 1782, "q": "Who proposed the famous Double Helix model of DNA?", "o": ["Watson and Crick (1953)", "Wilkins and Franklin", "Chargaff", "Meselson and Stahl"], "a": "Watson and Crick (1953)"},
+    [attachment_0](attachment),
+    {"id": 1783, "q": "The backbone of the DNA strand is formed by:", "o": ["Sugar-Phosphate", "Nitrogenous bases", "Hydrogen bonds", "Only Sugar"], "a": "Sugar-Phosphate"},
+    {"id": 1784, "q": "The two chains of DNA have anti-parallel polarity. If one is 5'->3', the other is:", "o": ["3'->5'", "5'->3'", "Parallel", "Random"], "a": "3'->5'"},
+    {"id": 1785, "q": "Adenine pairs with Thymine with how many Hydrogen bonds?", "o": ["2", "3", "1", "4"], "a": "2"},
+    {"id": 1786, "q": "Guanine pairs with Cytosine with how many Hydrogen bonds?", "o": ["3", "2", "4", "1"], "a": "3"},
+    {"id": 1787, "q": "According to Erwin Chargaff, in double-stranded DNA:", "o": ["The ratio of A:T and G:C is constant and equals one", "A+T = G+C", "A+G = T+C is false", "Purines are not equal to Pyrimidines"], "a": "The ratio of A:T and G:C is constant and equals one"},
+    
+    # --- B-DNA DATA (VERY IMP FOR NEET) ---
+    {"id": 1788, "q": "The DNA model described by Watson and Crick is:", "o": ["B-DNA", "A-DNA", "Z-DNA", "C-DNA"], "a": "B-DNA"},
+    {"id": 1789, "q": "At each step of ascent in the B-DNA helix, the strand turns:", "o": ["36 degrees", "20 degrees", "45 degrees", "90 degrees"], "a": "36 degrees"},
+    {"id": 1790, "q": "One full turn of the helical strand involves how many base pairs?", "o": ["10 bp", "12 bp", "8 bp", "20 bp"], "a": "10 bp"},
+    {"id": 1791, "q": "The pitch of the B-DNA helix (length of one turn) is:", "o": ["34 Angstrom (3.4 nm)", "3.4 Angstrom", "20 Angstrom", "10 Angstrom"], "a": "34 Angstrom (3.4 nm)"},
+    {"id": 1792, "q": "The rise per base pair (distance between adjacent bp) is:", "o": ["3.4 Angstrom (0.34 nm)", "34 Angstrom", "10 Angstrom", "20 Angstrom"], "a": "3.4 Angstrom (0.34 nm)"},
+    
+    # --- DYNAMIC STATE ---
+    {"id": 1793, "q": "The biomolecules are present in specific concentrations (e.g., Blood glucose 4.2-6.1 mmol/L). This state is:", "o": ["Dynamic state", "Static state", "Equilibrium state", "Dead state"], "a": "Dynamic state"},
+    {"id": 1794, "q": "Living state is a:", "o": ["Non-equilibrium steady state to be able to perform work", "Equilibrium state", "Static state", "Reversible state"], "a": "Non-equilibrium steady state to be able to perform work"},
+    {"id": 1795, "q": "Living process is a constant effort to prevent falling into:", "o": ["Equilibrium", "Non-equilibrium", "Steady state", "Metabolism"], "a": "Equilibrium"},
+    
+    # --- AMINO ACIDS ---
+    {"id": 1737, "q": "Amino acids are substituted methanes. The four substituent groups occupy the valency positions of:", "o": ["Alpha-carbon", "Beta-carbon", "Carboxyl carbon", "Nitrogen"], "a": "Alpha-carbon"},
+    {"id": 1738, "q": "The simplest amino acid is:", "o": ["Glycine", "Alanine", "Serine", "Valine"], "a": "Glycine"},
+    {"id": 1739, "q": "In Glycine, the R-group is:", "o": ["Hydrogen", "Methyl group", "Hydroxymethyl", "Ethyl"], "a": "Hydrogen"},
+    {"id": 1740, "q": "In Alanine, the R-group is:", "o": ["Methyl group", "Hydrogen", "Hydroxymethyl", "Phenyl"], "a": "Methyl group"},
+    {"id": 1741, "q": "In Serine, the R-group is:", "o": ["Hydroxymethyl (-CH2OH)", "Methyl", "Hydrogen", "Acidic"], "a": "Hydroxymethyl (-CH2OH)"},
+    {"id": 1742, "q": "Which of the following is an Acidic amino acid?", "o": ["Glutamic acid", "Lysine", "Valine", "Tyrosine"], "a": "Glutamic acid"},
+    {"id": 1743, "q": "Which of the following is a Basic amino acid?", "o": ["Lysine", "Glutamic acid", "Valine", "Tryptophan"], "a": "Lysine"},
+    {"id": 1744, "q": "Which of the following is a Neutral amino acid?", "o": ["Valine", "Lysine", "Glutamic acid", "Arginine"], "a": "Valine"},
+    {"id": 1745, "q": "Which of the following is an Aromatic amino acid?", "o": ["Tyrosine, Phenylalanine, Tryptophan", "Valine, Serine", "Lysine, Arginine", "Glycine"], "a": "Tyrosine, Phenylalanine, Tryptophan"},
+    {"id": 1746, "q": "A particular property of amino acids is the ionizable nature of -NH2 and -COOH groups. At a specific pH, the amino acid carries both positive and negative charges. This form is called:", "o": ["Zwitterionic form", "Cationic form", "Anionic form", "Neutral form"], "a": "Zwitterionic form"},
+
+    # --- PROTEINS STRUCTURE ---
+    {"id": 1747, "q": "Proteins are:", "o": ["Heteropolymers", "Homopolymers", "Monomers", "Lipids"], "a": "Heteropolymers"},
+    {"id": 1748, "q": "Proteins are chains of amino acids linked by:", "o": ["Peptide bonds", "Glycosidic bonds", "Ester bonds", "Hydrogen bonds only"], "a": "Peptide bonds"},
+    {"id": 1749, "q": "Collagen is the most abundant protein in:", "o": ["Animal world", "Whole biosphere", "Plants", "Bacteria"], "a": "Animal world"},
+    {"id": 1750, "q": "RuBisCO is the most abundant protein in:", "o": ["Whole biosphere", "Animal world", "Fungi", "Viruses"], "a": "Whole biosphere"},
+    {"id": 1751, "q": "Primary structure of protein gives:", "o": ["Positional information (Sequence of amino acids)", "3D shape", "Helical structure", "Folding"], "a": "Positional information (Sequence of amino acids)"},
+    {"id": 1752, "q": "In a polypeptide chain, the first amino acid is called ______ and the last is called ______.", "o": ["N-terminal; C-terminal", "C-terminal; N-terminal", "Left; Right", "Alpha; Beta"], "a": "N-terminal; C-terminal"},
+    {"id": 1753, "q": "Secondary structure includes:", "o": ["Alpha-helix and Beta-pleated sheet", "Only sequence", "3D folding", "Hemoglobin structure"], "a": "Alpha-helix and Beta-pleated sheet"},
+    {"id": 1754, "q": "In proteins, only ______ helices are observed.", "o": ["Right-handed", "Left-handed", "Double", "Triple"], "a": "Right-handed"},
+    {"id": 1755, "q": "The tertiary structure is necessary for:", "o": ["Many biological activities of proteins", "Just sequence", "Stability only", "Color"], "a": "Many biological activities of proteins"},
+    {"id": 1756, "q": "Tertiary structure involves folding into a:", "o": ["Hollow woolen ball like structure", "Linear chain", "Sheet", "Helix"], "a": "Hollow woolen ball like structure"},
+    {"id": 1757, "q": "Quaternary structure is exhibited by:", "o": ["Proteins with more than one polypeptide subunit", "All proteins", "Myoglobin", "Insulin only"], "a": "Proteins with more than one polypeptide subunit"},
+    {"id": 1758, "q": "Hemoglobin consists of 4 subunits:", "o": ["Two alpha and two beta", "Four alpha", "Four beta", "Three alpha one beta"], "a": "Two alpha and two beta"},
+
+    # --- PROTEIN FUNCTIONS ---
+    {"id": 1759, "q": "Function of Collagen:", "o": ["Intercellular ground substance", "Enzyme", "Hormone", "Transport"], "a": "Intercellular ground substance"},
+    {"id": 1760, "q": "Function of Trypsin:", "o": ["Enzyme", "Hormone", "Fight infection", "Transport glucose"], "a": "Enzyme"},
+    {"id": 1761, "q": "Function of Insulin:", "o": ["Hormone", "Enzyme", "Sensory reception", "Structure"], "a": "Hormone"},
+    {"id": 1762, "q": "Function of Antibody:", "o": ["Fights infectious agents", "Digestion", "Oxygen transport", "Hormone"], "a": "Fights infectious agents"},
+    {"id": 1763, "q": "Function of GLUT-4:", "o": ["Enables glucose transport into cells", "Digests glucose", "Stores glucose", "Makes glucose"], "a": "Enables glucose transport into cells"},
+    {"id": 1764, "q": "Receptors (for smell, taste, hormones) are made of:", "o": ["Protein", "Lipid", "DNA", "Carbohydrate"], "a": "Protein"},
+
+    # --- METABOLITES ---
+    {"id": 1765, "q": "Primary metabolites have:", "o": ["Identifiable functions in normal physiological processes", "No known function", "Role in defense only", "Ecological importance only"], "a": "Identifiable functions in normal physiological processes"},
+    {"id": 1766, "q": "Which of the following is a Secondary Metabolite?", "o": ["Alkaloids, Flavonoids, Rubber", "Glucose", "Amino acid", "ATP"], "a": "Alkaloids, Flavonoids, Rubber"},
+    {"id": 1767, "q": "Morphine and Codeine are:", "o": ["Alkaloids", "Terpenoids", "Toxins", "Lectins"], "a": "Alkaloids"},
+    {"id": 1768, "q": "Abrin and Ricin are:", "o": ["Toxins", "Alkaloids", "Drugs", "Pigments"], "a": "Toxins"},
+    {"id": 1769, "q": "Vinblastine and Curcumin are:", "o": ["Drugs", "Toxins", "Spices", "Essential oils"], "a": "Drugs"},
+    {"id": 1770, "q": "Concanavalin A is a:", "o": ["Lectin", "Pigment", "Alkaloid", "Toxin"], "a": "Lectin"},
+    {"id": 1771, "q": "Monoterpenes and Diterpenes are:", "o": ["Terpenoids", "Alkaloids", "Pigments", "Drugs"], "a": "Terpenoids"},
+    
+    # --- CHEMICAL ANALYSIS & POOLS ---
+    {"id": 1701, "q": "To analyze the chemical composition of living tissue, we grind it in:", "o": ["Trichloroacetic acid (Cl3CCOOH)", "Sulphuric acid", "Nitric acid", "Hydrochloric acid"], "a": "Trichloroacetic acid (Cl3CCOOH)"},
+    {"id": 1702, "q": "The acid-soluble pool roughly represents the:", "o": ["Cytoplasmic composition", "Cell wall composition", "Membrane composition", "Organelles"], "a": "Cytoplasmic composition"},
+    {"id": 1703, "q": "The acid-insoluble fraction (Retentate) contains:", "o": ["Proteins, Nucleic acids, Polysaccharides, Lipids", "Only Proteins", "Amino acids and Sugars", "Only DNA"], "a": "Proteins, Nucleic acids, Polysaccharides, Lipids"},
+    {"id": 1704, "q": "Which of the following is NOT a polymer but is found in the acid-insoluble fraction?", "o": ["Lipids", "Proteins", "DNA", "Cellulose"], "a": "Lipids"},
+    {"id": 1705, "q": "Lipids are found in the retentate because:", "o": ["They form vesicles upon grinding and are not water soluble", "They are very large polymers", "They bind to DNA", "They are proteins"], "a": "They form vesicles upon grinding and are not water soluble"},
+    {"id": 1706, "q": "Biomicromolecules generally have a molecular weight of:", "o": ["Less than 1000 Dalton (18-800 Da)", "More than 10,000 Da", "Above 5000 Da", "Exactly 100 Da"], "a": "Less than 1000 Dalton (18-800 Da)"},
+    {"id": 1707, "q": "Biomacromolecules generally have molecular weights:", "o": ["10,000 Daltons and above", "Less than 1000 Da", "18-800 Da", "500 Da"], "a": "10,000 Daltons and above"},
+    {"id": 1708, "q": "Ash analysis of tissue is done to identify:", "o": ["Inorganic elements (Ca, Mg, etc.)", "Organic compounds", "Proteins", "Vitamins"], "a": "Inorganic elements (Ca, Mg, etc.)"},
+    {"id": 1709, "q": "Which is the most abundant element in living matter?", "o": ["Oxygen", "Carbon", "Hydrogen", "Nitrogen"], "a": "Oxygen"},
+    {"id": 1710, "q": "Which is the most abundant chemical in living organisms?", "o": ["Water (70-90%)", "Protein", "Carbohydrate", "Nucleic Acid"], "a": "Water (70-90%)"},
+
+    # --- CARBOHYDRATES ---
+    {"id": 1711, "q": "Sugars are chemically:", "o": ["Polyhydroxy aldehydes or ketones", "Proteins", "Lipids", "Acids"], "a": "Polyhydroxy aldehydes or ketones"},
+    {"id": 1712, "q": "The bond connecting two monosaccharides is called:", "o": ["Glycosidic bond", "Peptide bond", "Ester bond", "Phosphodiester bond"], "a": "Glycosidic bond"},
+    {"id": 1713, "q": "Glycosidic bond is formed by:", "o": ["Dehydration (loss of water)", "Hydration", "Oxidation", "Reduction"], "a": "Dehydration (loss of water)"},
+    {"id": 1714, "q": "Glycogen is a polymer of:", "o": ["Glucose", "Fructose", "Galactose", "Ribose"], "a": "Glucose"},
+    {"id": 1715, "q": "In Glycogen, the right end is ______ and the left end is ______.", "o": ["Reducing; Non-reducing", "Non-reducing; Reducing", "Reducing; Reducing", "Non-reducing; Non-reducing"], "a": "Reducing; Non-reducing"},
+    {"id": 1716, "q": "Starch consists of two components:", "o": ["Amylose and Amylopectin", "Glucose and Fructose", "Maltose and Lactose", "Cellulose and Pectin"], "a": "Amylose and Amylopectin"},
+    {"id": 1717, "q": "Why does starch give blue color with Iodine?", "o": ["I2 is trapped in the helical portion of starch", "I2 reacts with glucose", "Starch is blue", "I2 oxidizes starch"], "a": "I2 is trapped in the helical portion of starch"},
+    {"id": 1718, "q": "Cellulose does NOT give blue color with Iodine because:", "o": ["It does not contain complex helices", "It is made of fructose", "It is too small", "It is a lipid"], "a": "It does not contain complex helices"},
+    {"id": 1719, "q": "Cellulose is a polymer of:", "o": ["Beta-glucose", "Alpha-glucose", "Fructose", "Ribose"], "a": "Beta-glucose"},
+    {"id": 1720, "q": "Inulin is a polymer of:", "o": ["Fructose", "Glucose", "Galactose", "Mannose"], "a": "Fructose"},
+    {"id": 1721, "q": "The exoskeleton of arthropods is made of a complex polysaccharide called:", "o": ["Chitin", "Cellulose", "Starch", "Glycogen"], "a": "Chitin"},
+    {"id": 1722, "q": "Chitin is a polymer of:", "o": ["N-acetyl glucosamine (NAG)", "N-acetyl muramic acid", "Glucose", "Fructose"], "a": "N-acetyl glucosamine (NAG)"},
+    {"id": 1723, "q": "Cotton fibre is essentially:", "o": ["Cellulose", "Protein", "Starch", "Chitin"], "a": "Cellulose"},
+    {"id": 1724, "q": "Paper made from plant pulp is:", "o": ["Cellulose", "Protein", "Starch", "Pectin"], "a": "Cellulose"},
+
+    # --- LIPIDS ---
+    {"id": 1725, "q": "Lipids are generally:", "o": ["Water insoluble", "Water soluble", "Polymers", "Proteins"], "a": "Water insoluble"},
+    {"id": 1726, "q": "A fatty acid has a carboxyl group attached to an R group. Palmitic acid has how many carbons?", "o": ["16 (including carboxyl carbon)", "15", "20", "18"], "a": "16 (including carboxyl carbon)"},
+    {"id": 1727, "q": "Arachidonic acid has ______ carbon atoms.", "o": ["20", "16", "18", "22"], "a": "20"},
+    {"id": 1728, "q": "Saturated fatty acids have:", "o": ["No double bonds", "One double bond", "Multiple double bonds", "Triple bonds"], "a": "No double bonds"},
+    {"id": 1729, "q": "Unsaturated fatty acids have:", "o": ["One or more double bonds", "No double bonds", "Only single bonds", "No carbon"], "a": "One or more double bonds"},
+    {"id": 1730, "q": "Glycerol is chemically:", "o": ["Trihydroxy propane", "Dihydroxy propane", "Trihydroxy butane", "Fatty acid"], "a": "Trihydroxy propane"},
+    {"id": 1731, "q": "Fats and oils are:", "o": ["Esters of fatty acids and glycerol", "Ethers", "Polymers of glucose", "Proteins"], "a": "Esters of fatty acids and glycerol"},
+    {"id": 1732, "q": "Triglycerides contain:", "o": ["3 fatty acids + 1 glycerol", "1 fatty acid + 3 glycerol", "3 fatty acids + 3 glycerol", "Only fatty acids"], "a": "3 fatty acids + 1 glycerol"},
+    {"id": 1733, "q": "Oils have a ______ melting point compared to fats.", "o": ["Lower (e.g., Gingelly oil)", "Higher", "Same", "Variable"], "a": "Lower (e.g., Gingelly oil)"},
+    {"id": 1734, "q": "Phospholipids are found in:", "o": ["Cell membranes", "Cell wall", "DNA", "Ribosomes"], "a": "Cell membranes"},
+    {"id": 1735, "q": "Lecithin is an example of a:", "o": ["Phospholipid", "Glycolipid", "Simple lipid", "Steroid"], "a": "Phospholipid"},
+    {"id": 1736, "q": "The most complex lipid structure mentioned in NCERT with a ring structure is:", "o": ["Cholesterol", "Lecithin", "Palmitic acid", "Glycerol"], "a": "Cholesterol"},
+    
+    # --- CHROMOSOME SHAPES & CENTROMERE (VERY TRICKY) ---
+    {"id": 1626, "q": "During Anaphase, Metacentric chromosomes appear as:", "o": ["V-shaped", "L-shaped", "J-shaped", "I-shaped"], "a": "V-shaped"},
+    {"id": 1627, "q": "During Anaphase, Sub-metacentric chromosomes appear as:", "o": ["L-shaped", "V-shaped", "J-shaped", "I-shaped"], "a": "L-shaped"},
+    {"id": 1628, "q": "During Anaphase, Acrocentric chromosomes appear as:", "o": ["J-shaped", "V-shaped", "L-shaped", "I-shaped"], "a": "J-shaped"},
+    {"id": 1629, "q": "During Anaphase, Telocentric chromosomes appear as:", "o": ["I-shaped", "V-shaped", "L-shaped", "J-shaped"], "a": "I-shaped"},
+    {"id": 1630, "q": "The kinetochores constitute the actual site of:", "o": ["Attachment of spindle fibres", "DNA replication", "Protein synthesis", "Crossing over"], "a": "Attachment of spindle fibres"},
+    {"id": 1631, "q": "Satellite bodies are formed by:", "o": ["Secondary constrictions", "Primary constrictions", "Telomeres", "Centromeres"], "a": "Secondary constrictions"},
+
+    # --- SCIENTISTS & STATEMENTS (NCERT DEEP LINES) ---
+    {"id": 1632, "q": "Who concluded that the presence of a cell wall is a unique character of plant cells?", "o": ["Theodore Schwann", "Matthias Schleiden", "Robert Hooke", "Virchow"], "a": "Theodore Schwann"},
+    {"id": 1633, "q": "Schleiden (1838) observed that all plants are composed of different kinds of cells which form the:", "o": ["Tissues of the plant", "Organs of the plant", "Seeds of the plant", "Fruits"], "a": "Tissues of the plant"},
+    {"id": 1634, "q": "The cell theory as understood today is:", "o": ["All living organisms are composed of cells AND cells arise from pre-existing cells", "Only cells arise from pre-existing cells", "Cells are building blocks only", "DNA is genetic material"], "a": "All living organisms are composed of cells AND cells arise from pre-existing cells"},
+    
+    # --- MEMBRANE & TRANSPORT NUANCES ---
+    {"id": 1635, "q": "The tail of the phospholipid molecule is:", "o": ["Saturated hydrocarbon and non-polar", "Unsaturated and polar", "Proteinaceous", "Hydrophilic"], "a": "Saturated hydrocarbon and non-polar"},
+    {"id": 1636, "q": "The head of the phospholipid molecule is:", "o": ["Polar and Hydrophilic", "Non-polar and Hydrophobic", "Neutral", "Made of sugar"], "a": "Polar and Hydrophilic"},
+    {"id": 1637, "q": "Why is the tail protected from the aqueous environment?", "o": ["Because it is hydrophobic", "Because it is hydrophilic", "Because it is polar", "Because it is enzymatic"], "a": "Because it is hydrophobic"},
+    {"id": 1638, "q": "Neutral solutes may move across the membrane by the process of:", "o": ["Simple diffusion", "Active transport", "Osmosis", "Endocytosis"], "a": "Simple diffusion"},
+    {"id": 1639, "q": "Water moves across the membrane from:", "o": ["High concentration to low concentration (Osmosis)", "Low to high concentration", "Randomly", "Using ATP"], "a": "High concentration to low concentration (Osmosis)"},
+    {"id": 1640, "q": "Polar molecules cannot pass through the non-polar lipid bilayer, so they require:", "o": ["Carrier proteins", "ATP always", "DNA", "RNA"], "a": "Carrier proteins"},
+
+    # --- ORGANELLE CONNECTIONS (CONCEPTUAL) ---
+    {"id": 1641, "q": "The Golgi apparatus remains in close association with the:", "o": ["Endoplasmic Reticulum", "Mitochondria", "Nucleus only", "Lysosomes"], "a": "Endoplasmic Reticulum"},
+    {"id": 1642, "q": "Materials to be packaged in the form of vesicles from the ER fuse with the ______ face of the Golgi apparatus.", "o": ["cis (forming)", "trans (maturing)", "lateral", "dorsal"], "a": "cis (forming)"},
+    {"id": 1643, "q": "Vesicles move towards the ______ face of Golgi for release.", "o": ["trans (maturing)", "cis (forming)", "inner", "outer"], "a": "trans (maturing)"},
+    {"id": 1644, "q": "Which organelle is responsible for Glycosylation of proteins?", "o": ["Golgi apparatus", "ER", "Lysosome", "Ribosome"], "a": "Golgi apparatus"},
+    {"id": 1645, "q": "Formation of Glycoproteins and Glycolipids is the main function of:", "o": ["Golgi apparatus", "SER", "RER", "Mitochondria"], "a": "Golgi apparatus"},
+
+    # --- PROKARYOTE vs EUKARYOTE (THE FINAL CHECK) ---
+    {"id": 1646, "q": "Which structure is common to both Prokaryotic and Eukaryotic cells?", "o": ["Ribosomes and Plasma Membrane", "Mitochondria", "Nuclear Membrane", "Lysosomes"], "a": "Ribosomes and Plasma Membrane"},
+    {"id": 1647, "q": "Plasmids are:", "o": ["Small circular DNA outside genomic DNA", "Main genomic DNA", "RNA molecules", "Viral DNA"], "a": "Small circular DNA outside genomic DNA"},
+    {"id": 1648, "q": "The membrane of the Erythrocyte (RBC) has:", "o": ["52% Protein, 40% Lipid", "50% Protein, 50% Lipid", "40% Protein, 52% Lipid", "90% Lipid"], "a": "52% Protein, 40% Lipid"},
+    {"id": 1649, "q": "Gram staining distinguishes bacteria based on:", "o": ["Cell envelope composition", "Size", "Shape", "Reproduction"], "a": "Cell envelope composition"},
+    {"id": 1650, "q": "Mesosomes are analogous to which eukaryotic organelle in terms of respiration?", "o": ["Mitochondria", "Golgi", "Lysosome", "Chloroplast"], "a": "Mitochondria"},
+
+    # --- MISCELLANEOUS HIDDEN GEMS ---
+    {"id": 1651, "q": "The cytoskeleton consists of:", "o": ["Microtubules, Microfilaments, Intermediate filaments", "Actin and Myosin", "Spindle fibres only", "Cilia"], "a": "Microtubules, Microfilaments, Intermediate filaments"},
+    {"id": 1652, "q": "Plasmodesmata are:", "o": ["Cytoplasmic bridges between adjacent plant cells", "Pores in nuclear membrane", "Connections between animal cells", "Pores in cell membrane"], "a": "Cytoplasmic bridges between adjacent plant cells"},
+    {"id": 1653, "q": "Middle lamella is mainly made of:", "o": ["Calcium pectate", "Magnesium pectate", "Cellulose", "Lignin"], "a": "Calcium pectate"},
+    {"id": 1654, "q": "The primary cell wall is capable of:", "o": ["Growth", "Secretion only", "Reproduction", "Nothing"], "a": "Growth"},
+    {"id": 1655, "q": "Ribosomes are attached to the ER by their:", "o": ["Larger subunit (60S)", "Smaller subunit (40S)", "Both subunits", "RNA strand"], "a": "Larger subunit (60S)"}, # (Extra Deep)
+    {"id": 1656, "q": "Tonoplast is:", "o": ["Differentially permeable", "Impermeable", "Freely permeable", "Dead"], "a": "Differentially permeable"},
+    {"id": 1657, "q": "Contractile vacuole in Amoeba helps in:", "o": ["Excretion", "Digestion", "Reproduction", "Respiration"], "a": "Excretion"},
+    {"id": 1658, "q": "Eukaryotic ribosomes are 80S. 'S' stands for:", "o": ["Svedberg Unit (Sedimentation coefficient)", "Size", "Surface area", "Synthesis rate"], "a": "Svedberg Unit (Sedimentation coefficient)"},
+    {"id": 1659, "q": "Identify the non-membrane bound organelles:", "o": ["Ribosomes, Centrioles, Nucleolus", "Lysosomes, Vacuoles", "ER, Golgi", "Mitochondria, Chloroplast"], "a": "Ribosomes, Centrioles, Nucleolus"},
+    {"id": 1660, "q": "The diameter of B-DNA helix is:", "o": ["20 Angstrom (2 nm)", "34 Angstrom", "10 Angstrom", "3.4 Angstrom"], "a": "20 Angstrom (2 nm)"}, # (Link to Biomolecules)
+    {"id": 1661, "q": "How many base pairs are present in one turn of the helix?", "o": ["10", "12", "20", "5"], "a": "10"}, # (Link to Biomolecules)
+    {"id": 1662, "q": "Carotenoids are:", "o": ["Fat soluble pigments", "Water soluble pigments", "Proteins", "Carbohydrates"], "a": "Fat soluble pigments"},
+    {"id": 1663, "q": "Anthocyanins (giving purple color) are:", "o": ["Water soluble pigments stored in vacuoles", "Fat soluble pigments", "Found in chloroplasts", "Proteins"], "a": "Water soluble pigments stored in vacuoles"}, # (Rank Booster)
+    {"id": 1664, "q": "Microbodies include:", "o": ["Peroxisomes and Glyoxysomes", "Lysosomes", "Ribosomes", "Centrioles"], "a": "Peroxisomes and Glyoxysomes"},
+    {"id": 1665, "q": "Peroxisomes are involved in:", "o": ["Photorespiration and lipid metabolism", "ATP synthesis", "Protein packaging", "DNA synthesis"], "a": "Photorespiration and lipid metabolism"},
+    # --- DEEP DIVE: NUCLEUS & CHROMOSOMES ---
+    {"id": 1583, "q": "The interphase nucleus has highly extended and elaborate nucleoprotein fibres called:", "o": ["Chromatin", "Chromosome", "Centromere", "Aster"], "a": "Chromatin"},
+    {"id": 1584, "q": "The perinuclear space (space between two nuclear membranes) is about:", "o": ["10 to 50 nm", "100 to 200 nm", "1 to 2 nm", "0.1 to 0.5 microns"], "a": "10 to 50 nm"},
+    {"id": 1585, "q": "The nuclear matrix or nucleoplasm contains:", "o": ["Nucleolus and Chromatin", "Only DNA", "Ribosomes only", "Mitochondria"], "a": "Nucleolus and Chromatin"},
+    {"id": 1586, "q": "Is the Nucleolus membrane-bound?", "o": ["No, it is non-membrane bound", "Yes, single membrane", "Yes, double membrane", "Yes, triple membrane"], "a": "No, it is non-membrane bound"},
+    {"id": 1587, "q": "Why is the content of the nucleolus continuous with the rest of the nucleoplasm?", "o": ["Because it lacks a membrane", "Because of nuclear pores", "Because it is liquid", "Because of active transport"], "a": "Because it lacks a membrane"},
+    {"id": 1588, "q": "Larger and more numerous nucleoli are present in cells actively carrying out:", "o": ["Protein synthesis", "Lipid synthesis", "Photosynthesis", "Division"], "a": "Protein synthesis"},
+    {"id": 1589, "q": "Non-histone Chromosomal (NHC) proteins act as:", "o": ["Packaging proteins for higher level packaging", "Enzymes", "Structural support only", "Pigments"], "a": "Packaging proteins for higher level packaging"},
+    {"id": 1590, "q": "A single human cell has approximately how much DNA thread distributed among its 46 chromosomes?", "o": ["2 meters", "1 meter", "2 centimeters", "2 millimeters"], "a": "2 meters"},
+    [attachment_0](attachment),
+    {"id": 1591, "q": "Sometimes a few chromosomes have non-staining secondary constrictions at a constant location. This gives the appearance of a small fragment called:", "o": ["Satellite", "Telomere", "Kinetochore", "Centromere"], "a": "Satellite"},
+    {"id": 1592, "q": "Kinetochores are:", "o": ["Disc-shaped structures on sides of centromere", "The ends of chromosomes", "The primary constriction", "Secondary constriction"], "a": "Disc-shaped structures on sides of centromere"},
+
+    # --- DEEP DIVE: CYTOSKELETON & CENTRIOLES ---
+    {"id": 1593, "q": "The central part of the proximal region of the centriole is called the ______ which is connected with tubules of the peripheral triplets by radial spokes.", "o": ["Hub", "Axoneme", "Basal plate", "Hook"], "a": "Hub"},
+    {"id": 1594, "q": "The radial spokes in centrioles are made of:", "o": ["Protein", "Lipid", "DNA", "Carbohydrate"], "a": "Protein"},
+    {"id": 1595, "q": "Cilia and Flagella work like:", "o": ["Oars (causing movement of cell or fluid)", "Propellers", "Suction pumps", "Anchors"], "a": "Oars (causing movement of cell or fluid)"},
+    {"id": 1596, "q": "The peripheral doublets in cilia/flagella are interconnected by:", "o": ["Linkers", "Radial spokes", "Central sheath", "Plasma membrane"], "a": "Linkers"},
+
+    # --- DEEP DIVE: CELL WALL & MEMBRANE ---
+    [attachment_1](attachment),
+    {"id": 1597, "q": "In the Fluid Mosaic Model, the quasi-fluid nature of lipid enables lateral movement of proteins. This ability to move is measured as:", "o": ["Fluidity", "Permeability", "Transport", "Osmosis"], "a": "Fluidity"},
+    {"id": 1598, "q": "One of the most important functions of the plasma membrane is:", "o": ["Transport of molecules", "Protein synthesis", "DNA storage", "Energy production"], "a": "Transport of molecules"},
+    {"id": 1599, "q": "Algae cell wall is made of:", "o": ["Cellulose, Galactans, Mannans, Minerals", "Cellulose, Hemicellulose, Pectins", "Chitin", "Peptidoglycan"], "a": "Cellulose, Galactans, Mannans, Minerals"},
+    {"id": 1600, "q": "Plant cell wall is made of:", "o": ["Cellulose, Hemicellulose, Pectins, Proteins", "Cellulose only", "Chitin", "Galactans"], "a": "Cellulose, Hemicellulose, Pectins, Proteins"},
+    {"id": 1601, "q": "The primary wall of a plant cell gradually diminishes as the cell matures and the ______ is formed on the inner side.", "o": ["Secondary wall", "Tertiary wall", "Middle lamella", "Plasmodesmata"], "a": "Secondary wall"},
+
+    # --- DEEP DIVE: PROKARYOTES ---
+    {"id": 1602, "q": "Which of the following bacteria are likely to have Gas Vacuoles?", "o": ["Blue green and Purple/Green photosynthetic bacteria", "All bacteria", "Pathogenic bacteria", "Mycoplasma"], "a": "Blue green and Purple/Green photosynthetic bacteria"},
+    {"id": 1603, "q": "Polyribosomes (Polysomes) translate mRNA into:", "o": ["Proteins", "DNA", "rRNA", "Lipids"], "a": "Proteins"},
+    {"id": 1604, "q": "Resistance to antibiotics in bacteria is conferred by:", "o": ["Plasmid DNA", "Genomic DNA", "Mesosomes", "Ribosomes"], "a": "Plasmid DNA"},
+    {"id": 1605, "q": "The term 'Glycocalyx' refers to:", "o": ["The outermost layer of the cell envelope", "The cell wall", "The plasma membrane", "The mesosome"], "a": "The outermost layer of the cell envelope"},
+    {"id": 1606, "q": "Pili and Fimbriae play a role in:", "o": ["Attachment (not motility)", "Motility", "Reproduction only", "Respiration"], "a": "Attachment (not motility)"},
+
+    # --- SCIENTIFIC YEARS & DATA (MATCHING) ---
+    {"id": 1607, "q": "Year of discovery: Nucleus by Robert Brown?", "o": ["1831", "1855", "1972", "1953"], "a": "1831"},
+    {"id": 1608, "q": "Year of proposal: Cell Theory by Schleiden and Schwann?", "o": ["1838-1839", "1855", "1900", "1665"], "a": "1838-1839"},
+    {"id": 1609, "q": "Year: 'Omnis cellula-e cellula' by Rudolf Virchow?", "o": ["1855", "1838", "1953", "1898"], "a": "1855"},
+    {"id": 1610, "q": "Year: Ribosome observation by George Palade?", "o": ["1953", "1831", "1855", "1972"], "a": "1953"},
+    {"id": 1611, "q": "Year: Fluid Mosaic Model by Singer and Nicolson?", "o": ["1972", "1953", "1839", "1855"], "a": "1972"},
+    {"id": 1612, "q": "Year: Golgi body observation by Camillo Golgi?", "o": ["1898", "1953", "1831", "1972"], "a": "1898"},
+
+    # --- ADVANCED LOGIC & EXCEPTIONS ---
+    {"id": 1613, "q": "The arrangement of axonemal microtubules in cilia is referred to as:", "o": ["9 + 2", "9 + 0", "9 + 1", "8 + 2"], "a": "9 + 2"},
+    {"id": 1614, "q": "The arrangement of microtubules in centrioles is:", "o": ["9 + 0", "9 + 2", "9 + 1", "8 + 0"], "a": "9 + 0"},
+    {"id": 1615, "q": "Mitochondria divide by fission, but chloroplasts?", "o": ["Also divide by fission (similar to bacteria)", "Budding", "Fusion", "De novo synthesis"], "a": "Also divide by fission (similar to bacteria)"},
+    {"id": 1616, "q": "Which organelle is responsible for the formation of the acrosome in sperm?", "o": ["Golgi apparatus", "Lysosome", "ER", "Mitochondria"], "a": "Golgi apparatus"},
+    {"id": 1617, "q": "Steroidal hormones are synthesized in animal cells by:", "o": ["Smooth Endoplasmic Reticulum (SER)", "Rough Endoplasmic Reticulum (RER)", "Golgi", "Mitochondria"], "a": "Smooth Endoplasmic Reticulum (SER)"},
+    {"id": 1618, "q": "A number of proteins synthesized by ribosomes on the ER are modified in the ______ of the Golgi apparatus before they are released.", "o": ["Cisternae", "Tubules", "Vesicles", "Lumen"], "a": "Cisternae"},
+    {"id": 1619, "q": "The cis and trans faces of the Golgi apparatus are:", "o": ["Entirely different but interconnected", "Identical and disconnected", "Identical and interconnected", "Different and disconnected"], "a": "Entirely different but interconnected"},
+    {"id": 1620, "q": "Lysosomes are capable of digesting:", "o": ["Carbohydrates, Proteins, Lipids and Nucleic acids", "Only Proteins", "Only Fats", "Only Starch"], "a": "Carbohydrates, Proteins, Lipids and Nucleic acids"},
+    {"id": 1621, "q": "Vacuoles in plants facilitate transport of ions:", "o": ["Against concentration gradient", "Along concentration gradient", "By simple diffusion", "By osmosis only"], "a": "Against concentration gradient"},
+    {"id": 1622, "q": "Which of the following is true for the outer membrane of mitochondria?", "o": ["It is continuous and permeable", "It forms cristae", "It has ATP synthase", "It is impermeable"], "a": "It is continuous and permeable"},
+    {"id": 1623, "q": "The stroma of chloroplasts contains enzymes required for the synthesis of:", "o": ["Carbohydrates and Proteins", "Fats and Oils", "DNA only", "ATP only"], "a": "Carbohydrates and Proteins"},
+    {"id": 1624, "q": "Ribosomes are composed of RNA and proteins and are:", "o": ["Not surrounded by any membrane", "Surrounded by single membrane", "Surrounded by double membrane", "Surrounded by triple membrane"], "a": "Not surrounded by any membrane"},
+    {"id": 1625, "q": "The cytoskeleton is involved in:", "o": ["Mechanical support, motility, maintenance of shape", "Protein synthesis", "DNA replication", "Digestion"], "a": "Mechanical support, motility, maintenance of shape"},
+    
+    # --- PLANT VS ANIMAL CELLS ---
+    {"id": 1547, "q": "Which of the following is present in animal cells but absent in plant cells?", "o": ["Centriole", "Plastids", "Large central vacuole", "Cell wall"], "a": "Centriole"},
+    {"id": 1548, "q": "Which of the following is present in plant cells but absent in animal cells?", "o": ["Plastids and Cell Wall", "Mitochondria", "Ribosomes", "Nucleus"], "a": "Plastids and Cell Wall"},
+    [attachment_0](attachment),
+    {"id": 1549, "q": "In plant cells, the large central vacuole facilitates:", "o": ["Turgidity and rigidity", "Movement", "Reproduction", "Protein synthesis"], "a": "Turgidity and rigidity"},
+    {"id": 1550, "q": "The core of cilia and flagella is called:", "o": ["Axoneme", "Centrosome", "Basal body", "Microvilli"], "a": "Axoneme"},
+    {"id": 1551, "q": "Plant cells lack centrioles but still form spindle fibres during division. This is called:", "o": ["Anastral mitosis", "Amphiastral mitosis", "Free nuclear division", "Amitosis"], "a": "Anastral mitosis"}, # (Deep concept)
+
+    # --- CHROMOSOMES & GENETICS BASICS ---
+    {"id": 1552, "q": "The primary constriction on a chromosome is called:", "o": ["Centromere", "Kinetochore", "Telomere", "Satellite"], "a": "Centromere"},
+    {"id": 1553, "q": "Proteinaceous discs on the surface of the centromere where spindle fibres attach are:", "o": ["Kinetochores", "Satellites", "Chromomeres", "Telomeres"], "a": "Kinetochores"},
+    {"id": 1554, "q": "A chromosome with the centromere at the extreme tip is:", "o": ["Telocentric", "Acrocentric", "Metacentric", "Sub-metacentric"], "a": "Telocentric"},
+    [attachment_1](attachment),
+    {"id": 1555, "q": "Satellite DNA is associated with:", "o": ["Secondary constriction", "Primary constriction", "Telomere", "Kinetochore"], "a": "Secondary constriction"},
+    {"id": 1556, "q": "Chromosomes are best studied during:", "o": ["Metaphase", "Interphase", "Telophase", "Anaphase"], "a": "Metaphase"},
+    {"id": 1557, "q": "The terminal ends of chromosomes that prevent fusion are called:", "o": ["Telomeres", "Centromeres", "Satellites", "Chromomeres"], "a": "Telomeres"},
+
+    # --- SCIENTISTS & DISCOVERIES (REVISION) ---
+    {"id": 1558, "q": "Who proposed the 'Fluid Mosaic Model'?", "o": ["Singer and Nicolson", "Schleiden and Schwann", "Watson and Crick", "Robert Brown"], "a": "Singer and Nicolson"},
+    {"id": 1559, "q": "Who discovered the Nucleus?", "o": ["Robert Brown", "Robert Hooke", "Camillo Golgi", "Flemming"], "a": "Robert Brown"},
+    {"id": 1560, "q": "Who first explained that cells divide and new cells are formed from pre-existing cells?", "o": ["Rudolf Virchow", "Schleiden", "Schwann", "Hooke"], "a": "Rudolf Virchow"},
+    {"id": 1561, "q": "Golgi bodies were first observed by:", "o": ["Camillo Golgi", "George Palade", "Robert Brown", "Singer"], "a": "Camillo Golgi"},
+    {"id": 1562, "q": "Ribosomes were discovered by:", "o": ["George Palade", "Camillo Golgi", "Robert Brown", "Schwann"], "a": "George Palade"},
+
+    # --- STATEMENT BASED / TRICKY MATCHING ---
+    {"id": 1563, "q": "Which of the following is NOT part of the Endomembrane system?", "o": ["Peroxisome", "Lysosome", "Vacuole", "Golgi complex"], "a": "Peroxisome"},
+    {"id": 1564, "q": "Identify the MISMATCHED pair:", "o": ["Lysosome - Protein synthesis", "Ribosome - Protein synthesis", "Mitochondria - Respiration", "Chloroplast - Photosynthesis"], "a": "Lysosome - Protein synthesis"},
+    {"id": 1565, "q": "Select the correct statement regarding Mitochondria:", "o": ["Inner membrane forms cristae", "Outer membrane forms cristae", "Matrix contains 80S ribosomes", "It is single membrane bound"], "a": "Inner membrane forms cristae"},
+    {"id": 1566, "q": "Which organelle is non-membrane bound?", "o": ["Ribosome and Centriole", "Lysosome", "Vacuole", "ER"], "a": "Ribosome and Centriole"},
+    {"id": 1567, "q": "The arrangement of microtubules in Cilia/Flagella is ______ and in Centrioles is ______.", "o": ["9+2 ; 9+0", "9+0 ; 9+2", "9+2 ; 9+2", "9+0 ; 9+0"], "a": "9+2 ; 9+0"},
+    {"id": 1568, "q": "Select the correct path of protein transport:", "o": ["RER -> Golgi (Cis) -> Golgi (Trans) -> Vesicles", "Golgi -> RER -> Lysosome", "SER -> Golgi -> Nucleus", "Ribosome -> Nucleus -> Golgi"], "a": "RER -> Golgi (Cis) -> Golgi (Trans) -> Vesicles"},
+    {"id": 1569, "q": "Hydrolytic enzymes of lysosomes function at:", "o": ["Acidic pH", "Basic pH", "Neutral pH", "High temperature"], "a": "Acidic pH"},
+    {"id": 1570, "q": "Acrosome of sperm is derived from:", "o": ["Golgi apparatus", "ER", "Lysosome", "Mitochondria"], "a": "Golgi apparatus"}, # (Applied Biology)
+    {"id": 1571, "q": "Middle piece of sperm contains:", "o": ["Mitochondria", "Golgi", "Nucleus", "Ribosomes"], "a": "Mitochondria"}, # (Applied Biology)
+
+    # --- CYTOSKELETON & MICROBODIES ---
+    {"id": 1572, "q": "The structural protein of Microtubules is:", "o": ["Tubulin", "Actin", "Myosin", "Flagellin"], "a": "Tubulin"},
+    {"id": 1573, "q": "The structural protein of Microfilaments is:", "o": ["Actin", "Tubulin", "Keratin", "Dynein"], "a": "Actin"},
+    {"id": 1574, "q": "Peroxisomes are involved in:", "o": ["Photorespiration and lipid metabolism", "ATP synthesis", "Protein synthesis", "DNA replication"], "a": "Photorespiration and lipid metabolism"},
+    {"id": 1575, "q": "Which organelle helps in synthesis of Steroidal Hormones in animal cells?", "o": ["SER (Smooth ER)", "RER", "Golgi", "Mitochondria"], "a": "SER (Smooth ER)"},
+
+    # --- FINAL WRAP UP ---
+    {"id": 1576, "q": "70S ribosomes are found in:", "o": ["Prokaryotes, Mitochondria and Chloroplasts", "Only Prokaryotes", "Eukaryotic cytoplasm", "Nucleus"], "a": "Prokaryotes, Mitochondria and Chloroplasts"},
+    {"id": 1577, "q": "Polyribosomes (Polysomes) are strings of ribosomes attached to:", "o": ["mRNA", "rRNA", "tRNA", "DNA"], "a": "mRNA"},
+    {"id": 1578, "q": "The main arena of various types of cellular activities is:", "o": ["Cytoplasm", "Nucleus", "Plasma membrane", "Mitochondria"], "a": "Cytoplasm"},
+    {"id": 1579, "q": "Glycocalyx in bacteria can be a loose sheath called ______ or a thick layer called ______.", "o": ["Slime layer; Capsule", "Capsule; Slime layer", "Cell wall; Membrane", "Capsule; Wall"], "a": "Slime layer; Capsule"},
+    {"id": 1580, "q": "Bacterial flagella are made of:", "o": ["Flagellin protein", "Tubulin", "Actin", "Chitin"], "a": "Flagellin protein"},
+    {"id": 1581, "q": "Which of the following contains its own DNA?", "o": ["Mitochondria and Chloroplast", "Lysosome and Vacuole", "Golgi and ER", "Ribosome"], "a": "Mitochondria and Chloroplast"},
+    {"id": 1582, "q": "The barrier between the cytoplasm and the nucleus is:", "o": ["Nuclear envelope", "Plasma membrane", "Tonoplast", "Cell wall"], "a": "Nuclear envelope"},
+    
+    # --- MITOCHONDRIA (POWERHOUSE) ---
+    {"id": 1481, "q": "Mitochondria are not easily visible under the microscope unless:", "o": ["Stained", "Heated", "Frozen", "Dried"], "a": "Stained"},
+    {"id": 1482, "q": "The typical shape of mitochondria is:", "o": ["Sausage-shaped or cylindrical", "Spherical", "Disc-shaped", "Irregular"], "a": "Sausage-shaped or cylindrical"},
+    {"id": 1483, "q": "Mitochondria is a double membrane-bound structure. The inner compartment is called:", "o": ["Matrix", "Stroma", "Cristae", "Lumen"], "a": "Matrix"},
+    {"id": 1484, "q": "The inner membrane forms a number of infoldings towards the matrix called:", "o": ["Cristae", "Cisternae", "Thylakoids", "Tubules"], "a": "Cristae"},
+    {"id": 1485, "q": "The function of Cristae is to:", "o": ["Increase surface area", "Decrease surface area", "Protect DNA", "Store food"], "a": "Increase surface area"},
+    {"id": 1486, "q": "Mitochondria are the sites of:", "o": ["Aerobic respiration", "Anaerobic respiration", "Photosynthesis", "Digestion"], "a": "Aerobic respiration"},
+    {"id": 1487, "q": "Mitochondria are called 'Powerhouses' because they produce:", "o": ["Cellular energy in the form of ATP", "Glucose", "Protein", "DNA"], "a": "Cellular energy in the form of ATP"},
+    {"id": 1488, "q": "The matrix of mitochondria possesses:", "o": ["Single circular DNA, RNA, 70S ribosomes", "Linear DNA, 80S ribosomes", "No DNA", "Only enzymes"], "a": "Single circular DNA, RNA, 70S ribosomes"},
+    {"id": 1489, "q": "Mitochondria divide by:", "o": ["Fission", "Mitosis", "Budding", "Fusion"], "a": "Fission"},
+
+    # --- PLASTIDS (CHLOROPLASTS & OTHERS) ---
+    {"id": 1490, "q": "Plastids are found in:", "o": ["All plant cells and euglenoides", "Animals and plants", "Fungi and plants", "Bacteria"], "a": "All plant cells and euglenoides"},
+    {"id": 1491, "q": "Based on the type of pigments, plastids can be classified into:", "o": ["Chloroplasts, Chromoplasts, Leucoplasts", "Chloroplasts and Mitochondria", "Amyloplasts only", "Elaioplasts only"], "a": "Chloroplasts, Chromoplasts, Leucoplasts"},
+    {"id": 1492, "q": "Chloroplasts contain chlorophyll and carotenoid pigments responsible for:", "o": ["Trapping light energy for photosynthesis", "Storing starch", "Giving color to flowers", "Respiration"], "a": "Trapping light energy for photosynthesis"},
+    {"id": 1493, "q": "Chromoplasts contain fat-soluble carotenoid pigments like:", "o": ["Carotene, Xanthophylls", "Chlorophyll", "Hemoglobin", "Melanin"], "a": "Carotene, Xanthophylls"},
+    {"id": 1494, "q": "Leucoplasts are:", "o": ["Colorless plastids of varied shapes storing nutrients", "Green plastids", "Red plastids", "Blue plastids"], "a": "Colorless plastids of varied shapes storing nutrients"},
+    {"id": 1495, "q": "Amyloplasts store:", "o": ["Carbohydrates (Starch)", "Oils and Fats", "Proteins", "Water"], "a": "Carbohydrates (Starch)"},
+    {"id": 1496, "q": "Elaioplasts store:", "o": ["Oils and Fats", "Starch", "Proteins", "Vitamins"], "a": "Oils and Fats"},
+    {"id": 1497, "q": "Aleuroplasts store:", "o": ["Proteins", "Starch", "Fats", "Sugar"], "a": "Proteins"},
+    [attachment_0](attachment),
+    {"id": 1498, "q": "Chloroplasts are double membrane bound. The inner membrane is:", "o": ["Relatively less permeable", "More permeable", "Absent", "Thicker"], "a": "Relatively less permeable"},
+    {"id": 1499, "q": "The space limited by the inner membrane of the chloroplast is called:", "o": ["Stroma", "Matrix", "Lumen", "Cristae"], "a": "Stroma"},
+    {"id": 1500, "q": "Flattened membranous sacs present in the stroma are called:", "o": ["Thylakoids", "Cristae", "Cisternae", "Tubules"], "a": "Thylakoids"},
+    {"id": 1501, "q": "Thylakoids are arranged in stacks called:", "o": ["Grana", "Stroma", "Matrix", "Lamellae"], "a": "Grana"},
+    {"id": 1502, "q": "Flat membranous tubules connecting the thylakoids of different grana are:", "o": ["Stroma lamellae", "Cristae", "Tubules", "Middle lamella"], "a": "Stroma lamellae"},
+    {"id": 1503, "q": "The membrane of the thylakoid encloses a space called:", "o": ["Lumen", "Matrix", "Stroma", "Pore"], "a": "Lumen"},
+    {"id": 1504, "q": "The stroma of chloroplast contains enzymes required for synthesis of:", "o": ["Carbohydrates and proteins", "Lipids only", "ATP only", "DNA only"], "a": "Carbohydrates and proteins"},
+    {"id": 1505, "q": "Chloroplasts contain:", "o": ["Small double-stranded circular DNA and ribosomes", "Linear DNA", "No DNA", "80S ribosomes"], "a": "Small double-stranded circular DNA and ribosomes"},
+    {"id": 1506, "q": "Ribosomes of chloroplasts are:", "o": ["70S (smaller)", "80S (larger)", "50S", "60S"], "a": "70S (smaller)"},
+    {"id": 1507, "q": "Cytoplasmic ribosomes are:", "o": ["80S", "70S", "50S", "30S"], "a": "80S"},
+
+    # --- RIBOSOMES & CYTOSKELETON ---
+    {"id": 1508, "q": "Ribosomes were first observed by:", "o": ["George Palade (1953)", "Robert Brown", "Camillo Golgi", "Singer"], "a": "George Palade (1953)"},
+    {"id": 1509, "q": "Ribosomes are composed of:", "o": ["RNA and proteins", "DNA and proteins", "Lipids and proteins", "Carbohydrates and RNA"], "a": "RNA and proteins"},
+    {"id": 1510, "q": "Are ribosomes surrounded by a membrane?", "o": ["No, they are non-membrane bound", "Yes, single membrane", "Yes, double membrane", "Sometimes"], "a": "No, they are non-membrane bound"},
+    {"id": 1511, "q": "In 80S ribosomes, 'S' stands for:", "o": ["Svedberg's unit (Sedimentation coefficient)", "Size", "Shape", "Synthesis"], "a": "Svedberg's unit (Sedimentation coefficient)"},
+    {"id": 1512, "q": "Svedberg's unit is indirectly a measure of:", "o": ["Density and Size", "Volume", "Weight only", "Length"], "a": "Density and Size"},
+    {"id": 1513, "q": "The 80S ribosome consists of subunits:", "o": ["60S and 40S", "50S and 30S", "60S and 30S", "50S and 40S"], "a": "60S and 40S"},
+    {"id": 1514, "q": "An elaborate network of filamentous proteinaceous structures in the cytoplasm is called:", "o": ["Cytoskeleton", "Endomembrane system", "Cytoplasm", "Nucleoplasm"], "a": "Cytoskeleton"},
+    {"id": 1515, "q": "Functions of cytoskeleton include:", "o": ["Mechanical support, motility, maintenance of shape", "Protein synthesis", "DNA replication", "ATP production"], "a": "Mechanical support, motility, maintenance of shape"},
+    {"id": 1516, "q": "Cytoskeleton consists of:", "o": ["Microtubules, Microfilaments, Intermediate filaments", "ER and Golgi", "Cilia and Flagella", "Actin and Myosin only"], "a": "Microtubules, Microfilaments, Intermediate filaments"},
+
+    # --- CILIA, FLAGELLA & CENTROSOME ---
+    {"id": 1517, "q": "Cilia and Flagella are hair-like outgrowths of the:", "o": ["Cell membrane", "Cell wall", "Nuclear membrane", "ER"], "a": "Cell membrane"},
+    {"id": 1518, "q": "Which structure causes movement of surrounding fluid or the cell itself?", "o": ["Cilia", "Microvilli", "Pili", "Fimbriae"], "a": "Cilia"},
+    {"id": 1519, "q": "Compared to cilia, flagella are:", "o": ["Longer", "Shorter", "Same size", "Thicker"], "a": "Longer"},
+    {"id": 1520, "q": "The core of the cilium/flagellum is called:", "o": ["Axoneme", "Centriole", "Basal body", "Hub"], "a": "Axoneme"},
+    ,
+    {"id": 1521, "q": "The Axoneme possesses a number of microtubules running parallel to the long axis in an arrangement of:", "o": ["9 + 2", "9 + 0", "9 + 1", "8 + 2"], "a": "9 + 2"},
+    {"id": 1522, "q": "The 9+2 arrangement means:", "o": ["9 doublets of radial microtubules and one central pair", "9 singlets and 2 central", "9 central and 2 radial", "9 triplets and 2 central"], "a": "9 doublets of radial microtubules and one central pair"},
+    {"id": 1523, "q": "The central tubules are connected by bridges and enclosed by a:", "o": ["Central sheath", "Plasma membrane", "Nuclear envelope", "Capsule"], "a": "Central sheath"},
+    {"id": 1524, "q": "Both cilium and flagellum emerge from a centriole-like structure called:", "o": ["Basal body", "Centrosome", "Axoneme", "Kinetochore"], "a": "Basal body"},
+    {"id": 1525, "q": "Centrosome is an organelle usually containing two cylindrical structures called:", "o": ["Centrioles", "Chromatids", "Centromeres", "Arms"], "a": "Centrioles"},
+    {"id": 1526, "q": "The two centrioles in a centrosome lie:", "o": ["Perpendicular to each other", "Parallel to each other", "Randomly", "End to end"], "a": "Perpendicular to each other"},
+    {"id": 1527, "q": "Centrioles have an organization like the:", "o": ["Cartwheel", "Ladder", "Spiral", "Star"], "a": "Cartwheel"},
+    {"id": 1528, "q": "Centrioles are made up of nine evenly spaced peripheral fibrils of:", "o": ["Tubulin protein", "Actin", "Myosin", "Flagellin"], "a": "Tubulin protein"},
+    {"id": 1529, "q": "The arrangement of microtubules in Centrioles is:", "o": ["9 + 0", "9 + 2", "9 + 1", "8 + 2"], "a": "9 + 0"},
+    {"id": 1530, "q": "The central part of the proximal region of the centriole is proteinaceous and called the:", "o": ["Hub", "Axoneme", "Spoke", "Core"], "a": "Hub"},
+    {"id": 1531, "q": "Centrioles form the:", "o": ["Basal body of cilia/flagella and Spindle fibres", "Nucleolus", "Cell plate", "Ribosomes"], "a": "Basal body of cilia/flagella and Spindle fibres"},
+
+    # --- NUCLEUS & CHROMOSOMES ---
+    {"id": 1532, "q": "Nucleus was first described by:", "o": ["Robert Brown (1831)", "Flemming", "Hooke", "Virchow"], "a": "Robert Brown (1831)"},
+    {"id": 1533, "q": "The material of the nucleus stained by basic dyes was given the name 'Chromatin' by:", "o": ["Flemming", "Brown", "Schleiden", "Strasburger"], "a": "Flemming"},
+    {"id": 1534, "q": "The space between the two nuclear membranes is called:", "o": ["Perinuclear space", "Intermembrane space", "Matrix", "Lumen"], "a": "Perinuclear space"},
+    {"id": 1535, "q": "Nuclear pores are passages through which movement of ______ takes place.", "o": ["RNA and protein molecules", "DNA only", "Lipids", "Ribosomes only"], "a": "RNA and protein molecules"},
+    {"id": 1536, "q": "Cells that lack a nucleus (Erythrocytes of mammals) are:", "o": ["Living but cannot divide", "Dead", "Able to divide", "Prokaryotic"], "a": "Living but cannot divide"},
+    {"id": 1537, "q": "Nucleolus is a site for active synthesis of:", "o": ["Ribosomal RNA (rRNA)", "mRNA", "tRNA", "DNA"], "a": "Ribosomal RNA (rRNA)"},
+    {"id": 1538, "q": "Chromatin contains:", "o": ["DNA, Histones, Non-histone proteins and RNA", "Only DNA", "DNA and Lipids", "DNA and Histones only"], "a": "DNA, Histones, Non-histone proteins and RNA"},
+    {"id": 1539, "q": "Every chromosome essentially has a primary constriction called the:", "o": ["Centromere", "Telomere", "Satellite", "Kinetochore"], "a": "Centromere"},
+    {"id": 1540, "q": "Disc shaped structures present on the sides of the centromere are called:", "o": ["Kinetochores", "Satellites", "Chromatids", "Arms"], "a": "Kinetochores"},
+    {"id": 1541, "q": "Metacentric chromosome has:", "o": ["Middle centromere forming two equal arms", "Sub-terminal centromere", "Terminal centromere", "No centromere"], "a": "Middle centromere forming two equal arms"},
+    {"id": 1542, "q": "Sub-metacentric chromosome has:", "o": ["Centromere slightly away from middle (one shorter, one longer arm)", "Middle centromere", "Terminal centromere", "Centromere at tip"], "a": "Centromere slightly away from middle (one shorter, one longer arm)"},
+    {"id": 1543, "q": "Acrocentric chromosome has:", "o": ["Centromere close to end (one extremely short, one very long arm)", "Middle centromere", "Terminal centromere", "Equal arms"], "a": "Centromere close to end (one extremely short, one very long arm)"},
+    {"id": 1544, "q": "Telocentric chromosome has:", "o": ["Terminal centromere", "Middle centromere", "No centromere", "Two centromeres"], "a": "Terminal centromere"},
+    {"id": 1545, "q": "A small fragment appearing due to a secondary constriction on a chromosome is called:", "o": ["Satellite", "Kinetochore", "Telomere", "Centromere"], "a": "Satellite"},
+    {"id": 1546, "q": "Microbodies are:", "o": ["Membrane bound minute vesicles containing enzymes", "Non-membrane bound", "Part of nucleus", "Ribosomes"], "a": "Membrane bound minute vesicles containing enzymes"},
+
+    # --- CELL THEORY & OVERVIEW ---
+    {"id": 1401, "q": "Who first saw and described a live cell?", "o": ["Robert Hooke", "Anton Von Leeuwenhoek", "Robert Brown", "Schleiden"], "a": "Anton Von Leeuwenhoek"},
+    {"id": 1402, "q": "Robert Brown discovered the:", "o": ["Cell", "Nucleus", "Cell wall", "Mitochondria"], "a": "Nucleus"},
+    {"id": 1403, "q": "Matthias Schleiden was a:", "o": ["German Botanist", "British Zoologist", "German Zoologist", "British Botanist"], "a": "German Botanist"},
+    {"id": 1404, "q": "The presence of a cell wall is a unique character of plant cells. This was concluded by:", "o": ["Schleiden", "Schwann", "Virchow", "Hooke"], "a": "Schwann"},
+    {"id": 1405, "q": "Who modified the cell theory by adding 'Omnis cellula-e cellula'?", "o": ["Rudolf Virchow", "Schleiden", "Schwann", "Robert Brown"], "a": "Rudolf Virchow"},
+    {"id": 1406, "q": "'Omnis cellula-e cellula' means:", "o": ["All cells die", "All cells arise from pre-existing cells", "Cells are the basic unit", "Cells contain DNA"], "a": "All cells arise from pre-existing cells"},
+    {"id": 1407, "q": "The largest isolated single cell is the egg of an:", "o": ["Ostrich", "Hen", "Duck", "Human"], "a": "Ostrich"},
+    {"id": 1408, "q": "Which of the following is the longest cell in the human body?", "o": ["RBC", "Nerve cell", "Muscle cell", "WBC"], "a": "Nerve cell"},
+    {"id": 1409, "q": "Mycoplasma, the smallest cells, are only ______ in length.", "o": ["0.3 µm", "3 µm", "0.1 µm", "10 µm"], "a": "0.3 µm"},
+    {"id": 1410, "q": "Bacteria could be ______ in length.", "o": ["3 to 5 µm", "0.3 to 0.5 µm", "10 to 20 µm", "100 µm"], "a": "3 to 5 µm"},
+    {"id": 1411, "q": "Human RBCs are about ______ in diameter.", "o": ["7.0 µm", "0.7 µm", "70 µm", "0.07 µm"], "a": "7.0 µm"},
+    {"id": 1412, "q": "The shape of RBCs is generally:", "o": ["Round and biconcave", "Amoeboid", "Long and narrow", "Branched"], "a": "Round and biconcave"},
+    {"id": 1413, "q": "The genomic DNA in prokaryotes is:", "o": ["Circular, single chromosome", "Linear, multiple chromosomes", "Circular, multiple chromosomes", "Linear, single chromosome"], "a": "Circular, single chromosome"},
+    {"id": 1414, "q": "Many bacteria have small circular DNA outside the genomic DNA called:", "o": ["Plasmids", "Mesosomes", "Ribosomes", "Inclusion bodies"], "a": "Plasmids"},
+    {"id": 1415, "q": "Plasmids confer unique phenotypic characters such as:", "o": ["Resistance to antibiotics", "Color", "Size", "Motility"], "a": "Resistance to antibiotics"},
+
+    # --- PROKARYOTIC CELL ENVELOPE ---
+    {"id": 1416, "q": "The cell envelope of bacteria consists of a tightly bound three-layered structure. The order from outer to inner is:", "o": ["Glycocalyx -> Cell wall -> Plasma membrane", "Cell wall -> Glycocalyx -> Plasma membrane", "Plasma membrane -> Cell wall -> Glycocalyx", "Glycocalyx -> Plasma membrane -> Cell wall"], "a": "Glycocalyx -> Cell wall -> Plasma membrane"},
+    {"id": 1417, "q": "Bacteria are classified into Gram positive and Gram negative based on:", "o": [" Differences in cell envelopes and response to Gram staining", "Shape only", "Size only", "Reproduction"], "a": " Differences in cell envelopes and response to Gram staining"},
+    {"id": 1418, "q": "If the Glycocalyx is loose sheath, it is called ______; if it is thick and tough, it is called ______.", "o": ["Slime layer; Capsule", "Capsule; Slime layer", "Cell wall; Capsule", "Slime layer; Cell wall"], "a": "Slime layer; Capsule"},
+    {"id": 1419, "q": "The bacterial cell wall is made of:", "o": ["Peptidoglycan", "Cellulose", "Chitin", "Lipids only"], "a": "Peptidoglycan"},
+    {"id": 1420, "q": "Which structure in prokaryotes is structurally similar to that of eukaryotes?", "o": ["Plasma membrane", "Ribosomes", "Cell wall", "Nuclear membrane"], "a": "Plasma membrane"},
+    {"id": 1421, "q": "A special membranous structure formed by the extensions of plasma membrane into the cell is:", "o": ["Mesosome", "Ribosome", "Polysome", "Plasmid"], "a": "Mesosome"},
+    {"id": 1422, "q": "Mesosomes can be in the form of:", "o": ["Vesicles, tubules and lamellae", "Cilia and flagella", "Pili and fimbriae", "Ribosomes"], "a": "Vesicles, tubules and lamellae"},
+    {"id": 1423, "q": "Functions of Mesosomes include:", "o": ["Cell wall formation, DNA replication, respiration, secretion", "Protein synthesis only", "Photosynthesis only", "Motility"], "a": "Cell wall formation, DNA replication, respiration, secretion"},
+    {"id": 1424, "q": "In Cyanobacteria, membranous extensions into the cytoplasm containing pigments are called:", "o": ["Chromatophores", "Mesosomes", "Chloroplasts", "Leucoplasts"], "a": "Chromatophores"},
+    {"id": 1425, "q": "Bacterial flagellum is composed of three parts:", "o": ["Filament, Hook, Basal body", "Cilia, Hook, Basal body", "Filament, Tubule, Hook", "Head, Neck, Tail"], "a": "Filament, Hook, Basal body"},
+    {"id": 1426, "q": "The longest portion of the bacterial flagellum is:", "o": ["Filament", "Hook", "Basal body", "Pilus"], "a": "Filament"},
+    {"id": 1427, "q": "Pili are:", "o": ["Elongated tubular structures made of special protein", "Small bristle like fibers", "Whip like structures", "Infoldings of membrane"], "a": "Elongated tubular structures made of special protein"},
+    {"id": 1428, "q": "Fimbriae are small bristle-like fibers that help in:", "o": ["Attaching bacteria to rocks/hosts", "Motility", "DNA transfer", "Respiration"], "a": "Attaching bacteria to rocks/hosts"},
+    
+    # --- PROKARYOTIC RIBOSOMES & INCLUSIONS ---
+    {"id": 1429, "q": "In prokaryotes, ribosomes are associated with the:", "o": ["Plasma membrane", "Nucleus", "Cell wall", "Golgi"], "a": "Plasma membrane"},
+    {"id": 1430, "q": "The size of prokaryotic ribosomes is:", "o": ["15 nm by 20 nm", "50 nm by 80 nm", "0.1 micron", "100 nm"], "a": "15 nm by 20 nm"},
+    {"id": 1431, "q": "Prokaryotic ribosomes are 70S, made of two subunits:", "o": ["50S and 30S", "60S and 40S", "50S and 40S", "40S and 30S"], "a": "50S and 30S"},
+    {"id": 1432, "q": "Several ribosomes attach to a single mRNA chain to form a:", "o": ["Polyribosome or Polysome", "Polypeptide", "Polymer", "Inclusion body"], "a": "Polyribosome or Polysome"},
+    {"id": 1433, "q": "The function of polysomes is to translate:", "o": ["mRNA into proteins", "DNA into RNA", "Proteins into RNA", "Lipids into proteins"], "a": "mRNA into proteins"},
+    {"id": 1434, "q": "Reserve material in prokaryotic cells is stored as:", "o": ["Inclusion bodies", "Vacuoles", "Lysosomes", "Golgi"], "a": "Inclusion bodies"},
+    {"id": 1435, "q": "Inclusion bodies are:", "o": ["Not bound by any membrane and lie free in cytoplasm", "Bound by single membrane", "Bound by double membrane", "Attached to plasma membrane"], "a": "Not bound by any membrane and lie free in cytoplasm"},
+    {"id": 1436, "q": "Examples of inclusion bodies include:", "o": ["Phosphate granules, Cyanophycean granules, Glycogen granules", "Ribosomes, Lysosomes", "Vacuoles, Plastids", "DNA, RNA"], "a": "Phosphate granules, Cyanophycean granules, Glycogen granules"},
+    {"id": 1437, "q": "Gas vacuoles are found in:", "o": ["Blue-green and purple/green photosynthetic bacteria", "All bacteria", "Mycoplasma", "Fungi"], "a": "Blue-green and purple/green photosynthetic bacteria"},
+
+    # --- EUKARYOTIC CELL MEMBRANE ---
+    {"id": 1438, "q": "The detailed structure of the membrane was studied only after the advent of the:", "o": ["Electron microscope in 1950s", "Light microscope", "Phase contrast microscope", "X-ray crystallography"], "a": "Electron microscope in 1950s"},
+    {"id": 1439, "q": "Chemical studies on human RBCs show the membrane consists of:", "o": ["Lipids and Proteins", "Lipids and DNA", "Proteins and RNA", "Cellulose"], "a": "Lipids and Proteins"},
+    {"id": 1440, "q": "The major lipids in cell membrane are:", "o": ["Phospholipids", "Glycolipids", "Sterols", "Fatty acids"], "a": "Phospholipids"},
+    {"id": 1441, "q": "Lipids are arranged in a:", "o": ["Bilayer", "Monolayer", "Trilayer", "Random manner"], "a": "Bilayer"},
+    {"id": 1442, "q": "The lipid molecules are arranged with:", "o": ["Polar heads towards outer sides and hydrophobic tails towards inner part", "Hydrophobic heads outer, polar tails inner", "Random arrangement", "Heads and tails mixed"], "a": "Polar heads towards outer sides and hydrophobic tails towards inner part"},
+    {"id": 1443, "q": "The membrane of human RBC has approximately:", "o": ["52% protein and 40% lipid", "40% protein and 52% lipid", "50% protein and 50% lipid", "60% protein and 40% lipid"], "a": "52% protein and 40% lipid"},
+    {"id": 1444, "q": "Integral proteins are:", "o": ["Partially or totally buried in the membrane", "Lie on the surface", "Loosely attached", "Absent in animals"], "a": "Partially or totally buried in the membrane"},
+    {"id": 1445, "q": "Peripheral proteins lie:", "o": ["On the surface of the membrane", "Buried inside", "In the nucleus", "In the cytoplasm"], "a": "On the surface of the membrane"},
+    {"id": 1446, "q": "The Fluid Mosaic Model was proposed by:", "o": ["Singer and Nicolson (1972)", "Schleiden and Schwann", "Robert Brown", "Camillo Golgi"], "a": "Singer and Nicolson (1972)"},
+    {"id": 1447, "q": "The 'fluid' nature of the membrane is mainly due to:", "o": ["Lipids", "Proteins", "Carbohydrates", "Water"], "a": "Lipids"},
+    {"id": 1448, "q": "The quasi-fluid nature of lipids enables lateral movement of:", "o": ["Proteins within the bilayer", "DNA", "Ribosomes", "Cell wall"], "a": "Proteins within the bilayer"},
+    {"id": 1449, "q": "Fluidity of membrane is important for:", "o": ["Cell growth, secretion, endocytosis, cell division", "Protection only", "Rigidity", "Color"], "a": "Cell growth, secretion, endocytosis, cell division"},
+    {"id": 1450, "q": "Movement of water across the membrane by diffusion is called:", "o": ["Osmosis", "Active transport", "Endocytosis", "Pinocytosis"], "a": "Osmosis"},
+    {"id": 1451, "q": "Na+/K+ pump is an example of:", "o": ["Active transport", "Passive transport", "Osmosis", "Facilitated diffusion"], "a": "Active transport"},
+    {"id": 1452, "q": "Active transport requires energy in the form of:", "o": ["ATP", "GTP", "Sunlight", "Heat"], "a": "ATP"},
+
+    # --- CELL WALL ---
+    {"id": 1453, "q": "Cell wall is a non-living rigid structure present in:", "o": ["Fungi and Plants", "Animals only", "Mycoplasma", "Animals and Plants"], "a": "Fungi and Plants"},
+    {"id": 1454, "q": "Algae have a cell wall made of:", "o": ["Cellulose, Galactans, Mannans and Minerals (CaCO3)", "Cellulose, Hemicellulose, Pectins", "Chitin", "Peptidoglycan"], "a": "Cellulose, Galactans, Mannans and Minerals (CaCO3)"},
+    [attachment_0](attachment),
+    {"id": 1455, "q": "In higher plants, the cell wall consists of:", "o": ["Cellulose, Hemicellulose, Pectins and Proteins", "Galactans and Mannans", "Chitin", "Peptidoglycan"], "a": "Cellulose, Hemicellulose, Pectins and Proteins"},
+    {"id": 1456, "q": "The Primary wall of a young plant cell is:", "o": ["Capable of growth", "Rigid and dead", "Impermeable", "Absent"], "a": "Capable of growth"},
+    {"id": 1457, "q": "The Secondary wall is formed on the:", "o": ["Inner side (towards membrane) of the cell", "Outer side of the cell", "Middle of the wall", "Outside cuticle"], "a": "Inner side (towards membrane) of the cell"},
+    {"id": 1458, "q": "Middle lamella is a layer mainly composed of:", "o": ["Calcium pectate", "Magnesium chloride", "Cellulose", "Lignin"], "a": "Calcium pectate"},
+    {"id": 1459, "q": "Middle lamella performs the function of:", "o": ["Holding different neighboring cells together", "Photosynthesis", "Respiration", "Protection"], "a": "Holding different neighboring cells together"},
+    {"id": 1460, "q": "Plasmodesmata connect the:", "o": ["Cytoplasm of neighboring cells", "Nuclei of cells", "Vacuoles", "Mitochondria"], "a": "Cytoplasm of neighboring cells"},
+
+    # --- ENDOMEMBRANE SYSTEM (ER & GOLGI) ---
+    {"id": 1461, "q": "The endomembrane system includes:", "o": ["ER, Golgi complex, Lysosomes and Vacuoles", "Mitochondria, Chloroplast, Peroxisomes", "Nucleus, ER, Ribosomes", "All organelles"], "a": "ER, Golgi complex, Lysosomes and Vacuoles"},
+    {"id": 1462, "q": "Mitochondria and Peroxisomes are NOT part of the endomembrane system because:", "o": ["Their functions are not coordinated with the others", "They are double membrane bound", "They have DNA", "They are larger"], "a": "Their functions are not coordinated with the others"},
+    {"id": 1463, "q": "Endoplasmic Reticulum divides the intracellular space into two compartments:", "o": ["Luminal (inside ER) and Extra-luminal (cytoplasm)", "Outer and Inner", "Matrix and Stroma", "Cis and Trans"], "a": "Luminal (inside ER) and Extra-luminal (cytoplasm)"},
+    {"id": 1464, "q": "RER (Rough Endoplasmic Reticulum) has:", "o": ["Ribosomes on its surface", "No ribosomes", "Mesosomes", "Pili"], "a": "Ribosomes on its surface"},
+    {"id": 1465, "q": "RER is frequently observed in cells actively involved in:", "o": ["Protein synthesis and secretion", "Lipid synthesis", "Steroid synthesis", "Digestion"], "a": "Protein synthesis and secretion"},
+    {"id": 1466, "q": "SER (Smooth Endoplasmic Reticulum) is the major site for synthesis of:", "o": ["Lipids", "Proteins", "RNA", "DNA"], "a": "Lipids"},
+    {"id": 1467, "q": "In animal cells, lipid-like steroidal hormones are synthesized in:", "o": ["SER", "RER", "Golgi", "Lysosomes"], "a": "SER"},
+    {"id": 1468, "q": "Camillo Golgi observed densely stained reticular structures near the:", "o": ["Nucleus", "Plasma membrane", "Mitochondria", "Ribosome"], "a": "Nucleus"},
+    {"id": 1469, "q": "Golgi cisternae are concentrically arranged with two faces:", "o": ["Convex Cis (forming) and Concave Trans (maturing)", "Concave Cis and Convex Trans", "Flat Cis and Round Trans", "Both Convex"], "a": "Convex Cis (forming) and Concave Trans (maturing)"},
+    {"id": 1470, "q": "The main function of Golgi apparatus is:", "o": ["Packaging materials for delivery", "Protein synthesis", "DNA replication", "ATP production"], "a": "Packaging materials for delivery"},
+    {"id": 1471, "q": "Proteins synthesized by ribosomes on ER are modified in the:", "o": ["Cisternae of Golgi apparatus", "Lysosomes", "Vacuoles", "Nucleus"], "a": "Cisternae of Golgi apparatus"},
+    {"id": 1472, "q": "Golgi apparatus is the important site of formation of:", "o": ["Glycoproteins and Glycolipids", "Proteins and DNA", "Starch and Fat", "RNA and Ribosomes"], "a": "Glycoproteins and Glycolipids"},
+    
+    # --- LYSOSOMES & VACUOLES ---
+    {"id": 1473, "q": "Lysosomes are membrane-bound vesicular structures formed by the process of packaging in:", "o": ["Golgi apparatus", "ER", "Nucleus", "Mitochondria"], "a": "Golgi apparatus"},
+    {"id": 1474, "q": "Lysosomal vesicles are very rich in:", "o": ["Hydrolytic enzymes (Hydrolases)", "Oxidizing enzymes", "Synthesizing enzymes", "Hormones"], "a": "Hydrolytic enzymes (Hydrolases)"},
+    {"id": 1475, "q": "Lysosomal enzymes (Lipases, Proteases, Carbohydrases) are optimally active at:", "o": ["Acidic pH", "Basic pH", "Neutral pH", "High temperature"], "a": "Acidic pH"},
+    {"id": 1476, "q": "The vacuole is bound by a single membrane called:", "o": ["Tonoplast", "Plasmalemma", "Cell wall", "Capsule"], "a": "Tonoplast"},
+    {"id": 1477, "q": "In plant cells, the vacuole can occupy up to ______ of the volume of the cell.", "o": ["90%", "50%", "20%", "10%"], "a": "90%"},
+    {"id": 1478, "q": "The tonoplast facilitates the transport of ions:", "o": ["Against the concentration gradient into the vacuole", "Along the gradient", "Into the cytoplasm", "Out of the cell"], "a": "Against the concentration gradient into the vacuole"},
+    {"id": 1479, "q": "In Amoeba, the contractile vacuole is important for:", "o": ["Osmoregulation and excretion", "Digestion", "Reproduction", "Movement"], "a": "Osmoregulation and excretion"},
+    {"id": 1480, "q": "In Protists, food vacuoles are formed by:", "o": ["Engulfing the food particles", "Secreting food", "Photosynthesis", "Chemosynthesis"], "a": "Engulfing the food particles"},
+    
+    # --- TISSUES: DEEP DIVE ---
+    {"id": 1338, "q": "Which cells in loose connective tissue secrete fibres?", "o": ["Fibroblasts", "Macrophages", "Mast cells", "Adipocytes"], "a": "Fibroblasts"},
+    {"id": 1339, "q": "Mast cells in areolar tissue secrete:", "o": ["Histamine, Serotonin and Heparin", "Collagen only", "Antibodies", "Insulin"], "a": "Histamine, Serotonin and Heparin"},
+    {"id": 1340, "q": "Macrophages function as:", "o": ["Phagocytic cells (eaters)", "Secretory cells", "Storage cells", "Structural support"], "a": "Phagocytic cells (eaters)"},
+    {"id": 1341, "q": "The ground substance of connective tissue is made up of:", "o": ["Modified polysaccharides", "Lipids", "Nucleic acids", "Simple sugars"], "a": "Modified polysaccharides"},
+    {"id": 1342, "q": "Dense regular connective tissue is found in:", "o": ["Tendons and Ligaments", "Skin", "Blood", "Bone marrow"], "a": "Tendons and Ligaments"},
+    {"id": 1343, "q": "Which tissue lacks blood vessels (Avascular)?", "o": ["Epithelial tissue", "Connective tissue", "Muscular tissue", "Neural tissue"], "a": "Epithelial tissue"},
+    {"id": 1344, "q": "Transitional epithelium (Urothelium) is found in:", "o": ["Urinary bladder and Ureters", "Skin", "Stomach", "Trachea"], "a": "Urinary bladder and Ureters"},
+    {"id": 1345, "q": "The inner lining of ducts of salivary glands and pancreatic ducts is made of:", "o": ["Compound epithelium", "Simple squamous", "Ciliated columnar", "Glandular"], "a": "Compound epithelium"},
+    {"id": 1346, "q": "Identify the incorrect pair:", "o": ["Salivary gland - Endocrine", "Goblet cell - Unicellular gland", "Blood - Fluid connective tissue", "Cartilage - Specialized connective tissue"], "a": "Salivary gland - Endocrine"},
+    {"id": 1347, "q": "Which muscle tissue shows 'Branching'?", "o": ["Cardiac muscle", "Skeletal muscle", "Smooth muscle", "All of these"], "a": "Cardiac muscle"},
+    {"id": 1348, "q": "Which muscle tissue is 'Fusiform' (tapering at ends)?", "o": ["Smooth muscle", "Skeletal muscle", "Cardiac muscle", "Striated muscle"], "a": "Smooth muscle"},
+    {"id": 1349, "q": "Neuroglia make up how much of the neural tissue volume?", "o": ["More than one-half", "Less than 10%", "Exactly 20%", "90%"], "a": "More than one-half"},
+    {"id": 1350, "q": "Canaliculi are found in:", "o": ["Bone", "Cartilage", "Blood", "Muscle"], "a": "Bone"},
+    {"id": 1351, "q": "The mineral matter in bone is mainly:", "o": ["Calcium phosphate", "Sodium chloride", "Magnesium carbonate", "Iron"], "a": "Calcium phosphate"},
+
+    # --- COCKROACH: SPECIFICS ---
+    {"id": 1352, "q": "In male cockroach, the genital pouch contains:", "o": ["Dorsal anus, ventral male genital pore and gonapophysis", "Only anus", "Spermatheca", "Ovaries"], "a": "Dorsal anus, ventral male genital pore and gonapophysis"},
+    {"id": 1353, "q": "In female cockroach, the brood pouch is formed by:", "o": ["7th, 8th and 9th sternites", "7th sternite only", "8th and 9th tergites", "6th sternite"], "a": "7th, 8th and 9th sternites"},
+    {"id": 1354, "q": "Spermatheca in female cockroach is present in:", "o": ["6th segment", "4th segment", "9th segment", "3rd segment"], "a": "6th segment"},
+    {"id": 1355, "q": "Collaterial glands are present in:", "o": ["Female cockroach", "Male cockroach", "Both", "Nymphs"], "a": "Female cockroach"},
+    {"id": 1356, "q": "The function of Collaterial glands is:", "o": ["Formation of ootheca case", "Digestion", "Excretion", "Attracting males"], "a": "Formation of ootheca case"},
+    {"id": 1357, "q": "A female cockroach produces on average ______ oothecae, each containing ______ eggs.", "o": ["9-10; 14-16", "1-2; 50", "20; 5", "5-6; 10-12"], "a": "9-10; 14-16"},
+    {"id": 1358, "q": "Titillator and Pseudopenis are parts of:", "o": ["External genitalia of male cockroach (Phallomere)", "Female brood pouch", "Mouth parts", "Legs"], "a": "External genitalia of male cockroach (Phallomere)"},
+    {"id": 1359, "q": "Spiracles in cockroach are arranged as:", "o": ["2 pairs thoracic, 8 pairs abdominal", "10 pairs thoracic", "2 pairs abdominal, 8 pairs thoracic", "5 pairs each"], "a": "2 pairs thoracic, 8 pairs abdominal"},
+    {"id": 1360, "q": "Exchange of gases is regulated by:", "o": ["Sphincters", "Valves", "Operculum", "Cilia"], "a": "Sphincters"},
+    {"id": 1361, "q": "Alary muscles are associated with:", "o": ["Heart circulation", "Respiration", "Digestion", "Leg movement"], "a": "Heart circulation"},
+    {"id": 1362, "q": "How many pairs of Alary muscles are present?", "o": ["12 pairs", "10 pairs", "13 pairs", "6 pairs"], "a": "12 pairs"},
+    {"id": 1363, "q": "The chitinous teeth in Gizzard are used for:", "o": ["Crushing the food", "Storing food", "Mixing enzymes", "Tasting food"], "a": "Crushing the food"},
+    {"id": 1364, "q": "Antennae have sensory receptors that help in:", "o": ["Monitoring the environment", "Flying", "Eating", "Breathing"], "a": "Monitoring the environment"},
+    {"id": 1365, "q": "Which leg part is the longest?", "o": ["Tibia", "Coxa", "Trochanter", "Femur"], "a": "Tibia"},
+
+    # --- FROG: SYSTEM SPECIFICS ---
+    {"id": 1366, "q": "Bidder's canal is found in:", "o": ["Kidney of male frog", "Kidney of female frog", "Liver of frog", "Testes of cockroach"], "a": "Kidney of male frog"},
+    {"id": 1367, "q": "Function of Bidder's canal is to transport:", "o": ["Sperms", "Urine only", "Blood", "Lymph"], "a": "Sperms"},
+    {"id": 1368, "q": "Vasa efferentia arise from testes and enter the kidney of their side. They open into:", "o": ["Bidder's canal", "Ureter", "Cloaca", "Rectum"], "a": "Bidder's canal"},
+    {"id": 1369, "q": "Which portal system is present in Frog?", "o": ["Both Hepatic and Renal portal systems", "Only Hepatic", "Only Renal", "Hypophyseal portal system only"], "a": "Both Hepatic and Renal portal systems"},
+    {"id": 1370, "q": "In Frog's heart, the Sinus Venosus receives deoxygenated blood from:", "o": ["Vena cava", "Pulmonary vein", "Aorta", "Ventricle"], "a": "Vena cava"},
+    {"id": 1371, "q": "The walls of the ventricle are ______ than the auricles.", "o": ["Thicker", "Thinner", "Same thickness", "Absent"], "a": "Thicker"},
+    {"id": 1372, "q": "The skull of frog is:", "o": ["Dicondylic", "Monocondylic", "Tricondylic", "Polycondylic"], "a": "Dicondylic"},
+    {"id": 1373, "q": "How many vertebrae are present in a frog?", "o": ["10", "33", "26", "9"], "a": "10"}, # Actually 9+Urostyle, often cited as 10 total elements or 9 vertebrae. NCERT says "Vertebral column is short...". Basic knowledge: 9 vertebrae + Urostyle.
+    {"id": 1374, "q": "The 9th vertebra in frog is called:", "o": ["Sacral vertebra", "Atlas", "Axis", "Urostyle"], "a": "Sacral vertebra"},
+    {"id": 1375, "q": "The last unsegmented bone in the vertebral column of frog is:", "o": ["Urostyle", "Sacrum", "Coccyx", "Sternum"], "a": "Urostyle"},
+    {"id": 1376, "q": "In frog, the thyroid gland produces:", "o": ["Thyroxine", "Insulin", "Adrenaline", "Growth hormone"], "a": "Thyroxine"},
+    {"id": 1377, "q": "Thyroxine is essential for:", "o": ["Metamorphosis of tadpole", "Digestion", "Respiration", "Circulation"], "a": "Metamorphosis of tadpole"},
+    {"id": 1378, "q": "If thyroid gland is removed from a tadpole, it will:", "o": ["Remain a tadpole forever (Neoteny)", "Die immediately", "Grow into a giant frog", "Become a female"], "a": "Remain a tadpole forever (Neoteny)"},
+    {"id": 1379, "q": "Optic lobes in frog are located in:", "o": ["Midbrain", "Forebrain", "Hindbrain", "Spinal cord"], "a": "Midbrain"},
+    {"id": 1380, "q": "Ventricles of the brain are filled with:", "o": ["Cerebrospinal fluid (CSF)", "Blood", "Lymph", "Water"], "a": "Cerebrospinal fluid (CSF)"},
+    {"id": 1381, "q": "Sensory papillae in frogs are found in:", "o": ["Touch and Taste organs", "Eyes", "Ears", "Nose"], "a": "Touch and Taste organs"},
+    {"id": 1382, "q": "The nictitating membrane in frog protects the eye:", "o": ["While in water", "From bright light", "During sleep", "From dust on land"], "a": "While in water"},
+    {"id": 1383, "q": "Ear of frog acts as:", "o": ["Hearing and Balancing organ", "Only hearing", "Only balancing", "Respiration"], "a": "Hearing and Balancing organ"},
+    {"id": 1384, "q": "The jelly coat around frog eggs helps in:", "o": ["Protection and holding eggs together", "Fertilization", "Respiration", "Digestion"], "a": "Protection and holding eggs together"},
+    {"id": 1385, "q": "Which hormone allows the frog to change color?", "o": ["MSH (Melanocyte Stimulating Hormone)", "TSH", "ACTH", "ADH"], "a": "MSH (Melanocyte Stimulating Hormone)"},
+
+    # --- FINAL STATEMENT CHECK ---
+    {"id": 1386, "q": "Statement: In cockroach, blood vessels are poorly developed and open into haemocoel.", "o": ["True", "False", "Partially true", "Only in males"], "a": "True"},
+    {"id": 1387, "q": "Statement: Frogs do not drink water but absorb it through the skin.", "o": ["True", "False", "They drink only in summer", "They drink via mouth"], "a": "True"},
+    
+    # --- FROG MORPHOLOGY ---
+    {"id": 1289, "q": "The most common species of frog found in India is:", "o": ["Rana tigrina", "Rana pipiens", "Bufo melanostictus", "Hyla"], "a": "Rana tigrina"},
+    {"id": 1290, "q": "Frogs are Poikilotherms, which means:", "o": ["Cold blooded (Body temp varies with environment)", "Warm blooded", "Constant body temp", "They live in ice"], "a": "Cold blooded (Body temp varies with environment)"},
+    {"id": 1291, "q": "Ability to change color to hide from enemies is called:", "o": ["Camouflage (Mimicry)", "Metagenesis", "Hibernation", "Aestivation"], "a": "Camouflage (Mimicry)"},
+    {"id": 1292, "q": "Summer sleep is called ______ and Winter sleep is called ______.", "o": ["Aestivation, Hibernation", "Hibernation, Aestivation", "Migration, Suspension", "Diapause, Dormancy"], "a": "Aestivation, Hibernation"},
+    {"id": 1293, "q": "The skin of frog is smooth and slippery due to:", "o": ["Mucus", "Scales", "Oil", "Sweat"], "a": "Mucus"},
+    {"id": 1294, "q": "Does the skin of frog usually absorb water?", "o": ["Yes", "No, it drinks water", "Only in winter", "Never"], "a": "Yes"},
+    {"id": 1295, "q": "The body of frog is divisible into:", "o": ["Head and Trunk", "Head, Neck and Trunk", "Head, Thorax, Abdomen", "Head and Tail"], "a": "Head and Trunk"},
+    {"id": 1296, "q": "In frogs, a neck and tail are:", "o": ["Absent", "Present", "Present only in larva", "Present only in males"], "a": "Absent"},
+    {"id": 1297, "q": "Membranous ______ receives sound signals in frogs.", "o": ["Tympanum", "Pinna", "Cochlea", "Operculum"], "a": "Tympanum"},
+    {"id": 1298, "q": "Forelimbs end in ______ digits and Hindlimbs end in ______ digits.", "o": ["4, 5", "5, 5", "5, 4", "4, 4"], "a": "4, 5"},
+    {"id": 1299, "q": "The feet of frogs have webbed digits which help in:", "o": ["Swimming", "Digging", "Jumping", "Holding prey"], "a": "Swimming"},
+    {"id": 1300, "q": "Frogs exhibit sexual dimorphism. Males can be distinguished by:", "o": ["Sound producing vocal sacs and copulatory pad", "Larger size", "Brighter color", "Longer legs"], "a": "Sound producing vocal sacs and copulatory pad"},
+    {"id": 1301, "q": "Copulatory pad in male frogs is present on the:", "o": ["First digit of forelimbs", "Second digit of forelimbs", "Hind limbs", "Thorax"], "a": "First digit of forelimbs"},
+
+    # --- FROG ANATOMY (DIGESTIVE & RESPIRATORY) ---
+    {"id": 1302, "q": "The alimentary canal of frog is short because:", "o": ["Frogs are carnivores", "Frogs are herbivores", "They don't eat much", "They lack a stomach"], "a": "Frogs are carnivores"},
+    {"id": 1303, "q": "The tongue of a frog is:", "o": ["Bilobed", "Trilobed", "Pointed", "Absent"], "a": "Bilobed"},
+    {"id": 1304, "q": "Food is captured by the:", "o": ["Bilobed tongue", "Teeth", "Forelimbs", "Lips"], "a": "Bilobed tongue"},
+    {"id": 1305, "q": "Digestion of food takes place by the action of:", "o": ["HCl and gastric juices", "Only saliva", "Bile only", "Water"], "a": "HCl and gastric juices"},
+    {"id": 1306, "q": "Partially digested food called Chyme passes from stomach to:", "o": ["Duodenum", "Ileum", "Rectum", "Cloaca"], "a": "Duodenum"},
+    {"id": 1307, "q": "The duodenum receives bile from gall bladder and pancreatic juice from pancreas through a common duct called:", "o": ["Hepato-pancreatic duct", "Bile duct", "Pancreatic duct", "Cystic duct"], "a": "Hepato-pancreatic duct"},
+    {"id": 1308, "q": "Bile emulsifies ______ and pancreatic juice digests ______.", "o": ["Fats; Carbohydrates and proteins", "Proteins; Fats", "Carbohydrates; Fats", "Fats; Fats"], "a": "Fats; Carbohydrates and proteins"},
+    {"id": 1309, "q": "Digested food is absorbed by the numerous finger-like folds in the inner wall of intestine called:", "o": ["Villi and Microvilli", "Rugae", "Cilia", "Flagella"], "a": "Villi and Microvilli"},
+    {"id": 1310, "q": "The common chamber for digestive, excretory and reproductive tracts is:", "o": ["Cloaca", "Anus", "Rectum", "Urethra"], "a": "Cloaca"},
+    {"id": 1311, "q": "In water, skin acts as an aquatic respiratory organ. This is called:", "o": ["Cutaneous respiration", "Pulmonary respiration", "Buccal respiration", "Branchial respiration"], "a": "Cutaneous respiration"},
+    {"id": 1312, "q": "Respiration on land occurs via:", "o": ["Buccal cavity, skin and lungs", "Gills", "Skin only", "Lungs only"], "a": "Buccal cavity, skin and lungs"},
+    {"id": 1313, "q": "Respiration by lungs is called:", "o": ["Pulmonary respiration", "Cutaneous respiration", "Branchial respiration", "Tracheal respiration"], "a": "Pulmonary respiration"},
+    {"id": 1314, "q": "During aestivation and hibernation, gaseous exchange takes place through:", "o": ["Skin", "Lungs", "Buccal cavity", "Gills"], "a": "Skin"},
+
+    # --- FROG CIRCULATORY & EXCRETORY SYSTEM ---
+    {"id": 1315, "q": "The vascular system of frog is:", "o": ["Closed type", "Open type", "Absent", "Like cockroach"], "a": "Closed type"},
+    {"id": 1316, "q": "Frogs have a lymphatic system consisting of:", "o": ["Lymph, lymph channels and lymph nodes", "Blood and heart", "Only lymph", "Closed vessels"], "a": "Lymph, lymph channels and lymph nodes"},
+    {"id": 1317, "q": "The heart of a frog is:", "o": ["3 chambered (2 atria, 1 ventricle)", "4 chambered", "2 chambered", "1 chambered"], "a": "3 chambered (2 atria, 1 ventricle)"},
+    {"id": 1318, "q": "A triangular structure called ______ joins the right atrium.", "o": ["Sinus venosus", "Truncus arteriosus", "Vena cava", "Aorta"], "a": "Sinus venosus"},
+    {"id": 1319, "q": "The ventricle opens into a sac-like structure on the ventral side called:", "o": ["Conus arteriosus", "Sinus venosus", "Aorta", "Vena cava"], "a": "Conus arteriosus"},
+    {"id": 1320, "q": "Special venous connection between liver and intestine is called:", "o": ["Hepatic portal system", "Renal portal system", "Pulmonary system", "Cardiac system"], "a": "Hepatic portal system"},
+    {"id": 1321, "q": "Special venous connection between kidney and lower parts of body is called:", "o": ["Renal portal system", "Hepatic portal system", "Lymphatic system", "Systemic arch"], "a": "Renal portal system"},
+    {"id": 1322, "q": "RBCs in frogs are:", "o": ["Nucleated and oval", "Enucleated and biconcave", "Circular", "Irregular"], "a": "Nucleated and oval"},
+    {"id": 1323, "q": "The excretory system consists of:", "o": ["A pair of kidneys, ureters, cloaca and urinary bladder", "Malpighian tubules", "Nephridia", "Flame cells"], "a": "A pair of kidneys, ureters, cloaca and urinary bladder"},
+    {"id": 1324, "q": "The frog excretes ______ and is a ______ animal.", "o": ["Urea, Ureotelic", "Uric acid, Uricotelic", "Ammonia, Ammonotelic", "Guanine, Guanotelic"], "a": "Urea, Ureotelic"},
+    {"id": 1325, "q": "In male frogs, the ureters act as:", "o": ["Urinogenital duct", "Only urinary duct", "Only sperm duct", "Hepatic duct"], "a": "Urinogenital duct"},
+    {"id": 1326, "q": "In female frogs, the ureters and oviduct open:", "o": ["Separately into the cloaca", "Together into cloaca", "Into the bladder", "Into the uterus"], "a": "Separately into the cloaca"},
+
+    # --- FROG NERVOUS & REPRODUCTIVE SYSTEM ---
+    {"id": 1327, "q": "The brain is divided into forebrain, midbrain and hindbrain. The midbrain is characterized by:", "o": ["A pair of optic lobes", "Olfactory lobes", "Cerebellum", "Medulla"], "a": "A pair of optic lobes"},
+    {"id": 1328, "q": "Hind brain consists of:", "o": ["Cerebellum and Medulla oblongata", "Cerebrum", "Optic lobes", "Olfactory lobes"], "a": "Cerebellum and Medulla oblongata"},
+    {"id": 1329, "q": "Medulla oblongata passes out through the foramen magnum and continues into the:", "o": ["Spinal cord", "Vertebral column", "Brain stem", "Nerves"], "a": "Spinal cord"},
+    {"id": 1330, "q": "How many pairs of cranial nerves are present in frog?", "o": ["10 pairs", "12 pairs", "8 pairs", "20 pairs"], "a": "10 pairs"},
+    {"id": 1331, "q": "Male reproductive organs consist of a pair of yellowish ovoid testes adhered to the:", "o": ["Upper part of kidneys", "Liver", "Intestine", "Lungs"], "a": "Upper part of kidneys"},
+    {"id": 1332, "q": "Vasa efferentia (10-12 in number) enter the kidneys and open into:", "o": ["Bidder's canal", "Ureter", "Cloaca", "Urinary bladder"], "a": "Bidder's canal"},
+    {"id": 1333, "q": "A female frog can lay how many eggs at a time?", "o": ["2500 to 3000", "100 to 200", "1 to 2", "10,000"], "a": "2500 to 3000"},
+    {"id": 1334, "q": "Fertilization in frogs is:", "o": ["External (in water)", "Internal", "In uterus", "In cloaca"], "a": "External (in water)"},
+    {"id": 1335, "q": "Larval stage of frog is called:", "o": ["Tadpole", "Nymph", "Maggot", "Caterpillar"], "a": "Tadpole"},
+    {"id": 1336, "q": "Tadpoles undergo ______ to form adults.", "o": ["Metamorphosis", "Moulting", "Growth", "Differentiation"], "a": "Metamorphosis"},
+    {"id": 1337, "q": "Frogs are beneficial for mankind because they:", "o": ["Eat insects and protect crops", "Produce honey", "Provide wool", "Are pests"], "a": "Eat insects and protect crops"},
+    
+    # --- COCKROACH MORPHOLOGY ---
+    {"id": 1246, "q": "The scientific name of the common cockroach is:", "o": ["Periplaneta americana", "Rana tigrina", "Pheretima posthuma", "Musca domestica"], "a": "Periplaneta americana"},
+    {"id": 1247, "q": "The body of the cockroach is covered by a hard exoskeleton made of:", "o": ["Chitin", "Calcium", "Cellulose", "Keratin"], "a": "Chitin"},
+    {"id": 1248, "q": "In each segment, the exoskeleton has hardened plates called:", "o": ["Sclerites", "Tergites", "Sternites", "Pleura"], "a": "Sclerites"},
+    {"id": 1249, "q": "Dorsal sclerites are called ______ and ventral sclerites are called ______.", "o": ["Tergites, Sternites", "Sternites, Tergites", "Pleurites, Tergites", "Tergites, Pleurites"], "a": "Tergites, Sternites"},
+    {"id": 1250, "q": "The head of the cockroach is triangular and formed by the fusion of:", "o": ["6 segments", "3 segments", "10 segments", "4 segments"], "a": "6 segments"},
+    {"id": 1251, "q": "The head is connected to the thorax by a short extension of the prothorax known as:", "o": ["Neck", "Collar", "Isthmus", "Pedicel"], "a": "Neck"},
+    {"id": 1252, "q": "The mouthparts of the cockroach are of:", "o": ["Biting and chewing type", "Piercing and sucking type", "Siphoning type", "Sponging type"], "a": "Biting and chewing type"},
+    {"id": 1253, "q": "In cockroach mouthparts, Labrum is:", "o": ["Upper lip", "Lower lip", "Tongue", "Jaw"], "a": "Upper lip"},
+    {"id": 1254, "q": "In cockroach mouthparts, Labium is:", "o": ["Lower lip", "Upper lip", "Tongue", "Mandible"], "a": "Lower lip"},
+    {"id": 1255, "q": "The organ acting as a tongue in cockroach is:", "o": ["Hypopharynx", "Labrum", "Labium", "Maxilla"], "a": "Hypopharynx"},
+    {"id": 1256, "q": "The thorax consists of three parts: Prothorax, Mesothorax and:", "o": ["Metathorax", "Cephalothorax", "Postthorax", "Telothorax"], "a": "Metathorax"},
+    {"id": 1257, "q": "The first pair of wings (Tegmina) arises from:", "o": ["Mesothorax", "Prothorax", "Metathorax", "Abdomen"], "a": "Mesothorax"},
+    {"id": 1258, "q": "Tegmina (forewings) are:", "o": ["Opaque, dark and leathery", "Transparent and membranous", "Used for flight", "Short"], "a": "Opaque, dark and leathery"},
+    {"id": 1259, "q": "Hind wings arise from Metathorax and are:", "o": ["Transparent, membranous and used for flight", "Opaque and leathery", "Protective", "Absent"], "a": "Transparent, membranous and used for flight"},
+    {"id": 1260, "q": "The abdomen in both males and females consists of:", "o": ["10 segments", "8 segments", "12 segments", "6 segments"], "a": "10 segments"},
+    {"id": 1261, "q": "In females, the 7th sternite is boat-shaped and forms the:", "o": ["Brood or genital pouch", "Anal style", "Anal cercus", "Ootheca"], "a": "Brood or genital pouch"},
+    {"id": 1262, "q": "Anal styles are present in:", "o": ["Males only", "Females only", "Both sexes", "Nymphs only"], "a": "Males only"},
+    {"id": 1263, "q": "Anal cerci are present in:", "o": ["Both males and females", "Males only", "Females only", "Adults only"], "a": "Both males and females"},
+
+    # --- COCKROACH ANATOMY ---
+    {"id": 1264, "q": "The foregut of cockroach consists of mouth, pharynx, oesophagus, crop and:", "o": ["Gizzard", "Mesenteron", "Ileum", "Colon"], "a": "Gizzard"},
+    {"id": 1265, "q": "Crop is used for:", "o": ["Storing food", "Grinding food", "Digesting food", "Absorbing food"], "a": "Storing food"},
+    {"id": 1266, "q": "Gizzard (Proventriculus) has an outer layer of thick circular muscles and thick inner cuticle forming:", "o": ["Six chitinous plates (teeth)", "Four teeth", "Eight teeth", "No teeth"], "a": "Six chitinous plates (teeth)"},
+    {"id": 1267, "q": "Hepatic or gastric caeca are present at the junction of foregut and midgut. They secrete:", "o": ["Digestive juice", "Excretory waste", "Hormones", "Saliva"], "a": "Digestive juice"},
+    {"id": 1268, "q": "Malpighian tubules are present at the junction of:", "o": ["Midgut and Hindgut", "Foregut and Midgut", "Pharynx and Oesophagus", "Crop and Gizzard"], "a": "Midgut and Hindgut"},
+    {"id": 1269, "q": "Malpighian tubules help in:", "o": ["Removal of excretory products", "Digestion", "Respiration", "Reproduction"], "a": "Removal of excretory products"},
+    {"id": 1270, "q": "Blood vascular system of cockroach is:", "o": ["Open type", "Closed type", "Absent", "Double circulation"], "a": "Open type"},
+    {"id": 1271, "q": "Visceral organs are located in the haemocoel and bathed in blood called:", "o": ["Haemolymph", "Plasma", "Lymph", "Serum"], "a": "Haemolymph"},
+    {"id": 1272, "q": "The heart of cockroach consists of:", "o": ["13 chambers", "4 chambers", "2 chambers", "10 chambers"], "a": "13 chambers"},
+    {"id": 1273, "q": "Blood enters the heart through openings called:", "o": ["Ostia", "Spiracles", "Valves", "Pores"], "a": "Ostia"},
+    {"id": 1274, "q": "Respiratory system consists of a network of trachea that open through 10 pairs of:", "o": ["Spiracles", "Ostia", "Alveoli", "Gills"], "a": "Spiracles"},
+    {"id": 1275, "q": "Exchange of gases takes place at the tracheoles by:", "o": ["Diffusion", "Active transport", "Osmosis", "Filtration"], "a": "Diffusion"},
+    {"id": 1276, "q": "Cockroach is Uricotelic, meaning it excretes:", "o": ["Uric acid", "Urea", "Ammonia", "Guanine"], "a": "Uric acid"},
+    {"id": 1277, "q": "In addition to Malpighian tubules, excretion is assisted by:", "o": ["Fat body, Nephrocytes and Urecose glands", "Liver", "Kidney", "Skin"], "a": "Fat body, Nephrocytes and Urecose glands"},
+    {"id": 1278, "q": "The brain of cockroach is represented by:", "o": ["Supra-oesophageal ganglion", "Sub-oesophageal ganglion", "Ventral nerve cord", "Dorsal nerve cord"], "a": "Supra-oesophageal ganglion"},
+    {"id": 1279, "q": "The compound eyes consist of about 2000 hexagonal:", "o": ["Ommatidia", "Ocelli", "Retina", "Lens"], "a": "Ommatidia"},
+    {"id": 1280, "q": "Vision in cockroach is Mosaic vision, which has:", "o": ["More sensitivity but less resolution", "Less sensitivity and more resolution", "High resolution", "Monocular"], "a": "More sensitivity but less resolution"},
+    {"id": 1281, "q": "Male reproductive system consists of a pair of testes in the:", "o": ["4th - 6th abdominal segments", "2nd - 6th segments", "6th - 7th segments", "8th - 9th segments"], "a": "4th - 6th abdominal segments"},
+    {"id": 1282, "q": "Mushroom gland is a characteristic of:", "o": ["Male reproductive system (6th-7th segments)", "Female reproductive system", "Digestive system", "Excretory system"], "a": "Male reproductive system (6th-7th segments)"},
+    {"id": 1283, "q": "Sperms are stored in the:", "o": ["Seminal vesicles", "Testes", "Vas deferens", "Ejaculatory duct"], "a": "Seminal vesicles"},
+    {"id": 1284, "q": "Female reproductive system consists of two ovaries in the:", "o": ["2nd - 6th abdominal segments", "4th - 6th segments", "6th - 7th segments", "1st - 2nd segments"], "a": "2nd - 6th abdominal segments"},
+    {"id": 1285, "q": "Fertilized eggs are encased in capsules called:", "o": ["Oothecae", "Cocoons", "Cysts", "Spores"], "a": "Oothecae"},
+    {"id": 1286, "q": "Development of P. americana is Paurometabolous, meaning:", "o": ["Development through nymphal stage", "Direct development", "Complete metamorphosis", "Larval stage present"], "a": "Development through nymphal stage"},
+    {"id": 1287, "q": "The nymph grows by moulting about:", "o": ["13 times", "5 times", "10 times", "2 times"], "a": "13 times"},
+    {"id": 1288, "q": "The next to last nymphal stage has:", "o": ["Wing pads but only adult has wings", "Full wings", "No wings", "Functional wings"], "a": "Wing pads but only adult has wings"},
+    
+    # --- EPITHELIAL TISSUE ---
+    {"id": 1201, "q": "The tissue which has a free surface facing either a body fluid or the outside environment is:", "o": ["Epithelial tissue", "Connective tissue", "Muscular tissue", "Neural tissue"], "a": "Epithelial tissue"},
+    {"id": 1202, "q": "Cells are compactly packed with little intercellular matrix in:", "o": ["Epithelial tissue", "Connective tissue", "Areolar tissue", "Adipose tissue"], "a": "Epithelial tissue"},
+    {"id": 1203, "q": "Squamous epithelium is found in:", "o": ["Walls of blood vessels and air sacs of lungs", "Ducts of glands", "Lining of stomach", "Skin"], "a": "Walls of blood vessels and air sacs of lungs"},
+    {"id": 1204, "q": "The main function of Squamous epithelium is:", "o": ["Forming a diffusion boundary", "Secretion", "Absorption", "Protection"], "a": "Forming a diffusion boundary"},
+    {"id": 1205, "q": "Cuboidal epithelium is commonly found in:", "o": ["Ducts of glands and tubular parts of nephrons", "Lining of intestine", "Skin surface", "Fallopian tubes"], "a": "Ducts of glands and tubular parts of nephrons"},
+    {"id": 1206, "q": "The epithelium of Proximal Convoluted Tubule (PCT) of nephron has:", "o": ["Microvilli", "Cilia", "Flagella", "Goblet cells"], "a": "Microvilli"},
+    {"id": 1207, "q": "Columnar epithelium is found in the lining of:", "o": ["Stomach and intestine", "Lung alveoli", "Blood vessels", "Kidney tubules"], "a": "Stomach and intestine"},
+    {"id": 1208, "q": "If columnar or cuboidal cells bear cilia on their free surface, they are called:", "o": ["Ciliated epithelium", "Glandular epithelium", "Compound epithelium", "Squamous epithelium"], "a": "Ciliated epithelium"},
+    {"id": 1209, "q": "The function of Ciliated epithelium is to move particles or mucus in a specific direction. It is found in:", "o": ["Bronchioles and Fallopian tubes", "Intestine", "Stomach", "Blood vessels"], "a": "Bronchioles and Fallopian tubes"},
+    {"id": 1210, "q": "Goblet cells of the alimentary canal are modified:", "o": ["Columnar or cuboidal cells", "Squamous cells", "Connective tissue cells", "Neural cells"], "a": "Columnar or cuboidal cells"},
+    {"id": 1211, "q": "Exocrine glands secrete:", "o": ["Mucus, saliva, earwax, oil, milk, digestive enzymes", "Hormones only", "Blood", "Lymph"], "a": "Mucus, saliva, earwax, oil, milk, digestive enzymes"},
+    {"id": 1212, "q": "Endocrine glands do not have ducts. Their products are called:", "o": ["Hormones", "Enzymes", "Saliva", "Mucus"], "a": "Hormones"},
+    {"id": 1213, "q": "Compound epithelium has a limited role in secretion and absorption. Its main function is:", "o": ["Protection against chemical and mechanical stresses", "Diffusion", "Filtration", "Gamete formation"], "a": "Protection against chemical and mechanical stresses"},
+    {"id": 1214, "q": "Compound epithelium covers:", "o": ["Dry surface of skin, moist surface of buccal cavity, pharynx", "Lining of stomach", "Lining of alveoli", "PCT of nephron"], "a": "Dry surface of skin, moist surface of buccal cavity, pharynx"},
+    {"id": 1215, "q": "Which junction helps to stop substances from leaking across a tissue?", "o": ["Tight junction", "Adhering junction", "Gap junction", "Synapse"], "a": "Tight junction"},
+    {"id": 1216, "q": "Which junction performs cementing to keep neighboring cells together?", "o": ["Adhering junction", "Tight junction", "Gap junction", "Desmosomes"], "a": "Adhering junction"},
+    {"id": 1217, "q": "Gap junctions facilitate the cells to communicate with each other by connecting the:", "o": ["Cytoplasm of adjoining cells", "Nucleus of adjoining cells", "Cell walls", "Mitochondria"], "a": "Cytoplasm of adjoining cells"},
+
+    # --- CONNECTIVE TISSUE ---
+    {"id": 1218, "q": "Which is the most abundant and widely distributed tissue in the body of complex animals?", "o": ["Connective tissue", "Epithelial tissue", "Muscular tissue", "Neural tissue"], "a": "Connective tissue"},
+    {"id": 1219, "q": "In all connective tissues except blood, the cells secrete fibers of structural proteins called:", "o": ["Collagen or Elastin", "Actin or Myosin", "Fibrinogen", "Albumin"], "a": "Collagen or Elastin"},
+    {"id": 1220, "q": "Areolar tissue is present:", "o": ["Beneath the skin", "Inside bones", "Inside heart", "Around brain"], "a": "Beneath the skin"},
+    {"id": 1221, "q": "Areolar tissue serves as a:", "o": ["Support framework for epithelium", "Storage of fat", "Hard skeleton", "Fluid transport system"], "a": "Support framework for epithelium"},
+    {"id": 1222, "q": "Adipose tissue is a modified:", "o": ["Loose connective tissue", "Dense connective tissue", "Epithelial tissue", "Specialized connective tissue"], "a": "Loose connective tissue"},
+    {"id": 1223, "q": "The main function of Adipose tissue is:", "o": ["Storage of fats", "Production of blood", "Movement", "Secretion of hormones"], "a": "Storage of fats"},
+    {"id": 1224, "q": "Tendons connect:", "o": ["Skeletal muscle to bone", "Bone to bone", "Muscle to muscle", "Skin to muscle"], "a": "Skeletal muscle to bone"},
+    {"id": 1225, "q": "Ligaments connect:", "o": ["Bone to bone", "Muscle to bone", "Skin to bone", "Nerve to muscle"], "a": "Bone to bone"},
+    {"id": 1226, "q": "Tendons and Ligaments are examples of:", "o": ["Dense regular connective tissue", "Dense irregular connective tissue", "Loose connective tissue", "Specialized connective tissue"], "a": "Dense regular connective tissue"},
+    {"id": 1227, "q": "Dense irregular connective tissue is present in the:", "o": ["Skin", "Tendons", "Ligaments", "Blood"], "a": "Skin"},
+    {"id": 1228, "q": "Cartilage cells are known as:", "o": ["Chondrocytes", "Osteocytes", "Fibroblasts", "Adipocytes"], "a": "Chondrocytes"},
+    {"id": 1229, "q": "Cartilage is found in:", "o": ["Tip of nose, outer ear joints, between adjacent vertebrae", "Blood vessels", "Stomach lining", "Skin"], "a": "Tip of nose, outer ear joints, between adjacent vertebrae"},
+    {"id": 1230, "q": "Bones have a hard and non-pliable ground substance rich in:", "o": ["Calcium salts and collagen fibers", "Magnesium and elastin", "Sodium and fibrin", "Potassium and reticulin"], "a": "Calcium salts and collagen fibers"},
+    {"id": 1231, "q": "Bone cells are called:", "o": ["Osteocytes", "Chondrocytes", "Mast cells", "Macrophages"], "a": "Osteocytes"},
+    {"id": 1232, "q": "Osteocytes are present in spaces called:", "o": ["Lacunae", "Lamellae", "Canaliculi", "Haversian canals"], "a": "Lacunae"},
+    {"id": 1233, "q": "Which bones produce blood cells (Haemopoiesis)?", "o": ["Long bones (Bone marrow)", "Small bones", "Cartilage", "Skull bones"], "a": "Long bones (Bone marrow)"},
+    {"id": 1234, "q": "Blood is a fluid connective tissue containing:", "o": ["Plasma, RBC, WBC and Platelets", "Only RBC and Plasma", "Collagen fibers", "Fibroblasts"], "a": "Plasma, RBC, WBC and Platelets"},
+    {"id": 1235, "q": "Which connective tissue lacks fibers?", "o": ["Blood", "Bone", "Cartilage", "Areolar"], "a": "Blood"},
+    
+    # --- MUSCLE & NEURAL TISSUE ---
+    {"id": 1236, "q": "Skeletal muscle is:", "o": ["Striated and Voluntary", "Non-striated and Involuntary", "Striated and Involuntary", "Smooth and Voluntary"], "a": "Striated and Voluntary"},
+    {"id": 1237, "q": "Smooth muscle fibers taper at both ends (fusiform) and are:", "o": ["Non-striated and Involuntary", "Striated and Voluntary", "Striated and Involuntary", "Multinucleate"], "a": "Non-striated and Involuntary"},
+    {"id": 1238, "q": "Smooth muscles are found in:", "o": ["Wall of blood vessels, stomach and intestine", "Biceps", "Heart", "Legs"], "a": "Wall of blood vessels, stomach and intestine"},
+    {"id": 1239, "q": "Cardiac muscle tissue is found only in the:", "o": ["Heart", "Lungs", "Brain", "Liver"], "a": "Heart"},
+    {"id": 1240, "q": "Communication junctions (Intercalated discs) at some fusion points allow cells to contract as a unit. This is seen in:", "o": ["Cardiac muscle", "Skeletal muscle", "Smooth muscle", "Cartilage"], "a": "Cardiac muscle"},
+    {"id": 1241, "q": "The unit of Neural system is:", "o": ["Neuron", "Nephron", "Axon", "Dendrite"], "a": "Neuron"},
+    {"id": 1242, "q": "Cells that make up more than one-half the volume of neural tissue and protect/support neurons are:", "o": ["Neuroglial cells", "Mast cells", "Fibroblasts", "Macrophages"], "a": "Neuroglial cells"},
+    {"id": 1243, "q": "Neurons are:", "o": ["Excitable cells", "Contractile cells", "Secretory cells", "Storage cells"], "a": "Excitable cells"},
+    {"id": 1244, "q": "When a neuron is stimulated, an electrical disturbance is generated which travels along its:", "o": ["Plasma membrane", "Nucleus", "Mitochondria", "Ribosome"], "a": "Plasma membrane"},
+    {"id": 1245, "q": "Skeletal muscles are closely attached to:", "o": ["Skeletal bones", "Skin", "Organs", "Nerves"], "a": "Skeletal bones"},
+    
+    # --- TISSUE SYSTEMS (GROUND & VASCULAR) ---
+    {"id": 1151, "q": "Root hairs are:", "o": ["Unicellular elongations", "Multicellular elongations", "Branches of root", "Outgrowths of cortex"], "a": "Unicellular elongations"},
+    {"id": 1152, "q": "Trichomes on the stem are usually:", "o": ["Multicellular", "Unicellular", "Absent", "Dead"], "a": "Multicellular"},
+    {"id": 1153, "q": "All tissues except epidermis and vascular bundles constitute the:", "o": ["Ground tissue", "Dermal tissue", "Vascular tissue", "Secondary tissue"], "a": "Ground tissue"},
+    {"id": 1154, "q": "In leaves, the ground tissue consists of thin-walled chloroplast-containing cells called:", "o": ["Mesophyll", "Cortex", "Pith", "Endodermis"], "a": "Mesophyll"},
+    {"id": 1155, "q": "Xylem and Phloem together constitute:", "o": ["Vascular bundles", "Ground tissue", "Stele", "Cortex"], "a": "Vascular bundles"},
+    {"id": 1156, "q": "In Dicots, cambium is present between phloem and xylem. Such bundles are called:", "o": ["Open vascular bundles", "Closed vascular bundles", "Radial bundles", "Concentric bundles"], "a": "Open vascular bundles"},
+    {"id": 1157, "q": "In Monocots, cambium is absent. Hence vascular bundles are:", "o": ["Closed", "Open", "Radial", "Secondary"], "a": "Closed"},
+    {"id": 1158, "q": "When xylem and phloem are arranged in an alternate manner on different radii (as in roots), the arrangement is:", "o": ["Radial", "Conjoint", "Collateral", "Bicollateral"], "a": "Radial"},
+    {"id": 1159, "q": "In stems and leaves, xylem and phloem are situated at the same radius. This is:", "o": ["Conjoint", "Radial", "Exarch", "Endarch"], "a": "Conjoint"},
+
+    # --- ANATOMY OF DICOT ROOT ---
+    {"id": 1160, "q": "The innermost layer of the cortex in Dicot root is:", "o": ["Endodermis", "Pericycle", "Hypodermis", "Epidermis"], "a": "Endodermis"},
+    {"id": 1161, "q": "The cells of endodermis have water-impermeable waxy material called:", "o": ["Casparian strips (Suberin)", "Lignin", "Cutin", "Pectin"], "a": "Casparian strips (Suberin)"},
+    {"id": 1162, "q": "Next to endodermis lies a few layers of thick-walled parenchymatous cells called:", "o": ["Pericycle", "Pith", "Cortex", "Cambium"], "a": "Pericycle"},
+    {"id": 1163, "q": "Initiation of lateral roots and vascular cambium during secondary growth takes place in:", "o": ["Pericycle", "Endodermis", "Cortex", "Epidermis"], "a": "Pericycle"},
+    {"id": 1164, "q": "In Dicot root, the pith is:", "o": ["Small or inconspicuous", "Large and well developed", "Absent", "Sclerenchymatous"], "a": "Small or inconspicuous"},
+    {"id": 1165, "q": "The number of xylem and phloem patches in Dicot root is usually:", "o": ["2 to 4", "More than 6 (Polyarch)", "1", "Absent"], "a": "2 to 4"},
+    {"id": 1166, "q": "All tissues on the inner side of the endodermis (Pericycle, V.B., Pith) constitute the:", "o": ["Stele", "Cortex", "Epidermis", "Hypodermis"], "a": "Stele"},
+
+    # --- ANATOMY OF MONOCOT ROOT ---
+    {"id": 1167, "q": "Compared to Dicot root, Monocot root has:", "o": ["More than 6 xylem bundles (Polyarch)", "2-4 xylem bundles", "Cambium", "Secondary growth"], "a": "More than 6 xylem bundles (Polyarch)"},
+    {"id": 1168, "q": "Pith in Monocot root is:", "o": ["Large and well developed", "Small", "Absent", "Dead"], "a": "Large and well developed"},
+    {"id": 1169, "q": "Monocot roots do NOT undergo:", "o": ["Secondary growth", "Primary growth", "Absorption", "Elongation"], "a": "Secondary growth"},
+
+    # --- ANATOMY OF DICOT STEM ---
+    {"id": 1170, "q": "In Dicot stem, the Hypodermis (below epidermis) consists of:", "o": ["Collenchyma", "Sclerenchyma", "Parenchyma", "Chlorenchyma"], "a": "Collenchyma"},
+    {"id": 1171, "q": "The 'Starch Sheath' in Dicot stem refers to the:", "o": ["Endodermis", "Pericycle", "Hypodermis", "Pith"], "a": "Endodermis"},
+    {"id": 1172, "q": "Pericycle in Dicot stem is present as semilunar patches of:", "o": ["Sclerenchyma", "Collenchyma", "Parenchyma", "Meristem"], "a": "Sclerenchyma"},
+    {"id": 1173, "q": "Vascular bundles in Dicot stem are arranged in a:", "o": ["Ring", "Scattered manner", "Radial manner", "Linear row"], "a": "Ring"},
+    {"id": 1174, "q": "Each vascular bundle in Dicot stem is:", "o": ["Conjoint, open, with endarch protoxylem", "Conjoint, closed, with exarch protoxylem", "Radial", "Scattered"], "a": "Conjoint, open, with endarch protoxylem"},
+
+    # --- ANATOMY OF MONOCOT STEM ---
+    {"id": 1175, "q": "In Monocot stem, the Hypodermis is made of:", "o": ["Sclerenchyma", "Collenchyma", "Parenchyma", "Chlorenchyma"], "a": "Sclerenchyma"},
+    {"id": 1176, "q": "Vascular bundles in Monocot stem are:", "o": ["Scattered, conjoint and closed", "Arranged in a ring", "Radial", "Open"], "a": "Scattered, conjoint and closed"},
+    {"id": 1177, "q": "In Monocot stem, peripheral vascular bundles are generally:", "o": ["Smaller than centrally located ones", "Larger than central ones", "Same size", "Absent"], "a": "Smaller than centrally located ones"},
+    {"id": 1178, "q": "Phloem parenchyma is ____ in Monocot stem vascular bundles.", "o": ["Absent", "Present", "Abundant", "Living"], "a": "Absent"},
+    {"id": 1179, "q": "Water-containing cavities are present within the vascular bundles of:", "o": ["Monocot stem", "Dicot stem", "Dicot root", "Monocot root"], "a": "Monocot stem"},
+
+    # --- ANATOMY OF DICOT LEAF (DORSIVENTRAL) ---
+    {"id": 1180, "q": "In Dicot leaf, stomata are usually:", "o": ["More on the lower epidermis (abaxial)", "More on the upper epidermis (adaxial)", "Equal on both sides", "Absent"], "a": "More on the lower epidermis (abaxial)"},
+    {"id": 1181, "q": "The mesophyll in Dicot leaf is differentiated into:", "o": ["Palisade and Spongy parenchyma", "Only Palisade", "Only Spongy", "Collenchyma and Sclerenchyma"], "a": "Palisade and Spongy parenchyma"},
+    {"id": 1182, "q": "Palisade parenchyma is placed:", "o": ["Adaxially (Upper side)", "Abaxially (Lower side)", "In the middle", "Near veins"], "a": "Adaxially (Upper side)"},
+    {"id": 1183, "q": "Vascular bundles in Dicot leaf are surrounded by a layer of thick-walled:", "o": ["Bundle sheath cells", "Endodermis", "Pericycle", "Mesophyll"], "a": "Bundle sheath cells"},
+    {"id": 1184, "q": "The size of vascular bundles in Dicot leaf varies due to:", "o": ["Reticulate venation", "Parallel venation", "Thickness of leaf", "Stomata"], "a": "Reticulate venation"},
+
+    # --- ANATOMY OF MONOCOT LEAF (ISOBILATERAL) ---
+    {"id": 1185, "q": "In Monocot leaf, stomata are:", "o": ["Present on both surfaces", "Only on upper surface", "Only on lower surface", "Absent"], "a": "Present on both surfaces"},
+    {"id": 1186, "q": "The mesophyll in Monocot leaf is:", "o": ["Not differentiated into palisade and spongy parenchyma", "Differentiated", "Made of Collenchyma", "Absent"], "a": "Not differentiated into palisade and spongy parenchyma"},
+    {"id": 1187, "q": "In Grasses, certain adaxial epidermal cells modify into large, empty, colorless cells called:", "o": ["Bulliform cells", "Guard cells", "Subsidiary cells", "Trichomes"], "a": "Bulliform cells"},
+    {"id": 1188, "q": "When Bulliform cells absorb water and are turgid, the leaf:", "o": ["Exposes the surface", "Curls inwards", "Withers", "Falls off"], "a": "Exposes the surface"},
+    {"id": 1189, "q": "When Bulliform cells are flaccid due to water stress, the leaf:", "o": ["Curls inwards to minimize water loss", "Expands", "Photosynthesizes more", "Opens stomata"], "a": "Curls inwards to minimize water loss"},
+    {"id": 1190, "q": "In Monocot leaf, vascular bundles are nearly similar in size (except in main veins) due to:", "o": ["Parallel venation", "Reticulate venation", "Absence of midrib", "Thick cuticle"], "a": "Parallel venation"},
+
+    # --- COMPARATIVE / RANK BOOSTERS ---
+    {"id": 1191, "q": "Casparian strips are made of:", "o": ["Suberin", "Lignin", "Cutin", "Cellulose"], "a": "Suberin"},
+    {"id": 1192, "q": "Vascular bundles in roots are always:", "o": ["Radial and Exarch", "Conjoint and Endarch", "Radial and Endarch", "Conjoint and Exarch"], "a": "Radial and Exarch"},
+    {"id": 1193, "q": "Vascular bundles in stems are always:", "o": ["Conjoint and Endarch", "Radial and Exarch", "Radial and Endarch", "Conjoint and Exarch"], "a": "Conjoint and Endarch"},
+    {"id": 1194, "q": "Ring arrangement of vascular bundles is a characteristic of:", "o": ["Dicot stem", "Monocot stem", "Dicot root", "Monocot root"], "a": "Dicot stem"},
+    {"id": 1195, "q": "Water cavity in vascular bundles is found in:", "o": ["Maize stem (Monocot)", "Sunflower stem (Dicot)", "Gram root", "Pea leaf"], "a": "Maize stem (Monocot)"},
+    {"id": 1196, "q": "Secondary growth is absent in:", "o": ["Monocots", "Dicots", "Gymnosperms", "All Angiosperms"], "a": "Monocots"},
+    {"id": 1197, "q": "Which tissue provides tensile strength to young dicot stems?", "o": ["Collenchyma", "Sclerenchyma", "Parenchyma", "Xylem"], "a": "Collenchyma"},
+    {"id": 1198, "q": "Which tissue provides mechanical strength to Monocot stems (Hypodermis)?", "o": ["Sclerenchyma", "Collenchyma", "Parenchyma", "Aerenchyma"], "a": "Sclerenchyma"},
+    {"id": 1199, "q": "Lateral roots arise from:", "o": ["Pericycle", "Endodermis", "Cortex", "Epidermis"], "a": "Pericycle"},
+    {"id": 1200, "q": "Stele includes all EXCEPT:", "o": ["Endodermis", "Pericycle", "Vascular bundles", "Pith"], "a": "Endodermis"},
+    
+    # --- THE TISSUES: MERISTEMATIC ---
+    {"id": 1101, "q": "A tissue is a group of cells having a common origin and performing a:", "o": ["Common function", "Different function", "No function", "Reproductive function"], "a": "Common function"},
+    {"id": 1102, "q": "Tissues are classified into two main groups based on capability of division:", "o": ["Meristematic and Permanent", "Simple and Complex", "Xylem and Phloem", "Parenchyma and Collenchyma"], "a": "Meristematic and Permanent"},
+    {"id": 1103, "q": "Meristems which occur at the tips of roots and shoots are called:", "o": ["Apical meristems", "Intercalary meristems", "Lateral meristems", "Secondary meristems"], "a": "Apical meristems"},
+    {"id": 1104, "q": "Root apical meristem occupies the:", "o": ["Tip of the root", "Base of the root", "Middle of the root", "Root hair zone"], "a": "Tip of the root"},
+    {"id": 1105, "q": "The meristem which occurs between mature tissues is known as:", "o": ["Intercalary meristem", "Apical meristem", "Lateral meristem", "Promeristem"], "a": "Intercalary meristem"},
+    {"id": 1106, "q": "Intercalary meristems are responsible for:", "o": ["Regenerating parts removed by grazing herbivores", "Increasing girth", "Producing wood", "Secondary growth"], "a": "Regenerating parts removed by grazing herbivores"},
+    {"id": 1107, "q": "Apical and Intercalary meristems are examples of:", "o": ["Primary meristems", "Secondary meristems", "Lateral meristems", "Permanent tissues"], "a": "Primary meristems"},
+    {"id": 1108, "q": "The meristem that occurs in the mature regions of roots and shoots and produces woody axis (Secondary Growth) is:", "o": ["Lateral meristem", "Apical meristem", "Intercalary meristem", "Primary meristem"], "a": "Lateral meristem"},
+    {"id": 1109, "q": "Which of the following is an example of Lateral Meristem?", "o": ["Fascicular vascular cambium and Cork cambium", "Root apical meristem", "Shoot apical meristem", "Intercalary meristem"], "a": "Fascicular vascular cambium and Cork cambium"},
+    {"id": 1110, "q": "Axillary buds are capable of forming a branch or a flower. They are left behind from:", "o": ["Shoot apical meristem", "Root apical meristem", "Intercalary meristem", "Lateral meristem"], "a": "Shoot apical meristem"},
+
+    # --- SIMPLE PERMANENT TISSUES ---
+    {"id": 1111, "q": "Simple tissues are made of:", "o": ["Only one type of cells", "More than one type of cells", "Dead cells only", "Vascular bundles"], "a": "Only one type of cells"},
+    {"id": 1112, "q": "Which simple tissue forms the major component within organs?", "o": ["Parenchyma", "Collenchyma", "Sclerenchyma", "Xylem"], "a": "Parenchyma"},
+    {"id": 1113, "q": "The cells of Parenchyma are generally isodiametric and their walls are made of:", "o": ["Cellulose", "Lignin", "Pectin", "Suberin"], "a": "Cellulose"},
+    {"id": 1114, "q": "Functions of Parenchyma include:", "o": ["Photosynthesis, storage, secretion", "Mechanical support only", "Water conduction only", "Protection only"], "a": "Photosynthesis, storage, secretion"},
+    {"id": 1115, "q": "Collenchyma occurs in layers below the epidermis in:", "o": ["Dicot stems", "Monocot stems", "Roots", "Monocot leaves"], "a": "Dicot stems"},
+    {"id": 1116, "q": "The corners of Collenchyma cells are thickened due to deposition of:", "o": ["Cellulose, hemicellulose and pectin", "Lignin and suberin", "Only cellulose", "Only lignin"], "a": "Cellulose, hemicellulose and pectin"},
+    {"id": 1117, "q": "Intercellular spaces are generally absent in:", "o": ["Collenchyma", "Parenchyma", "Aerenchyma", "Chlorenchyma"], "a": "Collenchyma"},
+    {"id": 1118, "q": "Collenchyma provides mechanical support to:", "o": ["Growing parts like young stem and petiole", "Woody axis", "Roots", "Fruits"], "a": "Growing parts like young stem and petiole"},
+    {"id": 1119, "q": "Sclerenchyma consists of long, narrow cells with thick and:", "o": ["Lignified cell walls", "Pectic cell walls", "Cellulosic cell walls", "Suberized cell walls"], "a": "Lignified cell walls"},
+    {"id": 1120, "q": "Sclerenchyma cells are usually:", "o": ["Dead and without protoplasts", "Living with protoplasts", "Meristematic", "Thin walled"], "a": "Dead and without protoplasts"},
+    {"id": 1121, "q": "Sclereids (Stone cells) are found in:", "o": ["Fruit walls of nuts, pulp of guava/pear/sapota", "Young stems", "Petiole of leaf", "Root tips"], "a": "Fruit walls of nuts, pulp of guava/pear/sapota"},
+    {"id": 1122, "q": "The main function of Sclerenchyma is:", "o": ["Mechanical support to organs", "Photosynthesis", "Storage", "Secretion"], "a": "Mechanical support to organs"},
+
+    # --- COMPLEX TISSUES (XYLEM & PHLOEM) ---
+    {"id": 1123, "q": "Xylem functions as a conducting tissue for:", "o": ["Water and minerals", "Food materials", "Hormones only", "Air"], "a": "Water and minerals"},
+    {"id": 1124, "q": "The four elements of Xylem are:", "o": ["Tracheids, Vessels, Xylem fibers, Xylem parenchyma", "Sieve tubes, Companion cells, Phloem fibers, Phloem parenchyma", "Tracheids, Vessels, Sieve tubes, Companion cells", "Vessels, Fibers, Parenchyma, Collenchyma"], "a": "Tracheids, Vessels, Xylem fibers, Xylem parenchyma"},
+    {"id": 1125, "q": "Which of the following Xylem elements is living?", "o": ["Xylem parenchyma", "Tracheids", "Vessels", "Xylem fibers"], "a": "Xylem parenchyma"},
+    {"id": 1126, "q": "In Gymnosperms, which xylem element is lacking?", "o": ["Vessels", "Tracheids", "Xylem parenchyma", "Xylem fibers"], "a": "Vessels"},
+    {"id": 1127, "q": "Vessels are characteristic of:", "o": ["Angiosperms", "Gymnosperms", "Pteridophytes", "Bryophytes"], "a": "Angiosperms"},
+    {"id": 1128, "q": "The presence of vessels is a characteristic feature of Angiosperms. A vessel is multicellular with:", "o": ["Perforated end walls (plates)", "Thick lignified walls and no perforation", "Living protoplasm", "Thin cellulosic walls"], "a": "Perforated end walls (plates)"},
+    {"id": 1129, "q": "Xylem fibers have:", "o": ["Obliterated central lumens", "Large lumens", "Living protoplasm", "Thin walls"], "a": "Obliterated central lumens"},
+    {"id": 1130, "q": "Xylem parenchyma stores food in the form of starch or fat and substances like:", "o": ["Tannins", "Resins", "Latex", "Gums"], "a": "Tannins"},
+    {"id": 1131, "q": "In stems, the Protoxylem lies towards the center and Metaxylem towards the periphery. This arrangement is:", "o": ["Endarch", "Exarch", "Mesarch", "Centrarch"], "a": "Endarch"},
+    {"id": 1132, "q": "In roots, the Protoxylem lies towards the periphery and Metaxylem towards the center. This arrangement is:", "o": ["Exarch", "Endarch", "Mesarch", "Centrarch"], "a": "Exarch"},
+    {"id": 1133, "q": "Phloem transports:", "o": ["Food materials", "Water only", "Minerals only", "Air"], "a": "Food materials"},
+    {"id": 1134, "q": "Gymnosperms lack Sieve tubes and Companion cells. Instead, they have:", "o": ["Albuminous cells and Sieve cells", "Vessels and Tracheids", "Sieve plates and Pores", "Xylem parenchyma"], "a": "Albuminous cells and Sieve cells"},
+    {"id": 1135, "q": "Sieve tube elements are long, tube-like structures arranged longitudinally and associated with:", "o": ["Companion cells", "Xylem vessels", "Phloem fibers", "Tracheids"], "a": "Companion cells"},
+    {"id": 1136, "q": "The end walls of sieve tubes are perforated to form:", "o": ["Sieve plates", "Vessel plates", "Pits", "Plasmodesmata"], "a": "Sieve plates"},
+    {"id": 1137, "q": "A mature sieve element possesses a peripheral cytoplasm and a large vacuole but lacks a:", "o": ["Nucleus", "Cell wall", "Plasma membrane", "Mitochondria"], "a": "Nucleus"},
+    {"id": 1138, "q": "The functions of sieve tubes are controlled by the nucleus of:", "o": ["Companion cells", "Phloem parenchyma", "Albuminous cells", "Xylem parenchyma"], "a": "Companion cells"},
+    {"id": 1139, "q": "Phloem parenchyma is absent in most of the:", "o": ["Monocotyledons", "Dicotyledons", "Gymnosperms", "Pteridophytes"], "a": "Monocotyledons"},
+    {"id": 1140, "q": "Phloem fibers (Bast fibers) are made of:", "o": ["Sclerenchymatous cells", "Parenchymatous cells", "Collenchymatous cells", "Meristematic cells"], "a": "Sclerenchymatous cells"},
+    {"id": 1141, "q": "Phloem fibers are generally absent in:", "o": ["Primary phloem", "Secondary phloem", "Roots", "Stems"], "a": "Primary phloem"},
+    {"id": 1142, "q": "Phloem fibers of Jute, Flax, and Hemp are used commercially. These fibers are:", "o": ["Dead", "Living", "Collenchymatous", "Parenchymatous"], "a": "Dead"},
+
+    # --- TISSUE SYSTEMS (EPIDERMAL) ---
+    {"id": 1143, "q": "The outermost layer of the primary plant body is:", "o": ["Epidermis", "Cortex", "Endodermis", "Pericycle"], "a": "Epidermis"},
+    {"id": 1144, "q": "Epidermis is usually:", "o": ["Single layered", "Multi layered", "Absent in roots", "Made of Sclerenchyma"], "a": "Single layered"},
+    {"id": 1145, "q": "The outside of the epidermis is often covered by a waxy thick layer called:", "o": ["Cuticle", "Bark", "Cortex", "Suberin"], "a": "Cuticle"},
+    {"id": 1146, "q": "Cuticle is absent in:", "o": ["Roots", "Stems", "Leaves", "Fruits"], "a": "Roots"},
+    {"id": 1147, "q": "Stomata are structures present in the epidermis of leaves for:", "o": ["Transpiration and gas exchange", "Water absorption", "Protection", "Photosynthesis only"], "a": "Transpiration and gas exchange"},
+    {"id": 1148, "q": "The bean-shaped cells bordering the stomatal pore are called:", "o": ["Guard cells", "Subsidiary cells", "Bulliform cells", "Mesophyll cells"], "a": "Guard cells"},
+    {"id": 1149, "q": "In grasses (Monocots), the guard cells are:", "o": ["Dumb-bell shaped", "Bean shaped", "Kidney shaped", "Round"], "a": "Dumb-bell shaped"},
+    {"id": 1150, "q": "The epidermal hairs on the root are called:", "o": ["Root hairs", "Trichomes", "Prickles", "Spines"], "a": "Root hairs"},
+    
+    # --- AESTIVATION & PLACENTATION EXAMPLES ---
+    {"id": 1051, "q": "Sepals or petals in a whorl just touch one another at the margin, without overlapping. This is:", "o": ["Valvate", "Twisted", "Imbricate", "Vexillary"], "a": "Valvate"},
+    {"id": 1052, "q": "One margin of the appendage overlaps that of the next one and so on. This is:", "o": ["Twisted", "Valvate", "Imbricate", "Vexillary"], "a": "Twisted"},
+    {"id": 1053, "q": "Margins overlap one another but not in any particular direction. This is:", "o": ["Imbricate", "Twisted", "Valvate", "Vexillary"], "a": "Imbricate"},
+    {"id": 1054, "q": "Example of Twisted aestivation:", "o": ["China rose, Lady's finger, Cotton", "Calotropis", "Cassia, Gulmohur", "Pea, Bean"], "a": "China rose, Lady's finger, Cotton"},
+    {"id": 1055, "q": "Example of Valvate aestivation:", "o": ["Calotropis", "China rose", "Pea", "Cassia"], "a": "Calotropis"},
+    {"id": 1056, "q": "Example of Imbricate aestivation:", "o": ["Cassia and Gulmohur", "Cotton and China rose", "Pea and Bean", "Calotropis"], "a": "Cassia and Gulmohur"},
+    {"id": 1057, "q": "The arrangement of ovules within the ovary is known as:", "o": ["Placentation", "Aestivation", "Inflorescence", "Phyllotaxy"], "a": "Placentation"},
+    {"id": 1058, "q": "In Marginal placentation, the placenta forms a ridge along the:", "o": ["Ventral suture of the ovary", "Dorsal suture", "Base of ovary", "Central axis"], "a": "Ventral suture of the ovary"},
+    {"id": 1059, "q": "Example of Axile placentation:", "o": ["Tomato, Lemon, China rose", "Pea", "Mustard, Argemone", "Sunflower"], "a": "Tomato, Lemon, China rose"},
+    {"id": 1060, "q": "In Parietal placentation, the ovules develop on:", "o": ["The inner wall of the ovary", "The central axis", "The base of ovary", "The ridge"], "a": "The inner wall of the ovary"},
+    {"id": 1061, "q": "Ovary is one-chambered but becomes two-chambered due to the formation of a false septum (Replum) in:", "o": ["Mustard and Argemone", "Pea and Bean", "Tomato and Lemon", "Dianthus"], "a": "Mustard and Argemone"},
+    {"id": 1062, "q": "Free Central placentation is found in:", "o": ["Dianthus and Primrose", "Mustard and Argemone", "Pea and Bean", "Sunflower"], "a": "Dianthus and Primrose"},
+    {"id": 1063, "q": "Basal placentation is characteristic of:", "o": ["Sunflower and Marigold", "Pea and Bean", "Mustard", "Tomato"], "a": "Sunflower and Marigold"},
+
+    # --- FRUIT & SEED ANATOMY ---
+    {"id": 1064, "q": "The fruit wall is called:", "o": ["Pericarp", "Epicarp", "Mesocarp", "Endocarp"], "a": "Pericarp"},
+    {"id": 1065, "q": "In dry fruits (like Groundnut, Mustard), the pericarp is:", "o": ["Not differentiated into epi/meso/endocarp", "Thick and fleshy", "Absent", "Edible"], "a": "Not differentiated into epi/meso/endocarp"},
+    {"id": 1066, "q": "In Mango and Coconut, the fruit is a:", "o": ["Drupe", "Berry", "Pepo", "Hesperidium"], "a": "Drupe"},
+    {"id": 1067, "q": "Drupe develops from:", "o": ["Monocarpellary superior ovaries", "Multicarpellary inferior ovaries", "Bicarpellary syncarpous", "Apocarpous ovaries"], "a": "Monocarpellary superior ovaries"},
+    {"id": 1068, "q": "The edible part of Coconut is:", "o": ["Endosperm", "Mesocarp", "Epicarp", "Endocarp"], "a": "Endosperm"},
+    {"id": 1069, "q": "The seed coat has two layers. The outer is Testa and the inner is:", "o": ["Tegmen", "Hilum", "Micropyle", "Raphe"], "a": "Tegmen"},
+    {"id": 1070, "q": "The scar on the seed coat through which the developing seeds were attached to the fruit is:", "o": ["Hilum", "Micropyle", "Raphe", "Chalaza"], "a": "Hilum"},
+    {"id": 1071, "q": "Non-albuminous (Non-endospermic) seeds are found in:", "o": ["Pea, Gram, Bean", "Castor, Maize", "Wheat, Barley", "Coconut"], "a": "Pea, Gram, Bean"},
+    {"id": 1072, "q": "Albuminous (Endospermic) seeds are typically found in:", "o": ["Monocots (Wheat, Maize) and Castor", "Pea and Gram", "Bean and Groundnut", "Orchids"], "a": "Monocots (Wheat, Maize) and Castor"},
+    {"id": 1073, "q": "Perisperm is the persistent remnant of:", "o": ["Nucellus", "Endosperm", "Embryo", "Integument"], "a": "Nucellus"},
+    {"id": 1074, "q": "Perisperm is found in:", "o": ["Black pepper and Beet", "Pea and Gram", "Maize and Wheat", "Castor"], "a": "Black pepper and Beet"},
+    {"id": 1075, "q": "The proteinaceous layer separating the embryo from the endosperm in monocot seeds is:", "o": ["Aleurone layer", "Scutellum", "Epithelium", "Tegmen"], "a": "Aleurone layer"},
+    {"id": 1076, "q": "In Maize grain, the single large shield-shaped cotyledon is called:", "o": ["Scutellum", "Coleoptile", "Coleorhiza", "Epiblast"], "a": "Scutellum"},
+    {"id": 1077, "q": "The plumule and radicle in monocot seeds are enclosed in sheaths called:", "o": ["Coleoptile and Coleorhiza respectively", "Coleorhiza and Coleoptile respectively", "Scutellum and Aleurone", "Testa and Tegmen"], "a": "Coleoptile and Coleorhiza respectively"},
+
+    # --- FAMILY SPECIFIC FEATURES ---
+    {"id": 1078, "q": "Epipetalous stamens are a defining feature of:", "o": ["Solanaceae", "Liliaceae", "Fabaceae", "Brassicaceae"], "a": "Solanaceae"},
+    {"id": 1079, "q": "Epiphyllous stamens (attached to Tepals) are found in:", "o": ["Liliaceae", "Solanaceae", "Fabaceae", "Brassicaceae"], "a": "Liliaceae"},
+    {"id": 1080, "q": "Diadelphous stamens [(9)+1] are found in:", "o": ["Fabaceae", "Solanaceae", "Liliaceae", "Poaceae"], "a": "Fabaceae"},
+    {"id": 1081, "q": "Six stamens arranged in two whorls (3+3) is a feature of:", "o": ["Liliaceae", "Solanaceae", "Fabaceae", "Brassicaceae"], "a": "Liliaceae"},
+    {"id": 1082, "q": "Tetradynamous stamens (2+4) are found in:", "o": ["Brassicaceae (Mustard)", "Liliaceae", "Solanaceae", "Fabaceae"], "a": "Brassicaceae (Mustard)"},
+    {"id": 1083, "q": "Swollen placenta with many ovules is characteristic of:", "o": ["Solanaceae", "Fabaceae", "Liliaceae", "Brassicaceae"], "a": "Solanaceae"},
+    {"id": 1084, "q": "Marginal placentation is unique to:", "o": ["Fabaceae", "Solanaceae", "Liliaceae", "Brassicaceae"], "a": "Fabaceae"},
+    {"id": 1085, "q": "Fruit type 'Legume' is found in:", "o": ["Fabaceae", "Solanaceae", "Liliaceae", "Poaceae"], "a": "Fabaceae"},
+    {"id": 1086, "q": "Fruit type 'Berry or Capsule' is found in:", "o": ["Solanaceae", "Fabaceae", "Poaceae", "Asteraceae"], "a": "Solanaceae"},
+    {"id": 1087, "q": "Colchicum autumnale (source of Colchicine) belongs to:", "o": ["Liliaceae", "Solanaceae", "Fabaceae", "Asteraceae"], "a": "Liliaceae"},
+    {"id": 1088, "q": "Which family provides 'Fumigatory' agents like Tobacco?", "o": ["Solanaceae", "Fabaceae", "Liliaceae", "Brassicaceae"], "a": "Solanaceae"},
+    {"id": 1089, "q": "Which family includes 'Pulses' like Gram, Arhar, Sem, Moong?", "o": ["Fabaceae", "Solanaceae", "Liliaceae", "Poaceae"], "a": "Fabaceae"},
+    {"id": 1090, "q": "The botanical name of 'Makoi' is:", "o": ["Solanum nigrum", "Solanum tuberosum", "Solanum melongena", "Lycopersicum esculentum"], "a": "Solanum nigrum"},
+
+    # --- GENERAL MORPHOLOGY WRAP-UP ---
+    {"id": 1091, "q": "Primary root is short lived and replaced by adventitious roots in:", "o": ["Monocots", "Dicots", "Gymnosperms", "Pteridophytes"], "a": "Monocots"},
+    {"id": 1092, "q": "Stem helps in vegetative propagation in:", "o": ["Potato, Ginger, Zaminkand", "Wheat", "Maize", "Pea"], "a": "Potato, Ginger, Zaminkand"},
+    {"id": 1093, "q": "When leaflets are attached at the tip of the petiole, it is:", "o": ["Palmately compound", "Pinnately compound", "Simple leaf", "Whorled"], "a": "Palmately compound"},
+    {"id": 1094, "q": "In Smilax and Peas, leaves are modified into:", "o": ["Tendrils", "Spines", "Phyllodes", "Bulbs"], "a": "Tendrils"},
+    {"id": 1095, "q": "The arrangement of veins and veinlets in the lamina is:", "o": ["Venation", "Phyllotaxy", "Inflorescence", "Aestivation"], "a": "Venation"},
+    {"id": 1096, "q": "Radial symmetry is equivalent to:", "o": ["Actinomorphic", "Zygomorphic", "Asymmetric", "Bilateral"], "a": "Actinomorphic"},
+    {"id": 1097, "q": "Bilateral symmetry is equivalent to:", "o": ["Zygomorphic", "Actinomorphic", "Radial", "Irregular"], "a": "Zygomorphic"},
+    {"id": 1098, "q": "Inferior ovary means the flower is:", "o": ["Epigynous", "Hypogynous", "Perigynous", "Agynous"], "a": "Epigynous"},
+    {"id": 1099, "q": "Superior ovary means the flower is:", "o": ["Hypogynous", "Epigynous", "Perigynous", "Agynous"], "a": "Hypogynous"},
+    {"id": 1100, "q": "Which part of the flower attracts insects for pollination?", "o": ["Corolla (Petals)", "Calyx (Sepals)", "Androecium", "Gynoecium"], "a": "Corolla (Petals)"},
+    
+    # --- FLORAL FORMULA & FAMILIES LOGIC ---
+    {"id": 1001, "q": "The floral formula '⊕ ⚥ K(5) C(5) A5 G(2)' corresponds to:", "o": ["Solanaceae", "Liliaceae", "Fabaceae", "Brassicaceae"], "a": "Solanaceae"},
+    {"id": 1002, "q": "The floral formula '% ⚥ K(5) C1+2+(2) A(9)+1 G1' corresponds to:", "o": ["Fabaceae", "Solanaceae", "Liliaceae", "Poaceae"], "a": "Fabaceae"},
+    {"id": 1003, "q": "The floral formula 'Br ⊕ ⚥ P(3+3) A3+3 G(3)' corresponds to:", "o": ["Liliaceae", "Solanaceae", "Fabaceae", "Brassicaceae"], "a": "Liliaceae"},
+    {"id": 1004, "q": "In the floral formula of Fabaceae, '%', refers to:", "o": ["Zygomorphic symmetry", "Actinomorphic symmetry", "Bisexual", "Superior Ovary"], "a": "Zygomorphic symmetry"},
+    {"id": 1005, "q": "In Solanaceae formula, 'K(5)' indicates:", "o": ["Gamosepalous (United sepals)", "Polysepalous (Free sepals)", "Epipetalous", "5 distinct sepals"], "a": "Gamosepalous (United sepals)"},
+    {"id": 1006, "q": "The symbol 'G' with a line below it (G_) indicates:", "o": ["Superior Ovary", "Inferior Ovary", "Half-inferior Ovary", "Gynoecium absent"], "a": "Superior Ovary"},
+    {"id": 1007, "q": "The symbol 'G' with a line above it (‾G) indicates:", "o": ["Inferior Ovary", "Superior Ovary", "Male flower", "Sterile pistil"], "a": "Inferior Ovary"},
+    {"id": 1008, "q": "The symbol 'P' in floral formula stands for:", "o": ["Perianth (Tepals)", "Petals", "Polyadelphous", "Pistil"], "a": "Perianth (Tepals)"},
+    {"id": 1009, "q": "Fusion of stamens with petals (Epipetalous) is represented by an arch connecting:", "o": ["C and A", "K and C", "P and A", "A and G"], "a": "C and A"},
+    {"id": 1010, "q": "Fusion of stamens with tepals (Epiphyllous) is represented by an arch connecting:", "o": ["P and A", "C and A", "K and A", "K and C"], "a": "P and A"},
+    
+    # --- IN-DEPTH ROOT & STEM MODIFICATIONS ---
+    {"id": 1011, "q": "Which of the following is NOT a root modification?", "o": ["Potato tuber", "Sweet potato", "Turnip", "Carrot"], "a": "Potato tuber"},
+    {"id": 1012, "q": "Which of the following is an underground stem?", "o": ["Zaminkand", "Sweet Potato", "Radish", "Turnip"], "a": "Zaminkand"},
+    {"id": 1013, "q": "Organ of perennation to tide over conditions unfavorable for growth is:", "o": ["Underground stems", "Roots", "Leaves", "Flowers"], "a": "Underground stems"},
+    {"id": 1014, "q": "Stem tendrils in Grapevines develop from:", "o": ["Axillary buds", "Terminal buds", "Leaves", "Roots"], "a": "Axillary buds"},
+    {"id": 1015, "q": "Thorns in Citrus and Bougainvillea are modified:", "o": ["Axillary buds", "Leaves", "Stipules", "Roots"], "a": "Axillary buds"},
+    {"id": 1016, "q": "In Opuntia, the spine is a modification of:", "o": ["Leaf", "Stem", "Root", "Flower"], "a": "Leaf"},
+    {"id": 1017, "q": "In Opuntia, the green photosynthetic part is a modification of:", "o": ["Stem", "Leaf", "Root", "Petiole"], "a": "Stem"},
+    {"id": 1018, "q": "In Australian Acacia, the green photosynthetic part is a modification of:", "o": ["Petiole", "Lamina", "Stem", "Stipule"], "a": "Petiole"},
+    {"id": 1019, "q": "The 'eyes' of the potato tuber are:", "o": ["Axillary buds", "Root buds", "Flower buds", "Shoot apices"], "a": "Axillary buds"},
+    {"id": 1020, "q": "Ginger reproduces vegetatively by:", "o": ["Rhizome", "Tuber", "Offset", "Bulb"], "a": "Rhizome"},
+    {"id": 1021, "q": "Which plant has a 'Bulb' as a modified stem?", "o": ["Onion", "Ginger", "Potato", "Colocasia"], "a": "Onion"},
+    {"id": 1022, "q": "A lateral branch with short internodes and each node bearing a rosette of leaves is found in:", "o": ["Eichhornia (Water hyacinth)", "Grass", "Mint", "Banana"], "a": "Eichhornia (Water hyacinth)"},
+    {"id": 1023, "q": "Sub-aerial stem modification 'Runner' is found in:", "o": ["Oxalis and Grasses", "Mint and Jasmine", "Pistia", "Banana"], "a": "Oxalis and Grasses"},
+    {"id": 1024, "q": "Sub-aerial stem modification 'Sucker' is found in:", "o": ["Banana, Pineapple, Chrysanthemum", "Grass, Strawberry", "Mint, Jasmine", "Pistia, Eichhornia"], "a": "Banana, Pineapple, Chrysanthemum"},
+
+    # --- LEAF PHYLLOTAXY & TYPES ---
+    {"id": 1025, "q": "Leaves originate from:", "o": ["Shoot apical meristem", "Root apical meristem", "Lateral meristem", "Intercalary meristem"], "a": "Shoot apical meristem"},
+    {"id": 1026, "q": "Leaves are arranged in:", "o": ["Acropetal order", "Basipetal order", "Random order", "Whorled order"], "a": "Acropetal order"},
+    {"id": 1027, "q": "The leaf base may become swollen (pulvinus) in:", "o": ["Legumes", "Cereals", "Palms", "Solanaceae"], "a": "Legumes"},
+    {"id": 1028, "q": "The leaf base expands into a sheath covering the stem partially or wholly in:", "o": ["Monocots", "Dicots", "Gymnosperms", "Pteridophytes"], "a": "Monocots"},
+    {"id": 1029, "q": "Stipules are lateral small leaf-like structures found at:", "o": ["The base of the leaf", "The tip of the leaf", "The axil of the leaf", "The midrib"], "a": "The base of the leaf"},
+    {"id": 1030, "q": "Veins provide rigidity to the leaf blade and act as channels for:", "o": ["Transport of water, minerals and food", "Photosynthesis only", "Respiration", "Transpiration"], "a": "Transport of water, minerals and food"},
+    {"id": 1031, "q": "When the incision of the lamina reach the midrib breaking it into a number of leaflets, the leaf is:", "o": ["Compound", "Simple", "Sessile", "Petiolate"], "a": "Compound"},
+    {"id": 1032, "q": "In Palmately compound leaves, leaflets are attached at:", "o": ["A common point (tip of petiole)", "A common axis (rachis)", "The stem directly", "The base of the petiole"], "a": "A common point (tip of petiole)"},
+    {"id": 1033, "q": "Example of a Palmately compound leaf is:", "o": ["Silk Cotton", "Neem", "Rose", "Pea"], "a": "Silk Cotton"},
+    {"id": 1034, "q": "Example of a Pinnately compound leaf is:", "o": ["Neem", "Silk Cotton", "Cucumber", "Guava"], "a": "Neem"},
+    {"id": 1035, "q": "Whorled phyllotaxy (leaves in a circle at one node) is seen in:", "o": ["Alstonia", "Sunflower", "Mustard", "Calotropis"], "a": "Alstonia"},
+    {"id": 1036, "q": "Opposite phyllotaxy is seen in:", "o": ["Calotropis and Guava", "China rose and Mustard", "Sunflower and Maize", "Alstonia"], "a": "Calotropis and Guava"},
+    {"id": 1037, "q": "Leaf tendrils are found in:", "o": ["Pea", "Cucumber", "Grapevine", "Pumpkin"], "a": "Pea"},
+    {"id": 1038, "q": "Which part of the plant is modified into spines in Cactus?", "o": ["Leaves", "Stem", "Root", "Flower"], "a": "Leaves"},
+    {"id": 1039, "q": "Fleshy leaves of Onion store:", "o": ["Food", "Water", "Air", "Latex"], "a": "Food"},
+    
+    # --- INFLORESCENCE & FLOWER DETAILS ---
+    {"id": 1040, "q": "In Racemose, the flowers are arranged in:", "o": ["Acropetal succession", "Basipetal succession", "Centrifugal manner", "Random manner"], "a": "Acropetal succession"},
+    {"id": 1041, "q": "In Cymose, the flowers are arranged in:", "o": ["Basipetal succession", "Acropetal succession", "Centripetal manner", "Spiral manner"], "a": "Basipetal succession"},
+    {"id": 1042, "q": "The main axis terminates in a flower in:", "o": ["Cymose", "Racemose", "Spike", "Catkin"], "a": "Cymose"},
+    {"id": 1043, "q": "A flower which can be divided into two equal radial halves in any radial plane is:", "o": ["Actinomorphic", "Zygomorphic", "Asymmetric", "Irregular"], "a": "Actinomorphic"},
+    {"id": 1044, "q": "A flower which can be divided into two similar halves only in one particular vertical plane is:", "o": ["Zygomorphic", "Actinomorphic", "Regular", "Radial"], "a": "Zygomorphic"},
+    {"id": 1045, "q": "Example of Actinomorphic flower:", "o": ["Mustard, Datura, Chilli", "Pea, Bean, Gulmohur", "Cassia, Canna", "Salvia"], "a": "Mustard, Datura, Chilli"},
+    {"id": 1046, "q": "Example of Zygomorphic flower:", "o": ["Pea, Gulmohur, Bean, Cassia", "Mustard, Datura", "Chilli, Tomato", "Canna"], "a": "Pea, Gulmohur, Bean, Cassia"},
+    {"id": 1047, "q": "A flower is asymmetric (irregular) if it cannot be divided into two similar halves. Example:", "o": ["Canna", "Pea", "Datura", "Mustard"], "a": "Canna"},
+    {"id": 1048, "q": "In Hypogynous flowers, the ovary is:", "o": ["Superior", "Inferior", "Half-inferior", "Half-superior"], "a": "Superior"},
+    {"id": 1049, "q": "In Epigynous flowers, the ovary is:", "o": ["Inferior", "Superior", "Half-inferior", "Half-superior"], "a": "Inferior"},
+    {"id": 1050, "q": "In Perigynous flowers (like Rose, Plum, Peach), the ovary is:", "o": ["Half-inferior", "Superior", "Inferior", "Absent"], "a": "Half-inferior"},
+    
+    # --- THE FLOWER ---
+    {"id": 944, "q": "A flower with both androecium and gynoecium is called:", "o": ["Bisexual", "Unisexual", "Staminate", "Pistillate"], "a": "Bisexual"},
+    {"id": 945, "q": "Actinomorphic (Radial symmetry) flowers are found in:", "o": ["Mustard, Datura, Chilli", "Pea, Gulmohur, Bean, Cassia", "Canna", "Orchids"], "a": "Mustard, Datura, Chilli"},
+    {"id": 946, "q": "Zygomorphic (Bilateral symmetry) flowers are found in:", "o": ["Pea, Gulmohur, Bean, Cassia", "Mustard, Datura, Chilli", "Canna", "Tomato"], "a": "Pea, Gulmohur, Bean, Cassia"},
+    {"id": 947, "q": "Asymmetric (Irregular) flowers are found in:", "o": ["Canna", "Pea", "Mustard", "Datura"], "a": "Canna"},
+    {"id": 948, "q": "Hypogynous flower (Superior Ovary) is seen in:", "o": ["Mustard, China rose, Brinjal", "Plum, Rose, Peach", "Guava, Cucumber", "Ray florets of Sunflower"], "a": "Mustard, China rose, Brinjal"},
+    {"id": 949, "q": "Perigynous flower (Half Inferior Ovary) is seen in:", "o": ["Plum, Rose, Peach", "Mustard, China rose", "Guava, Cucumber", "Brinjal"], "a": "Plum, Rose, Peach"},
+    {"id": 950, "q": "Epigynous flower (Inferior Ovary) is seen in:", "o": ["Guava, Cucumber, Ray florets of Sunflower", "Mustard, China rose", "Plum, Rose", "Pea"], "a": "Guava, Cucumber, Ray florets of Sunflower"},
+    {"id": 951, "q": "Gamosepalous means:", "o": ["Sepals united", "Sepals free", "Petals united", "Petals free"], "a": "Sepals united"},
+    {"id": 952, "q": "Valvate aestivation (sepals/petals just touch) is seen in:", "o": ["Calotropis", "China rose", "Cassia", "Pea"], "a": "Calotropis"},
+    {"id": 953, "q": "Twisted aestivation (one margin overlaps next) is seen in:", "o": ["China rose, Lady's finger, Cotton", "Calotropis", "Cassia, Gulmohur", "Pea, Bean"], "a": "China rose, Lady's finger, Cotton"},
+    {"id": 954, "q": "Imbricate aestivation (overlapping irregular) is seen in:", "o": ["Cassia and Gulmohur", "China rose", "Calotropis", "Pea"], "a": "Cassia and Gulmohur"},
+    {"id": 955, "q": "Vexillary or Papilionaceous aestivation is characteristic of:", "o": ["Pea and Bean (Fabaceae)", "China rose", "Calotropis", "Cassia"], "a": "Pea and Bean (Fabaceae)"},
+    {"id": 956, "q": "In Vexillary aestivation, the largest petal is called:", "o": ["Standard or Vexillum", "Wing or Alae", "Keel or Carina", "Sepal"], "a": "Standard or Vexillum"},
+    {"id": 957, "q": "Staminode is a:", "o": ["Sterile stamen", "Fertile stamen", "Fused stamen", "Petal"], "a": "Sterile stamen"},
+    {"id": 958, "q": "Epipetalous stamens (attached to petals) are found in:", "o": ["Brinjal", "Lily", "Mustard", "China rose"], "a": "Brinjal"},
+    {"id": 959, "q": "Epiphyllous stamens (attached to perianth) are found in:", "o": ["Lily", "Brinjal", "Mustard", "Pea"], "a": "Lily"},
+    {"id": 960, "q": "Monoadelphous stamens (one bunch) are found in:", "o": ["China rose", "Pea", "Citrus", "Salvia"], "a": "China rose"},
+    {"id": 961, "q": "Diadelphous stamens (two bunches) are found in:", "o": ["Pea", "China rose", "Citrus", "Mustard"], "a": "Pea"},
+    {"id": 962, "q": "Polyadelphous stamens (more than two bundles) are found in:", "o": ["Citrus", "Pea", "China rose", "Tomato"], "a": "Citrus"},
+    {"id": 963, "q": "Variation in the length of filaments is seen in:", "o": ["Salvia and Mustard", "Pea and Bean", "China rose", "Citrus"], "a": "Salvia and Mustard"},
+    {"id": 964, "q": "Apocarpous (carpels free) gynoecium is seen in:", "o": ["Lotus and Rose", "Mustard and Tomato", "Pea", "Hibiscus"], "a": "Lotus and Rose"},
+    {"id": 965, "q": "Syncarpous (carpels fused) gynoecium is seen in:", "o": ["Mustard and Tomato", "Lotus and Rose", "Michelias", "None"], "a": "Mustard and Tomato"},
+    {"id": 966, "q": "Marginal placentation is characteristic of:", "o": ["Pea", "China rose", "Argemone", "Dianthus"], "a": "Pea"},
+    {"id": 967, "q": "Axile placentation is seen in:", "o": ["China rose, Tomato, Lemon", "Pea", "Mustard, Argemone", "Dianthus, Primrose"], "a": "China rose, Tomato, Lemon"},
+    {"id": 968, "q": "Parietal placentation is seen in:", "o": ["Mustard and Argemone", "Pea", "China rose", "Dianthus"], "a": "Mustard and Argemone"},
+    {"id": 969, "q": "Free central placentation is seen in:", "o": ["Dianthus and Primrose", "Mustard", "Pea", "Sunflower"], "a": "Dianthus and Primrose"},
+    {"id": 970, "q": "Basal placentation is seen in:", "o": ["Sunflower and Marigold", "Pea", "Mustard", "Lemon"], "a": "Sunflower and Marigold"},
+
+    # --- FRUIT AND SEED ---
+    {"id": 971, "q": "A fruit formed without fertilization of the ovary is called:", "o": ["Parthenocarpic fruit", "False fruit", "True fruit", "Drupe"], "a": "Parthenocarpic fruit"},
+    {"id": 972, "q": "Parthenocarpic fruit example:", "o": ["Banana", "Apple", "Mango", "Strawberry"], "a": "Banana"},
+    {"id": 973, "q": "In Mango and Coconut, the fruit is known as a:", "o": ["Drupe", "Berry", "Pepo", "Pome"], "a": "Drupe"},
+    {"id": 974, "q": "Drupes develop from:", "o": ["Monocarpellary superior ovaries", "Multicarpellary inferior ovaries", "Monocarpellary inferior ovaries", "Bicarpellary superior ovaries"], "a": "Monocarpellary superior ovaries"},
+    {"id": 975, "q": "In Coconut, the mesocarp is:", "o": ["Fibrous", "Fleshy and edible", "Stony", "Absent"], "a": "Fibrous"},
+    {"id": 976, "q": "In Mango, the edible part is:", "o": ["Fleshy mesocarp", "Epicarp", "Stony Endocarp", "Seed"], "a": "Fleshy mesocarp"},
+    {"id": 977, "q": "Aleurone layer in monocot seeds is:", "o": ["Proteinaceous", "Starchy", "Lipid rich", "Cellulosic"], "a": "Proteinaceous"},
+    {"id": 978, "q": "The shield-shaped cotyledon in maize grain is called:", "o": ["Scutellum", "Coleoptile", "Coleorhiza", "Plumule"], "a": "Scutellum"},
+
+    # --- FAMILIES (FABACEAE, SOLANACEAE, LILIACEAE) ---
+    {"id": 979, "q": "Which family is characterized by Pulvinate leaf base, Vexillary aestivation and Diadelphous stamens?", "o": ["Fabaceae", "Solanaceae", "Liliaceae", "Brassicaceae"], "a": "Fabaceae"},
+    {"id": 980, "q": "Examples of pulses belonging to Fabaceae are:", "o": ["Gram, Arhar, Sem, Moong, Soyabean", "Tomato, Brinjal", "Tulip, Gloriosa", "Mustard"], "a": "Gram, Arhar, Sem, Moong, Soyabean"},
+    {"id": 981, "q": "Edible oil yielding plants of Fabaceae:", "o": ["Soyabean, Groundnut", "Mustard", "Coconut", "Castor"], "a": "Soyabean, Groundnut"},
+    {"id": 982, "q": "Dye 'Indigofera' belongs to:", "o": ["Fabaceae", "Solanaceae", "Liliaceae", "Malvaceae"], "a": "Fabaceae"},
+    {"id": 983, "q": "Fodder plants 'Sesbania and Trifolium' belong to:", "o": ["Fabaceae", "Solanaceae", "Liliaceae", "Poaceae"], "a": "Fabaceae"},
+    {"id": 984, "q": "Which family is commonly called the 'Potato family'?", "o": ["Solanaceae", "Fabaceae", "Liliaceae", "Brassicaceae"], "a": "Solanaceae"},
+    {"id": 985, "q": "Persistent Calyx and Swollen Placenta are characteristic features of:", "o": ["Solanaceae", "Fabaceae", "Liliaceae", "Brassicaceae"], "a": "Solanaceae"},
+    {"id": 986, "q": "Obliquely placed ovary is found in:", "o": ["Solanaceae", "Fabaceae", "Liliaceae", "Brassicaceae"], "a": "Solanaceae"},
+    {"id": 987, "q": "Important food plants of Solanaceae:", "o": ["Tomato, Brinjal, Potato", "Pea, Bean", "Onion, Garlic", "Mustard"], "a": "Tomato, Brinjal, Potato"},
+    {"id": 988, "q": "Medicinal plants 'Belladonna' and 'Ashwagandha' belong to:", "o": ["Solanaceae", "Fabaceae", "Liliaceae", "Poaceae"], "a": "Solanaceae"},
+    {"id": 989, "q": "Tobacco (Fumigatory) belongs to:", "o": ["Solanaceae", "Fabaceae", "Liliaceae", "Malvaceae"], "a": "Solanaceae"},
+    {"id": 990, "q": "Which family is characterized by Perianth (Tepals) and Epiphyllous stamens?", "o": ["Liliaceae", "Solanaceae", "Fabaceae", "Brassicaceae"], "a": "Liliaceae"},
+    {"id": 991, "q": "Tricarpellary, syncarpous, superior ovary with axile placentation is found in:", "o": ["Liliaceae", "Solanaceae", "Fabaceae", "Brassicaceae"], "a": "Liliaceae"},
+    {"id": 992, "q": "Colchicine (used to double chromosome number) is obtained from Colchicum autumnale, belonging to:", "o": ["Liliaceae", "Solanaceae", "Fabaceae", "Poaceae"], "a": "Liliaceae"},
+    {"id": 993, "q": "Aloe (Medicine), Asparagus (Vegetable), and Tulip (Ornamental) belong to:", "o": ["Liliaceae", "Solanaceae", "Fabaceae", "Brassicaceae"], "a": "Liliaceae"},
+    {"id": 994, "q": "Cruciform corolla and Tetradynamous stamens (2+4) are characteristic of:", "o": ["Brassicaceae (Mustard)", "Fabaceae", "Solanaceae", "Liliaceae"], "a": "Brassicaceae (Mustard)"},
+    {"id": 995, "q": "Replum (False septum) is found in the ovary of:", "o": ["Mustard and Argemone", "Pea", "Tomato", "Lemon"], "a": "Mustard and Argemone"},
+    {"id": 996, "q": "Siliqua fruit is characteristic of:", "o": ["Brassicaceae", "Fabaceae", "Solanaceae", "Liliaceae"], "a": "Brassicaceae"},
+    {"id": 997, "q": "Marginal placentation, Monocarpellary ovary, Pod fruit. Identify the family:", "o": ["Fabaceae", "Solanaceae", "Liliaceae", "Brassicaceae"], "a": "Fabaceae"},
+    {"id": 998, "q": "Flower is Zygomorphic in:", "o": ["Fabaceae", "Solanaceae (Actinomorphic)", "Liliaceae (Actinomorphic)", "Brassicaceae (Actinomorphic usually)"], "a": "Fabaceae"},
+    {"id": 999, "q": "Sunhemp (Fibre) belongs to:", "o": ["Fabaceae", "Solanaceae", "Liliaceae", "Malvaceae"], "a": "Fabaceae"},
+    {"id": 1000, "q": "Petunia (Ornamental) belongs to:", "o": ["Solanaceae", "Fabaceae", "Liliaceae", "Brassicaceae"], "a": "Solanaceae"},
+    
+    # --- THE ROOT ---
+    {"id": 901, "q": "The primary root and its branches constitute the:", "o": ["Tap root system", "Fibrous root system", "Adventitious root system", "Prop root system"], "a": "Tap root system"},
+    {"id": 902, "q": "Tap root system is seen in:", "o": ["Mustard plant (Dicot)", "Wheat plant (Monocot)", "Monstera", "Grass"], "a": "Mustard plant (Dicot)"},
+    {"id": 903, "q": "In monocotyledonous plants, the primary root is short-lived and replaced by a large number of roots originating from the base of the stem. This is:", "o": ["Fibrous root system", "Tap root system", "Adventitious root system", "Stilt roots"], "a": "Fibrous root system"},
+    {"id": 904, "q": "Roots arising from parts of the plant other than the radicle are called:", "o": ["Adventitious roots", "Tap roots", "Fibrous roots", "Primary roots"], "a": "Adventitious roots"},
+    {"id": 905, "q": "Examples of Adventitious roots are:", "o": ["Grass, Monstera and Banyan tree", "Mustard and Gram", "Wheat and Maize", "Carrot and Turnip"], "a": "Grass, Monstera and Banyan tree"},
+    {"id": 906, "q": "Swollen roots for food storage are found in:", "o": ["Carrot, Turnip, Sweet Potato", "Potato, Ginger, Turmeric", "Onion, Garlic", "Wheat, Maize"], "a": "Carrot, Turnip, Sweet Potato"},
+    {"id": 907, "q": "Sweet potato is a modified:", "o": ["Adventitious root", "Tap root", "Stem", "Leaf"], "a": "Adventitious root"},
+    {"id": 908, "q": "Turnip and Carrot are modified:", "o": ["Tap roots", "Adventitious roots", "Stems", "Rhizomes"], "a": "Tap roots"},
+    {"id": 909, "q": "Prop roots are hanging structures that support the tree. They are found in:", "o": ["Banyan tree", "Maize", "Sugarcane", "Rhizophora"], "a": "Banyan tree"},
+    {"id": 910, "q": "Stilt roots arise from the lower nodes of the stem to support the plant. They are seen in:", "o": ["Maize and Sugarcane", "Banyan and Peepal", "Carrot and Turnip", "Potato"], "a": "Maize and Sugarcane"},
+    {"id": 911, "q": "Pneumatophores are respiratory roots found in plants growing in swampy areas, such as:", "o": ["Rhizophora", "Banyan", "Maize", "Pistia"], "a": "Rhizophora"},
+    {"id": 912, "q": "Pneumatophores help in:", "o": ["Getting oxygen for respiration", "Photosynthesis", "Absorption of water", "Anchorage only"], "a": "Getting oxygen for respiration"},
+
+    # --- THE STEM (MODIFICATIONS) ---
+    {"id": 913, "q": "Underground stems of potato, ginger, turmeric, zaminkand, and colocasia are modified to:", "o": ["Store food", "Photosynthesize", "Absorb water", "Support leaves"], "a": "Store food"},
+    {"id": 914, "q": "Stem tendrils which develop from axillary buds are found in:", "o": ["Gourds (cucumber, pumpkins, watermelon) and Grapevines", "Pea and Beans", "Citrus and Bougainvillea", "Opuntia"], "a": "Gourds (cucumber, pumpkins, watermelon) and Grapevines"},
+    {"id": 915, "q": "Thorns are woody, straight and pointed structures developed from axillary buds. They are found in:", "o": ["Citrus and Bougainvillea", "Pea and Bean", "Cucumber and Pumpkin", "Opuntia and Euphorbia"], "a": "Citrus and Bougainvillea"},
+    {"id": 916, "q": "Thorns protect plants from:", "o": ["Browsing animals", "Excess heat", "Cold", "Insects"], "a": "Browsing animals"},
+    {"id": 917, "q": "Flattened stem (Phylloclade) performing photosynthesis is found in:", "o": ["Opuntia", "Euphorbia", "Bougainvillea", "Citrus"], "a": "Opuntia"},
+    {"id": 918, "q": "Cylindrical fleshy stem (Phylloclade) performing photosynthesis is found in:", "o": ["Euphorbia", "Opuntia", "Cactus", "Acacia"], "a": "Euphorbia"},
+    {"id": 919, "q": "Underground stems of some plants spread to new niches and when older parts die, new plants are formed. Examples are:", "o": ["Grass and Strawberry", "Mint and Jasmine", "Pistia and Eichhornia", "Banana and Pineapple"], "a": "Grass and Strawberry"},
+    {"id": 920, "q": "In Mint and Jasmine, a slender lateral branch arises from the base of the main axis and grows aerially for some time before arching downwards to touch the ground. This is called:", "o": ["Stolon", "Runner", "Offset", "Sucker"], "a": "Stolon"},
+    {"id": 921, "q": "A lateral branch with short internodes and each node bearing a rosette of leaves and a tuft of roots is found in aquatic plants like:", "o": ["Pistia and Eichhornia", "Grass and Strawberry", "Mint and Jasmine", "Banana and Pineapple"], "a": "Pistia and Eichhornia"},
+    {"id": 922, "q": "In Banana, Pineapple and Chrysanthemum, the lateral branches originate from the basal underground portion of the main stem and grow obliquely upward. This is called:", "o": ["Sucker", "Stolon", "Runner", "Offset"], "a": "Sucker"},
+
+    # --- THE LEAF ---
+    {"id": 923, "q": "The green expanded part of the leaf with veins and veinlets is known as:", "o": ["Lamina or Leaf blade", "Petiole", "Stipule", "Pulvinus"], "a": "Lamina or Leaf blade"},
+    {"id": 924, "q": "A swollen leaf base (Pulvinus) is found in:", "o": ["Leguminous plants", "Monocots", "Grasses", "Mustard"], "a": "Leguminous plants"},
+    {"id": 925, "q": "Reticulate venation is generally a characteristic of:", "o": ["Dicots", "Monocots", "Gymnosperms", "Pteridophytes"], "a": "Dicots"},
+    {"id": 926, "q": "Parallel venation is generally a characteristic of:", "o": ["Monocots", "Dicots", "Ferns", "Mosses"], "a": "Monocots"},
+    {"id": 927, "q": "In a pinnately compound leaf, a number of leaflets are present on a common axis called:", "o": ["Rachis", "Petiole", "Midrib", "Vein"], "a": "Rachis"},
+    {"id": 928, "q": "Neem is an example of:", "o": ["Pinnately compound leaf", "Palmately compound leaf", "Simple leaf", "Whorled leaf"], "a": "Pinnately compound leaf"},
+    {"id": 929, "q": "Silk Cotton (Bombax) is an example of:", "o": ["Palmately compound leaf", "Pinnately compound leaf", "Simple leaf", "Alternate phyllotaxy"], "a": "Palmately compound leaf"},
+    {"id": 930, "q": "Alternate phyllotaxy (single leaf at each node) is seen in:", "o": ["China rose, Mustard, Sun flower", "Calotropis and Guava", "Alstonia", "Neem"], "a": "China rose, Mustard, Sun flower"},
+    {"id": 931, "q": "Opposite phyllotaxy (pair of leaves at each node) is seen in:", "o": ["Calotropis and Guava", "China rose and Mustard", "Alstonia", "Sunflower"], "a": "Calotropis and Guava"},
+    {"id": 932, "q": "Whorled phyllotaxy (more than two leaves at a node) is seen in:", "o": ["Alstonia", "Calotropis", "China rose", "Guava"], "a": "Alstonia"},
+    {"id": 933, "q": "Leaves are modified into tendrils for climbing in:", "o": ["Peas", "Cactus", "Onion", "Australian Acacia"], "a": "Peas"},
+    {"id": 934, "q": "Leaves are modified into spines for defense in:", "o": ["Cacti", "Peas", "Onion", "Garlic"], "a": "Cacti"},
+    {"id": 935, "q": "Fleshy leaves store food in:", "o": ["Onion and Garlic", "Pea and Bean", "Cactus and Acacia", "Rose and Jasmine"], "a": "Onion and Garlic"},
+    {"id": 936, "q": "In Australian Acacia, the leaves are small and short-lived. The ______ expands, becomes green and synthesizes food.", "o": ["Petiole (Phyllode)", "Stipule", "Stem", "Rachis"], "a": "Petiole (Phyllode)"},
+    {"id": 937, "q": "Pitcher plant and Venus-fly trap are examples of:", "o": ["Insectivorous plants (modified leaves)", "Parasitic plants", "Symbiotic plants", "Saprophytic plants"], "a": "Insectivorous plants (modified leaves)"},
+
+    # --- INFLORESCENCE ---
+    {"id": 938, "q": "The arrangement of flowers on the floral axis is termed as:", "o": ["Inflorescence", "Phyllotaxy", "Placentation", "Aestivation"], "a": "Inflorescence"},
+    {"id": 939, "q": "In Racemose inflorescence, the main axis:", "o": ["Continues to grow", "Terminates in a flower", "Stops growing", "Becomes a thorn"], "a": "Continues to grow"},
+    {"id": 940, "q": "In Racemose inflorescence, flowers are borne in:", "o": ["Acropetal succession", "Basipetal succession", "Random order", "Whorls"], "a": "Acropetal succession"},
+    {"id": 941, "q": "In Cymose inflorescence, the main axis:", "o": ["Terminates in a flower", "Continues to grow", "Forms a tendril", "Forms a leaf"], "a": "Terminates in a flower"},
+    {"id": 942, "q": "In Cymose inflorescence, flowers are borne in:", "o": ["Basipetal order", "Acropetal order", "Zig-zag order", "Spiral order"], "a": "Basipetal order"},
+    {"id": 943, "q": "Solanum (Potato genus) shows which type of inflorescence?", "o": ["Cymose", "Racemose", "Spadix", "Verticillaster"], "a": "Cymose"},
+    
+    # --- COMPARATIVE PHYSIOLOGY (VERY IMPORTANT) ---
+    {"id": 817, "q": "Which of the following animals has a 4-chambered heart despite being a reptile?", "o": ["Crocodile", "Turtle", "Lizard", "Snake"], "a": "Crocodile"},
+    {"id": 818, "q": "Three-chambered heart is found in:", "o": ["Amphibians and Reptiles (except crocodiles)", "Birds and Mammals", "Fish and Amphibians", "Only Reptiles"], "a": "Amphibians and Reptiles (except crocodiles)"},
+    {"id": 819, "q": "Two-chambered heart occurs in:", "o": ["Fishes", "Amphibians", "Birds", "Reptiles"], "a": "Fishes"},
+    {"id": 820, "q": "Which of the following phyla has a closed circulatory system?", "o": ["Annelida and Chordata", "Arthropoda and Mollusca", "Hemichordata and Echinodermata", "Platyhelminthes"], "a": "Annelida and Chordata"},
+    {"id": 821, "q": "Open circulatory system is present in:", "o": ["Arthropoda, Mollusca, Hemichordata", "Annelida, Chordata", "Cephalopods", "Vertebrates"], "a": "Arthropoda, Mollusca, Hemichordata"},
+    {"id": 822, "q": "Malpighian tubules are the excretory organs in:", "o": ["Insects (Arthropods)", "Annelids", "Flatworms", "Crustaceans"], "a": "Insects (Arthropods)"},
+    {"id": 823, "q": "Flame cells (Solenocytes) are excretory structures of:", "o": ["Platyhelminthes", "Aschelminthes", "Annelida", "Mollusca"], "a": "Platyhelminthes"},
+    {"id": 824, "q": "Nephridia help in excretion and osmoregulation in:", "o": ["Annelida", "Arthropoda", "Porifera", "Cnidaria"], "a": "Annelida"},
+    {"id": 825, "q": "Green glands (Antennal glands) perform excretion in:", "o": ["Crustaceans (Prawns)", "Insects", "Arachnids", "Molluscs"], "a": "Crustaceans (Prawns)"},
+    {"id": 826, "q": "Proboscis gland is the excretory organ of:", "o": ["Hemichordata", "Urochordata", "Cephalochordata", "Vertebrata"], "a": "Hemichordata"},
+    {"id": 827, "q": "Which of the following is Homeothermic (Warm-blooded)?", "o": ["Corvus (Crow)", "Testudo", "Rana", "Scoliodon"], "a": "Corvus (Crow)"},
+    {"id": 828, "q": "Which of the following is Poikilothermic (Cold-blooded)?", "o": ["Cobra", "Penguin", "Whale", "Bat"], "a": "Cobra"},
+    {"id": 829, "q": "Which animal group is entirely marine?", "o": ["Echinodermata, Ctenophora, Hemichordata", "Porifera, Cnidaria", "Mollusca, Arthropoda", "Chordata"], "a": "Echinodermata, Ctenophora, Hemichordata"},
+
+    # --- SPECIFIC EXAMPLES & COMMON NAMES (RAPID FIRE) ---
+    {"id": 830, "q": "Clarias is commonly known as:", "o": ["Magur", "Rohu", "Katla", "Singhi"], "a": "Magur"},
+    {"id": 831, "q": "Betta is:", "o": ["Fighting fish", "Angel fish", "Flying fish", "Dog fish"], "a": "Fighting fish"},
+    {"id": 832, "q": "Pterophyllum is:", "o": ["Angel fish", "Fighting fish", "Saw fish", "Sucker fish"], "a": "Angel fish"},
+    {"id": 833, "q": "Ascidia, Salpa, and Doliolum belong to:", "o": ["Urochordata", "Cephalochordata", "Hemichordata", "Vertebrata"], "a": "Urochordata"},
+    {"id": 834, "q": "Physalia is called Portuguese man-of-war because:", "o": ["It resembles a warship", "It is found in Portugal", "It fights with other animals", "It has a gun-like organ"], "a": "It resembles a warship"},
+    {"id": 835, "q": "Pennatula is:", "o": ["Sea Pen", "Sea Fan", "Sea Hare", "Sea Lily"], "a": "Sea Pen"},
+    {"id": 836, "q": "Gorgonia is:", "o": ["Sea Fan", "Sea Pen", "Brain Coral", "Red Coral"], "a": "Sea Fan"},
+    {"id": 837, "q": "Meandrina is:", "o": ["Brain Coral", "Organ Pipe Coral", "Blue Coral", "Red Coral"], "a": "Brain Coral"},
+    {"id": 838, "q": "Limulus is:", "o": ["King Crab (Living Fossil)", "Locust", "Lobster", "Crab"], "a": "King Crab (Living Fossil)"},
+    {"id": 839, "q": "Locusta is a:", "o": ["Gregarious Pest", "Vector", "Useful insect", "Pollinator"], "a": "Gregarious Pest"},
+    {"id": 840, "q": "Bombyx mori produces:", "o": ["Silk", "Lac", "Honey", "Wax"], "a": "Silk"},
+    {"id": 841, "q": "Laccifer produces:", "o": ["Lac", "Silk", "Honey", "Pearl"], "a": "Lac"},
+    {"id": 842, "q": "Aplysia is:", "o": ["Sea Hare", "Sea Lemon", "Sea Cow", "Sea Horse"], "a": "Sea Hare"},
+    {"id": 843, "q": "Dentalium is:", "o": ["Tusk Shell", "Pearl Oyster", "Cuttle fish", "Squid"], "a": "Tusk Shell"},
+    {"id": 844, "q": "Chaetopleura is:", "o": ["Chiton", "Dentalium", "Pila", "Unio"], "a": "Chiton"},
+    {"id": 845, "q": "Sepia is:", "o": ["Cuttlefish", "Squid", "Octopus", "Oyster"], "a": "Cuttlefish"},
+    {"id": 846, "q": "Loligo is:", "o": ["Squid", "Cuttlefish", "Snail", "Slug"], "a": "Squid"},
+    {"id": 847, "q": "Ophiura is:", "o": ["Brittle Star", "Star Fish", "Sea Lily", "Sea Urchin"], "a": "Brittle Star"},
+    {"id": 848, "q": "Antedon is:", "o": ["Sea Lily", "Sea Fan", "Sea Pen", "Sea Cucumber"], "a": "Sea Lily"},
+    {"id": 849, "q": "Echinus is:", "o": ["Sea Urchin", "Sea Mouse", "Sea Hare", "Sea Lion"], "a": "Sea Urchin"},
+    {"id": 850, "q": "Cucumaria is:", "o": ["Sea Cucumber", "Sea Squash", "Sea Melon", "Sea Gourd"], "a": "Sea Cucumber"},
+
+    # --- UNIQUE FEATURES & EXCEPTIONS ---
+    {"id": 851, "q": "Which mammal is Oviparous (Egg-laying)?", "o": ["Platypus (Ornithorhynchus)", "Kangaroo", "Whale", "Bat"], "a": "Platypus (Ornithorhynchus)"},
+    {"id": 852, "q": "Which of the following is a flightless bird?", "o": ["Struthio (Ostrich)", "Psittacula", "Pavo", "Neophron"], "a": "Struthio (Ostrich)"},
+    {"id": 853, "q": "Pneumatic bones (hollow bones) are an adaptation for:", "o": ["Flight", "Swimming", "Running", "Burrowing"], "a": "Flight"},
+    {"id": 854, "q": "Which fish has a cartilaginous skeleton but a terminal mouth? (Trick question, usually bony have terminal)", "o": ["None (Exception check)", "Labeo", "Catla", "Clarias"], "a": "Labeo"}, # Usually Bony fish have terminal mouth.
+    {"id": 855, "q": "In which group does the Notochord extend from head to tail and persist throughout life?", "o": ["Cephalochordata", "Urochordata", "Vertebrata", "Hemichordata"], "a": "Cephalochordata"},
+    {"id": 856, "q": "Retrogressive metamorphosis (Larva is more advanced than adult) is seen in:", "o": ["Urochordata (Ascidia)", "Cephalochordata", "Amphibians", "Cyclostomes"], "a": "Urochordata (Ascidia)"},
+    {"id": 857, "q": "Radula (rasping organ) is present in Molluscs but absent in:", "o": ["Bivalves (like Oysters)", "Snails", "Squids", "Octopus"], "a": "Bivalves (like Oysters)"},
+    {"id": 858, "q": "A water vascular system is characteristic of:", "o": ["Echinodermata", "Porifera", "Cnidaria", "Mollusca"], "a": "Echinodermata"},
+    {"id": 859, "q": "A water canal system is characteristic of:", "o": ["Porifera", "Echinodermata", "Coelenterata", "Platyhelminthes"], "a": "Porifera"},
+    {"id": 860, "q": "Metagenesis (Alternation of generation) is shown by:", "o": ["Obelia", "Hydra", "Aurelia", "Adamsia"], "a": "Obelia"},
+    {"id": 861, "q": "Bioluminescence is well marked in:", "o": ["Ctenoplana", "Physalia", "Fasciola", "Nereis"], "a": "Ctenoplana"},
+    {"id": 862, "q": "Which of the following is a 'Living Fossil'?", "o": ["Limulus", "Locusta", "Bombyx", "Apis"], "a": "Limulus"},
+    {"id": 863, "q": "Which sponge lives in fresh water?", "o": ["Spongilla", "Sycon", "Euspongia", "Leucosolenia"], "a": "Spongilla"},
+    {"id": 864, "q": "Which organism has both plant and animal-like characteristics?", "o": ["Euglena", "Paramecium", "Amoeba", "Plasmodium"], "a": "Euglena"},
+    
+    # --- ANATOMY & SYSTEMS ---
+    {"id": 865, "q": "Direct development (No larval stage) is found in:", "o": ["Humans, Earthworm", "Frogs, Insects", "Silkworm, Butterfly", "Obelia"], "a": "Humans, Earthworm"},
+    {"id": 866, "q": "Indirect development involves:", "o": ["Larval stages", "No larva", "Direct growth", "Vivipary"], "a": "Larval stages"},
+    {"id": 867, "q": "Body is covered by dry and cornified skin with scales in:", "o": ["Reptiles", "Amphibians", "Fish", "Birds"], "a": "Reptiles"},
+    {"id": 868, "q": "Air sacs connected to lungs mainly supplement:", "o": ["Respiration in Birds", "Buoyancy in Fish", "Digestion in Mammals", "Excretion in Reptiles"], "a": "Respiration in Birds"},
+    {"id": 869, "q": "Mammary glands are modified:", "o": ["Sweat glands", "Sebaceous glands", "Scent glands", "Endocrine glands"], "a": "Sweat glands"},
+    {"id": 870, "q": "Diaphragm is a characteristic feature of:", "o": ["Mammals", "Birds", "Reptiles", "Amphibians"], "a": "Mammals"},
+    {"id": 871, "q": "The sound-producing organ in birds is called:", "o": ["Syrinx", "Larynx", "Pharynx", "Trachea"], "a": "Syrinx"},
+    {"id": 872, "q": "Cloaca is found in:", "o": ["Amphibians, Reptiles, Birds", "Only Mammals", "Only Fish", "Only Birds"], "a": "Amphibians, Reptiles, Birds"},
+    {"id": 873, "q": "Pinna (external ear) is absent in:", "o": ["Reptiles, Amphibians, Birds", "Mammals", "Humans", "Bats"], "a": "Reptiles, Amphibians, Birds"},
+    {"id": 874, "q": "Crop and Gizzard are found in the digestive system of:", "o": ["Birds and Cockroaches", "Humans", "Frogs", "Fish"], "a": "Birds and Cockroaches"},
+    {"id": 875, "q": "Which of the following is a cold-blooded animal?", "o": ["Shark", "Whale", "Dolphin", "Camel"], "a": "Shark"},
+
+    # --- MATCHING LOGIC (CONVERTED TO MCQ) ---
+    {"id": 876, "q": "Select the correct match: Petromyzon -> ?", "o": ["Ectoparasite", "Endoparasite", "Symbiont", "Commensal"], "a": "Ectoparasite"},
+    {"id": 877, "q": "Select the correct match: Adamsia -> ?", "o": ["Sea anemone", "Sea pen", "Sea fan", "Brain coral"], "a": "Sea anemone"},
+    {"id": 878, "q": "Select the correct match: Radula -> ?", "o": ["Mollusca", "Arthropoda", "Annelida", "Echinodermata"], "a": "Mollusca"},
+    {"id": 879, "q": "Select the correct match: Air Bladder -> ?", "o": ["Osteichthyes", "Chondrichthyes", "Cyclostomata", "Amphibia"], "a": "Osteichthyes"},
+    {"id": 880, "q": "Select the correct match: Notochord persists throughout life -> ?", "o": ["Cephalochordata", "Urochordata", "Vertebrata", "Hemichordata"], "a": "Cephalochordata"},
+
+    # --- ADVANCED / TRICKY ONES ---
+    {"id": 881, "q": "Ichthyophis belongs to Amphibia but looks like:", "o": ["A worm/Snake", "A frog", "A lizard", "A fish"], "a": "A worm/Snake"},
+    {"id": 882, "q": "Which shark is known as the Great White Shark?", "o": ["Carcharodon", "Scoliodon", "Pristis", "Trygon"], "a": "Carcharodon"},
+    {"id": 883, "q": "The poisonous sting in Trygon (Sting ray) is a modification of:", "o": ["Dorsal fin", "Pelvic fin", "Pectoral fin", "Tail"], "a": "Dorsal fin"}, # Note: Often associated with tail base
+    {"id": 884, "q": "Which bird cannot fly?", "o": ["Aptenodytes (Penguin)", "Corvus", "Psittacula", "Pavo"], "a": "Aptenodytes (Penguin)"},
+    {"id": 885, "q": "Identify the mammal that lives in water:", "o": ["Balaenoptera (Blue Whale)", "Macropus", "Felis", "Elephas"], "a": "Balaenoptera (Blue Whale)"},
+    {"id": 886, "q": "Which of the following is NOT a true fish?", "o": ["Silver fish (Insect)", "Dog fish", "Saw fish", "Flying fish"], "a": "Silver fish (Insect)"},
+    {"id": 887, "q": "Which of the following is NOT a true fish?", "o": ["Jelly fish (Cnidaria)", "Sea horse", "Fighting fish", "Rohu"], "a": "Jelly fish (Cnidaria)"},
+    {"id": 888, "q": "Which of the following is NOT a true fish?", "o": ["Star fish (Echinoderm)", "Electric ray", "Sting ray", "Magur"], "a": "Star fish (Echinoderm)"},
+    {"id": 889, "q": "Which of the following is NOT a true fish?", "o": ["Cuttle fish (Mollusc)", "Shark", "Eel", "Salmon"], "a": "Cuttle fish (Mollusc)"},
+    {"id": 890, "q": "Which of the following is a true fish?", "o": ["Sea horse", "Jelly fish", "Star fish", "Silver fish"], "a": "Sea horse"},
+    
+    # --- FINAL WRAP UP ---
+    {"id": 891, "q": "Presence of a post-anal tail is a characteristic of:", "o": ["Chordates", "Non-chordates", "All animals", "Invertebrates"], "a": "Chordates"},
+    {"id": 892, "q": "Bilateral symmetry, Triploblastic, Coelomate and Segmented body is seen in:", "o": ["Annelida, Arthropoda, Chordata", "Platyhelminthes", "Aschelminthes", "Cnidaria"], "a": "Annelida, Arthropoda, Chordata"},
+    {"id": 893, "q": "Which phylum is exclusively marine?", "o": ["Echinodermata", "Mollusca", "Arthropoda", "Annelida"], "a": "Echinodermata"},
+    {"id": 894, "q": "External fertilization and indirect development is characteristic of:", "o": ["Ctenophora and Echinodermata", "Mammals", "Birds", "Reptiles"], "a": "Ctenophora and Echinodermata"},
+    {"id": 895, "q": "Internal fertilization is seen in:", "o": ["Porifera, Platyhelminthes, Aschelminthes", "Ctenophora", "Echinodermata", "All Algae"], "a": "Porifera, Platyhelminthes, Aschelminthes"},
+    {"id": 896, "q": "Which is the correct evolutionary sequence?", "o": ["Porifera -> Cnidaria -> Platyhelminthes -> Aschelminthes", "Cnidaria -> Porifera -> Annelida", "Arthropoda -> Annelida -> Mollusca", "Chordata -> Hemichordata -> Echinodermata"], "a": "Porifera -> Cnidaria -> Platyhelminthes -> Aschelminthes"},
+    {"id": 897, "q": "Ventral nerve cord is characteristic of:", "o": ["Non-chordates", "Chordates", "Vertebrates", "Humans"], "a": "Non-chordates"},
+    {"id": 898, "q": "Notochord is ectodermal in origin. This statement is:", "o": ["False (It is Mesodermal)", "True", "Partially true", "Valid for Urochordates"], "a": "False (It is Mesodermal)"},
+    {"id": 899, "q": "Which organism has a beak but no teeth?", "o": ["Birds", "Reptiles", "Mammals", "Amphibians"], "a": "Birds"},
+    {"id": 900, "q": "The most successful parasites are:", "o": ["Platyhelminthes and Aschelminthes", "Porifera", "Cnidaria", "Mollusca"], "a": "Platyhelminthes and Aschelminthes"},
+    # --- PHYLUM CHORDATA (BASICS) ---
+    {"id": 716, "q": "The fundamental character of Chordata is the presence of:", "o": ["Notochord, Dorsal hollow nerve cord, Pharyngeal gill slits", "Ventral nerve cord, Solid notochord", "Diploblastic body", "Chitinous exoskeleton"], "a": "Notochord, Dorsal hollow nerve cord, Pharyngeal gill slits"},
+    {"id": 717, "q": "In Chordates, the Central Nervous System (CNS) is:", "o": ["Dorsal, hollow and single", "Ventral, solid and double", "Dorsal, solid and double", "Ventral, hollow and single"], "a": "Dorsal, hollow and single"},
+    {"id": 718, "q": "In Non-chordates (like Earthworm), the CNS is:", "o": ["Ventral, solid and double", "Dorsal, hollow and single", "Ventral, hollow and single", "Absent"], "a": "Ventral, solid and double"},
+    {"id": 719, "q": "Phylum Chordata is divided into three subphyla: Urochordata, Cephalochordata and:", "o": ["Vertebrata", "Hemichordata", "Protochordata", "Gnathostomata"], "a": "Vertebrata"},
+    {"id": 720, "q": "Urochordata and Cephalochordata are often referred to as:", "o": ["Protochordates", "Vertebrates", "Invertebrates", "Agnatha"], "a": "Protochordates"},
+    {"id": 721, "q": "In Urochordata (Tunicata), the notochord is present:", "o": ["Only in larval tail", "Throughout life from head to tail", "In adults only", "Absent"], "a": "Only in larval tail"},
+    {"id": 722, "q": "In Cephalochordata, the notochord extends:", "o": ["From head to tail region and persists throughout life", "Only in tail", "Only in larva", "Disappears in adult"], "a": "From head to tail region and persists throughout life"},
+    {"id": 723, "q": "Examples of Urochordata include:", "o": ["Ascidia, Salpa, Doliolum", "Branchiostoma", "Petromyzon", "Myxine"], "a": "Ascidia, Salpa, Doliolum"},
+    {"id": 724, "q": "Branchiostoma (Amphioxus or Lancelet) belongs to:", "o": ["Cephalochordata", "Urochordata", "Vertebrata", "Hemichordata"], "a": "Cephalochordata"},
+    {"id": 725, "q": "The members of subphylum Vertebrata possess notochord during:", "o": ["Embryonic period only", "Adult period only", "Throughout life", "Never"], "a": "Embryonic period only"},
+    {"id": 726, "q": "In adult vertebrates, the notochord is replaced by:", "o": ["Cartilaginous or bony vertebral column", "Nerve cord", "Gills", "Sternum"], "a": "Cartilaginous or bony vertebral column"},
+    {"id": 727, "q": "All vertebrates are chordates but all chordates are not vertebrates. This statement is:", "o": ["True", "False", "Partially true", "Valid only for mammals"], "a": "True"},
+
+    # --- CLASS CYCLOSTOMATA (JAWLESS FISH) ---
+    {"id": 728, "q": "Cyclostomes are:", "o": ["Ectoparasites on some fishes", "Endoparasites", "Free living herbivores", "Symbionts"], "a": "Ectoparasites on some fishes"},
+    {"id": 729, "q": "The body of Cyclostomes is devoid of:", "o": ["Scales and paired fins", "Gills", "Cranium", "Vertebral column"], "a": "Scales and paired fins"},
+    {"id": 730, "q": "Cyclostomes have a sucking and circular mouth without:", "o": ["Jaws", "Teeth", "Tongue", "Muscles"], "a": "Jaws"},
+    {"id": 731, "q": "How many pairs of gill slits are present in Cyclostomes for respiration?", "o": ["6-15 pairs", "2-4 pairs", "1 pair", "50-100 pairs"], "a": "6-15 pairs"},
+    {"id": 732, "q": "Cyclostomes are marine but migrate for spawning to:", "o": ["Fresh water", "Deep ocean", "Brackish water", "Land"], "a": "Fresh water"},
+    {"id": 733, "q": "After spawning, the adult Cyclostome:", "o": ["Dies", "Returns to ocean", "Becomes dormant", "Grows larger"], "a": "Dies"},
+    {"id": 734, "q": "Petromyzon is commonly known as:", "o": ["Lamprey", "Hagfish", "Dogfish", "Sawfish"], "a": "Lamprey"},
+    {"id": 735, "q": "Myxine is commonly known as:", "o": ["Hagfish", "Lamprey", "Electric ray", "Sucker fish"], "a": "Hagfish"},
+
+    # --- CLASS CHONDRICHTHYES (CARTILAGINOUS FISH) ---
+    {"id": 736, "q": "Chondrichthyes are marine animals with a:", "o": ["Streamlined body", "Flat body", "Round body", "Segmented body"], "a": "Streamlined body"},
+    {"id": 737, "q": "They have an endoskeleton made of:", "o": ["Cartilage", "Bone", "Chitin", "Silica"], "a": "Cartilage"},
+    {"id": 738, "q": "The mouth in Chondrichthyes is located:", "o": ["Ventrally", "Terminally", "Dorsally", "Laterally"], "a": "Ventrally"},
+    {"id": 739, "q": "The Notochord in Chondrichthyes is:", "o": ["Persistent throughout life", "Absent in adults", "Replaced by bone", "Present only in tail"], "a": "Persistent throughout life"},
+    {"id": 740, "q": "Gill slits are separate and without:", "o": ["Operculum (gill cover)", "Blood supply", "Filaments", "Arches"], "a": "Operculum (gill cover)"},
+    {"id": 741, "q": "The skin is tough, containing minute:", "o": ["Placoid scales", "Cycloid scales", "Ctenoid scales", "Ganoid scales"], "a": "Placoid scales"},
+    {"id": 742, "q": "Teeth in sharks are modified:", "o": ["Placoid scales which are backwardly directed", "Cycloid scales", "Bones", "Cartilage"], "a": "Placoid scales which are backwardly directed"},
+    {"id": 743, "q": "Due to the absence of air bladder, they have to:", "o": ["Swim constantly to avoid sinking", "Float passively", "Live on surface", "Live in burrows"], "a": "Swim constantly to avoid sinking"},
+    {"id": 744, "q": "Heart in fishes is:", "o": ["Two-chambered (one auricle, one ventricle)", "Three-chambered", "Four-chambered", "One-chambered"], "a": "Two-chambered (one auricle, one ventricle)"},
+    {"id": 745, "q": "Which of the following possess electric organs?", "o": ["Torpedo", "Trygon", "Scoliodon", "Pristis"], "a": "Torpedo"},
+    {"id": 746, "q": "Which of the following possesses a poison sting?", "o": ["Trygon", "Torpedo", "Carcharodon", "Pristis"], "a": "Trygon"},
+    {"id": 747, "q": "Chondrichthyes are:", "o": ["Poikilothermous (Cold-blooded)", "Homoiothermous (Warm-blooded)", "Both", "None"], "a": "Poikilothermous (Cold-blooded)"},
+    {"id": 748, "q": "In male sharks, pelvic fins bear:", "o": ["Claspers", "Spines", "Stings", "Tentacles"], "a": "Claspers"},
+    {"id": 749, "q": "Fertilization in Chondrichthyes is generally:", "o": ["Internal", "External", "Absent", "In mouth"], "a": "Internal"},
+    {"id": 750, "q": "Many of them are Viviparous. Example of Dog fish is:", "o": ["Scoliodon", "Pristis", "Carcharodon", "Trygon"], "a": "Scoliodon"},
+    {"id": 751, "q": "Pristis is commonly known as:", "o": ["Saw fish", "Dog fish", "Great white shark", "Sting ray"], "a": "Saw fish"},
+    {"id": 752, "q": "Carcharodon is:", "o": ["Great white shark", "Hammerhead shark", "Whale shark", "Tiger shark"], "a": "Great white shark"},
+
+    # --- CLASS OSTEICHTHYES (BONY FISH) ---
+    {"id": 753, "q": "Osteichthyes includes both marine and fresh water fishes with:", "o": ["Bony endoskeleton", "Cartilaginous endoskeleton", "Chitinous exoskeleton", "No skeleton"], "a": "Bony endoskeleton"},
+    {"id": 754, "q": "The mouth in Osteichthyes is mostly:", "o": ["Terminal", "Ventral", "Dorsal", "Lateral"], "a": "Terminal"},
+    {"id": 755, "q": "They have 4 pairs of gills which are covered by:", "o": ["Operculum on each side", "Skin flap", "Scales", "Nothing"], "a": "Operculum on each side"},
+    {"id": 756, "q": "Skin is covered with:", "o": ["Cycloid/Ctenoid scales", "Placoid scales", "Hair", "Feathers"], "a": "Cycloid/Ctenoid scales"},
+    {"id": 757, "q": "Air bladder is present which regulates:", "o": ["Buoyancy", "Digestion", "Reproduction", "Excretion"], "a": "Buoyancy"},
+    {"id": 758, "q": "Fertilization in bony fishes is usually:", "o": ["External", "Internal", "In uterus", "In air bladder"], "a": "External"},
+    {"id": 759, "q": "Exocoetus is commonly known as:", "o": ["Flying fish", "Sea horse", "Fighting fish", "Angel fish"], "a": "Flying fish"},
+    {"id": 760, "q": "Hippocampus is known as:", "o": ["Sea horse", "Sea cow", "Sea lion", "River horse"], "a": "Sea horse"},
+    {"id": 761, "q": "Freshwater bony fishes include:", "o": ["Labeo (Rohu), Catla (Katla), Clarias (Magur)", "Scoliodon, Pristis", "Exocoetus, Hippocampus", "Betta, Pterophyllum"], "a": "Labeo (Rohu), Catla (Katla), Clarias (Magur)"},
+    {"id": 762, "q": "Aquarium fishes include:", "o": ["Betta (Fighting fish), Pterophyllum (Angel fish)", "Labeo, Catla", "Scoliodon, Trygon", "Magur, Rohu"], "a": "Betta (Fighting fish), Pterophyllum (Angel fish)"},
+
+    # --- CLASS AMPHIBIA ---
+    {"id": 763, "q": "Amphibians can live in:", "o": ["Aquatic as well as terrestrial habitats", "Only water", "Only land", "Air"], "a": "Aquatic as well as terrestrial habitats"},
+    {"id": 764, "q": "Body of amphibians is divisible into:", "o": ["Head and Trunk", "Head, Thorax, Abdomen", "Cephalothorax and Abdomen", "Head and Tail only"], "a": "Head and Trunk"},
+    {"id": 765, "q": "The amphibian skin is:", "o": ["Moist and without scales", "Dry and scaly", "Covered with hair", "Covered with feathers"], "a": "Moist and without scales"},
+    {"id": 766, "q": "Which structure represents the ear in amphibians?", "o": ["Tympanum", "Pinna", "Cochlea", "Operculum"], "a": "Tympanum"},
+    {"id": 767, "q": "The alimentary canal, urinary and reproductive tracts open into a common chamber called:", "o": ["Cloaca", "Anus", "Rectum", "Urethra"], "a": "Cloaca"},
+    {"id": 768, "q": "Respiration in amphibians is by:", "o": ["Gills, lungs and skin", "Lungs only", "Skin only", "Gills only"], "a": "Gills, lungs and skin"},
+    {"id": 769, "q": "Heart in amphibians is:", "o": ["Three-chambered (2 auricles, 1 ventricle)", "Two-chambered", "Four-chambered", "One-chambered"], "a": "Three-chambered (2 auricles, 1 ventricle)"},
+    {"id": 770, "q": "Fertilization in amphibians is:", "o": ["External", "Internal", "In uterus", "Absent"], "a": "External"},
+    {"id": 771, "q": "Bufo is:", "o": ["Toad", "Frog", "Tree frog", "Salamander"], "a": "Toad"},
+    {"id": 772, "q": "Rana is:", "o": ["Frog", "Toad", "Tree frog", "Limbless amphibia"], "a": "Frog"},
+    {"id": 773, "q": "Hyla is:", "o": ["Tree frog", "Toad", "Mud puppy", "Blind worm"], "a": "Tree frog"},
+    {"id": 774, "q": "Salamandra is:", "o": ["Salamander", "Lizard", "Frog", "Snake"], "a": "Salamander"},
+    {"id": 775, "q": "Ichthyophis is a:", "o": ["Limbless amphibia", "Lizard", "Snake", "Fish"], "a": "Limbless amphibia"},
+
+    # --- CLASS REPTILIA ---
+    {"id": 776, "q": "The class name Reptilia refers to their:", "o": ["Creeping or crawling mode of locomotion", "Scaly skin", "Hard shell", "Water life"], "a": "Creeping or crawling mode of locomotion"},
+    {"id": 777, "q": "Reptiles are mostly terrestrial and their body is covered by:", "o": ["Dry and cornified skin, epidermal scales or scutes", "Moist skin", "Hair", "Feathers"], "a": "Dry and cornified skin, epidermal scales or scutes"},
+    {"id": 778, "q": "Do reptiles have external ear openings?", "o": ["No, Tympanum represents ear", "Yes, Pinna is present", "Yes, large ears", "No ear at all"], "a": "No, Tympanum represents ear"},
+    {"id": 779, "q": "Heart in reptiles is usually three-chambered, but four-chambered in:", "o": ["Crocodiles", "Snakes", "Lizards", "Turtles"], "a": "Crocodiles"},
+    {"id": 780, "q": "Reptiles are Poikilotherms. Snakes and lizards shed their scales as:", "o": ["Skin cast", "Feathers", "Fur", "Horn"], "a": "Skin cast"},
+    {"id": 781, "q": "Chelone is:", "o": ["Turtle", "Tortoise", "Tree lizard", "Garden lizard"], "a": "Turtle"},
+    {"id": 782, "q": "Testudo is:", "o": ["Tortoise", "Turtle", "Wall lizard", "Viper"], "a": "Tortoise"},
+    {"id": 783, "q": "Chameleon is:", "o": ["Tree lizard", "Garden lizard", "Wall lizard", "Monitor lizard"], "a": "Tree lizard"},
+    {"id": 784, "q": "Calotes is:", "o": ["Garden lizard", "Tree lizard", "Wall lizard", "Crocodile"], "a": "Garden lizard"},
+    {"id": 785, "q": "Hemidactylus is:", "o": ["Wall lizard", "Tree lizard", "Garden lizard", "Snake"], "a": "Wall lizard"},
+    {"id": 786, "q": "Poisonous snakes include:", "o": ["Naja (Cobra), Bangarus (Krait), Vipera (Viper)", "Python, Rat snake", "Tree snake, Water snake", "Anaconda"], "a": "Naja (Cobra), Bangarus (Krait), Vipera (Viper)"},
+
+    # --- CLASS AVES (BIRDS) ---
+    {"id": 787, "q": "The characteristic feature of Aves is the presence of:", "o": ["Feathers", "Hair", "Scales only", "Gills"], "a": "Feathers"},
+    {"id": 788, "q": "The forelimbs in birds are modified into:", "o": ["Wings", "Legs", "Hands", "Fins"], "a": "Wings"},
+    {"id": 789, "q": "The hind limbs generally have scales and are modified for:", "o": ["Walking, swimming or clasping", "Flying", "Eating", "Grasping"], "a": "Walking, swimming or clasping"},
+    {"id": 790, "q": "Skin of birds is dry without glands except the oil gland at the:", "o": ["Base of the tail", "Base of the neck", "Under wings", "On the beak"], "a": "Base of the tail"},
+    {"id": 791, "q": "Endoskeleton is fully ossified (bony) and long bones are hollow with air cavities called:", "o": ["Pneumatic bones", "Compact bones", "Cartilage bones", "Spongy bones"], "a": "Pneumatic bones"},
+    {"id": 792, "q": "The digestive tract of birds has additional chambers called:", "o": ["Crop and Gizzard", "Rumen and Reticulum", "Stomach and Intestine", "Liver and Pancreas"], "a": "Crop and Gizzard"},
+    {"id": 793, "q": "Heart in Aves is:", "o": ["Completely four-chambered", "Three-chambered", "Two-chambered", "Incomplete four-chambered"], "a": "Completely four-chambered"},
+    {"id": 794, "q": "Birds are Homoiothermous, which means:", "o": ["They can maintain a constant body temperature", "Their temperature changes with environment", "They are cold blooded", "They hibernate"], "a": "They can maintain a constant body temperature"},
+    {"id": 795, "q": "Respiration in birds is by:", "o": ["Lungs with air sacs connected to them", "Gills", "Skin", "Trachea"], "a": "Lungs with air sacs connected to them"},
+    {"id": 796, "q": "Corvus is:", "o": ["Crow", "Pigeon", "Parrot", "Peacock"], "a": "Crow"},
+    {"id": 797, "q": "Columba is:", "o": ["Pigeon", "Crow", "Parrot", "Penguin"], "a": "Pigeon"},
+    {"id": 798, "q": "Psittacula is:", "o": ["Parrot", "Peacock", "Vulture", "Ostrich"], "a": "Parrot"},
+    {"id": 799, "q": "Struthio is:", "o": ["Ostrich", "Penguin", "Peacock", "Kiwi"], "a": "Ostrich"},
+    {"id": 800, "q": "Pavo is:", "o": ["Peacock", "Parrot", "Pigeon", "Crow"], "a": "Peacock"},
+    {"id": 801, "q": "Aptenodytes is:", "o": ["Penguin", "Ostrich", "Vulture", "Kiwi"], "a": "Penguin"},
+    {"id": 802, "q": "Neophron is:", "o": ["Vulture", "Eagle", "Hawk", "Kite"], "a": "Vulture"},
+
+    # --- CLASS MAMMALIA ---
+    {"id": 803, "q": "The most unique mammalian characteristic is the presence of:", "o": ["Milk producing glands (Mammary glands)", "Hair", "Pinna", "Four chambered heart"], "a": "Milk producing glands (Mammary glands)"},
+    {"id": 804, "q": "Skin of mammals is unique in possessing:", "o": ["Hair", "Feathers", "Scales", "Scutes"], "a": "Hair"},
+    {"id": 805, "q": "External ears or _____ are present in mammals.", "o": ["Pinnae", "Tympanum", "Operculum", "Cochlea"], "a": "Pinnae"},
+    {"id": 806, "q": "Different types of teeth are present in the jaw. This condition is:", "o": ["Heterodont", "Homodont", "Polyphyodont", "Acrodont"], "a": "Heterodont"},
+    {"id": 807, "q": "Heart in mammals is:", "o": ["Four-chambered", "Three-chambered", "Two-chambered", "One-chambered"], "a": "Four-chambered"},
+    {"id": 808, "q": "Mammals are Viviparous with one exception. The Oviparous mammal is:", "o": ["Ornithorhynchus (Platypus)", "Macropus (Kangaroo)", "Pteropus (Flying fox)", "Balaenoptera (Blue whale)"], "a": "Ornithorhynchus (Platypus)"},
+    {"id": 809, "q": "Macropus is:", "o": ["Kangaroo", "Flying fox", "Monkey", "Camel"], "a": "Kangaroo"},
+    {"id": 810, "q": "Pteropus is:", "o": ["Flying fox", "Bat", "Kangaroo", "Monkey"], "a": "Flying fox"},
+    {"id": 811, "q": "Camelus is Camel, Macaca is:", "o": ["Monkey", "Rat", "Dog", "Cat"], "a": "Monkey"},
+    {"id": 812, "q": "Rattus is Rat, Canis is:", "o": ["Dog", "Cat", "Lion", "Tiger"], "a": "Dog"},
+    {"id": 813, "q": "Felis is Cat, Elephas is:", "o": ["Elephant", "Horse", "Tiger", "Lion"], "a": "Elephant"},
+    {"id": 814, "q": "Equus is:", "o": ["Horse", "Donkey", "Zebra", "Elephant"], "a": "Horse"},
+    {"id": 815, "q": "Delphinus is Common Dolphin, Balaenoptera is:", "o": ["Blue whale", "Shark", "Seal", "Walrus"], "a": "Blue whale"},
+    {"id": 816, "q": "Panthera tigris is Tiger, Panthera leo is:", "o": ["Lion", "Leopard", "Cat", "Dog"], "a": "Lion"},
+    
+    # --- BASIS OF CLASSIFICATION ---
+    {"id": 601, "q": "Which level of organization is found in Sponges?", "o": ["Cellular level", "Tissue level", "Organ level", "Organ-system level"], "a": "Cellular level"},
+    {"id": 602, "q": "Tissue level of organization is exhibited by:", "o": ["Porifera", "Cnidaria and Ctenophora", "Platyhelminthes", "Annelida"], "a": "Cnidaria and Ctenophora"},
+    {"id": 603, "q": "Organ level of organization is first seen in:", "o": ["Platyhelminthes", "Aschelminthes", "Annelida", "Arthropoda"], "a": "Platyhelminthes"},
+    {"id": 604, "q": "When any plane passing through the central axis of the body divides the organism into two identical halves, it is called:", "o": ["Radial symmetry", "Bilateral symmetry", "Asymmetry", "Biradial symmetry"], "a": "Radial symmetry"},
+    {"id": 605, "q": "Radial symmetry is found in:", "o": ["Coelenterates, Ctenophores and Echinoderms (Adults)", "Platyhelminthes", "Arthropods", "Molluscs"], "a": "Coelenterates, Ctenophores and Echinoderms (Adults)"},
+    {"id": 606, "q": "Bilateral symmetry is a characteristic of:", "o": ["Sponges", "Ctenophores", "Annelids and Arthropods", "Adult Echinoderms"], "a": "Annelids and Arthropods"},
+    {"id": 607, "q": "Animals in which the cells are arranged in two embryonic layers (External Ectoderm and Internal Endoderm) are called:", "o": ["Diploblastic", "Triploblastic", "Monoblastic", "Tetrablastic"], "a": "Diploblastic"},
+    {"id": 608, "q": "An undifferentiated layer present between ectoderm and endoderm in diploblastic animals is:", "o": ["Mesoderm", "Mesoglea", "Mesenchyme", "Mesothelium"], "a": "Mesoglea"},
+    {"id": 609, "q": "Triploblastic organization is found in:", "o": ["Porifera to Cnidaria", "Platyhelminthes to Chordata", "Ctenophora only", "Protozoa"], "a": "Platyhelminthes to Chordata"},
+    {"id": 610, "q": "The body cavity, which is lined by mesoderm is called:", "o": ["Coelom", "Pseudocoelom", "Haemocoel", "Blastocoel"], "a": "Coelom"},
+    {"id": 611, "q": "Pseudocoelom (mesoderm present as scattered pouches) is a characteristic feature of:", "o": ["Platyhelminthes", "Aschelminthes", "Annelida", "Mollusca"], "a": "Aschelminthes"},
+    {"id": 612, "q": "Animals in which the body cavity is absent (Acoelomates) are:", "o": ["Platyhelminthes", "Aschelminthes", "Annelids", "Arthropods"], "a": "Platyhelminthes"},
+    {"id": 613, "q": "Metamerism (True Segmentation) is characteristic of:", "o": ["Platyhelminthes", "Mollusca", "Annelida", "Echinodermata"], "a": "Annelida"},
+    {"id": 614, "q": "Notochord is derived from which embryonic layer?", "o": ["Ectoderm", "Endoderm", "Mesoderm", "Ecto-mesoderm"], "a": "Mesoderm"},
+    {"id": 615, "q": "Animals which possess notochord are called:", "o": ["Non-chordates", "Chordates", "Hemichordates", "Vertebrates"], "a": "Chordates"},
+
+    # --- PHYLUM PORIFERA (SPONGES) ---
+    {"id": 616, "q": "Members of phylum Porifera are commonly known as:", "o": ["Sponges", "Corals", "Roundworms", "Flatworms"], "a": "Sponges"},
+    {"id": 617, "q": "Sponges are mostly:", "o": ["Freshwater and symmetrical", "Marine and asymmetrical", "Terrestrial and radial", "Marine and bilateral"], "a": "Marine and asymmetrical"},
+    {"id": 618, "q": "Water enters the sponge body through minute pores called:", "o": ["Osculum", "Ostia", "Spiracles", "Hypostome"], "a": "Ostia"},
+    {"id": 619, "q": "Water leaves the sponge body through a large opening called:", "o": ["Ostia", "Osculum", "Mouth", "Anus"], "a": "Osculum"},
+    {"id": 620, "q": "The central cavity of sponges is known as:", "o": ["Coelom", "Spongocoel", "Gastro-vascular cavity", "Enteron"], "a": "Spongocoel"},
+    {"id": 621, "q": "The specialized cells lining the Spongocoel and canals are:", "o": ["Cnidoblasts", "Choanocytes (Collar cells)", "Flame cells", "Nephridia"], "a": "Choanocytes (Collar cells)"},
+    {"id": 622, "q": "Digestion in sponges is:", "o": ["Extracellular", "Intracellular", "Both", "Absent"], "a": "Intracellular"},
+    {"id": 623, "q": "The skeleton of sponges is made up of:", "o": ["Chitin", "Spicules or Spongin fibers", "Calcium carbonate shell", "Cartilage"], "a": "Spicules or Spongin fibers"},
+    {"id": 624, "q": "Sponges are hermaphrodites, which means:", "o": ["Sexes are separate", "Eggs and sperms are produced by the same individual", "They reproduce only asexually", "They are sterile"], "a": "Eggs and sperms are produced by the same individual"},
+    {"id": 625, "q": "Asexual reproduction in sponges occurs by:", "o": ["Fragmentation", "Gemmule formation", "Both A and B", "Binary fission"], "a": "Both A and B"},
+    {"id": 626, "q": "Fertilization in sponges is:", "o": ["External", "Internal", "Absent", "In water current"], "a": "Internal"},
+    {"id": 627, "q": "Identify the fresh water sponge:", "o": ["Sycon", "Euspongia", "Spongilla", "Leucosolenia"], "a": "Spongilla"},
+    {"id": 628, "q": "Euspongia is commonly known as:", "o": ["Bath sponge", "Fresh water sponge", "Scypha", "Brain sponge"], "a": "Bath sponge"},
+    {"id": 629, "q": "Sycon is scientifically known as:", "o": ["Scypha", "Spongilla", "Euspongia", "Hyalonema"], "a": "Scypha"},
+
+    # --- PHYLUM COELENTERATA (CNIDARIA) ---
+    {"id": 630, "q": "Cnidarians are mostly:", "o": ["Marine, sessile or free-swimming", "Freshwater and terrestrial", "Parasitic", "Terrestrial only"], "a": "Marine, sessile or free-swimming"},
+    {"id": 631, "q": "The name Cnidaria is derived from:", "o": ["Cnidoblasts or Cnidocytes", "Coelom", "Comb plates", "Choanocytes"], "a": "Cnidoblasts or Cnidocytes"},
+    {"id": 632, "q": "Cnidoblasts are used for:", "o": ["Anchorage", "Defense", "Capture of prey", "All of the above"], "a": "All of the above"},
+    {"id": 633, "q": "Cnidarians exhibit which level of organization?", "o": ["Cellular", "Tissue", "Organ", "Organ-system"], "a": "Tissue"},
+    {"id": 634, "q": "The central gastro-vascular cavity in Cnidaria has a single opening called:", "o": ["Osculum", "Hypostome (Mouth)", "Anus", "Ostia"], "a": "Hypostome (Mouth)"},
+    {"id": 635, "q": "Digestion in Cnidarians is:", "o": ["Only intracellular", "Only extracellular", "Both extracellular and intracellular", "Absent"], "a": "Both extracellular and intracellular"},
+    {"id": 636, "q": "Corals have a skeleton composed of:", "o": ["Chitin", "Calcium carbonate", "Silica", "Spongin"], "a": "Calcium carbonate"},
+    {"id": 637, "q": "The sessile and cylindrical body form of Cnidarians is called:", "o": ["Medusa", "Polyp", "Cyst", "Spore"], "a": "Polyp"},
+    {"id": 638, "q": "The umbrella-shaped and free-swimming body form is called:", "o": ["Polyp", "Medusa", "Larva", "Pupa"], "a": "Medusa"},
+    {"id": 639, "q": "Which of the following exhibits the Polyp form?", "o": ["Aurelia", "Hydra and Adamsia", "Jellyfish", "Obelia (Medusa stage)"], "a": "Hydra and Adamsia"},
+    {"id": 640, "q": "Which of the following exhibits the Medusa form?", "o": ["Hydra", "Adamsia", "Aurelia (Jelly fish)", "Sea Anemone"], "a": "Aurelia (Jelly fish)"},
+    {"id": 641, "q": "Alternation of generation (Metagenesis) is exhibited by:", "o": ["Hydra", "Adamsia", "Obelia", "Aurelia"], "a": "Obelia"},
+    {"id": 642, "q": "In Obelia, Polyps produce Medusae:", "o": ["Sexually", "Asexually", "By fragmentation", "By conjugation"], "a": "Asexually"},
+    {"id": 643, "q": "In Obelia, Medusae form Polyps:", "o": ["Asexually", "Sexually", "Vegetatively", "Spontaneously"], "a": "Sexually"},
+    {"id": 644, "q": "Physalia is commonly known as:", "o": ["Portuguese man-of-war", "Sea Anemone", "Sea Pen", "Brain Coral"], "a": "Portuguese man-of-war"},
+    {"id": 645, "q": "Adamsia is commonly known as:", "o": ["Sea Anemone", "Sea Fan", "Sea Pen", "Jelly fish"], "a": "Sea Anemone"},
+    {"id": 646, "q": "Pennatula is commonly known as:", "o": ["Sea Pen", "Sea Fan", "Sea Hare", "Sea Lily"], "a": "Sea Pen"},
+    {"id": 647, "q": "Gorgonia is commonly known as:", "o": ["Sea Fan", "Sea Pen", "Brain Coral", "Star fish"], "a": "Sea Fan"},
+    {"id": 648, "q": "Meandrina is commonly known as:", "o": ["Brain Coral", "Red Coral", "Organ pipe Coral", "Blue Coral"], "a": "Brain Coral"},
+
+    # --- PHYLUM CTENOPHORA (SEA WALNUTS) ---
+    {"id": 649, "q": "Ctenophores are commonly known as:", "o": ["Sea walnuts or Comb jellies", "Jelly fish", "Flatworms", "Sponges"], "a": "Sea walnuts or Comb jellies"},
+    {"id": 650, "q": "Ctenophores possess how many external rows of ciliated comb plates?", "o": ["4", "6", "8", "10"], "a": "8"},
+    {"id": 651, "q": "The function of Comb plates is:", "o": ["Digestion", "Locomotion", "Reproduction", "Defense"], "a": "Locomotion"},
+    {"id": 652, "q": "Bioluminescence is well-marked in:", "o": ["Porifera", "Cnidaria", "Ctenophora", "Platyhelminthes"], "a": "Ctenophora"},
+    {"id": 653, "q": "Reproduction in Ctenophores takes place:", "o": ["Only by sexual means", "Only asexually", "By both means", "By fragmentation"], "a": "Only by sexual means"},
+    {"id": 654, "q": "Examples of Ctenophora are:", "o": ["Pleurobrachia and Ctenoplana", "Sycon and Hydra", "Fasciola and Taenia", "Nereis and Pheretima"], "a": "Pleurobrachia and Ctenoplana"},
+
+    # --- PHYLUM PLATYHELMINTHES (FLATWORMS) ---
+    {"id": 655, "q": "Platyhelminthes are called Flatworms because:", "o": ["They live in flat areas", "They have a dorsiventrally flattened body", "They have flat cells", "They are transparent"], "a": "They have a dorsiventrally flattened body"},
+    {"id": 656, "q": "Flatworms are mostly:", "o": ["Free-living", "Endoparasites", "Ectoparasites", "Symbionts"], "a": "Endoparasites"},
+    {"id": 657, "q": "Flame cells in Platyhelminthes help in:", "o": ["Digestion", "Respiration", "Osmoregulation and Excretion", "Reproduction"], "a": "Osmoregulation and Excretion"},
+    {"id": 658, "q": "Hooks and suckers are present in:", "o": ["Free-living forms", "Parasitic forms", "All flatworms", "None"], "a": "Parasitic forms"},
+    {"id": 659, "q": "Planaria possesses high capacity of:", "o": ["Bioluminescence", "Regeneration", "Metagenesis", "Metamerism"], "a": "Regeneration"},
+    {"id": 660, "q": "Taenia is commonly known as:", "o": ["Tapeworm", "Liver fluke", "Roundworm", "Hookworm"], "a": "Tapeworm"},
+    {"id": 661, "q": "Fasciola is commonly known as:", "o": ["Liver fluke", "Blood fluke", "Tapeworm", "Pinworm"], "a": "Liver fluke"},
+
+    # --- PHYLUM ASCHELMINTHES (ROUNDWORMS) ---
+    {"id": 662, "q": "The body of Aschelminthes is circular in cross-section, hence the name:", "o": ["Flatworms", "Roundworms", "Ringworms", "Tapeworms"], "a": "Roundworms"},
+    {"id": 663, "q": "Alimentary canal in Aschelminthes is complete with a well-developed:", "o": ["Muscular pharynx", "Stomach", "Liver", "Intestine"], "a": "Muscular pharynx"},
+    {"id": 664, "q": "An excretory tube removes body wastes from the body cavity through the:", "o": ["Excretory pore", "Anus", "Mouth", "Skin"], "a": "Excretory pore"},
+    {"id": 665, "q": "In Aschelminthes, sexes are separate (Dioecious), and:", "o": ["Males are longer than females", "Females are longer than males", "Both are equal length", "Males are absent"], "a": "Females are longer than males"},
+    {"id": 666, "q": "Ascaris is commonly known as:", "o": ["Roundworm", "Hookworm", "Filaria worm", "Tapeworm"], "a": "Roundworm"},
+    {"id": 667, "q": "Wuchereria is known as:", "o": ["Filaria worm", "Hookworm", "Roundworm", "Pinworm"], "a": "Filaria worm"},
+    {"id": 668, "q": "Ancylostoma is known as:", "o": ["Hookworm", "Roundworm", "Filaria worm", "Eye worm"], "a": "Hookworm"},
+
+    # --- PHYLUM ANNELIDA ---
+    {"id": 669, "q": "The name Annelida is derived from Latin 'annulus' meaning:", "o": ["Little ring", "Flat", "Segment", "Jointed"], "a": "Little ring"},
+    {"id": 670, "q": "Annelids possess longitudinal and circular muscles which help in:", "o": ["Digestion", "Locomotion", "Respiration", "Excretion"], "a": "Locomotion"},
+    {"id": 671, "q": "Aquatic annelids like Nereis possess lateral appendages for swimming called:", "o": ["Setae", "Parapodia", "Tentacles", "Fins"], "a": "Parapodia"},
+    {"id": 672, "q": "A closed circulatory system is present in:", "o": ["Arthropoda", "Annelida", "Mollusca", "Hemichordata"], "a": "Annelida"},
+    {"id": 673, "q": "Nephridia in Annelids help in:", "o": ["Respiration", "Osmoregulation and excretion", "Digestion", "Reproduction"], "a": "Osmoregulation and excretion"},
+    {"id": 674, "q": "Neural system in Annelids consists of paired ganglia connected by:", "o": ["Single ventral nerve cord", "Double ventral nerve cord", "Double dorsal nerve cord", "Single dorsal nerve cord"], "a": "Double ventral nerve cord"},
+    {"id": 675, "q": "Nereis is:", "o": ["Dioecious (Aquatic)", "Monoecious (Terrestrial)", "Hermaphrodite", "Asexual"], "a": "Dioecious (Aquatic)"},
+    {"id": 676, "q": "Earthworms and Leeches are:", "o": ["Dioecious", "Monoecious (Hermaphrodite)", "Sterile", "Unisexual"], "a": "Monoecious (Hermaphrodite)"},
+    {"id": 677, "q": "Hirudinaria is commonly known as:", "o": ["Blood sucking leech", "Earthworm", "Sandworm", "Ragworm"], "a": "Blood sucking leech"},
+
+    # --- PHYLUM ARTHROPODA (LARGEST PHYLUM) ---
+    {"id": 678, "q": "The largest phylum of Animalia which includes insects is:", "o": ["Mollusca", "Arthropoda", "Chordata", "Annelida"], "a": "Arthropoda"},
+    {"id": 679, "q": "The body of Arthropods is covered by:", "o": ["Calcareous shell", "Chitinous exoskeleton", "Mucus", "Scales"], "a": "Chitinous exoskeleton"},
+    {"id": 680, "q": "The body of Arthropods consists of:", "o": ["Head and Trunk", "Head, Thorax and Abdomen", "Cephalothorax and Abdomen", "Head and Tail"], "a": "Head, Thorax and Abdomen"},
+    {"id": 681, "q": "Arthropods have jointed appendages. 'Arthros' means Joint, 'Podos' means:", "o": ["Body", "Appendages/Foot", "Head", "Skin"], "a": "Appendages/Foot"},
+    {"id": 682, "q": "Respiratory organs in Arthropods include:", "o": ["Gills, book gills, book lungs, tracheal system", "Lungs only", "Skin only", "Ctenidia"], "a": "Gills, book gills, book lungs, tracheal system"},
+    {"id": 683, "q": "Excretion in Arthropods takes place through:", "o": ["Nephridia", "Malpighian tubules", "Flame cells", "Kidneys"], "a": "Malpighian tubules"},
+    {"id": 684, "q": "In Arthropods, the circulatory system is:", "o": ["Closed type", "Open type", "Absent", "Double circulation"], "a": "Open type"},
+    {"id": 685, "q": "Statocysts or balancing organs are present in:", "o": ["Annelids", "Arthropods", "Aschelminthes", "Porifera"], "a": "Arthropods"},
+    {"id": 686, "q": "Economically important insects include:", "o": ["Apis, Bombyx, Laccifer", "Anopheles, Culex", "Locusta", "Limulus"], "a": "Apis, Bombyx, Laccifer"},
+    {"id": 687, "q": "Apis is Honey bee, Bombyx is Silkworm, Laccifer is:", "o": ["Lac insect", "Mosquito", "Locust", "King Crab"], "a": "Lac insect"},
+    {"id": 688, "q": "Vectors for diseases include:", "o": ["Anopheles, Culex and Aedes", "Apis and Bombyx", "Locusta", "Limulus"], "a": "Anopheles, Culex and Aedes"},
+    {"id": 689, "q": "Which of the following is a gregarious pest?", "o": ["Locusta (Locust)", "Limulus", "Bombyx", "Apis"], "a": "Locusta (Locust)"},
+    {"id": 690, "q": "Living fossil is:", "o": ["Limulus (King crab)", "Locusta", "Laccifer", "Prawn"], "a": "Limulus (King crab)"},
+
+    # --- PHYLUM MOLLUSCA (SECOND LARGEST) ---
+    {"id": 691, "q": "The second largest animal phylum is:", "o": ["Arthropoda", "Mollusca", "Annelida", "Chordata"], "a": "Mollusca"},
+    {"id": 692, "q": "Body of molluscs is covered by a calcareous shell and is unsegmented with:", "o": ["Head, muscular foot and visceral hump", "Head, thorax and abdomen", "Proboscis, collar and trunk", "Head and tail"], "a": "Head, muscular foot and visceral hump"},
+    {"id": 693, "q": "The soft and spongy layer of skin forming a mantle is over the:", "o": ["Muscular foot", "Visceral hump", "Head", "Shell"], "a": "Visceral hump"},
+    {"id": 694, "q": "The space between the hump and the mantle is called:", "o": ["Coelom", "Mantle cavity", "Visceral cavity", "Haemocoel"], "a": "Mantle cavity"},
+    {"id": 695, "q": "Feather-like gills in the mantle cavity have:", "o": ["Respiratory and excretory functions", "Digestion function", "Sensory function", "Reproductive function"], "a": "Respiratory and excretory functions"},
+    {"id": 696, "q": "The mouth contains a file-like rasping organ for feeding, called:", "o": ["Radula", "Mandible", "Tentacle", "Proboscis"], "a": "Radula"},
+    {"id": 697, "q": "Pila is commonly known as:", "o": ["Apple snail", "Pearl oyster", "Cuttlefish", "Squid"], "a": "Apple snail"},
+    {"id": 698, "q": "Pinctada is:", "o": ["Pearl oyster", "Apple snail", "Devil fish", "Sea hare"], "a": "Pearl oyster"},
+    {"id": 699, "q": "Sepia is Cuttlefish, Loligo is Squid, Octopus is:", "o": ["Devil fish", "Tusk shell", "Chiton", "Sea hare"], "a": "Devil fish"},
+    {"id": 700, "q": "Aplysia is:", "o": ["Sea hare", "Sea lemon", "Sea lily", "Sea fan"], "a": "Sea hare"},
+
+    # --- PHYLUM ECHINODERMATA (SPINY SKINNED) ---
+    {"id": 701, "q": "Echinoderms have an endoskeleton of:", "o": ["Chitin", "Calcareous ossicles", "Silica", "Cartilage"], "a": "Calcareous ossicles"},
+    {"id": 702, "q": "Adult Echinoderms are:", "o": ["Radially symmetrical", "Bilaterally symmetrical", "Asymmetrical", "Biradial"], "a": "Radially symmetrical"},
+    {"id": 703, "q": "Larvae of Echinoderms are:", "o": ["Radially symmetrical", "Bilaterally symmetrical", "Asymmetrical", "Spherical"], "a": "Bilaterally symmetrical"},
+    {"id": 704, "q": "The most distinctive feature of Echinoderms is the presence of:", "o": ["Water vascular system", "Canal system", "Tracheal system", "Haemocoel"], "a": "Water vascular system"},
+    {"id": 705, "q": "Water vascular system helps in:", "o": ["Locomotion, capture/transport of food and respiration", "Excretion only", "Reproduction only", "Digestion only"], "a": "Locomotion, capture/transport of food and respiration"},
+    {"id": 706, "q": "Excretory system in Echinoderms is:", "o": ["Well developed", "Absent", "Through flame cells", "Through nephridia"], "a": "Absent"},
+    {"id": 707, "q": "Asterias is:", "o": ["Star fish", "Sea urchin", "Sea lily", "Sea cucumber"], "a": "Star fish"},
+    {"id": 708, "q": "Echinus is:", "o": ["Sea urchin", "Sea lily", "Star fish", "Brittle star"], "a": "Sea urchin"},
+    {"id": 709, "q": "Antedon is Sea Lily, Cucumaria is Sea Cucumber, Ophiura is:", "o": ["Brittle star", "Star fish", "Sea urchin", "Sea hare"], "a": "Brittle star"},
+
+    # --- PHYLUM HEMICHORDATA ---
+    {"id": 710, "q": "Hemichordata was earlier considered a sub-phylum under Chordata but is now a separate phylum of:", "o": ["Non-chordates", "Vertebrates", "Protochordates", "Tunicates"], "a": "Non-chordates"},
+    {"id": 711, "q": "Hemichordates consist of a small group of worm-like marine animals with:", "o": ["Organ-system level organization", "Tissue level", "Cellular level", "Protoplasmic level"], "a": "Organ-system level organization"},
+    {"id": 712, "q": "The body of Hemichordates is cylindrical and composed of:", "o": ["Anterior proboscis, a collar and a long trunk", "Head, thorax, abdomen", "Head, foot, visceral hump", "Cephalothorax and abdomen"], "a": "Anterior proboscis, a collar and a long trunk"},
+    {"id": 713, "q": "Excretory organ in Hemichordata is:", "o": ["Proboscis gland", "Nephridia", "Flame cells", "Kidney"], "a": "Proboscis gland"},
+    {"id": 714, "q": "Respiration in Hemichordata takes place through:", "o": ["Gills", "Lungs", "Skin", "Trachea"], "a": "Gills"},
+    {"id": 715, "q": "Examples of Hemichordata are:", "o": ["Balanoglossus and Saccoglossus", "Nereis and Hirudinaria", "Ascidia and Salpa", "Branchiostoma"], "a": "Balanoglossus and Saccoglossus"},
+
+    # --- LIFE CYCLES & ALTERNATION OF GENERATIONS ---
+    {"id": 497, "q": "In Haplontic life cycle, the dominant, photosynthetic phase is:", "o": ["Free-living gametophyte", "Sporophyte", "Zygote", "Seed"], "a": "Free-living gametophyte"},
+    {"id": 498, "q": "In Haplontic life cycle, the sporophytic generation is represented only by:", "o": ["One-celled Zygote", "Multicellular embryo", "Sporangium", "Protonema"], "a": "One-celled Zygote"},
+    {"id": 499, "q": "Haplontic life cycle is found in:", "o": ["Volvox, Spirogyra, Chlamydomonas", "Fucus", "Ectocarpus", "Gymnosperms"], "a": "Volvox, Spirogyra, Chlamydomonas"},
+    {"id": 500, "q": "In Diplontic life cycle, the dominant phase is:", "o": ["Diploid Sporophyte", "Haploid Gametophyte", "Zygote", "Gamete"], "a": "Diploid Sporophyte"},
+    {"id": 501, "q": "Diplontic life cycle is found in:", "o": ["All seed-bearing plants (Gymnos & Angios)", "Volvox", "Spirogyra", "Mosses"], "a": "All seed-bearing plants (Gymnos & Angios)"},
+    {"id": 502, "q": "Which Alga exhibits a Diplontic life cycle?", "o": ["Fucus", "Volvox", "Polysiphonia", "Ectocarpus"], "a": "Fucus"},
+    {"id": 503, "q": "Haplo-diplontic life cycle is exhibited by:", "o": ["Bryophytes and Pteridophytes", "Volvox and Spirogyra", "Fucus and Gymnosperms", "Angiosperms"], "a": "Bryophytes and Pteridophytes"},
+    {"id": 504, "q": "Which Algae exhibit Haplo-diplontic life cycle?", "o": ["Ectocarpus, Polysiphonia, Kelps", "Volvox, Spirogyra", "Fucus", "Chlamydomonas"], "a": "Ectocarpus, Polysiphonia, Kelps"},
+    {"id": 505, "q": "In Bryophytes, the dominant phase is:", "o": ["Haploid Gametophyte", "Diploid Sporophyte", "Zygote", "Prothallus"], "a": "Haploid Gametophyte"},
+    {"id": 506, "q": "In Pteridophytes, the dominant phase is:", "o": ["Diploid Sporophyte", "Haploid Gametophyte", "Protonema", "Gamete"], "a": "Diploid Sporophyte"},
+
+    # --- PTERIDOPHYTES (ANATOMY & EXAMPLES) ---
+    {"id": 536, "q": "In Pteridophytes, the main plant body is a sporophyte which is differentiated into:", "o": ["True root, stem and leaves", "True root, stem and flowers", "Thallus and rhizoids", "Holdfast, stipe and frond"], "a": "True root, stem and leaves"},
+    {"id": 537, "q": "The leaves in Selaginella are:", "o": ["Microphylls (Small)", "Macrophylls (Large)", "Absent", "Needle-like"], "a": "Microphylls (Small)"},
+    {"id": 538, "q": "The leaves in Ferns are:", "o": ["Macrophylls (Large)", "Microphylls (Small)", "Scale leaves", "Absent"], "a": "Macrophylls (Large)"},
+    {"id": 539, "q": "Strobili or cones are found in:", "o": ["Selaginella and Equisetum", "Ferns and Mosses", "Marchantia and Riccia", "Funaria"], "a": "Selaginella and Equisetum"},
+    {"id": 540, "q": "In Pteridophytes, the gametophyte (Prothallus) is:", "o": ["Inconspicuous, small, multicellular, free-living", "Large, unicellular, parasitic", "Dominant phase", "Dependent on sporophyte"], "a": "Inconspicuous, small, multicellular, free-living"},
+    {"id": 541, "q": "Prothallus is:", "o": ["Monoecious (usually)", "Dioecious always", "Asexual", "Triploid"], "a": "Monoecious (usually)"},
+    {"id": 542, "q": "Water is required for transfer of antherozoids to the mouth of archegonium. This requirement restricts the spread of:", "o": ["Pteridophytes and Bryophytes", "Gymnosperms", "Angiosperms", "Algae only"], "a": "Pteridophytes and Bryophytes"},
+    {"id": 543, "q": "Zygote produces a multicellular well-differentiated sporophyte which is the dominant phase in:", "o": ["Pteridophytes", "Bryophytes", "Algae", "Fungi"], "a": "Pteridophytes"},
+    {"id": 544, "q": "Heterospory (producing two kinds of spores) is a characteristic of:", "o": ["Selaginella and Salvinia", "Dryopteris and Pteris", "Equisetum and Adiantum", "Lycopodium"], "a": "Selaginella and Salvinia"},
+    {"id": 545, "q": "In heterosporous plants, the female gametophyte is retained on the parent sporophyte for variable periods. This event is a precursor to:", "o": ["Seed habit", "Fruit formation", "Flower formation", "Double fertilization"], "a": "Seed habit"},
+    {"id": 546, "q": "Equisetum is commonly known as:", "o": ["Horsetail", "Club moss", "Walking fern", "Maidenhair fern"], "a": "Horsetail"},
+    {"id": 547, "q": "Adiantum is commonly called:", "o": ["Walking fern", "Horsetail", "Club moss", "Water fern"], "a": "Walking fern"},
+    {"id": 548, "q": "Which class does Dryopteris belong to?", "o": ["Pteropsida", "Lycopsida", "Sphenopsida", "Psilopsida"], "a": "Pteropsida"},
+
+    # --- GYMNOSPERMS (ROOTS, STEMS & LEAVES) ---
+    {"id": 549, "q": "The roots of Gymnosperms are generally:", "o": ["Tap roots", "Fibrous roots", "Adventitious roots", "Prop roots"], "a": "Tap roots"},
+    {"id": 550, "q": "Cycas has specialized roots called:", "o": ["Coralloid roots", "Mycorrhiza", "Stilt roots", "Pneumatophores"], "a": "Coralloid roots"},
+    {"id": 551, "q": "Coralloid roots are associated with:", "o": ["N2-fixing Cyanobacteria", "Fungi", "Algae", "Viruses"], "a": "N2-fixing Cyanobacteria"},
+    {"id": 552, "q": "The stem is unbranched in:", "o": ["Cycas", "Pinus", "Cedrus", "Sequoia"], "a": "Cycas"},
+    {"id": 553, "q": "The stem is branched in:", "o": ["Pinus and Cedrus", "Cycas", "Ferns", "Mosses"], "a": "Pinus and Cedrus"},
+    {"id": 554, "q": "In Cycas, the pinnate leaves persist for:", "o": ["A few years", "A few days", "A few months", "Forever"], "a": "A few years"},
+    {"id": 555, "q": "Leaves in Gymnosperms are well-adapted to withstand:", "o": ["Extreme temperature, humidity and wind", "Only water logging", "Only shade", "Herbivores"], "a": "Extreme temperature, humidity and wind"},
+    {"id": 556, "q": "Sunken stomata are a characteristic feature of:", "o": ["Conifers (Gymnosperms)", "Hydrophytes", "Mesophytes", "Algae"], "a": "Conifers (Gymnosperms)"},
+    {"id": 557, "q": "In Gymnosperms, the microspores develop into a male gametophyte which is highly reduced and confined to only a limited number of cells. This reduced gametophyte is:", "o": ["Pollen grain", "Seed", "Ovule", "Cone"], "a": "Pollen grain"},
+    {"id": 558, "q": "The development of pollen grains takes place within the:", "o": ["Microsporangia", "Megasporangia", "Nucellus", "Archegonium"], "a": "Microsporangia"},
+    {"id": 559, "q": "In Cycas, male cones and megasporophylls are borne on:", "o": ["Different trees", "Same tree", "Same branch", "Roots"], "a": "Different trees"},
+    {"id": 560, "q": "In Pinus, male and female cones are borne on:", "o": ["The same tree", "Different trees", "Different soil types", "Roots"], "a": "The same tree"},
+    {"id": 561, "q": "The nucellus is protected by envelopes and the composite structure is called an:", "o": ["Ovule", "Seed", "Fruit", "Cone"], "a": "Ovule"},
+    {"id": 562, "q": "In Gymnosperms, the megaspore mother cell is differentiated from one of the cells of the:", "o": ["Nucellus", "Endosperm", "Pollen", "Embryo"], "a": "Nucellus"},
+    {"id": 563, "q": "The multicellular female gametophyte in Gymnosperms is also retained within:", "o": ["Megasporangium", "Microsporangium", "Soil", "Water"], "a": "Megasporangium"},
+    {"id": 564, "q": "Unlike Bryophytes and Pteridophytes, in Gymnosperms:", "o": ["Male and female gametophytes do not have an independent free-living existence", "Gametophytes are dominant", "Water is essential for fertilization", "Spores are homosporous"], "a": "Male and female gametophytes do not have an independent free-living existence"},
+    
+    # --- LIFE CYCLE & EXCEPTIONS ---
+    {"id": 565, "q": "Fucus is an alga but its life cycle is:", "o": ["Diplontic", "Haplontic", "Haplo-diplontic", "Triplontic"], "a": "Diplontic"},
+    {"id": 566, "q": "Kelps, Polysiphonia and Ectocarpus show which life cycle?", "o": ["Haplo-diplontic", "Diplontic", "Haplontic", "None"], "a": "Haplo-diplontic"},
+    {"id": 567, "q": "Volvox and Spirogyra show which life cycle?", "o": ["Haplontic", "Diplontic", "Haplo-diplontic", "Vegetative"], "a": "Haplontic"},
+    {"id": 568, "q": "The diploid sporophyte is represented by a dominant, independent, photosynthetic, vascular plant body in:", "o": ["Pteridophytes", "Bryophytes", "Algae", "Fungi"], "a": "Pteridophytes"},
+    {"id": 569, "q": "Seed habit is linked to:", "o": ["Heterospory", "Homospory", "Isogamy", "External fertilization"], "a": "Heterospory"},
+    {"id": 570, "q": "Which of the following has 'vessels' in their xylem? (Advanced question/Gnetales)", "o": ["Gnetum", "Pinus", "Cycas", "Cedrus"], "a": "Gnetum"}, # Note: NCERT mentions Gnetales briefly, Gnetum has vessels unlike other Gymnos.
+    {"id": 571, "q": "The tallest tree species is:", "o": ["Sequoia (Redwood)", "Eucalyptus", "Banyan", "Peepal"], "a": "Sequoia (Redwood)"},
+    # --- ALGAE (CHLOROPLASTS & FLAGELLA DEEP DIVE) ---
+    {"id": 507, "q": "In Chlorophyceae, the chloroplasts may be discoid, plate-like, reticulate, cup-shaped, spiral or ribbon-shaped in different species. This statement is:", "o": ["True", "False", "Partially True", "Only discoid is found"], "a": "True"},
+    {"id": 508, "q": "Pyrenoids are located within:", "o": ["Chloroplasts", "Cytoplasm", "Nucleus", "Mitochondria"], "a": "Chloroplasts"},
+    {"id": 509, "q": "Some green algae may store food in the form of oil droplets. This is seen in:", "o": ["Chlamydomonas", "Volvox", "Spirogyra", "Some specific species"], "a": "Some specific species"},
+    {"id": 510, "q": "The inner wall of Green Algae is made of Cellulose and the outer layer is made of:", "o": ["Pectose", "Algin", "Carrageen", "Chitin"], "a": "Pectose"},
+    {"id": 511, "q": "In Phaeophyceae (Brown Algae), the flagella are:", "o": ["Two, unequal and laterally attached", "Two, equal and apical", "Eight, equal and apical", "Absent"], "a": "Two, unequal and laterally attached"},
+    {"id": 512, "q": "In Chlorophyceae (Green Algae), the flagella are:", "o": ["2-8, equal and apical", "2, unequal and lateral", "Absent", "Many, all over body"], "a": "2-8, equal and apical"},
+    {"id": 513, "q": "In Rhodophyceae (Red Algae), the flagella are:", "o": ["Absent", "2, equal apical", "2, unequal lateral", "Present only in gametes"], "a": "Absent"},
+    {"id": 514, "q": "Which chemical constitutes the cell wall of Brown Algae?", "o": ["Cellulose and Algin", "Cellulose and Pectose", "Cellulose, Pectin and Polysulphate esters", "Chitin"], "a": "Cellulose and Algin"},
+    {"id": 515, "q": "Which chemical constitutes the cell wall of Red Algae?", "o": ["Cellulose, pectin and polysulphate esters", "Cellulose and Algin", "Cellulose and Pectose", "Chitin"], "a": "Cellulose, pectin and polysulphate esters"},
+    {"id": 516, "q": "The reserve food 'Laminarin' is a complex carbohydrate which is a form of:", "o": ["Starch", "Glucose", "Fructose", "Alcohol"], "a": "Starch"},
+    {"id": 517, "q": "Which alga forms massive plant bodies that can reach heights of 100 meters?", "o": ["Kelps (Brown Algae)", "Volvox (Green Algae)", "Polysiphonia (Red Algae)", "Chara"], "a": "Kelps (Brown Algae)"},
+    {"id": 518, "q": "Air bladders are seen in:", "o": ["Fucus", "Laminaria", "Ectocarpus", "Dictyota"], "a": "Fucus"},
+    {"id": 519, "q": "In which alga is the food stored as Floridean starch which is very similar to Amylopectin and Glycogen?", "o": ["Polysiphonia", "Laminaria", "Sargassum", "Volvox"], "a": "Polysiphonia"},
+    {"id": 520, "q": "Chara (Stonewort) belongs to:", "o": ["Green Algae", "Brown Algae", "Red Algae", "Blue-green Algae"], "a": "Green Algae"},
+
+    # --- BRYOPHYTES (LIVERWORTS & MOSSES DETAILS) ---
+    {"id": 521, "q": "The thallus of Marchantia is:", "o": ["Dorsiventral and closely appressed to the substrate", "Upright and cylindrical", "Filamentous", "Differentated into roots and shoots"], "a": "Dorsiventral and closely appressed to the substrate"},
+    {"id": 522, "q": "Asexual reproduction in liverworts takes place by:", "o": ["Fragmentation of thalli or formation of Gemmae", "Only spores", "Only budding", "Fusion of gametes"], "a": "Fragmentation of thalli or formation of Gemmae"},
+    {"id": 523, "q": "Gemmae develop in small receptacles called gemma cups located on:", "o": ["The thalli", "The rhizoids", "The sporophyte", "The capsule"], "a": "The thalli"},
+    {"id": 524, "q": "Gemmae detach from the parent body and germinate to form:", "o": ["New individuals", "Spores", "Gametes", "Zygotes"], "a": "New individuals"},
+    {"id": 525, "q": "In Marchantia, male and female sex organs are produced:", "o": ["On different thalli (Dioecious)", "On the same thallus (Monoecious)", "Inside the capsule", "On the protonema"], "a": "On different thalli (Dioecious)"},
+    {"id": 526, "q": "The sporophyte in Liverworts is differentiated into:", "o": ["Foot, seta and capsule", "Root, stem and leaf", "Holdfast, stipe and frond", "Protonema and capsule"], "a": "Foot, seta and capsule"},
+    {"id": 527, "q": "After meiosis, spores are produced within the:", "o": ["Capsule", "Seta", "Foot", "Gemma cup"], "a": "Capsule"},
+    {"id": 528, "q": "In Mosses, the protonema stage is:", "o": ["Creeping, green, branched and filamentous", "Upright, non-green and woody", "Unicellular and colorless", "Parasitic"], "a": "Creeping, green, branched and filamentous"},
+    {"id": 529, "q": "The leafy stage of mosses consists of:", "o": ["Upright, slender axes bearing spirally arranged leaves", "Dorsiventral thallus", "Prostrate branches", "Simple thallus"], "a": "Upright, slender axes bearing spirally arranged leaves"},
+    {"id": 530, "q": "Rhizoids in mosses are:", "o": ["Multicellular and branched", "Unicellular and unbranched", "Absent", "True roots"], "a": "Multicellular and branched"},
+    {"id": 531, "q": "Sporophyte in mosses is more elaborate than that in:", "o": ["Liverworts", "Pteridophytes", "Gymnosperms", "Angiosperms"], "a": "Liverworts"},
+    {"id": 532, "q": "Which of the following has an elaborate mechanism of spore dispersal?", "o": ["Mosses (Funaria)", "Liverworts (Riccia)", "Algae", "Fungi"], "a": "Mosses (Funaria)"},
+    {"id": 533, "q": "Sphagnum is also known as:", "o": ["Peat Moss / Bog Moss", "Club Moss", "Horse tail", "Sea lettuce"], "a": "Peat Moss / Bog Moss"},
+    {"id": 534, "q": "Because of its capacity to hold water, Sphagnum is used for:", "o": ["Trans-shipment of living material", "Building houses", "Food for humans", "Making paper"], "a": "Trans-shipment of living material"},
+    {"id": 535, "q": "Mosses along with Lichens are the first organisms to colonize rocks. This is of great:", "o": ["Ecological importance", "Economic importance", "Medicinal importance", "Industrial importance"], "a": "Ecological importance"},
+    
+    # --- PTERIDOPHYTES ---
+    {"id": 457, "q": "Pteridophytes are the first terrestrial plants to possess:", "o": ["Vascular tissues (Xylem & Phloem)", "Seeds", "Fruits", "Flowers"], "a": "Vascular tissues (Xylem & Phloem)"},
+    {"id": 458, "q": "In Pteridophytes, the dominant phase in the life cycle is:", "o": ["Sporophyte", "Gametophyte", "Protonema", "Haploid thallus"], "a": "Sporophyte"},
+    {"id": 459, "q": "The leaves in Pteridophytes are small (microphylls) in:", "o": ["Selaginella", "Ferns", "Cycas", "Pinus"], "a": "Selaginella"},
+    {"id": 460, "q": "Large leaves (macrophylls) are found in:", "o": ["Ferns", "Selaginella", "Equisetum", "Mosses"], "a": "Ferns"},
+    {"id": 461, "q": "Sporophytes bear sporangia that are subtended by leaf-like appendages called:", "o": ["Sporophylls", "Prothallus", "Sori", "Indusium"], "a": "Sporophylls"},
+    {"id": 462, "q": "In Selaginella and Equisetum, sporophylls form compact structures called:", "o": ["Strobili or Cones", "Flowers", "Fruits", "Sori"], "a": "Strobili or Cones"},
+    {"id": 463, "q": "The spores germinate to give rise to a small, multicellular, free-living, photosynthetic gametophyte called:", "o": ["Prothallus", "Protonema", "Sporophyte", "Embryo"], "a": "Prothallus"},
+    {"id": 464, "q": "Prothallus requires what kind of conditions to grow?", "o": ["Cool, damp, shady places", "Hot and dry", "Direct sunlight", "Deep water"], "a": "Cool, damp, shady places"},
+    {"id": 465, "q": "Majority of the Pteridophytes are 'Homosporous', meaning they produce:", "o": ["Only one kind of spores", "Two kinds of spores", "No spores", "Seeds"], "a": "Only one kind of spores"},
+    {"id": 466, "q": "Which of the following genera are Heterosporous?", "o": ["Selaginella and Salvinia", "Equisetum and Pteris", "Dryopteris and Adiantum", "Lycopodium"], "a": "Selaginella and Salvinia"},
+    {"id": 467, "q": "In heterosporous plants, the megaspores and microspores germinate to give rise to:", "o": ["Female and male gametophytes respectively", "Male and female gametophytes respectively", "Sporophytes directly", "Seeds"], "a": "Female and male gametophytes respectively"},
+    {"id": 468, "q": "The event which is a precursor to the seed habit is:", "o": ["Retention of female gametophyte on the parent sporophyte", "Homospory", "Free living gametophyte", "Development of prothallus"], "a": "Retention of female gametophyte on the parent sporophyte"},
+    {"id": 469, "q": "Equisetum belongs to the class:", "o": ["Sphenopsida", "Lycopsida", "Psilopsida", "Pteropsida"], "a": "Sphenopsida"},
+    {"id": 470, "q": "Adiantum, Pteris and Dryopteris belong to:", "o": ["Pteropsida", "Lycopsida", "Sphenopsida", "Psilopsida"], "a": "Pteropsida"},
+    {"id": 471, "q": "Psilotum belongs to:", "o": ["Psilopsida", "Lycopsida", "Sphenopsida", "Pteropsida"], "a": "Psilopsida"},
+    {"id": 472, "q": "Selaginella and Lycopodium belong to:", "o": ["Lycopsida", "Psilopsida", "Sphenopsida", "Pteropsida"], "a": "Lycopsida"},
+    
+    # --- CLASSIFICATION SYSTEMS ---
+    {"id": 401, "q": "Artificial systems of classification were based upon:", "o": ["Vegetative characters or structure of androecium", "Ultrastructure and anatomy", "Phytochemistry", "Embryology"], "a": "Vegetative characters or structure of androecium"},
+    {"id": 402, "q": "Who gave the Artificial system of classification?", "o": ["Linnaeus", "Bentham and Hooker", "Aristotle", "Whittaker"], "a": "Linnaeus"},
+    {"id": 403, "q": "Natural classification systems considered:", "o": ["Only external features", "External and internal features (ultrastructure, anatomy, embryology)", "Only evolutionary history", "Only floral characters"], "a": "External and internal features (ultrastructure, anatomy, embryology)"},
+    {"id": 404, "q": "Who proposed the Natural system of classification for flowering plants?", "o": ["George Bentham and Joseph Dalton Hooker", "Linnaeus", "Hutchinson", "Engler and Prantl"], "a": "George Bentham and Joseph Dalton Hooker"},
+    {"id": 405, "q": "Phylogenetic classification systems are based on:", "o": ["Evolutionary relationships", "Morphological characters", "Chemical constituents", "Cytological information"], "a": "Evolutionary relationships"},
+    {"id": 406, "q": "Taxonomy based on chromosome number, structure, and behavior is called:", "o": ["Chemotaxonomy", "Cytotaxonomy", "Numerical Taxonomy", "Alpha Taxonomy"], "a": "Cytotaxonomy"},
+    {"id": 407, "q": "Numerical Taxonomy involves:", "o": ["Using computers to process all observable characteristics", "Studying chemical constituents", "Studying fossils", "Studying cell structure"], "a": "Using computers to process all observable characteristics"},
+
+    # --- ALGAE (GENERAL) ---
+    {"id": 408, "q": "Algae are largely:", "o": ["Aquatic (freshwater and marine)", "Terrestrial", "Parasitic", "Epiphytic"], "a": "Aquatic (freshwater and marine)"},
+    {"id": 409, "q": "Which of the following is a colonial alga?", "o": ["Volvox", "Ulothrix", "Spirogyra", "Kelps"], "a": "Volvox"},
+    {"id": 410, "q": "Which of the following is a filamentous alga?", "o": ["Ulothrix and Spirogyra", "Volvox", "Chlamydomonas", "Kelps"], "a": "Ulothrix and Spirogyra"},
+    {"id": 411, "q": "The massive plant bodies in algae are formed by:", "o": ["Kelps", "Volvox", "Chlamydomonas", "Spirogyra"], "a": "Kelps"},
+    {"id": 412, "q": "Asexual reproduction in algae is by the production of different types of spores, the most common being:", "o": ["Aplanospores", "Zoospores", "Akinetes", "Endospores"], "a": "Zoospores"},
+    {"id": 413, "q": "Zoospores are:", "o": ["Flagellated and motile", "Non-flagellated and non-motile", "Thick-walled", "Sexual spores"], "a": "Flagellated and motile"},
+    {"id": 414, "q": "Isogamous reproduction with flagellated gametes is found in:", "o": ["Ulothrix", "Spirogyra", "Volvox", "Fucus"], "a": "Ulothrix"},
+    {"id": 415, "q": "Isogamous reproduction with non-flagellated gametes is found in:", "o": ["Spirogyra", "Ulothrix", "Volvox", "Fucus"], "a": "Spirogyra"},
+    {"id": 416, "q": "Fusion between one large, non-motile female gamete and a smaller, motile male gamete is called:", "o": ["Isogamous", "Anisogamous", "Oogamous", "Zygotic"], "a": "Oogamous"},
+    {"id": 417, "q": "Oogamous reproduction is found in:", "o": ["Volvox and Fucus", "Spirogyra and Ulothrix", "Chlamydomonas", "Ectocarpus"], "a": "Volvox and Fucus"},
+    {"id": 418, "q": "At least half of the total carbon dioxide fixation on earth is carried out by:", "o": ["Algae", "Gymnosperms", "Angiosperms", "Bryophytes"], "a": "Algae"},
+    {"id": 419, "q": "Agar, used to grow microbes and in ice-creams/jellies, is obtained from:", "o": ["Gelidium and Gracilaria", "Chara and Volvox", "Laminaria and Sargassum", "Fucus"], "a": "Gelidium and Gracilaria"},
+    {"id": 420, "q": "Which algae are used as food supplements by space travelers?", "o": ["Chlorella and Spirullina", "Gelidium", "Laminaria", "Porphyra"], "a": "Chlorella and Spirullina"},
+    {"id": 421, "q": "Algin (water holding substance) is produced by:", "o": ["Brown algae", "Red algae", "Green algae", "Blue-green algae"], "a": "Brown algae"},
+    {"id": 422, "q": "Carrageen is produced by:", "o": ["Red algae", "Brown algae", "Green algae", "Fungi"], "a": "Red algae"},
+
+    # --- CHLOROPHYCEAE (GREEN ALGAE) ---
+    {"id": 423, "q": "The major pigments in Chlorophyceae are:", "o": ["Chlorophyll a and b", "Chlorophyll a and c", "Chlorophyll a and d", "Chlorophyll a and fucoxanthin"], "a": "Chlorophyll a and b"},
+    {"id": 424, "q": "The stored food in Green Algae is:", "o": ["Starch", "Mannitol", "Floridean Starch", "Laminarin"], "a": "Starch"},
+    {"id": 425, "q": "Pyrenoids in green algae contain:", "o": ["Protein besides starch", "Oil droplets", "Only protein", "Only starch"], "a": "Protein besides starch"},
+    {"id": 426, "q": "The cell wall of Green Algae is made of:", "o": ["Inner cellulose and outer pectose", "Inner pectose and outer cellulose", "Cellulose and algin", "Cellulose and polysulphate esters"], "a": "Inner cellulose and outer pectose"},
+    {"id": 427, "q": "Vegetative reproduction in Green Algae usually takes place by:", "o": ["Fragmentation", "Budding", "Fission", "Gemmae"], "a": "Fragmentation"},
+    {"id": 428, "q": "Which of the following is NOT a Green Alga?", "o": ["Laminaria", "Chlamydomonas", "Volvox", "Chara"], "a": "Laminaria"},
+
+    # --- PHAEOPHYCEAE (BROWN ALGAE) ---
+    {"id": 429, "q": "Brown algae are primarily found in:", "o": ["Marine habitats", "Freshwater", "Terrestrial soil", "Hot springs"], "a": "Marine habitats"},
+    {"id": 430, "q": "The characteristic pigment of Brown Algae causing their color variation is:", "o": ["Fucoxanthin", "Phycoerythrin", "Haemoglobin", "Phycocyanin"], "a": "Fucoxanthin"},
+    {"id": 431, "q": "Food is stored in Brown Algae as:", "o": ["Laminarin or Mannitol", "Starch", "Floridean Starch", "Glycogen"], "a": "Laminarin or Mannitol"},
+    {"id": 432, "q": "The plant body of brown algae is attached to the substratum by:", "o": ["Holdfast", "Stipe", "Frond", "Root"], "a": "Holdfast"},
+    {"id": 433, "q": "The leaf-like photosynthetic organ in brown algae is called:", "o": ["Frond", "Stipe", "Holdfast", "Lamina"], "a": "Frond"},
+    {"id": 434, "q": "Asexual reproduction in brown algae is by:", "o": ["Biflagellate zoospores (pear-shaped)", "Non-motile spores", "Quadriflagellate zoospores", "Aplanospores"], "a": "Biflagellate zoospores (pear-shaped)"},
+    {"id": 435, "q": "The flagella in Brown Algae are:", "o": ["2, unequal, lateral", "2-8, equal, apical", "Absent", "Many, equal"], "a": "2, unequal, lateral"},
+    {"id": 436, "q": "Ectocarpus, Dictyota, Laminaria, Sargassum, and Fucus belong to:", "o": ["Phaeophyceae", "Chlorophyceae", "Rhodophyceae", "Cyanophyceae"], "a": "Phaeophyceae"},
+
+    # --- RHODOPHYCEAE (RED ALGAE) ---
+    {"id": 437, "q": "The red color of Red Algae is due to:", "o": ["r-phycoerythrin", "r-phycocyanin", "Fucoxanthin", "Chlorophyll c"], "a": "r-phycoerythrin"},
+    {"id": 438, "q": "Stored food in Red Algae is:", "o": ["Floridean Starch", "Mannitol", "Laminarin", "Starch"], "a": "Floridean Starch"},
+    {"id": 439, "q": "Floridean starch is structurally similar to:", "o": ["Amylopectin and glycogen", "Amylose and pectin", "Mannitol and algin", "Cellulose"], "a": "Amylopectin and glycogen"},
+    {"id": 440, "q": "Red algae reproduce asexually and sexually by:", "o": ["Non-motile spores and gametes", "Motile spores and gametes", "Motile spores and non-motile gametes", "Non-motile spores and motile gametes"], "a": "Non-motile spores and gametes"},
+    {"id": 441, "q": "Polysiphonia, Porphyra, Gracilaria and Gelidium belong to:", "o": ["Rhodophyceae", "Phaeophyceae", "Chlorophyceae", "Gymnosperms"], "a": "Rhodophyceae"},
+    
+    # --- TOPIC: TRICKY & ASSERTION TYPE ---
+    {"id": 141, "q": "In case of plants, classes with a few similar characters are assigned to a higher category called:", "o": ["Phylum", "Division", "Order", "Family"], "a": "Division"},
+    {"id": 142, "q": "Three different species 'tuberosum', 'nigrum', and 'melongena' belong to which Genus?", "o": ["Datura", "Petunia", "Solanum", "Mangifera"], "a": "Solanum"},
+    {"id": 143, "q": "Which taxonomic aid serves as a quick referral system? (Old syllabus check, but valid logic)", "o": ["Herbarium", "Flora", "Key", "Museum"], "a": "Herbarium"}, 
+    # Note: Even though removed, sometimes basics are asked. But for 2025, focus on below:
+    {"id": 144, "q": "Each different kind of plant, animal or organism that you see, represents a:", "o": ["Genus", "Species", "Family", "Taxon"], "a": "Species"},
+    {"id": 145, "q": "The scientific term for any category/unit of classification is:", "o": ["Rank", "Taxon", "Grade", "Group"], "a": "Taxon"},
+    {"id": 146, "q": "Panthera pardus is the scientific name of:", "o": ["Lion", "Tiger", "Leopard", "Cat"], "a": "Leopard"},
+    {"id": 147, "q": "Canis aureus (Jackal) and Canis lupus (Wolf) share the same:", "o": ["Species", "Genus", "Sub-species", "None"], "a": "Genus"},
+    {"id": 148, "q": "Taxonomic studies consider a group of individual organisms with fundamental similarities as a:", "o": ["Genus", "Species", "Order", "Family"], "a": "Species"},
+    {"id": 149, "q": "Which of the following is NOT a correct statement?", "o": ["Botanical gardens have collections of living plants", "Museum has collection of photographs of plants and animals", "Key is a taxonomic aid for identification", "Herbarium houses dried, pressed plant specimens"], "a": "Museum has collection of photographs of plants and animals"},
+    {"id": 150, "q": "The word 'Systematics' takes into account:", "o": ["Evolutionary relationships between organisms", "Only identification", "Only nomenclature", "Only classification"], "a": "Evolutionary relationships between organisms"},
+    {"id": 3, "q": "The term 'Polyadelphous' is related to:", "o": ["Gynoecium", "Androecium", "Corolla", "Calyx"], "a": "Androecium"},
+    {"id": 4, "q": "Which of the following immunoglobulins does constitute the largest percentage in human milk?", "o": ["IgA", "IgG", "IgD", "IgM"], "a": "IgA"},
+    {"id": 5, "q": "Gause's principle of competitive exclusion states that:", "o": ["No two species can occupy the same niche indefinitely", "Larger organisms exclude smaller ones", "More abundant species will exclude the less abundant", "Competition for the same resources excludes species having different food preferences"], "a": "No two species can occupy the same niche indefinitely"},
+    {"id": 6, "q": "Which of the following is a hormone releasing IUD?", "o": ["Multiload 375", "LNG-20", "Lippes loop", "Cu7"], "a": "LNG-20"},
+    {"id": 7, "q": "Which part of the brain is responsible for thermoregulation?", "o": ["Medulla oblongata", "Cerebrum", "Hypothalamus", "Corpus callosum"], "a": "Hypothalamus"},
+    {"id": 8, "q": "A gene showing codominance has:", "o": ["Alleles that are recessive to each other", "Both alleles independently expressed in the heterozygote", "One allele dominant on the other", "Alleles tightly linked on the same chromosome"], "a": "Both alleles independently expressed in the heterozygote"},
+    {"id": 9, "q": "Which of the following is commonly used as a vector for introducing a DNA fragment in human lymphocytes?", "o": ["Retrovirus", "Ti plasmid", "λ phage", "pBR322"], "a": "Retrovirus"},
+    {"id": 10, "q": "The motile bacteria are able to move by:", "o": ["Fimbriae", "Flagella", "Cilia", "Pili"], "a": "Flagella"},
+    {"id": 11, "q": "Which enzyme helps in opening of DNA helix during transcription?", "o": ["DNA ligase", "DNA helicase", "RNA polymerase", "DNA polymerase"], "a": "RNA polymerase"},
+    {"id": 12, "q": "In which disease does mosquito transmitted pathogen cause chronic inflammation of lymphatic vessels?", "o": ["Elephantiasis", "Ascariasis", "Ringworm disease", "Amoebiasis"], "a": "Elephantiasis"},
+    {"id": 13, "q": "Which of the following features is not present in the Phylum Arthropoda?", "o": ["Chitinous exoskeleton", "Metameric segmentation", "Parapodia", "Jointed appendages"], "a": "Parapodia"},
+    {"id": 14, "q": "The body of the ovule is fused within the funicle at:", "o": ["Hilum", "Micropyle", "Nucellus", "Chalaza"], "a": "Hilum"},
+    {"id": 15, "q": "Oxygen is not produced during photosynthesis by:", "o": ["Green sulphur bacteria", "Nostoc", "Cycas", "Chara"], "a": "Green sulphur bacteria"}
+]
+
+class NeetBioView(discord.ui.View):
+    def __init__(self, player, bet, interaction, game_questions):
+        super().__init__(timeout=15) # ⚡ 15 Seconds Timer
+        self.player = player
+        self.bet = bet
+        self.interaction = interaction
+        self.questions = game_questions # List of 10 unique questions
+        self.current_index = 0
+        self.game_ended = False # Bug Fix Flag
+        
+        # Load First Question
+        self.load_question()
+
+    def load_question(self):
+        self.clear_items()
+        
+        current_q_data = self.questions[self.current_index]
+        self.correct_ans = current_q_data["a"]
+        self.q_id = current_q_data["id"]
+        
+        # Shuffle Options
+        self.options = current_q_data["o"].copy()
+        random.shuffle(self.options)
+        
+        # Create Buttons
+        labels = ["A", "B", "C", "D"]
+        for i, opt in enumerate(self.options):
+            btn = discord.ui.Button(label=f"{labels[i]}: {opt}", style=discord.ButtonStyle.secondary, custom_id=opt)
+            btn.callback = self.answer_callback
+            self.add_item(btn)
+
+    async def on_timeout(self):
+        if self.game_ended: return 
+
+        self.game_ended = True
+        for item in self.children: item.disabled = True
+        
+        # --- PUNISHMENT: TIMEOUT ---
+        await self.apply_punishment("Too Slow (Timeout)")
+        
+        embed = discord.Embed(title="⌛ TIME'S UP!", color=0xFF0000)
+        embed.description = (
+            f"❌ **Bahut slow ho Doctor Sahab!**\n"
+            f"Patient mar gaya.\n\n"
+            f"📉 **Failed at Stage:** {self.current_index + 1}/10"
+        )
+        embed.set_thumbnail(url="https://media.tenor.com/images/3e877e504c35e320f7725964f4040939/tenor.gif")
+        
+        try:
+            await self.interaction.edit_original_response(embed=embed, view=self)
+        except: pass
+        self.stop()
+
+    async def answer_callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.player.id:
+            return await interaction.response.send_message("❌ Apni degree khud lo!", ephemeral=True)
+
+        if self.game_ended: return
+        
+        # 🟢 RESET TIMER LOGIC: Har jawab ke baad view refresh hota hai, timer reset ho jata hai
+        selected_ans = interaction.data["custom_id"]
+        
+        # 1. WRONG ANSWER CHECK
+        if selected_ans != self.correct_ans:
+            self.game_ended = True
+            
+            for item in self.children:
+                item.disabled = True
+                if item.custom_id == selected_ans: item.style = discord.ButtonStyle.danger
+                if item.custom_id == self.correct_ans: item.style = discord.ButtonStyle.success
+
+            await self.apply_punishment("Wrong Answer")
+            
+            embed = discord.Embed(title="🧬 INCORRECT!", color=0xFF0000)
+            embed.description = (
+                f"❌ **Galat Jawab!**\n"
+                f"✅ Correct: **{self.correct_ans}**\n\n"
+                f"🚑 **NEET Dream Shattered at:** {self.current_index + 1}/10"
+            )
+            embed.set_thumbnail(url="https://media.tenor.com/images/3e877e504c35e320f7725964f4040939/tenor.gif")
+            
+            await interaction.response.edit_message(embed=embed, view=self)
+            self.stop() 
+            return
+
+        # 2. MARK QUESTION AS USED
+        # User ki history me ID daal do taaki repeat na ho
+        if self.player.id not in USER_USED_QUESTIONS:
+            USER_USED_QUESTIONS[self.player.id] = []
+        USER_USED_QUESTIONS[self.player.id].append(self.q_id)
+
+        # 3. CORRECT ANSWER CHECK
+        if self.current_index == 9: # 10th Question (Index 9)
+            self.game_ended = True
+            
+            # 🏆 WINNING LOGIC
+            winnings = 500000
+            await update_balance(self.player.id, winnings)
+            
+            for item in self.children:
+                item.disabled = True
+                if item.custom_id == selected_ans: item.style = discord.ButtonStyle.success
+
+            embed = discord.Embed(title="🩺 DR. STRANGE LEVEL!", color=0xFFD700)
+            embed.description = (
+                f"🎉 **CONGRATULATIONS!**\n"
+                f"Tumne biology ke 10 hardest sawal clear kar liye.\n\n"
+                f"🎓 **Status:** MBBS Confirm\n"
+                f"🤑 **Reward:** $500,000"
+            )
+            embed.set_image(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif") # Doctor GIF laga lena
+            
+            await interaction.response.edit_message(embed=embed, view=self)
+            self.stop()
+        
+        else:
+            # NEXT QUESTION
+            self.current_index += 1
+            self.load_question()
+            
+            q_text = self.questions[self.current_index]["q"]
+            
+            embed = discord.Embed(title=f"🧬 NEET BIO: Q{self.current_index + 1}/10", color=0x3498DB)
+            embed.description = (
+                f"**Student:** {self.player.mention}\n"
+                f"🏆 **Goal:** $500,000\n\n"
+                f"❓ **{q_text}**\n\n"
+                f"⚡ **15 Seconds!**"
+            )
+            embed.set_footer(text="Galti ki toh naam 'Unpad' rakh diya jayega!")
+            
+            await interaction.response.edit_message(embed=embed, view=self)
+
+    async def apply_punishment(self, reason):
+        data = await get_data(self.player.id)
+        is_safe = False
+        
+        # 🚫 NO VIP CHECK (User Request: VIP doesn't matter)
+        
+        # Check Extra Life
+        if data.get("inventory", {}).get("life", 0) > 0:
+            await update_inventory(self.player.id, "life", -1)
+            is_safe = True
+            await self.interaction.followup.send("💖 **Extra Life Used!** Izzat bach gayi.", ephemeral=True)
+
+        if not is_safe:
+            # 1. 📛 RENAME USER (The Main Punishment)
+            try:
+                shame_names = ["Unpad Gawar", "Fail Student", "Angutha Chaap", "Bio Fail", "Chhapri"]
+                new_nick = random.choice(shame_names)
+                await self.player.edit(nick=new_nick)
+                await self.interaction.followup.send(f"🤣 **LOL!** Naam change kar diya: **{new_nick}**", ephemeral=True)
+            except discord.Forbidden:
+                await self.interaction.followup.send("❌ Main Admin/Owner ka naam change nahi kar sakta, bach gaye!", ephemeral=True)
+            except Exception as e:
+                print(f"Rename Error: {e}")
+
+            # 2. Timeout (Mute)
+            await smart_timeout(self.interaction, self.player, 60, "Failed NEET Quiz")
+
+
+@bot.tree.command(name="neet_biology", description="🧬 10 Non-stop Biology Questions (Win $500k)")
+async def neet_biology(i: discord.Interaction):
+    user_id = i.user.id
+    
+    # 1. Check & Filter Unique Questions
+    used_ids = USER_USED_QUESTIONS.get(user_id, [])
+    available_qs = [q for q in BIO_QUESTIONS if q["id"] not in used_ids]
+    
+    if len(available_qs) < 10:
+        # Agar unique sawal khatam ho gaye, to reset kar sakte ho ya error de sakte ho
+        # Option: Reset user history if they want to play again
+        return await i.response.send_message("❌ **Sawal Khatam!** Tumne saare questions solve kar liye. (Wait for update)", ephemeral=True)
+    
+    # 2. Pick 10 Random from Available
+    game_questions = random.sample(available_qs, 10)
+    
+    embed = discord.Embed(title="🧬 NEET BIOLOGY EXAM", color=0x2ECC71)
+    embed.description = (
+        f"**Candidate:** {i.user.mention}\n"
+        f"📚 **Subject:** Biology (NCERT Based)\n"
+        f"🔥 **Challenge:** 10 Questions Non-stop\n"
+        f"💰 **Prize:** $500,000\n\n"
+        f"⚠️ **WARNING:**\n"
+        f"Agar galat jawab diya aur **Extra Life** nahi hui...\n"
+        f"To tumhara naam **'Unpad'** rakh diya jayega!"
+    )
+    
+    view = NeetBioView(i.user, 0, i, game_questions)
+    await i.response.send_message(embed=embed, view=view)
+
 
 @bot.tree.command(name="quiz", description="🧠 The Gauntlet: Answer 7 Hard Questions in a row (10x Reward)")
 @app_commands.describe(bet="Amount to bet")
@@ -10911,6 +13218,94 @@ async def quiz(i: discord.Interaction, bet: int):
     
     view = TriviaGauntletView(i.user, bet, i, gauntlet_questions)
     await i.response.send_message(embed=embed, view=view)
+
+class LeaderboardView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=60)
+
+    @discord.ui.button(label="🔄 Refresh List", style=discord.ButtonStyle.primary, emoji="📊")
+    async def refresh_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Dobara wahi command ka logic chala denge edit karke
+        await show_leaderboard(interaction, is_refresh=True)
+
+async def show_leaderboard(interaction: discord.Interaction, is_refresh=False):
+    # 1. LOAD ALL DATA
+    # Note: Yahan assume kar raha hu ki 'users' wo variable hai jisme saara data load hota hai.
+    # Agar aap json file har baar read karte ho, to pehle file read karke 'users' dict me laana padega.
+    # Example: users = json.load(open("users.json")) 
+    
+    # Sort users by Balance (High to Low)
+    # Hum maan ke chal rahe hain 'users' dictionary hai: {user_id: {"balance": 100, ...}}
+    
+    # List of tuples: [(user_id, amount), ...]
+    sorted_users = sorted(
+        users.items(), 
+        key=lambda x: x[1].get("balance", 0), 
+        reverse=True
+    )
+    
+    # 2. CALCULATE SERVER STATS
+    total_economy = sum(u[1].get("balance", 0) for u in sorted_users)
+    top_10 = sorted_users[:10]
+    
+    # 3. BUILD DESCRIPTION STRING
+    desc = ""
+    medals = ["🥇", "🥈", "🥉"]
+    
+    for rank, (user_id, data) in enumerate(top_10):
+        balance = data.get("balance", 0)
+        formatted_bal = f"${balance:,}"
+        
+        # Special Formatting for Top 3
+        if rank < 3:
+            rank_icon = medals[rank]
+            line = f"{rank_icon} **<@{user_id}>**\nSTATUS: **{formatted_bal}** 👑\n"
+        else:
+            line = f"`#{rank+1}` • <@{user_id}>\n💸 `{formatted_bal}`\n"
+            
+        desc += line + "\n"
+
+    # 4. FIND USER'S OWN RANK
+    user_rank = "N/A"
+    user_bal = 0
+    for rank, (uid, data) in enumerate(sorted_users):
+        if str(uid) == str(interaction.user.id) or uid == interaction.user.id:
+            user_rank = f"#{rank+1}"
+            user_bal = data.get("balance", 0)
+            break
+
+    # 5. CREATE EMBED
+    embed = discord.Embed(title="🏆 WORLD RICHEST PLAYERS", color=0xFFD700)
+    
+    # Header Image (Optional: Server icon or Money GIF)
+    embed.set_thumbnail(url="https://media.tenor.com/J3i6jGgFqsgAAAAC/money-transfer.gif")
+    
+    embed.add_field(
+        name="🌍 Server Economy (GDP)", 
+        value=f"```fix\n${total_economy:,}\n```", 
+        inline=False
+    )
+    
+    embed.description = desc
+    
+    # Footer with User Stats
+    embed.set_footer(
+        text=f"🫵 Your Rank: {user_rank} • Balance: ${user_bal:,}", 
+        icon_url=interaction.user.display_avatar.url
+    )
+
+    view = LeaderboardView()
+    
+    if is_refresh:
+        await interaction.response.edit_message(embed=embed, view=view)
+    else:
+        await interaction.response.send_message(embed=embed, view=view)
+
+
+@bot.tree.command(name="leaderboard", description="🏆 See the Top 10 Richest Players")
+async def leaderboard(interaction: discord.Interaction):
+    await show_leaderboard(interaction)
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
