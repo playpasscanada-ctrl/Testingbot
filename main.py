@@ -7231,8 +7231,9 @@ async def slash_loan(interaction: discord.Interaction, amount: int):
     # 2. Cooldown Check (1 Hour)
     if user_id in loan_cooldowns:
         last_loan_time = loan_cooldowns[user_id]
-        if datetime.datetime.now() < last_loan_time + datetime.timedelta(hours=1):
-            remaining = (last_loan_time + datetime.timedelta(hours=1)) - datetime.datetime.now()
+        # CHANGE: datetime -> dt
+        if dt.datetime.now() < last_loan_time + dt.timedelta(hours=1):
+            remaining = (last_loan_time + dt.timedelta(hours=1)) - dt.datetime.now()
             minutes = int(remaining.total_seconds() / 60)
             await interaction.response.send_message(f"⏳ **Cooldown!** Agla loan {minutes} minute baad le sakta hai.", ephemeral=True)
             return
@@ -7250,11 +7251,12 @@ async def slash_loan(interaction: discord.Interaction, amount: int):
     # Example: users[str(user_id)]["wallet"] += amount 
     
     # -- Logic for Loans Dict --
-    now = datetime.datetime.now()
+    # CHANGE: datetime -> dt
+    now = dt.datetime.now()
     loans[user_id] = {
         "amount": amount,
-        "due_at": now + datetime.timedelta(hours=24), # 24 Hours time
-        "next_update": now + datetime.timedelta(hours=3), # Next reminder/interest
+        "due_at": now + dt.timedelta(hours=24), # 24 Hours time
+        "next_update": now + dt.timedelta(hours=3), # Next reminder/interest
         "taken_at": now
     }
     
@@ -7263,7 +7265,11 @@ async def slash_loan(interaction: discord.Interaction, amount: int):
 
     # 5. Success Embed
     em = discord.Embed(title="💸 Loan Approved!", description=f"Successfully **{amount:,}** coins transfer kiye gaye.", color=discord.Color.green())
-    em.add_field(name="📅 Due Time", value="<t:{}:R> (24 Hours)".format(int((now + datetime.timedelta(hours=24)).timestamp())), inline=True)
+    
+    # CHANGE: datetime -> dt
+    due_timestamp = int((now + dt.timedelta(hours=24)).timestamp())
+    
+    em.add_field(name="📅 Due Time", value=f"<t:{due_timestamp}:R> (24 Hours)", inline=True)
     em.add_field(name="⚠ Interest", value="Agar loan **300k+** hai to har 3 ghante me **10% interest** lagega.", inline=False)
     em.set_footer(text="Wapis karne ke liye /repay use karein.")
     
@@ -7312,10 +7318,11 @@ async def slash_repay(interaction: discord.Interaction, amount: int):
         remaining = loans[user_id]["amount"]
         em = discord.Embed(title="💰 Partial Payment", description=f"Tune **{pay_amount:,}** pay kiye. Abhi bhi **{remaining:,}** baki hai.", color=discord.Color.blue())
         await interaction.response.send_message(embed=em)
-
+        
 @tasks.loop(minutes=1)
 async def loan_monitor():
-    now = datetime.datetime.now()
+    # CHANGE: datetime -> dt
+    now = dt.datetime.now()
     active_users = list(loans.keys()) # Dictionary change error se bachne ke liye list banaya
 
     for user_id in active_users:
@@ -7351,7 +7358,8 @@ async def loan_monitor():
                 data["amount"] += interest_added
             
             # Next check time update (+3 hours)
-            data["next_update"] = now + datetime.timedelta(hours=3)
+            # CHANGE: datetime -> dt
+            data["next_update"] = now + dt.timedelta(hours=3)
             loans[user_id] = data 
 
             # DM User
