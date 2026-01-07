@@ -8838,6 +8838,1914 @@ async def pentathlon(i: discord.Interaction):
     view = PentaLobby(i.user)
     await i.response.send_message(embed=view.get_embed(), view=view)
 
+# ================== 📟 MATRIX CYBER TERMINAL (7x7 GRID) ==================
+
+class MatrixInputModal(discord.ui.Modal, title="📟 TERMINAL ACCESS"):
+    answer = discord.ui.TextInput(
+        label="ENTER COORDINATES",
+        placeholder="Example: A1 B3 C2 (Space se alag karein)",
+        required=True,
+        max_length=50
+    )
+
+    def __init__(self, view):
+        super().__init__()
+        self.view = view
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await self.view.check_answer(interaction, self.answer.value)
+
+
+class MatrixTerminalView(discord.ui.View):
+    def __init__(self, player, interaction):
+        super().__init__(timeout=180)
+        self.player = player
+        self.interaction = interaction
+        self.level = 1
+        self.game_active = True
+        
+        # ⚙️ LEVEL CONFIG (7 LEVELS)
+        self.levels = {
+            1: {"size": 3, "green": 3, "bomb": 0, "time": 8,  "prize": 10000},
+            2: {"size": 4, "green": 4, "bomb": 0, "time": 8,  "prize": 20000},
+            3: {"size": 4, "green": 5, "bomb": 1, "time": 10, "prize": 30000},
+            4: {"size": 5, "green": 6, "bomb": 2, "time": 12, "prize": 50000},
+            5: {"size": 6, "green": 7, "bomb": 3, "time": 15, "prize": 100000},
+            6: {"size": 7, "green": 8, "bomb": 5, "time": 18, "prize": 150000},
+            7: {"size": 7, "green": 10,"bomb": 8, "time": 20, "prize": 200000}, # 7x7 Hardest
+        }
+        
+        self.rows = "ABCDEFG"
+        asyncio.create_task(self.start_level())
+
+    async def start_level(self):
+        if not self.game_active: return
+        
+        config = self.levels[self.level]
+        grid_size = config["size"]
+        total_cells = grid_size * grid_size
+        
+        # 1. Generate Pattern
+        all_coords = []
+        for r in range(grid_size):
+            for c in range(grid_size):
+                all_coords.append(f"{self.rows[r]}{c+1}") # A1, A2...
+        
+        self.correct_coords = random.sample(all_coords, config["green"])
+        remaining = [x for x in all_coords if x not in self.correct_coords]
+        self.bomb_coords = random.sample(remaining, config["bomb"])
+        
+        # 2. SHOW PHASE (Memorize)
+        grid_str = self.generate_grid_str(show=True)
+        embed = discord.Embed(title=f"📟 SYSTEM HACK: LEVEL {self.level}", color=0x00FF00)
+        embed.description = (
+            f"```\n{grid_str}\n```\n"
+            f"💰 **Reward:** ${config['prize']:,}\n"
+            f"🟩 **TARGETS:** {config['green']}\n"
+            f"🟥 **BOMBS:** {config['bomb']}\n\n"
+            f"⏳ **Memorize Pattern: {config['time']} Seconds!**"
+        )
+        self.clear_items() # No buttons during memorize
+        await self.interaction.edit_original_response(embed=embed, view=self)
+        
+        await asyncio.sleep(config["time"]) # Wait time
+        
+        # 3. INPUT PHASE (Hidden)
+        grid_str = self.generate_grid_str(show=False)
+        embed = discord.Embed(title=f"🔒 ENTER SECURITY CODES", color=0x2C3E50)
+        embed.description = (
+            f"```\n{grid_str}\n```\n"
+            f"👉 **Niche button dabao aur coordinates likho!**\n"
+            f"📝 Example: `{self.correct_coords[0]} {self.correct_coords[1]}`"
+        )
+        
+        # Add Input Button
+        self.clear_items()
+        btn = discord.ui.Button(label="🔓 OPEN TERMINAL INPUT", style=discord.ButtonStyle.success, emoji="⌨️")
+        btn.callback = self.open_modal
+        self.add_item(btn)
+        
+        await self.interaction.edit_original_response(embed=embed, view=self)
+
+    def generate_grid_str(self, show=False):
+        config = self.levels[self.level]
+        size = config["size"]
+        
+        # Header (1 2 3...)
+        header = "   " + " ".join([str(i+1) for i in range(size)])
+        board = [header]
+        
+        for r in range(size):
+            row_char = self.rows[r]
+            row_line = f"{row_char} " # Row Label (A, B...)
+            
+            for c in range(size):
+                coord = f"{row_char}{c+1}"
+                
+                if show:
+                    if coord in self.correct_coords:
+                        icon = "🟩"
+                    elif coord in self.bomb_coords:
+                        icon = "🟥"
+                    else:
+                        icon = "⬛"
+                else:
+                    icon = "🔳" # Locked state
+                
+                row_line += f" {icon}"
+            board.append(row_line)
+            
+        return "\n".join(board)
+
+    async def open_modal(self, interaction: discord.Interaction):
+        if interaction.user.id != self.player.id:
+            return await interaction.response.send_message("❌ Apna game khelo!", ephemeral=True)
+        await interaction.response.send_modal(MatrixInputModal(self))
+
+    async def check_answer(self, interaction: discord.Interaction, answer_str: str):
+        await interaction.response.defer()
+        
+        # Parse Input (e.g., "a1 A2 b3" -> ["A1", "A2", "B3"])
+        user_inputs = answer_str.upper().replace(",", " ").split()
+        
+        # Logic
+        correct_hits = 0
+        hit_bomb = False
+        wrong_input = False
+        
+        for inp in user_inputs:
+            if inp in self.bomb_coords:
+                hit_bomb = True
+                break
+            elif inp in self.correct_coords:
+                correct_hits += 1
+            else:
+                wrong_input = True # Clicked empty black tile
+        
+        # WIN/LOSE CHECK
+        config = self.levels[self.level]
+        
+        if hit_bomb:
+            await self.game_over("BOMB")
+        elif wrong_input:
+            await self.game_over("WRONG")
+        elif correct_hits < config["green"]:
+            await self.game_over("INCOMPLETE") # Saare type nahi kiye
+        else:
+            # ✅ LEVEL CLEARED
+            await update_balance(self.player.id, config["prize"])
+            
+            if self.level == 7:
+                await self.game_win()
+            else:
+                self.level += 1
+                await interaction.followup.send(f"🎉 **Access Granted!** Won ${config['prize']:,}. Next Level...", ephemeral=True)
+                await self.start_level()
+
+    async def game_over(self, reason):
+        self.game_active = False
+        self.clear_items()
+        
+        # Reveal Map
+        final_grid = self.generate_grid_str(show=True)
+        
+        # Reason Text
+        if reason == "BOMB": txt = "💣 **SYSTEM FAILURE!** Bomb Detected!"
+        elif reason == "WRONG": txt = "❌ **ACCESS DENIED!** Wrong Coordinates."
+        elif reason == "INCOMPLETE": txt = "⚠️ **ERROR!** Not enough codes entered."
+        else: txt = "💀 **DISCONNECTED.**"
+
+        # --- PUNISHMENT LOGIC ---
+        data = await get_data(self.player.id)
+        is_safe = False
+        footer_txt = "💀 Penalty: 30s Timeout"
+        
+        # Check VIP/Life
+        if data.get("vip_expiry"): 
+            is_safe = True
+            footer_txt = "🛡️ VIP Access: Punishment Bypassed"
+        elif data.get("inventory", {}).get("life", 0) > 0:
+            is_safe = True
+            footer_txt = "💖 Extra Life: Punishment Bypassed"
+
+        if not is_safe:
+             await smart_timeout(self.interaction, self.player, 30, "Hack Failed")
+
+        embed = discord.Embed(title="🚫 HACK FAILED", description=f"{txt}\n\n**Correct Pattern:**\n```\n{final_grid}\n```", color=0xFF0000)
+        embed.set_footer(text=footer_txt)
+        
+        await self.interaction.edit_original_response(embed=embed, view=None)
+
+    async def game_win(self):
+        self.game_active = False
+        self.clear_items()
+        
+        embed = discord.Embed(title="🕴️ SYSTEM OVERRIDE COMPLETE", color=0xFFD700)
+        embed.description = (
+            f"🎉 **GODLIKE!** Tumne saare 7 Levels hack kar liye.\n"
+            f"🌐 **Global Black Market** ab tumhare control mein hai!\n\n"
+            f"💸 **Total Earnings:** HUGE!"
+        )
+        embed.set_image(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif")
+        await self.interaction.edit_original_response(embed=embed, view=None)
+
+
+@bot.tree.command(name="matrix_terminal", description="📟 7x7 Grid Hacking (Type Coordinates to Win)")
+async def matrix_terminal(i: discord.Interaction):
+    fee = 5000
+    data = await get_data(i.user.id)
+    if data["balance"] < fee:
+        return await i.response.send_message(f"❌ Entry Fee ${fee:,} chahiye!", ephemeral=True)
+    
+    await update_balance(i.user.id, -fee)
+    
+    view = MatrixTerminalView(i.user, i)
+    await i.response.send_message(f"📟 **Initializing Terminal...** (-${fee:,})", view=view)
+
+# ================== 🧑‍💻 THE HACKER RUN (TYPING SPEED GAME) ==================
+
+import string
+
+class HackerInputModal(discord.ui.Modal, title="⌨️ ENTER SECURITY CODE"):
+    answer = discord.ui.TextInput(
+        label="TYPE THE CODE EXACTLY",
+        placeholder="Case Sensitive (Jaisa dikha waisa likho)",
+        required=True,
+        max_length=30
+    )
+
+    def __init__(self, view):
+        super().__init__()
+        self.view = view
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await self.view.check_code(interaction, self.answer.value)
+
+
+class HackerRunView(discord.ui.View):
+    def __init__(self, player, interaction):
+        super().__init__(timeout=60)
+        self.player = player
+        self.interaction = interaction
+        self.level = 1
+        self.game_active = True
+        
+        # Level Logic: Length starts at 4, increases by 2 every level
+        # Reward: Level * 20,000
+        
+        asyncio.create_task(self.start_level())
+
+    def generate_code(self, length):
+        # Generates a random string (Letters + Numbers)
+        chars = string.ascii_letters + string.digits
+        return ''.join(random.choice(chars) for _ in range(length))
+
+    async def start_level(self):
+        if not self.game_active: return
+        
+        # Calculate Difficulty & Reward
+        code_length = 4 + (self.level - 1) * 2  # L1=4, L2=6, L3=8...
+        self.current_reward = self.level * 20000
+        self.current_code = self.generate_code(code_length)
+        
+        # Embed Design (Terminal Style)
+        embed = discord.Embed(title=f"🧑‍💻 HACKER RUN: LEVEL {self.level}/10", color=0x00FF00)
+        embed.description = (
+            f"💰 **Potential Reward:** ${self.current_reward:,}\n"
+            f"🔒 **Security Level:** {code_length} Characters\n\n"
+            f"👇 **CODE KO EXACT TYPE KARO:**"
+        )
+        
+        # Anti-Copy Visual (Code Block with unique formatting)
+        # Hum ise Code Block me daal rahe hain taaki alag dikhe
+        embed.add_field(name="🔑 SECURITY KEY", value=f"```fix\n{self.current_code}\n```", inline=False)
+        embed.set_footer(text="Galti ki toh 20s Timeout! | VIPs Safe")
+
+        # Update Buttons
+        self.clear_items()
+        btn = discord.ui.Button(label="⌨️ TYPE CODE", style=discord.ButtonStyle.primary, emoji="📟")
+        btn.callback = self.open_modal
+        self.add_item(btn)
+        
+        await self.interaction.edit_original_response(embed=embed, view=self)
+
+    async def open_modal(self, interaction: discord.Interaction):
+        if interaction.user.id != self.player.id:
+            return await interaction.response.send_message("❌ Apna game khelo!", ephemeral=True)
+        
+        await interaction.response.send_modal(HackerInputModal(self))
+
+    async def check_code(self, interaction: discord.Interaction, user_input: str):
+        if not self.game_active: return
+        
+        # Case Sensitive Check
+        if user_input == self.current_code:
+            # ✅ CORRECT
+            await interaction.response.defer()
+            
+            # Pay Reward Immediately
+            await update_balance(self.player.id, self.current_reward)
+            
+            if self.level == 10:
+                await self.game_win(interaction)
+            else:
+                self.level += 1
+                # Show success briefly then next level
+                await interaction.followup.send(f"✅ **Bypass Successful!** +${self.current_reward:,}", ephemeral=True)
+                await self.start_level()
+        else:
+            # ❌ WRONG
+            await self.game_over(interaction, user_input)
+
+    async def game_over(self, interaction: discord.Interaction, wrong_input):
+        self.game_active = False
+        self.clear_items()
+        
+        # --- PUNISHMENT LOGIC ---
+        data = await get_data(self.player.id)
+        is_safe = False
+        save_msg = "💀 **SYSTEM LOCKDOWN!** (You failed)"
+        
+        # 1. VIP Check
+        if data.get("vip_expiry"):
+            is_safe = True
+            save_msg = "🛡️ **VIP Firewall:** Punishment blocked."
+            
+        # 2. Extra Life
+        elif data.get("inventory", {}).get("life", 0) > 0:
+            await update_inventory(self.player.id, "life", -1)
+            is_safe = True
+            save_msg = "💖 **Extra Life:** System restore activated."
+
+        # Apply Punishment if not safe
+        punish_txt = ""
+        if not is_safe:
+            await smart_timeout(self.interaction, self.player, 20, "Hacker Run Failed")
+            punish_txt = "\n🚫 **Penalty:** 20 Seconds Timeout"
+
+        embed = discord.Embed(title="🚫 ACCESS DENIED", color=0xFF0000)
+        embed.description = (
+            f"❌ **Wrong Code!**\n"
+            f"📝 You Typed: `{wrong_input}`\n"
+            f"🔑 Correct Was: `{self.current_code}`\n\n"
+            f"{save_msg}{punish_txt}"
+        )
+        embed.set_image(url="https://media.tenor.com/J3i6jGgFqsgAAAAC/money-transfer.gif") # Glitch GIF laga dena better rahega
+        
+        await self.interaction.edit_original_response(embed=embed, view=None)
+
+    async def game_win(self, interaction):
+        self.game_active = False
+        self.clear_items()
+        
+        embed = discord.Embed(title="🕴️ ULTIMATE HACKER!", color=0xFFD700)
+        embed.description = (
+            f"🎉 **MISSION COMPLETE!**\n"
+            f"Tumne Level 10 Firewall tod diya.\n"
+            f"💸 **Total Earnings:** Bahut saara paisa!\n"
+            f"🌐 **Status:** LEGEND"
+        )
+        embed.set_image(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif")
+        await self.interaction.edit_original_response(embed=embed, view=None)
+
+
+@bot.tree.command(name="hacker_run", description="🧑‍💻 Type the code to hack the system (10 Levels)")
+async def hacker_run(i: discord.Interaction):
+    entry_fee = 20000
+    
+    # Balance Check
+    data = await get_data(i.user.id)
+    if data["balance"] < entry_fee:
+        return await i.response.send_message(f"❌ Entry Fee ${entry_fee:,} chahiye!", ephemeral=True)
+    
+    # Deduct Fee
+    await update_balance(i.user.id, -entry_fee)
+    
+    # Start Game
+    view = HackerRunView(i.user, i)
+    await i.response.send_message(f"📟 **Initializing Hack...** (-${entry_fee:,})", view=view)
+
+# ================== 🧠 INSANE TRIVIA (UPSC LEVEL) ==================
+
+# 🤯 QUESTION BANK (HARDCORE)
+TRIVIA_QUESTIONS = [
+    {
+        "q": "The 'Voynich Manuscript' has baffled cryptographers for centuries. Carbon dating places it in which century?",
+        "o": ["13th Century", "15th Century", "17th Century", "11th Century"],
+        "a": "15th Century"
+    },
+    {
+        "q": "In Quantum Mechanics, 'Schrödinger's Cat' experiment hypothetically used which radioactive substance?",
+        "o": ["Uranium-235", "Radium", "Polonium", "Minute amount of any source"],
+        "a": "Minute amount of any source"
+    },
+    {
+        "q": "The 'Antikythera Mechanism' (world's first analog computer) was primarily used to predict what?",
+        "o": ["Earthquakes", "Astronomical Positions", "Weather Patterns", "Sea Tides"],
+        "a": "Astronomical Positions"
+    },
+    {
+        "q": "Which treaty signed in 1648 is credited with creating the modern nation-state system (Westphalian sovereignty)?",
+        "o": ["Treaty of Versailles", "Peace of Westphalia", "Treaty of Utrecht", "Congress of Vienna"],
+        "a": "Peace of Westphalia"
+    },
+    {
+        "q": "The Event Horizon Telescope captured the first image of a Black Hole in which galaxy?",
+        "o": ["Milky Way", "Andromeda", "Messier 87 (M87)", "Triangulum"],
+        "a": "Messier 87 (M87)"
+    },
+    {
+        "q": "In Mahabharata, what was the specific name of the weapon Ashwatthama used against the Pandavas?",
+        "o": ["Brahmastra", "Pashupatastra", "Brahmashirsha Astra", "Narayanastra"],
+        "a": "Brahmashirsha Astra"
+    },
+    {
+        "q": "What is the biological term for the 'Process of Programmed Cell Death'?",
+        "o": ["Necrosis", "Apoptosis", "Mitosis", "Phagocytosis"],
+        "a": "Apoptosis"
+    },
+    {
+        "q": "Which obscure Indian dynasty ruled Kamarupa (Assam) from 350-650 CE and claimed descent from Narakasura?",
+        "o": ["Ahom Dynasty", "Varman Dynasty", "Pala Dynasty", "Chutia Dynasty"],
+        "a": "Varman Dynasty"
+    },
+    {
+        "q": "The mathematical constant 'e' (Euler's number) is the base of which logarithm?",
+        "o": ["Common Logarithm", "Binary Logarithm", "Natural Logarithm", "Complex Logarithm"],
+        "a": "Natural Logarithm"
+    },
+    {
+        "q": "In 1908, a massive explosion flattened 2,000 sq km of Siberian forest. What is this event called?",
+        "o": ["Chelyabinsk Event", "Tunguska Event", "Sikhote-Alin Event", "Vredefort Impact"],
+        "a": "Tunguska Event"
+    },
+    {
+        "q": "In the world of Cryptocurrency, what is the specific term for a crypto wallet that is NOT connected to the internet (for security)?",
+        "o": ["Hot Wallet", "Cold Wallet", "Dead Wallet", "Hard Drive"],
+        "a": "Cold Wallet"
+    },
+    {
+        "q": "The 'Barren Island', the only active volcano in India, is located in which part of the Andaman & Nicobar Islands?",
+        "o": ["Great Nicobar", "North Andaman", "Little Andaman", "East of Middle Andaman"],
+        "a": "East of Middle Andaman"
+    },
+    {
+        "q": "Who was the revolutionary who shot dead Robert Ashe, the Collector of Tirunelveli, in 1911 and then committed suicide?",
+        "o": ["Vanchinathan", "Tiruppur Kumaran", "Subramania Siva", "V.O. Chidambaram Pillai"],
+        "a": "Vanchinathan"
+    },
+    {
+        "q": "Which female revolutionary fired five shots at the Governor of Bengal, Stanley Jackson, during the Convocation Hall ceremony in 1932?",
+        "o": ["Pritilata Waddedar", "Kalpana Datta", "Bina Das", "Matangini Hazra"],
+        "a": "Bina Das"
+    },
+    {
+        "q": "Which country has no official capital city?",
+        "o": ["Monaco", "Nauru", "Vatican City", "Tuvalu"],
+        "a": "Nauru"
+    },
+    {
+        "q": "What is the name of the 'Point of Inaccessibility' in the ocean, which is the farthest point from any land?",
+        "o": ["Challenger Deep", "Point Nemo", "Bermuda Triangle", "Mariana Trench"],
+        "a": "Point Nemo"
+    },
+    {
+        "q": "In the Solar System, which planet has the 'Great Dark Spot' (similar to Jupiter's Red Spot)?",
+        "o": ["Uranus", "Neptune", "Saturn", "Mars"],
+        "a": "Neptune"
+    },
+    {
+        "q": "Which war in history is recorded as the 'Shortest War' ever fought (lasting only 38 to 45 minutes)?",
+        "o": ["Anglo-Zanzibar War", "Six-Day War", "Football War", "Falklands War"],
+        "a": "Anglo-Zanzibar War"
+    },
+    {
+        "q": "The 'Valles Marineris' is a massive canyon system (larger than the Grand Canyon) located on which planet?",
+        "o": ["Venus", "Mars", "Mercury", "Earth"],
+        "a": "Mars"
+    },
+    {
+        "q": "Which country has the most time zones (including overseas territories)?",
+        "o": ["Russia", "France", "USA", "China"],
+        "a": "France"
+    },
+    {
+        "q": "What is the name of the star that is currently the 'North Star' (Pole Star)?",
+        "o": ["Sirius", "Polaris", "Vega", "Betelgeuse"],
+        "a": "Polaris"
+    },
+    {
+        "q": "Which is the only sea in the world that has no coastline?",
+        "o": ["Sargasso Sea", "Dead Sea", "Caspian Sea", "Red Sea"],
+        "a": "Sargasso Sea"
+    },
+    {
+        "q": "The 'Fermi Paradox' is a scientific concept that questions...",
+        "o": ["The stability of black holes", "Where are all the aliens?", "The speed of light limit", "Time travel possibilities"],
+        "a": "Where are all the aliens?"
+    },
+    {
+        "q": "Which African country was formerly known as 'Abyssinia'?",
+        "o": ["Ethiopia", "Sudan", "Liberia", "Zimbabwe"],
+        "a": "Ethiopia"
+    },
+    {
+        "q": "What is the specific term for a Neutron Star that spins rapidly and emits beams of radiation?",
+        "o": ["Quasar", "Pulsar", "Magnetar", "White Dwarf"],
+        "a": "Pulsar"
+    },
+    {
+        "q": "Which element has the highest melting point of all elements?",
+        "o": ["Tungsten", "Carbon", "Titanium", "Platinum"],
+        "a": "Tungsten"
+    },
+    {
+        "q": "The 'Diomede Islands' are unique because they are separated by only 3.8 km but have a time difference of?",
+        "o": ["1 Hour", "21 Hours", "12 Hours", "30 Minutes"],
+        "a": "21 Hours"
+    },
+    {
+        "q": "Which chemical element is named after the creator of the Periodic Table?",
+        "o": ["Mendelevium", "Curium", "Einsteinium", "Nobelium"],
+        "a": "Mendelevium"
+    },
+    {
+        "q": "Which is the most abundant gas in the atmosphere of Venus?",
+        "o": ["Nitrogen", "Carbon Dioxide", "Methane", "Sulfuric Acid"],
+        "a": "Carbon Dioxide"
+    },
+    {
+        "q": "What is the name of the largest known volcano in the Solar System?",
+        "o": ["Mount Everest", "Olympus Mons", "Mauna Kea", "Maxwell Montes"],
+        "a": "Olympus Mons"
+    },
+    {
+        "q": "The 'Library of Alexandria' was located in which modern-day country?",
+        "o": ["Greece", "Egypt", "Italy", "Turkey"],
+        "a": "Egypt"
+    },
+    {
+        "q": "Which country is home to the 'Door to Hell' (Darvaza Gas Crater)?",
+        "o": ["Kazakhstan", "Turkmenistan", "Uzbekistan", "Iran"],
+        "a": "Turkmenistan"
+    },
+    {
+        "q": "The 'Oort Cloud' is a theoretical shell of icy objects located...",
+        "o": ["Between Mars and Jupiter", "Beyond Pluto (Outer Solar System)", "Around Saturn's Rings", "Inside the Sun's core"],
+        "a": "Beyond Pluto (Outer Solar System)"
+    },
+    {
+        "q": "Which treaty officially ended World War I?",
+        "o": ["Treaty of Paris", "Treaty of Versailles", "Treaty of Ghent", "Treaty of Tordesillas"],
+        "a": "Treaty of Versailles"
+    },
+    {
+        "q": "What color is the sunset on Mars?",
+        "o": ["Red", "Blue", "Green", "Yellow"],
+        "a": "Blue"
+    },
+    {
+        "q": "Which is the only country in the world to have a non-rectangular flag?",
+        "o": ["Switzerland", "Nepal", "Vatican City", "Bhutan"],
+        "a": "Nepal"
+    },
+    {
+        "q": "The 'Tunguska Event' of 1908 occurred in which country?",
+        "o": ["USA", "Russia", "Canada", "China"],
+        "a": "Russia"
+    },
+    {
+        "q": "Which planet rotates on its side (like a rolling ball)?",
+        "o": ["Venus", "Uranus", "Neptune", "Saturn"],
+        "a": "Uranus"
+    },
+    {
+        "q": "The 'Hague' is the seat of government for which country, though not its capital?",
+        "o": ["Belgium", "Netherlands", "Switzerland", "Denmark"],
+        "a": "Netherlands"
+    },
+    {
+        "q": "What is the name of the boundary that marks the edge of the heliosphere (Sun's influence)?",
+        "o": ["Kuiper Belt", "Heliopause", "Oort Cloud", "Magnetosphere"],
+        "a": "Heliopause"
+    },
+    {
+        "q": "Which two countries share the longest international border?",
+        "o": ["Russia and China", "USA and Canada", "Argentina and Chile", "India and China"],
+        "a": "USA and Canada"
+    },
+    {
+        "q": "The 'Year Without a Summer' (1816) was caused by the eruption of which volcano?",
+        "o": ["Krakatoa", "Mount Tambora", "Vesuvius", "Mount St. Helens"],
+        "a": "Mount Tambora"
+    },
+    {
+        "q": "Which moon of Jupiter is considered the most likely place to find extraterrestrial life?",
+        "o": ["Io", "Europa", "Ganymede", "Callisto"],
+        "a": "Europa"
+    },
+    {
+        "q": "The 'Zimmermann Telegram' was a secret diplomatic communication that pushed which country into WWI?",
+        "o": ["Russia", "USA", "UK", "Italy"],
+        "a": "USA"
+    },
+    {
+        "q": "Which is the smallest country in the world by land area?",
+        "o": ["Monaco", "Vatican City", "Nauru", "San Marino"],
+        "a": "Vatican City"
+    },
+    {
+        "q": "What is the term for a black hole formed by the collapse of a massive star?",
+        "o": ["Supermassive Black Hole", "Stellar Black Hole", "Primordial Black Hole", "Miniature Black Hole"],
+        "a": "Stellar Black Hole"
+    },
+    {
+        "q": "Which country was formerly known as 'Ceylon'?",
+        "o": ["Myanmar", "Sri Lanka", "Thailand", "Cambodia"],
+        "a": "Sri Lanka"
+    },
+    {
+        "q": "The 'Chandrasekhar Limit' (1.4 solar masses) determines the maximum mass of a...",
+        "o": ["Neutron Star", "White Dwarf", "Black Hole", "Red Giant"],
+        "a": "White Dwarf"
+    },
+    {
+        "q": "Which South American country has two capitals (La Paz and Sucre)?",
+        "o": ["Peru", "Bolivia", "Chile", "Ecuador"],
+        "a": "Bolivia"
+    },
+    {
+        "q": "The 'Goldilocks Zone' in astronomy refers to...",
+        "o": ["Area with most gold asteroids", "Habitable zone around a star", "Center of the galaxy", "Safe zone for black holes"],
+        "a": "Habitable zone around a star"
+    },
+    {
+        "q": "Which empire was ruled by the 'Inca' civilization?",
+        "o": ["Mexico", "Peru (Andes Region)", "Brazil", "Egypt"],
+        "a": "Peru (Andes Region)"
+    },
+    {
+        "q": "What is the name of the galaxy that is on a collision course with the Milky Way?",
+        "o": ["Triangulum", "Andromeda", "Whirlpool", "Sombrero"],
+        "a": "Andromeda"
+    },
+    {
+        "q": "Which is the only continent with no active volcanoes?",
+        "o": ["Australia", "Antarctica", "Europe", "Africa"],
+        "a": "Australia"
+    },
+    {
+        "q": "The 'Manhattan Project' was the research project that produced the first...",
+        "o": ["Space Rocket", "Nuclear Weapon", "Internet", "Computer"],
+        "a": "Nuclear Weapon"
+    },
+    {
+        "q": "Which planet has the shortest day in the Solar System (rotates fastest)?",
+        "o": ["Mercury", "Jupiter", "Earth", "Mars"],
+        "a": "Jupiter"
+    },
+    {
+        "q": "The 'Bering Strait' separates which two countries?",
+        "o": ["UK and France", "USA (Alaska) and Russia", "Spain and Morocco", "Japan and Korea"],
+        "a": "USA (Alaska) and Russia"
+    },
+    {
+        "q": "Which chemical element has the symbol 'W'?",
+        "o": ["Wolfram (Tungsten)", "Water", "White Phosphorous", "Wanium"],
+        "a": "Wolfram (Tungsten)"
+    },
+    {
+        "q": "The 'Great Red Spot' on Jupiter is essentially a massive...",
+        "o": ["Volcano", "Storm (Anticyclone)", "Crater", "Ocean"],
+        "a": "Storm (Anticyclone)"
+    },
+    {
+        "q": "Which country is known as the 'Land of the Thunderbolt'?",
+        "o": ["Nepal", "Bhutan", "Japan", "Tibet"],
+        "a": "Bhutan"
+    },
+    {
+        "q": "What is the theoretical boundary around a black hole called?",
+        "o": ["Singularity", "Event Horizon", "Photon Ring", "Accretion Disk"],
+        "a": "Event Horizon"
+    },
+    {
+        "q": "Which war lasted for 335 years (1651–1986) without a single shot being fired?",
+        "o": ["Three Hundred and Thirty Five Years' War", "Cold War", "Anglo-Dutch War", "The Silent War"],
+        "a": "Three Hundred and Thirty Five Years' War"
+    },
+    {
+        "q": "Which planet is known as the 'Morning Star' or 'Evening Star'?",
+        "o": ["Mars", "Venus", "Mercury", "Jupiter"],
+        "a": "Venus"
+    },
+    {
+        "q": "The 'Dead Sea' is located between which two countries?",
+        "o": ["Israel and Jordan", "Egypt and Saudi Arabia", "Turkey and Syria", "Iran and Iraq"],
+        "a": "Israel and Jordan"
+    },
+    {
+        "q": "Which spacecraft was the first to land humans on the Moon?",
+        "o": ["Apollo 11", "Apollo 13", "Vostok 1", "Gemini 8"],
+        "a": "Apollo 11"
+    },
+    {
+        "q": "Which country has the most lakes in the world?",
+        "o": ["USA", "Canada", "Russia", "Finland"],
+        "a": "Canada"
+    },
+    {
+        "q": "What is the term for the explosion of a dying star?",
+        "o": ["Nebula", "Supernova", "Black Dwarf", "Red Giant"],
+        "a": "Supernova"
+    },
+    {
+        "q": "Which African nation was created by freed American slaves?",
+        "o": ["Nigeria", "Liberia", "Ghana", "Kenya"],
+        "a": "Liberia"
+    },
+    {
+        "q": "The 'Kuiper Belt' is the home of which famous dwarf planet?",
+        "o": ["Ceres", "Pluto", "Eris", "Sedna"],
+        "a": "Pluto"
+    },
+    {
+        "q": "Which city is located on two continents (Europe and Asia)?",
+        "o": ["Moscow", "Istanbul", "Cairo", "Dubai"],
+        "a": "Istanbul"
+    },
+    {
+        "q": "Which gas gives Neptune and Uranus their blue color?",
+        "o": ["Oxygen", "Methane", "Hydrogen", "Helium"],
+        "a": "Methane"
+    },
+    {
+        "q": "The 'Magna Carta' (1215) was signed by which King of England?",
+        "o": ["King Henry VIII", "King John", "King Richard", "King George"],
+        "a": "King John"
+    },
+    {
+        "q": "What is the only substance on Earth found naturally in three forms (Solid, Liquid, Gas)?",
+        "o": ["Mercury", "Water", "Carbon Dioxide", "Nitrogen"],
+        "a": "Water"
+    },
+    {
+        "q": "Which country owns the island of Greenland?",
+        "o": ["Canada", "Denmark", "USA", "Norway"],
+        "a": "Denmark"
+    },
+    {
+        "q": "The 'Pillars of Creation' are located in which Nebula?",
+        "o": ["Crab Nebula", "Eagle Nebula", "Orion Nebula", "Horsehead Nebula"],
+        "a": "Eagle Nebula"
+    },
+    {
+        "q": "Which ancient civilization built the Machu Picchu?",
+        "o": ["Aztec", "Inca", "Maya", "Olmec"],
+        "a": "Inca"
+    },
+    {
+        "q": "What is the name of the first dog sent into space?",
+        "o": ["Belka", "Laika", "Strelka", "Sputnik"],
+        "a": "Laika"
+    },
+    {
+        "q": "Which country is the largest producer of Coffee in the world?",
+        "o": ["Colombia", "Brazil", "Vietnam", "Ethiopia"],
+        "a": "Brazil"
+    },
+    {
+        "q": "What phenomenon causes the 'Northern Lights'?",
+        "o": ["Reflection of ice", "Solar Wind interacting with Magnetosphere", "Moonlight", "Volcanic Dust"],
+        "a": "Solar Wind interacting with Magnetosphere"
+    },
+    {
+        "q": "Which is the deepest known point in the Earth's oceans?",
+        "o": ["Tonga Trench", "Challenger Deep (Mariana Trench)", "Puerto Rico Trench", "Java Trench"],
+        "a": "Challenger Deep (Mariana Trench)"
+    },
+    {
+        "q": "Who was the first person to travel into space?",
+        "o": ["Neil Armstrong", "Yuri Gagarin", "Alan Shepard", "Buzz Aldrin"],
+        "a": "Yuri Gagarin"
+    },
+    {
+        "q": "Which country has the nickname 'The Land of Fire and Ice'?",
+        "o": ["Greenland", "Iceland", "Norway", "New Zealand"],
+        "a": "Iceland"
+    },
+    {
+        "q": "The 'Zimmermann Plan' was a conspiracy between the Ghadar Party and which country to ship arms into India for a revolt?",
+        "o": ["Japan", "Germany", "Russia", "Turkey"],
+        "a": "Germany"
+    },
+    {
+        "q": "Who was the defense lawyer for Bhagat Singh and Batukeshwar Dutt in the Assembly Bomb Case?",
+        "o": ["Asaf Ali", "Bhulabhai Desai", "Tej Bahadur Sapru", "Kailash Nath Katju"],
+        "a": "Asaf Ali"
+    },
+    {
+        "q": "In the 1857 Revolt, who led the rebels in the region of Arrah (Bihar) and famously cut off his own injured hand to offer it to the Ganges?",
+        "o": ["Nana Sahib", "Kunwar Singh", "Tatya Tope", "Maulvi Ahmadullah"],
+        "a": "Kunwar Singh"
+    },
+    {
+        "q": "Who founded the 'India House' in London, which became a hub for Indian revolutionaries abroad?",
+        "o": ["Dadabhai Naoroji", "Shyamji Krishna Varma", "Madam Bhikaji Cama", "V.D. Savarkar"],
+        "a": "Shyamji Krishna Varma"
+    },
+    {
+        "q": "The 'Rampa Rebellion' of 1922-24 in Andhra Pradesh was led by which legendary tribal leader?",
+        "o": ["Birsa Munda", "Alluri Sitarama Raju", "Komaram Bheem", "Sidhu Murmu"],
+        "a": "Alluri Sitarama Raju"
+    },
+    {
+        "q": "Who was the only woman to be part of the 'Hindustan Socialist Republican Association' (HSRA) core group?",
+        "o": ["Durga Bhabhi (Durga Devi Vohra)", "Sushila Didi", "Kalpana Datta", "Lakshmi Sahgal"],
+        "a": "Durga Bhabhi (Durga Devi Vohra)"
+    },
+    {
+        "q": "Bagha Jatin (Jatin Mukherjee) died fighting the British police in a trench battle at which location in 1915?",
+        "o": ["Chittagong", "Balasore", "Midnapore", "Alipore"],
+        "a": "Balasore"
+    },
+    {
+        "q": "Who authored the controversial book 'The Indian War of Independence, 1857', which was banned by the British?",
+        "o": ["Lala Lajpat Rai", "V.D. Savarkar", "Bal Gangadhar Tilak", "Subhash Chandra Bose"],
+        "a": "V.D. Savarkar"
+    },
+    {
+        "q": "The 'Komagata Maru' incident involved a Japanese steamship chartered by whom?",
+        "o": ["Kartar Singh Sarabha", "Gurdit Singh", "Sohan Singh Bhakna", "Lala Har Dayal"],
+        "a": "Gurdit Singh"
+    },
+    {
+        "q": "Who was the Commander-in-Chief of the 'Rani of Jhansi Regiment' of the INA?",
+        "o": ["Lakshmi Sahgal", "Janaky Athi Nahappan", "Rasammah Bhupalan", "Aruna Asaf Ali"],
+        "a": "Lakshmi Sahgal"
+    },
+    {
+        "q": "Which revolutionary was known as 'Masterda' and led the Chittagong Armoury Raid in 1930?",
+        "o": ["Surya Sen", "Rash Behari Bose", "Jatindranath Das", "Barindra Kumar Ghosh"],
+        "a": "Surya Sen"
+    },
+    {
+        "q": "Who betrayed the revolutionaries in the 'Kakori Conspiracy Case' by becoming an approver (government witness)?",
+        "o": ["Banwari Lal", "Ram Prasad Bismil", "Ashfaqullah Khan", "Roshan Singh"],
+        "a": "Banwari Lal"
+    },
+    {
+        "q": "Jatindranath Das died in Lahore Jail after a hunger strike of how many days?",
+        "o": ["50 Days", "63 Days", "90 Days", "45 Days"],
+        "a": "63 Days"
+    },
+    {
+        "q": "Who gave the title 'Mahatma' to Gandhi (often debated, but historically attributed to)?",
+        "o": ["Subhash Chandra Bose", "Rabindranath Tagore", "Gopal Krishna Gokhale", "Jawaharlal Nehru"],
+        "a": "Rabindranath Tagore"
+    },
+    {
+        "q": "The 'Cunningham Circular' imposed in Assam during the Civil Disobedience Movement was against?",
+        "o": ["Students participating in politics", "Farmers growing opium", "Tea garden workers", "Press freedom"],
+        "a": "Students participating in politics"
+    },
+    {
+        "q": "Who was the founder of the secret society 'Abhinav Bharat'?",
+        "o": ["Aurobindo Ghosh", "V.D. Savarkar", "Pulin Behari Das", "Bhagat Singh"],
+        "a": "V.D. Savarkar"
+    },
+    {
+        "q": "In the Alipore Bomb Case (1908), who successfully defended Aurobindo Ghosh?",
+        "o": ["C.R. Das (Chittaranjan Das)", "Motilal Nehru", "B.R. Ambedkar", "W.C. Bonnerjee"],
+        "a": "C.R. Das (Chittaranjan Das)"
+    },
+    {
+        "q": "Who hoisted the first version of the Indian flag at Stuttgart, Germany in 1907?",
+        "o": ["Annie Besant", "Madam Bhikaji Cama", "Sarojini Naidu", "Sister Nivedita"],
+        "a": "Madam Bhikaji Cama"
+    },
+    {
+        "q": "Which British officer was assassinated by the Chapekar Brothers (Damodar and Balkrishna) in 1897?",
+        "o": ["W.C. Rand", "Curzon Wyllie", "John Saunders", "General Dyer"],
+        "a": "W.C. Rand"
+    },
+    {
+        "q": "The 'Ulgulan' is a term associated with the rebellion led by?",
+        "o": ["Sidhu and Kanhu", "Birsa Munda", "Tantia Bhil", "Rani Gaidinliu"],
+        "a": "Birsa Munda"
+    },
+    {
+        "q": "Who established the 'Provisional Government of Free India' in Kabul in 1915?",
+        "o": ["Raja Mahendra Pratap", "Subhash Chandra Bose", "Rash Behari Bose", "Lala Har Dayal"],
+        "a": "Raja Mahendra Pratap"
+    },
+    {
+        "q": "Which revolutionary is known for the 'Silk Letter Conspiracy' (Reshmi Rumal Tehrik)?",
+        "o": ["Maulana Abul Kalam Azad", "Maulana Ubaidullah Sindhi", "Khan Abdul Ghaffar Khan", "Hasrat Mohani"],
+        "a": "Maulana Ubaidullah Sindhi"
+    },
+    {
+        "q": "Who was the first President of the Ghadar Party?",
+        "o": ["Lala Har Dayal", "Sohan Singh Bhakna", "Kartar Singh Sarabha", "Taraknath Das"],
+        "a": "Sohan Singh Bhakna"
+    },
+    {
+        "q": "The 'Royal Indian Navy (RIN) Mutiny' of 1946 started on which ship?",
+        "o": ["HMIS Talwar", "HMIS Bombay", "HMIS Hindustan", "HMIS Shivaji"],
+        "a": "HMIS Talwar"
+    },
+    {
+        "q": "Who was the Viceroy of India when the Jallianwala Bagh Massacre took place?",
+        "o": ["Lord Curzon", "Lord Chelmsford", "Lord Irwin", "Lord Reading"],
+        "a": "Lord Chelmsford"
+    },
+    {
+        "q": "Who wrote the song 'Sarfaroshi Ki Tamanna' made famous by Ram Prasad Bismil?",
+        "o": ["Ram Prasad Bismil", "Bismil Azimabadi", "Mirza Ghalib", "Faiz Ahmed Faiz"],
+        "a": "Bismil Azimabadi"
+    },
+    {
+        "q": "The 'August Offer' of 1940 was proposed by which Viceroy?",
+        "o": ["Lord Linlithgow", "Lord Wavell", "Lord Mountbatten", "Lord Willingdon"],
+        "a": "Lord Linlithgow"
+    },
+    {
+        "q": "Who was the only Indian to be elected as a Member of the British House of Commons in the 19th Century?",
+        "o": ["Dadabhai Naoroji", "W.C. Bonnerjee", "Ferozeshah Mehta", "G.K. Gokhale"],
+        "a": "Dadabhai Naoroji"
+    },
+    {
+        "q": "Which organization was founded by Khan Abdul Ghaffar Khan (Frontier Gandhi)?",
+        "o": ["Khudai Khidmatgar", "Ahrar Party", "Khaksar Party", "Muslim League"],
+        "a": "Khudai Khidmatgar"
+    },
+    {
+        "q": "Who called Subhash Chandra Bose 'Desh Nayak'?",
+        "o": ["Mahatma Gandhi", "Rabindranath Tagore", "Jawaharlal Nehru", "Sardar Patel"],
+        "a": "Rabindranath Tagore"
+    },
+    {
+        "q": "The 'Bardoli Satyagraha' (1928) earned Vallabhbhai Patel which title?",
+        "o": ["Iron Man", "Sardar", "Lokmanya", "Acharya"],
+        "a": "Sardar"
+    },
+    {
+        "q": "Who assassinated Sir Curzon Wyllie in London in 1909?",
+        "o": ["Madan Lal Dhingra", "Udham Singh", "Bhagat Singh", "V.D. Savarkar"],
+        "a": "Madan Lal Dhingra"
+    },
+    {
+        "q": "The 'Vaikom Satyagraha' in Kerala was primarily related to?",
+        "o": ["Temple Entry for lower castes", "Salt Tax", "Land rights for peasants", "Educational rights"],
+        "a": "Temple Entry for lower castes"
+    },
+    {
+        "q": "Who founded the 'All India Forward Bloc' after resigning from the Congress?",
+        "o": ["M.N. Roy", "Subhash Chandra Bose", "J.P. Narayan", "Acharya Narendra Dev"],
+        "a": "Subhash Chandra Bose"
+    },
+    {
+        "q": "Which revolutionary shot dead the Approver (traitor) Phanindranath Ghosh who betrayed Bhagat Singh?",
+        "o": ["Baikuntha Shukla", "Yogendra Shukla", "Batukeshwar Dutt", "Sukhdev"],
+        "a": "Baikuntha Shukla"
+    },
+    {
+        "q": "Who was the 'Political Guru' of Mahatma Gandhi?",
+        "o": ["Bal Gangadhar Tilak", "Gopal Krishna Gokhale", "Dadabhai Naoroji", "Leo Tolstoy"],
+        "a": "Gopal Krishna Gokhale"
+    },
+    {
+        "q": "Who led the 'Revolt of 1857' in Lucknow?",
+        "o": ["Begum Hazrat Mahal", "Rani Laxmibai", "Nana Sahib", "Khan Bahadur Khan"],
+        "a": "Begum Hazrat Mahal"
+    },
+    {
+        "q": "Which act was popularly known as the 'Black Act'?",
+        "o": ["Rowlatt Act", "Vernacular Press Act", "Arms Act", "Ilbert Bill"],
+        "a": "Rowlatt Act"
+    },
+    {
+        "q": "The 'Teebhaga Movement' was a peasant agitation in which region?",
+        "o": ["Bengal", "Telangana", "Punjab", "Madras"],
+        "a": "Bengal"
+    },
+    {
+        "q": "Who authored the book 'Poverty and Un-British Rule in India'?",
+        "o": ["R.C. Dutt", "Dadabhai Naoroji", "M.G. Ranade", "G.K. Gokhale"],
+        "a": "Dadabhai Naoroji"
+    },
+    {
+        "q": "Which Session of Congress passed the 'Purna Swaraj' (Complete Independence) resolution?",
+        "o": ["Lahore Session (1929)", "Calcutta Session (1928)", "Madras Session (1927)", "Karachi Session (1931)"],
+        "a": "Lahore Session (1929)"
+    },
+    {
+        "q": "Who was known as the 'Mother of Indian Revolution'?",
+        "o": ["Sarojini Naidu", "Madam Bhikaji Cama", "Annie Besant", "Kasturba Gandhi"],
+        "a": "Madam Bhikaji Cama"
+    },
+    {
+        "q": "The famous 'Tryst with Destiny' speech was delivered by Nehru on?",
+        "o": ["Midnight of Aug 14-15, 1947", "Jan 26, 1950", "Aug 15 Morning, 1947", "Jan 26, 1930"],
+        "a": "Midnight of Aug 14-15, 1947"
+    },
+    {
+        "q": "Who commanded the 'Gandhi Brigade' of the INA?",
+        "o": ["Inayat Kiani", "Shah Nawaz Khan", "Prem Sahgal", "Gurbaksh Singh Dhillon"],
+        "a": "Inayat Kiani"
+    },
+    {
+        "q": "Who famously said 'Swaraj is my birthright and I shall have it'?",
+        "o": ["Bal Gangadhar Tilak", "Lala Lajpat Rai", "Bipin Chandra Pal", "Aurobindo Ghosh"],
+        "a": "Bal Gangadhar Tilak"
+    },
+    {
+        "q": "Which revolutionary was popularly known as 'Sher-e-Punjab'?",
+        "o": ["Bhagat Singh", "Lala Lajpat Rai", "Udham Singh", "Ranjit Singh"],
+        "a": "Lala Lajpat Rai"
+    },
+    {
+        "q": "The 'Moplah Rebellion' (1921) took place in which region?",
+        "o": ["Malabar (Kerala)", "Konkan (Maharashtra)", "Coromandel (Tamil Nadu)", "Vidarbha"],
+        "a": "Malabar (Kerala)"
+    },
+    {
+        "q": "Who was the first Indian woman to become the President of the Indian National Congress?",
+        "o": ["Annie Besant", "Sarojini Naidu", "Nellie Sengupta", "Sucheta Kripalani"],
+        "a": "Sarojini Naidu"
+    },
+    {
+        "q": "Who designed the current National Flag of India?",
+        "o": ["Pingali Venkayya", "Rabindranath Tagore", "Bankim Chandra Chatterjee", "Alluri Sitarama Raju"],
+        "a": "Pingali Venkayya"
+    },
+    {
+        "q": "Who led the 'Salt Satyagraha' in Tamil Nadu (Vedaranyam March)?",
+        "o": ["C. Rajagopalachari", "K. Kamaraj", "Subramania Siva", "V.O. Chidambaram"],
+        "a": "C. Rajagopalachari"
+    },
+    {
+        "q": "The 'Chauri Chaura' incident (1922) led to the withdrawal of which movement?",
+        "o": ["Non-Cooperation Movement", "Civil Disobedience Movement", "Quit India Movement", "Khilafat Movement"],
+        "a": "Non-Cooperation Movement"
+    },
+    {
+        "q": "Who founded the 'Servants of India Society'?",
+        "o": ["Gopal Krishna Gokhale", "Bal Gangadhar Tilak", "Lala Lajpat Rai", "M.G. Ranade"],
+        "a": "Gopal Krishna Gokhale"
+    },
+    {
+        "q": "Which revolutionary threw a bomb at Viceroy Lord Hardinge in 1912?",
+        "o": ["Rash Behari Bose", "Bhagat Singh", "Khudiram Bose", "Prafulla Chaki"],
+        "a": "Rash Behari Bose"
+    },
+    {
+        "q": "Who was the only person to be elected President of the Congress for six consecutive years (1940-46)?",
+        "o": ["Jawaharlal Nehru", "Abul Kalam Azad", "Vallabhbhai Patel", "J.B. Kripalani"],
+        "a": "Abul Kalam Azad"
+    },
+    {
+        "q": "The 'Mountbatten Plan' which led to the partition was announced on?",
+        "o": ["June 3, 1947", "August 15, 1947", "January 26, 1947", "March 23, 1947"],
+        "a": "June 3, 1947"
+    },
+    {
+        "q": "Who was the Viceroy during the 'Quit India Movement' (1942)?",
+        "o": ["Lord Linlithgow", "Lord Wavell", "Lord Mountbatten", "Lord Willingdon"],
+        "a": "Lord Linlithgow"
+    },
+    {
+        "q": "Who led the 'Red Shirts' (Kudai Khidmatgars) movement?",
+        "o": ["Khan Abdul Ghaffar Khan", "Muhammad Ali Jinnah", "Liaquat Ali Khan", "Maulana Azad"],
+        "a": "Khan Abdul Ghaffar Khan"
+    },
+    {
+        "q": "Which revolutionary group was involved in the 'Lahore Conspiracy Case'?",
+        "o": ["Hindustan Socialist Republican Association (HSRA)", "Anushilan Samiti", "Jugantar", "Ghadar Party"],
+        "a": "Hindustan Socialist Republican Association (HSRA)"
+    },
+    {
+        "q": "Who was the first martyr of the 1857 Revolt?",
+        "o": ["Mangal Pandey", "Tatya Tope", "Nana Sahib", "Rani Laxmibai"],
+        "a": "Mangal Pandey"
+    },
+    {
+        "q": "Which newspaper was started by Bal Gangadhar Tilak?",
+        "o": ["Kesari", "The Hindu", "Amrita Bazar Patrika", "Young India"],
+        "a": "Kesari"
+    },
+    {
+        "q": "Who is known as the 'Grand Old Man of India'?",
+        "o": ["Dadabhai Naoroji", "W.C. Bonnerjee", "Mahatma Gandhi", "Madan Mohan Malaviya"],
+        "a": "Dadabhai Naoroji"
+    },
+    {
+        "q": "Who founded the 'Swatantra Party' after independence?",
+        "o": ["C. Rajagopalachari", "J.B. Kripalani", "Dr. B.R. Ambedkar", "Shyama Prasad Mukherjee"],
+        "a": "C. Rajagopalachari"
+    },
+    {
+        "q": "The 'Direct Action Day' (1946) was called by which party?",
+        "o": ["Muslim League", "Indian National Congress", "Hindu Mahasabha", "Communist Party"],
+        "a": "Muslim League"
+    },
+    {
+        "q": "Who was the defence lawyer for the INA Trials at Red Fort?",
+        "o": ["Bhulabhai Desai", "B.R. Ambedkar", "Motilal Nehru", "Sardar Patel"],
+        "a": "Bhulabhai Desai"
+    },
+    {
+        "q": "Who established the 'Ramakrishna Mission'?",
+        "o": ["Swami Vivekananda", "Ramakrishna Paramhansa", "Dayanand Saraswati", "Raja Ram Mohan Roy"],
+        "a": "Swami Vivekananda"
+    },
+    {
+        "q": "Which social reformer is associated with the abolition of Sati?",
+        "o": ["Raja Ram Mohan Roy", "Ishwar Chandra Vidyasagar", "Dayanand Saraswati", "Jyotiba Phule"],
+        "a": "Raja Ram Mohan Roy"
+    },
+    {
+        "q": "Who wrote 'Gulamgiri'?",
+        "o": ["Jyotiba Phule", "B.R. Ambedkar", "Periyar E.V. Ramasamy", "Kanshi Ram"],
+        "a": "Jyotiba Phule"
+    },
+    {
+        "q": "Who led the 'Paika Rebellion' (1817) in Odisha?",
+        "o": ["Bakshi Jagabandhu", "Veer Surendra Sai", "Tantia Bhil", "Birsa Munda"],
+        "a": "Bakshi Jagabandhu"
+    },
+    {
+        "q": "Which river is known as the 'Sorrow of Bihar' because of its frequent course changes and floods?",
+        "o": ["Gandak", "Kosi", "Son", "Ghaghara"],
+        "a": "Kosi"
+    },
+    {
+        "q": "The 'Duncan Passage' separates which two islands?",
+        "o": ["South Andaman and Little Andaman", "Little Andaman and Car Nicobar", "North Andaman and Middle Andaman", "Minicoy and Maldives"],
+        "a": "South Andaman and Little Andaman"
+    },
+    {
+        "q": "Which mountain range separates the Indo-Gangetic plain from the Deccan Plateau?",
+        "o": ["Aravalli", "Vindhya", "Satpura", "Western Ghats"],
+        "a": "Vindhya"
+    },
+    {
+        "q": "The famous 'Loktak Lake', known for its floating phumdis (islands), is located in which state?",
+        "o": ["Mizoram", "Manipur", "Meghalaya", "Tripura"],
+        "a": "Manipur"
+    },
+    {
+        "q": "Which is the highest peak of the Satpura Range?",
+        "o": ["Guru Shikhar", "Dhupgarh", "Pachmarhi", "Mahendragiri"],
+        "a": "Dhupgarh"
+    },
+    {
+        "q": "The 'Main Central Thrust' (MCT) separates which two geological zones of the Himalayas?",
+        "o": ["Great Himalayas and Lesser Himalayas", "Lesser Himalayas and Shiwaliks", "Trans Himalayas and Great Himalayas", "Shiwaliks and Northern Plains"],
+        "a": "Great Himalayas and Lesser Himalayas"
+    },
+    {
+        "q": "Which river in India crosses the Tropic of Cancer twice?",
+        "o": ["Narmada", "Tapi", "Mahi", "Sabarmati"],
+        "a": "Mahi"
+    },
+    {
+        "q": "The 'Silent Valley National Park' is located in which hill range?",
+        "o": ["Nilgiri Hills", "Cardamom Hills", "Palani Hills", "Anaimalai Hills"],
+        "a": "Nilgiri Hills"
+    },
+    {
+        "q": "Which state has the largest coastline in India?",
+        "o": ["Tamil Nadu", "Maharashtra", "Andhra Pradesh", "Gujarat"],
+        "a": "Gujarat"
+    },
+    {
+        "q": "The 'Karewas' of Kashmir are famous for the cultivation of which crop?",
+        "o": ["Apple", "Walnut", "Saffron (Zafran)", "Almond"],
+        "a": "Saffron (Zafran)"
+    },
+    {
+        "q": "Which river flows through a Rift Valley between the Vindhya and Satpura ranges?",
+        "o": ["Godavari", "Mahanadi", "Narmada", "Krishna"],
+        "a": "Narmada"
+    },
+    {
+        "q": "At which place does the Alaknanda and Bhagirathi rivers meet to form the Ganga?",
+        "o": ["Rudraprayag", "Devprayag", "Karnaprayag", "Vishnuprayag"],
+        "a": "Devprayag"
+    },
+    {
+        "q": "The 'Palk Strait' lies between which two countries?",
+        "o": ["India and Maldives", "India and Sri Lanka", "India and Indonesia", "Andaman and Thailand"],
+        "a": "India and Sri Lanka"
+    },
+    {
+        "q": "Which soil is popularly known as 'Regur Soil'?",
+        "o": ["Alluvial Soil", "Red Soil", "Black Soil", "Laterite Soil"],
+        "a": "Black Soil"
+    },
+    {
+        "q": "The 'Nathu La' pass connects India with which country?",
+        "o": ["Pakistan", "Nepal", "China (Tibet)", "Bhutan"],
+        "a": "China (Tibet)"
+    },
+    {
+        "q": "Which is the only floating National Park in the world?",
+        "o": ["Kaziranga", "Keibul Lamjao", "Manas", "Sundarbans"],
+        "a": "Keibul Lamjao"
+    },
+    {
+        "q": "The 'Western Disturbances' which cause winter rains in North-West India originate from?",
+        "o": ["Arabian Sea", "Bay of Bengal", "Mediterranean Sea", "Caspian Sea"],
+        "a": "Mediterranean Sea"
+    },
+    {
+        "q": "Which Indian state shares its border with the maximum number of other Indian states?",
+        "o": ["Madhya Pradesh", "Uttar Pradesh", "Maharashtra", "Assam"],
+        "a": "Uttar Pradesh"
+    },
+    {
+        "q": "The 'Majuli' island, the largest river island in the world, is formed by which river?",
+        "o": ["Ganga", "Brahmaputra", "Indus", "Godavari"],
+        "a": "Brahmaputra"
+    },
+    {
+        "q": "Which place in India is famously known as the 'Coldest Inhabited Place'?",
+        "o": ["Leh", "Dras", "Kargil", "Siachen"],
+        "a": "Dras"
+    },
+    {
+        "q": "The 'Toda' tribe is the original inhabitant of which region?",
+        "o": ["Aravalli Range", "Nilgiri Hills", "Garo Hills", "Bastar"],
+        "a": "Nilgiri Hills"
+    },
+    {
+        "q": "Which port is known as the 'Queen of Arabian Sea'?",
+        "o": ["Mumbai Port", "Kochi Port", "Kandla Port", "Marmagao Port"],
+        "a": "Kochi Port"
+    },
+    {
+        "q": "The highest peak of the Eastern Ghats is...",
+        "o": ["Mahendragiri", "Arma Konda", "Jindhagada", "Shevaroy"],
+        "a": "Jindhagada"
+    },
+    {
+        "q": "Which Indian state is known as the 'Molasses Basin'?",
+        "o": ["Mizoram", "Bihar", "Assam", "Uttar Pradesh"],
+        "a": "Mizoram"
+    },
+    {
+        "q": "The Tropic of Cancer does NOT pass through which of these Indian states?",
+        "o": ["Tripura", "Mizoram", "Odisha", "Jharkhand"],
+        "a": "Odisha"
+    },
+    {
+        "q": "Which channel separates the Lakshadweep Islands from the Maldives?",
+        "o": ["8 Degree Channel", "9 Degree Channel", "10 Degree Channel", "Duncan Passage"],
+        "a": "8 Degree Channel"
+    },
+    {
+        "q": "The famous 'Hornbill Festival' is celebrated in which state?",
+        "o": ["Manipur", "Nagaland", "Arunachal Pradesh", "Meghalaya"],
+        "a": "Nagaland"
+    },
+    {
+        "q": "Where is the 'Great Indian Bustard' primarily found?",
+        "o": ["Desert National Park", "Jim Corbett", "Kaziranga", "Gir Forest"],
+        "a": "Desert National Park"
+    },
+    {
+        "q": "The 'Diphu Pass' is a tri-junction between which three countries?",
+        "o": ["India, Nepal, China", "India, China, Myanmar", "India, Bhutan, China", "India, Myanmar, Bangladesh"],
+        "a": "India, China, Myanmar"
+    },
+    {
+        "q": "Which river is the longest tributary of the Ganga?",
+        "o": ["Yamuna", "Son", "Gomti", "Kosi"],
+        "a": "Yamuna"
+    },
+    {
+        "q": "The 'Zoji La' pass connects which two locations?",
+        "o": ["Srinagar and Leh", "Manali and Leh", "Jammu and Srinagar", "Leh and Siachen"],
+        "a": "Srinagar and Leh"
+    },
+    {
+        "q": "Which Indian state has the highest forest cover in terms of area?",
+        "o": ["Arunachal Pradesh", "Madhya Pradesh", "Chhattisgarh", "Odisha"],
+        "a": "Madhya Pradesh"
+    },
+    {
+        "q": "The 'Jaduguda' mines in Jharkhand are famous for?",
+        "o": ["Coal", "Uranium", "Iron Ore", "Bauxite"],
+        "a": "Uranium"
+    },
+    {
+        "q": "Which waterfall is the highest plunge waterfall in India?",
+        "o": ["Jog Falls", "Kunchikal Falls", "Nohkalikai Falls", "Dudhsagar Falls"],
+        "a": "Nohkalikai Falls"
+    },
+    {
+        "q": "The 'Coromandel Coast' receives most of its rainfall during which season?",
+        "o": ["South-West Monsoon", "North-East Monsoon (Winter)", "Summer", "Pre-Monsoon Showers"],
+        "a": "North-East Monsoon (Winter)"
+    },
+    {
+        "q": "Which is the largest lagoon lake in India?",
+        "o": ["Pulicat Lake", "Chilika Lake", "Vembanad Lake", "Sambhar Lake"],
+        "a": "Chilika Lake"
+    },
+    {
+        "q": "The 'Indira Point', the southernmost point of India, is located in?",
+        "o": ["Little Nicobar", "Great Nicobar", "Car Nicobar", "North Andaman"],
+        "a": "Great Nicobar"
+    },
+    {
+        "q": "Which river originates from the Amarkantak Plateau?",
+        "o": ["Narmada", "Godavari", "Krishna", "Kaveri"],
+        "a": "Narmada"
+    },
+    {
+        "q": "The 'Saddle Peak' is the highest peak of Andaman and Nicobar. Where is it located?",
+        "o": ["North Andaman", "Middle Andaman", "South Andaman", "Great Nicobar"],
+        "a": "North Andaman"
+    },
+    {
+        "q": "Which state is the largest producer of Coffee in India?",
+        "o": ["Kerala", "Karnataka", "Tamil Nadu", "Assam"],
+        "a": "Karnataka"
+    },
+    {
+        "q": "The 'Sahyadri' is another name for which mountain range?",
+        "o": ["Eastern Ghats", "Western Ghats", "Aravalli", "Himalayas"],
+        "a": "Western Ghats"
+    },
+    {
+        "q": "Which river is known as 'Dakshin Ganga' (Ganga of the South)?",
+        "o": ["Krishna", "Kaveri", "Godavari", "Mahanadi"],
+        "a": "Godavari"
+    },
+    {
+        "q": "In which state is the 'Gahirmatha Marine Sanctuary', famous for Olive Ridley Turtles, located?",
+        "o": ["West Bengal", "Odisha", "Andhra Pradesh", "Tamil Nadu"],
+        "a": "Odisha"
+    },
+    {
+        "q": "The 'Malwa Plateau' spreads across which states?",
+        "o": ["MP, Gujarat, Rajasthan", "Maharashtra, MP, UP", "Gujarat, Rajasthan, Haryana", "MP, Chhattisgarh, Jharkhand"],
+        "a": "MP, Gujarat, Rajasthan"
+    },
+    {
+        "q": "What is the approximate total length of India's coastline (including islands)?",
+        "o": ["6100 km", "7516 km", "8100 km", "5400 km"],
+        "a": "7516 km"
+    },
+    {
+        "q": "Which Indian river flows into the Arabian Sea?",
+        "o": ["Mahanadi", "Godavari", "Tapi", "Krishna"],
+        "a": "Tapi"
+    },
+    {
+        "q": "The 'Patkai Bum' hills form the boundary between India and?",
+        "o": ["China", "Myanmar", "Bangladesh", "Bhutan"],
+        "a": "Myanmar"
+    },
+    {
+        "q": "Which glacier is the source of the River Yamuna?",
+        "o": ["Gangotri", "Yamunotri (Bandarpunch)", "Milam", "Pindari"],
+        "a": "Yamunotri (Bandarpunch)"
+    },
+    {
+        "q": "The 'Khajjiar' lake, often called 'Mini Switzerland of India', is in?",
+        "o": ["Uttarakhand", "Himachal Pradesh", "Jammu & Kashmir", "Sikkim"],
+        "a": "Himachal Pradesh"
+    },
+    {
+        "q": "The 'Dead Internet Theory' is a conspiracy theory suggesting that the majority of internet traffic is actually...",
+        "o": ["Government Spies", "Bots interacting with other Bots", "Aliens", "Hackers"],
+        "a": "Bots interacting with other Bots"
+    },
+    {
+        "q": "Which modern psychological condition is defined as 'the fear of being out of mobile phone contact'?",
+        "o": ["Technophobia", "Nomophobia", "Cyberphobia", "Telephobia"],
+        "a": "Nomophobia"
+    },
+    {
+        "q": "In 2010, the 'Stuxnet' computer worm was discovered. It was unique because it was the first cyberweapon specifically designed to target...",
+        "o": ["Bank Accounts", "Social Media Passwords", "Nuclear Centrifuges (SCADA systems)", "Satellite GPS"],
+        "a": "Nuclear Centrifuges (SCADA systems)"
+    },
+    {
+        "q": "What is the name of the specific 'Consensus Mechanism' that Bitcoin uses to secure its network (which requires high energy)?",
+        "o": ["Proof of Stake", "Proof of Work", "Proof of History", "Proof of Authority"],
+        "a": "Proof of Work"
+    },
+    {
+        "q": "Elon Musk's SpaceX became the first private company to send humans to the ISS. What was the name of the capsule they used?",
+        "o": ["Starship", "Dragon Endeavour", "Falcon Heavy", "Orion"],
+        "a": "Dragon Endeavour"
+    },
+    {
+        "q": "In the context of Artificial Intelligence (AI), what does 'GPT' stand for in models like ChatGPT?",
+        "o": ["General Processing Tool", "Generative Pre-trained Transformer", "Global Positioning Tech", "Genetic Programming Transmitter"],
+        "a": "Generative Pre-trained Transformer"
+    },
+    {
+        "q": "Which company owns the advanced robotics firm 'Boston Dynamics' (creators of Spot and Atlas) as of 2024?",
+        "o": ["Google", "SoftBank", "Hyundai", "Tesla"],
+        "a": "Hyundai"
+    },
+    {
+        "q": "The 'Mandela Effect' is a phenomenon where a large group of people remember something differently than how it occurred. Which character is often cited as an example (monocle confusion)?",
+        "o": ["Mickey Mouse", "Richie Rich", "Mr. Monopoly (Monopoly Man)", "Pringles Man"],
+        "a": "Mr. Monopoly (Monopoly Man)"
+    },
+    {
+        "q": "What is the specific HTTP Status Code for 'Censored / Unavailable For Legal Reasons'?",
+        "o": ["404", "403", "451", "500"],
+        "a": "451"
+    },
+    {
+        "q": "In modern economics, a startup company valued at over $10 billion is specifically called a...?",
+        "o": ["Unicorn", "Decacorn", "Hectocorn", "Centicorn"],
+        "a": "Decacorn"
+    },
+    {
+        "q": "The 'Dark Web' is often accessed using the TOR browser. What does TOR stand for?",
+        "o": ["The Onion Router", "The Open Road", "Total Online Resistance", "The Obscure Relay"],
+        "a": "The Onion Router"
+    },
+    {
+        "q": "Which controversial gene-editing technology won the Nobel Prize in Chemistry in 2020?",
+        "o": ["mRNA", "CRISPR-Cas9", "Cloning", "Stem Cell Therapy"],
+        "a": "CRISPR-Cas9"
+    },
+    {
+        "q": "What is the name of the 'limit' that suggests Moore's Law (computing power doubling) will eventually stop due to quantum effects?",
+        "o": ["The Silicon Wall", "The Quantum Limit", "The Thermal Ceiling", "The Atomic Limit"],
+        "a": "The Thermal Ceiling"
+    },
+    {
+        "q": "In 2021, a digital artwork by Beeple sold for $69 million as an NFT. What was the title of this piece?",
+        "o": ["The First 5000 Days", "CryptoPunks #1", "Bored Ape", "Quantum Genesis"],
+        "a": "The First 5000 Days"
+    },
+    {
+        "q": "Which social media platform was originally known as 'Musical.ly' before it was rebranded?",
+        "o": ["Snapchat", "TikTok", "Vine", "Instagram Reels"],
+        "a": "TikTok"
+    },
+    {
+        "q": "The 'James Webb Space Telescope' orbits the Sun at a specific stable point called...?",
+        "o": ["Low Earth Orbit", "Lagrange Point 2 (L2)", "Geostationary Orbit", "Lunar Orbit"],
+        "a": "Lagrange Point 2 (L2)"
+    },
+    {
+        "q": "What is the term for the psychological phenomenon where people with low ability at a task overestimate their ability (often seen on the internet)?",
+        "o": ["Imposter Syndrome", "Dunning-Kruger Effect", "Placebo Effect", "Stockholm Syndrome"],
+        "a": "Dunning-Kruger Effect"
+    },
+    {
+        "q": "In the context of 5G technology, which frequency band offers the highest speeds but the shortest range (easily blocked by walls)?",
+        "o": ["Sub-6 GHz", "mmWave (Millimeter Wave)", "Low-Band", "Mid-Band"],
+        "a": "mmWave (Millimeter Wave)"
+    },
+    {
+        "q": "The first-ever video uploaded to YouTube in 2005 is titled...?",
+        "o": ["My Cat", "Hello World", "Me at the zoo", "Evolution of Dance"],
+        "a": "Me at the zoo"
+    },
+    {
+        "q": "Which element is crucial for Lithium-ion batteries but is controversial due to unethical mining practices in the DRC?",
+        "o": ["Nickel", "Cobalt", "Manganese", "Graphite"],
+        "a": "Cobalt"
+    },
+    {
+        "q": "What does the 'S' stand for in the HTTPS protocol used for secure browsing?",
+        "o": ["Standard", "System", "Secure", "Socket"],
+        "a": "Secure"
+    },
+    {
+        "q": "In the Marvel Cinematic Universe (MCU), which material is Captain America's shield made of?",
+        "o": ["Adamantium", "Vibranium", "Uru", "Carbonadium"],
+        "a": "Vibranium"
+    },
+    {
+        "q": "The 'Great Pacific Garbage Patch' is primarily located between which two landmasses?",
+        "o": ["California and Hawaii", "Japan and Philippines", "Australia and New Zealand", "Chile and Easter Island"],
+        "a": "California and Hawaii"
+    },
+    {
+        "q": "Who is the mysterious creator of Bitcoin (whose real identity is still unknown)?",
+        "o": ["Vitalik Buterin", "Satoshi Nakamoto", "Nick Szabo", "Craig Wright"],
+        "a": "Satoshi Nakamoto"
+    },
+    {
+        "q": "In modern gaming, what does the term 'NPC' stand for?",
+        "o": ["Non-Playable Character", "New Player Control", "Network Protocol Code", "Natural Person Character"],
+        "a": "Non-Playable Character"
+    },
+    {
+        "q": "Which tech company reached a $3 Trillion market cap first?",
+        "o": ["Microsoft", "Apple", "Nvidia", "Amazon"],
+        "a": "Apple"
+    },
+    {
+        "q": "What is the name of the AI developed by DeepMind that defeated the world champion of the board game 'Go' in 2016?",
+        "o": ["Deep Blue", "AlphaGo", "Watson", "Stockfish"],
+        "a": "AlphaGo"
+    },
+    {
+        "q": "The 'Blue Screen of Death' (BSOD) is associated with which Operating System?",
+        "o": ["macOS", "Linux", "Windows", "Android"],
+        "a": "Windows"
+    },
+    {
+        "q": "Which country became the first in the world to make Bitcoin legal tender in 2021?",
+        "o": ["El Salvador", "Venezuela", "Japan", "Switzerland"],
+        "a": "El Salvador"
+    },
+    {
+        "q": "In the world of streaming, which platform was acquired by Amazon for $970 million in 2014?",
+        "o": ["YouTube Gaming", "Twitch", "Mixer", "Kick"],
+        "a": "Twitch"
+    },
+    {
+        "q": "What is the term for 'Malware that locks your files and demands payment to unlock them'?",
+        "o": ["Spyware", "Ransomware", "Adware", "Worm"],
+        "a": "Ransomware"
+    },
+    {
+        "q": "Which famous whistleblower leaked classified NSA documents in 2013 regarding global surveillance?",
+        "o": ["Julian Assange", "Edward Snowden", "Chelsea Manning", "Aaron Swartz"],
+        "a": "Edward Snowden"
+    },
+    {
+        "q": "In modern dating slang, what does 'Ghosting' mean?",
+        "o": ["Stalking someone online", "Cutting off communication without warning", "Dating two people at once", "Using a fake profile photo"],
+        "a": "Cutting off communication without warning"
+    },
+    {
+        "q": "The 'Metaverse' concept was popularized by Neal Stephenson in his 1992 novel. What is the book's title?",
+        "o": ["Ready Player One", "Snow Crash", "Neuromancer", "The Matrix"],
+        "a": "Snow Crash"
+    },
+    {
+        "q": "Which company created the programming language 'Java'?",
+        "o": ["Microsoft", "Sun Microsystems", "Apple", "Oracle (Acquired later)"],
+        "a": "Sun Microsystems"
+    },
+    {
+        "q": "What is the name of the cognitive bias where people rely too heavily on the first piece of information offered (the 'anchor')?",
+        "o": ["Confirmation Bias", "Anchoring Bias", "Recency Bias", "Hindsight Bias"],
+        "a": "Anchoring Bias"
+    },
+    {
+        "q": "The 'Panama Papers' leak in 2016 exposed the financial secrets of the wealthy. Which law firm was at the center of it?",
+        "o": ["Mossack Fonseca", "Baker McKenzie", "Clifford Chance", "Skadden Arps"],
+        "a": "Mossack Fonseca"
+    },
+    {
+        "q": "In modern slang, what does 'FOMO' stand for?",
+        "o": ["Fear Of Moving On", "Fear Of Missing Out", "For Our Mom Only", "Fear Of Making Over"],
+        "a": "Fear Of Missing Out"
+    },
+    {
+        "q": "Which specific isotope of Uranium is needed for a nuclear fission chain reaction (atomic bomb)?",
+        "o": ["U-238", "U-235", "U-234", "U-239"],
+        "a": "U-235"
+    },
+    {
+        "q": "The 'Turing Test', proposed by Alan Turing, was designed to test a machine's ability to...",
+        "o": ["Calculate faster than humans", "Exhibit intelligent behavior equivalent to a human", "Play Chess", "Translate languages"],
+        "a": "Exhibit intelligent behavior equivalent to a human"
+    },
+    {
+        "q": "What is the term for a cyber attack where a system is flooded with traffic to crash it?",
+        "o": ["Phishing", "DDoS (Distributed Denial of Service)", "SQL Injection", "Man-in-the-Middle"],
+        "a": "DDoS (Distributed Denial of Service)"
+    },
+    {
+        "q": "Which famous car brand owns 'Bugatti' (as part of a joint venture with Rimac)?",
+        "o": ["Ferrari", "Porsche (VW Group)", "Mercedes", "BMW"],
+        "a": "Porsche (VW Group)"
+    },
+    {
+        "q": "The 'QR' in QR Code stands for...?",
+        "o": ["Quick Response", "Quantum Read", "Quality Register", "Quick Register"],
+        "a": "Quick Response"
+    },
+    {
+        "q": "Which modern tech giant was originally founded under the name 'Cadabra'?",
+        "o": ["eBay", "Amazon", "Netflix", "Google"],
+        "a": "Amazon"
+    },
+    {
+        "q": "In the show 'Squid Game', what is the shape on the mask of the Workers (lowest rank)?",
+        "o": ["Square", "Triangle", "Circle", "Star"],
+        "a": "Circle"
+    },
+    {
+        "q": "The 'Doomsday Clock', which represents the likelihood of a man-made global catastrophe, is currently set at...?",
+        "o": ["5 Minutes to Midnight", "100 Seconds to Midnight", "90 Seconds to Midnight", "1 Minute to Midnight"],
+        "a": "90 Seconds to Midnight"
+    },
+    {
+        "q": "Which country is home to 'TSMC', the world's most valuable semiconductor (chip) manufacturing company?",
+        "o": ["China", "Taiwan", "South Korea", "USA"],
+        "a": "Taiwan"
+    },
+    {
+        "q": "What does the 'G' in '5G' network stand for?",
+        "o": ["Gigabyte", "Generation", "Global", "GHz"],
+        "a": "Generation"
+    },
+    {
+        "q": "Who is the artist behind the shredded artwork 'Girl with Balloon' (Love is in the Bin)?",
+        "o": ["Kaws", "Banksy", "Damien Hirst", "Yayoi Kusama"],
+        "a": "Banksy"
+    },
+    {
+        "q": "Which enzyme is used in PCR to amplify DNA, isolated from a thermophilic bacterium?",
+        "o": ["Pepsin", "Taq Polymerase", "Amylase", "Helicase"],
+        "a": "Taq Polymerase"
+    },
+    {
+        "q": "Operation 'Smiling Buddha' (1974) was India's first nuclear test. Where did it take place?",
+        "o": ["Kargil", "Pokhran", "Sriharikota", "Chandipur"],
+        "a": "Pokhran"
+    },
+    {
+        "q": "The 'Piri Reis Map' (1513) is controversial because it seemingly depicts which landmass?",
+        "o": ["Australia", "Antarctica (coastline)", "Greenland", "Japan"],
+        "a": "Antarctica (coastline)"
+    },
+    {
+        "q": "The 'Razmnama' is a famous illustrated Persian translation of a Hindu epic commissioned by Emperor Akbar. Which epic is it?",
+        "o": ["Ramayana", "Mahabharata", "Atharva Veda", "Bhagavad Gita"],
+        "a": "Mahabharata"
+    },
+    {
+        "q": "During the Cold War, the CIA spent $20 million on 'Operation Acoustic Kitty'. What was the objective?",
+        "o": ["Train cats to spy on the Soviets", "Use cats to detect nuclear radiation", "Drop cats with parachutes for morale", "Use cats to hunt rats in bunkers"],
+        "a": "Train cats to spy on the Soviets"
+    },
+    {
+        "q": "Which is the only letter of the English alphabet that does NOT appear in the Periodic Table of Elements?",
+        "o": ["J", "Q", "X", "Z"],
+        "a": "J"
+    },
+    {
+        "q": "In the Mahabharata, who was the only Kaurava brother who fought on the side of the Pandavas during the Kurukshetra war?",
+        "o": ["Vikarna", "Yuyutsu", "Dussasana", "Durmukha"],
+        "a": "Yuyutsu"
+    },
+    {
+        "q": "The 'Baghdad Battery', a set of artifacts dating back to the Parthian/Sassanid periods, suggests that ancient people might have had knowledge of...",
+        "o": ["Gunpowder", "Electroplating/Electricity", "Steam Engine", "Telescopes"],
+        "a": "Electroplating/Electricity"
+    },
+    {
+        "q": "Which country technically has the most Time Zones in the world (including overseas territories)?",
+        "o": ["Russia", "China", "USA", "France"],
+        "a": "France"
+    },
+    {
+        "q": "In computing, the HTTP Error Code '418' is a real standard defined in RFC 2324. What does it stand for?",
+        "o": ["I'm a teapot", "Payment Required", "Legal Obstacle", "Method Not Allowed"],
+        "a": "I'm a teapot"
+    },
+    {
+        "q": "The 'Peacock Throne' (Takht-i-Taus) of Shah Jahan was famously looted by Nadir Shah in 1739. Which precious gem was NOT originally part of it?",
+        "o": ["Koh-i-Noor", "Akbar Shah Diamond", "Hope Diamond", "Timur Ruby"],
+        "a": "Hope Diamond"
+    },
+    {
+        "q": "What is the name of the specific boundary around a Black Hole beyond which nothing, not even light, can escape?",
+        "o": ["Singularity", "Accretion Disk", "Event Horizon", "Photon Sphere"],
+        "a": "Event Horizon"
+    },
+    {
+        "q": "Who was the first human to calculate the circumference of the Earth with surprising accuracy using only sticks and shadows?",
+        "o": ["Pythagoras", "Eratosthenes", "Archimedes", "Aristotle"],
+        "a": "Eratosthenes"
+    },
+    {
+        "q": "The 'Code of Hammurabi' is one of the oldest deciphered writings of significant length. It works on the principle of 'Lex Talionis', which means?",
+        "o": ["Innocent until proven guilty", "Eye for an eye", "Divine right of kings", "Taxation for protection"],
+        "a": "Eye for an eye"
+    },
+    {
+        "q": "In the human body, the 'Hyoid Bone' is unique because it is the only bone that...",
+        "o": ["Cannot break", "Is not connected to any other bone", "Does not stop growing", "Is made of cartilage"],
+        "a": "Is not connected to any other bone"
+    },
+    {
+        "q": "The 'Wow! Signal' (1977) was a strong narrowband radio signal received from space. Which constellation did it appear to come from?",
+        "o": ["Orion", "Sagittarius", "Ursa Major", "Andromeda"],
+        "a": "Sagittarius"
+    },
+    {
+        "q": "Which Mughal Emperor re-imposed the 'Jizya' tax on non-Muslims in 1679, almost a century after it was abolished by Akbar?",
+        "o": ["Jahangir", "Shah Jahan", "Aurangzeb", "Bahadur Shah I"],
+        "a": "Aurangzeb"
+    },
+    {
+        "q": "The 'Dancing Girl' statue from Mohenjo-daro is made of which material?",
+        "o": ["Terracotta", "Bronze", "Steatite", "Gold"],
+        "a": "Bronze"
+    },
+    {
+        "q": "The 'Demon Core' was a subcritical mass of Plutonium involved in two fatal accidents at Los Alamos. What tool did physicist Louis Slotin use to accidentally slip, causing the burst?",
+        "o": ["A Screwdriver", "A Pair of Tongs", "A Wrench", "A Robotic Arm"],
+        "a": "A Screwdriver"
+    },
+    {
+        "q": "In the Indian Constitution, the original handwritten document was calligraphed by Prem Behari Narain Raizada, but who was the specific artist responsible for the illustrations/artwork?",
+        "o": ["Rabindranath Tagore", "Nandalal Bose", "Raja Ravi Varma", "Abanindranath Tagore"],
+        "a": "Nandalal Bose"
+    },
+    {
+        "q": "The 'Sargasso Sea' is unique in the world because it is the only sea that...",
+        "o": ["Has no coastlines", "Has zero salt content", "Is located underground", "Freezes completely in winter"],
+        "a": "Has no coastlines"
+    },
+    {
+        "q": "In 1990, the 'Pale Blue Dot' photograph of Earth was taken by Voyager 1 from a distance of 6 billion kilometers. Who famously requested this photo be taken?",
+        "o": ["Carl Sagan", "Neil deGrasse Tyson", "Stephen Hawking", "Elon Musk"],
+        "a": "Carl Sagan"
+    },
+    {
+        "q": "The 'Great Attractor' is a gravitational anomaly in intergalactic space. Which supercluster is our Milky Way galaxy being pulled towards because of it?",
+        "o": ["Virgo Supercluster", "Laniakea Supercluster", "Coma Supercluster", "Perseus-Pisces Supercluster"],
+        "a": "Laniakea Supercluster"
+    },
+    {
+        "q": "Which obscure Mughal Prince translated 50 Upanishads from Sanskrit into Persian, calling the collection 'Sirr-i-Akbar' (The Great Secret)?",
+        "o": ["Dara Shikoh", "Aurangzeb", "Jahangir", "Shah Shuja"],
+        "a": "Dara Shikoh"
+    },
+    {
+        "q": "The 'Ship of Theseus' is a famous paradox in philosophy. It questions the nature of identity by asking what happens if...",
+        "o": ["A ship sinks and is rebuilt", "Every wooden part is replaced one by one", "It sails forever without stopping", "It has no captain"],
+        "a": "Every wooden part is replaced one by one"
+    },
+    {
+        "q": "In 1971, Ray Tomlinson sent the first ARPANET email. What symbol did he choose to separate the user name from the destination address?",
+        "o": ["# (Hash)", "@ (At)", "/ (Slash)", ". (Dot)"],
+        "a": "@ (At)"
+    },
+    {
+        "q": "The 'Rosetta Stone' was key to deciphering Egyptian Hieroglyphs. It features three scripts: Hieroglyphic, Greek, and...?",
+        "o": ["Demotic", "Coptic", "Latin", "Sanskrit"],
+        "a": "Demotic"
+    },
+    {
+        "q": "What is the specific name of the rust-resistant iron used in the 'Iron Pillar of Delhi', which has prevented corrosion for over 1600 years?",
+        "o": ["Stainless Steel", "Wrought Iron with high Phosphorus", "Galvanized Iron", "Titanium Alloy"],
+        "a": "Wrought Iron with high Phosphorus"
+    },
+    {
+        "q": "In the Ramayana, who was the only warrior capable of using the 'Vaishnavastra' besides Lord Rama and Lakshmana?",
+        "o": ["Ravana", "Indrajit (Meghanada)", "Kumbhakarna", "Vibhishana"],
+        "a": "Indrajit (Meghanada)"
+    },
+    {
+        "q": "The 'Kardashev Scale' measures a civilization's technological advancement based on what specific metric?",
+        "o": ["Population size", "Information storage capacity", "Energy consumption", "Space colonization range"],
+        "a": "Energy consumption"
+    },
+    {
+        "q": "Which gas is primarily responsible for the distinct smell of rain on dry soil (Petrichor)?",
+        "o": ["Ozone", "Geosmin", "Methane", "Nitrous Oxide"],
+        "a": "Geosmin"
+    },
+    {
+        "q": "The 'Beale Ciphers' are a set of three ciphertexts that supposedly reveal the location of buried treasure worth $60 million. Which famous document is the key to the second cipher?",
+        "o": ["Magna Carta", "The US Declaration of Independence", "The Bible", "Shakespeare's Sonnets"],
+        "a": "The US Declaration of Independence"
+    },
+    {
+        "q": "In computer programming, the date 'January 19, 2038' is significant because of the 'Year 2038 Problem'. Which systems will this affect?",
+        "o": ["64-bit systems", "32-bit signed integer systems", "Quantum Computers", "Windows 11"],
+        "a": "32-bit signed integer systems"
+    },
+    {
+        "q": "In computer science, 'P vs NP' is a major problem. What does 'NP' stand for?",
+        "o": ["Non-Polynomial", "Nondeterministic Polynomial", "New Programming", "Null Pointer"],
+        "a": "Nondeterministic Polynomial"
+    }
+]
+
+class TriviaGameView(discord.ui.View):
+    def __init__(self, player, bet, interaction, question_data):
+        super().__init__(timeout=45) # 45 Seconds to think
+        self.player = player
+        self.bet = bet
+        self.interaction = interaction
+        self.q_data = question_data
+        
+        # Shuffle Options Logic
+        self.options = self.q_data["o"].copy()
+        random.shuffle(self.options)
+        self.correct_ans = self.q_data["a"]
+        
+        # Create Buttons dynamically
+        self.create_buttons()
+
+    def create_buttons(self):
+        # A, B, C, D labels
+        labels = ["A", "B", "C", "D"]
+        for i, opt in enumerate(self.options):
+            btn = discord.ui.Button(label=f"{labels[i]}: {opt}", style=discord.ButtonStyle.secondary, custom_id=opt)
+            btn.callback = self.answer_callback
+            self.add_item(btn)
+
+    async def answer_callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.player.id:
+            return await interaction.response.send_message("❌ Doosron ke mamle mein mat bolo!", ephemeral=True)
+
+        selected_ans = interaction.data["custom_id"]
+        
+        # Disable all buttons
+        for item in self.children:
+            item.disabled = True
+            if item.custom_id == self.correct_ans:
+                item.style = discord.ButtonStyle.success # Show Correct (Green)
+            elif item.custom_id == selected_ans:
+                item.style = discord.ButtonStyle.danger # Show Wrong (Red)
+
+        if selected_ans == self.correct_ans:
+            # ✅ WIN
+            winnings = self.bet * 3
+            await update_balance(self.player.id, winnings)
+            
+            embed = discord.Embed(title="🧠 GENIUS LEVEL: 100", color=0x00FF00)
+            embed.description = (
+                f"🎉 **Correct Answer!**\n"
+                f"Tumhara IQ kamaal ka hai.\n\n"
+                f"💰 **Bet:** ${self.bet:,}\n"
+                f"🤑 **Won:** ${winnings:,} (3x)"
+            )
+            embed.set_thumbnail(url="https://media.tenor.com/images/1c8c87e28e66487a5611357591605a6c/tenor.gif") # Mind Blown gif
+        
+        else:
+            # ❌ LOSE
+            # Check VIP/Life
+            data = await get_data(self.player.id)
+            is_safe = False
+            footer_txt = "💀 Penalty: 1 Hour Mute"
+            
+            if data.get("vip_expiry"):
+                is_safe = True
+                footer_txt = "🛡️ VIP Saved you from Mute"
+            elif data.get("inventory", {}).get("life", 0) > 0:
+                await update_inventory(self.player.id, "life", -1)
+                is_safe = True
+                footer_txt = "💖 Extra Life Used"
+
+            if not is_safe:
+                await smart_timeout(self.interaction, self.player, 3600, "Failed Trivia Question") # 1 Hour
+
+            embed = discord.Embed(title="🚫 WRONG ANSWER!", color=0xFF0000)
+            embed.description = (
+                f"❌ **Galat Jawab!**\n"
+                f"Correct Answer: **{self.correct_ans}**\n\n"
+                f"💸 **Lost:** ${self.bet:,}\n"
+                f"🏥 **Status:** {footer_txt}"
+            )
+            embed.set_thumbnail(url="https://media.tenor.com/images/3e877e504c35e320f7725964f4040939/tenor.gif") # Wrong buzzer
+            
+        await interaction.response.edit_message(embed=embed, view=self)
+
+
+@bot.tree.command(name="quiz", description="🧠 Bet on your Intelligence (3x Reward)")
+@app_commands.describe(bet="Amount to bet")
+async def quiz(i: discord.Interaction, bet: int):
+    # Min Bet
+    if bet < 5000:
+        return await i.response.send_message("❌ Min Bet: $5,000 (Ye bacchon ka khel nahi hai)", ephemeral=True)
+        
+    data = await get_data(i.user.id)
+    if data["balance"] < bet:
+        return await i.response.send_message("❌ Paise nahi hain!", ephemeral=True)
+        
+    await update_balance(i.user.id, -bet)
+    
+    # Pick Random Hard Question
+    question = random.choice(TRIVIA_QUESTIONS)
+    
+    embed = discord.Embed(title="🧠 HIGH IQ QUIZ", color=0x9B59B6)
+    embed.description = (
+        f"**Player:** {i.user.mention}\n"
+        f"💰 **Bet:** ${bet:,} | **Win:** ${bet*3:,}\n\n"
+        f"❓ **{question['q']}**\n\n"
+        f"👇 **Sahi jawab chuno (45s)**"
+    )
+    embed.set_footer(text="Warning: Wrong answer = 1 Hour Mute!")
+    
+    view = TriviaGameView(i.user, bet, i, question)
+    await i.response.send_message(embed=embed, view=view)
+
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
 import time
