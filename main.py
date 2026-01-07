@@ -11449,7 +11449,6 @@ BIO_QUESTIONS = [
     # --- METAPHASE ---
     {"id": 1925, "q": "The complete disintegration of the nuclear envelope marks the start of:", "o": ["Metaphase", "Prophase", "Anaphase", "Telophase"], "a": "Metaphase"},
     {"id": 1926, "q": "Condensation of chromosomes is completed and they can be observed clearly under microscope in:", "o": ["Metaphase", "Prophase", "Anaphase", "Telophase"], "a": "Metaphase"},
-    [attachment_0](attachment),
     {"id": 1927, "q": "Which stage is best to study the morphology of chromosomes?", "o": ["Metaphase", "Prophase", "Anaphase", "Telophase"], "a": "Metaphase"},
     {"id": 1928, "q": "Small disc-shaped structures at the surface of the centromeres are called:", "o": ["Kinetochores", "Satellites", "Telomeres", "Chromatids"], "a": "Kinetochores"},
     {"id": 1929, "q": "The plane of alignment of the chromosomes at metaphase is referred to as the:", "o": ["Metaphase plate", "Cell plate", "Cleavage furrow", "Equator"], "a": "Metaphase plate"},
@@ -11551,7 +11550,6 @@ BIO_QUESTIONS = [
     {"id": 1853, "q": "Blood concentration of hormones is measured in:", "o": ["Nanograms/mL", "Mols/L", "Grams/L", "Kg/L"], "a": "Nanograms/mL"},
     
     # --- DEEP STRUCTURE & BONDS ---
-    [attachment_0](attachment),
     {"id": 1854, "q": "Peptide bond (-CO-NH-) is formed between:", "o": ["Carboxyl group of one AA and Amino group of next AA", "Amino group of one and Amino group of next", "Carboxyl of one and Carboxyl of next", "R group and R group"], "a": "Carboxyl group of one AA and Amino group of next AA"},
     {"id": 1855, "q": "Formation of a peptide bond involves the elimination of:", "o": ["Water moiety (Dehydration)", "CO2", "Ammonia", "Oxygen"], "a": "Water moiety (Dehydration)"},
     {"id": 1856, "q": "Glycosidic bond is formed between two carbon atoms of adjacent monosaccharides by:", "o": ["Dehydration", "Hydration", "Oxidation", "Reduction"], "a": "Dehydration"},
@@ -11576,7 +11574,6 @@ BIO_QUESTIONS = [
     {"id": 1806, "q": "The substrate binds to the enzyme at the:", "o": ["Active site", "Allosteric site", "C-terminal", "N-terminal"], "a": "Active site"},
     {"id": 1807, "q": "Formation of the Enzyme-Substrate (ES) complex is:", "o": ["Transient and unstable", "Permanent", "Stable", "Slow"], "a": "Transient and unstable"},
     {"id": 1808, "q": "The energy difference between average energy of substrate and transition state is called:", "o": ["Activation energy", "Potential energy", "Kinetic energy", "Free energy"], "a": "Activation energy"},
-    [attachment_1](attachment),
     {"id": 1809, "q": "Enzymes catalyze reactions by:", "o": ["Lowering the activation energy", "Increasing activation energy", "Increasing temperature", "Changing equilibrium"], "a": "Lowering the activation energy"},
     {"id": 1810, "q": "The essential concept of the 'Induced Fit' theory is that binding of substrate:", "o": ["Induces the enzyme to alter its shape to fit tightly", "Is rigid like a lock and key", "Does not change shape", "Breaks the enzyme"], "a": "Induces the enzyme to alter its shape to fit tightly"},
 
@@ -11625,7 +11622,6 @@ BIO_QUESTIONS = [
 
     # --- DNA STRUCTURE (WATSON & CRICK) ---
     {"id": 1782, "q": "Who proposed the famous Double Helix model of DNA?", "o": ["Watson and Crick (1953)", "Wilkins and Franklin", "Chargaff", "Meselson and Stahl"], "a": "Watson and Crick (1953)"},
-    [attachment_0](attachment),
     {"id": 1783, "q": "The backbone of the DNA strand is formed by:", "o": ["Sugar-Phosphate", "Nitrogenous bases", "Hydrogen bonds", "Only Sugar"], "a": "Sugar-Phosphate"},
     {"id": 1784, "q": "The two chains of DNA have anti-parallel polarity. If one is 5'->3', the other is:", "o": ["3'->5'", "5'->3'", "Parallel", "Random"], "a": "3'->5'"},
     {"id": 1785, "q": "Adenine pairs with Thymine with how many Hydrogen bonds?", "o": ["2", "3", "1", "4"], "a": "2"},
@@ -11789,7 +11785,6 @@ BIO_QUESTIONS = [
     {"id": 1588, "q": "Larger and more numerous nucleoli are present in cells actively carrying out:", "o": ["Protein synthesis", "Lipid synthesis", "Photosynthesis", "Division"], "a": "Protein synthesis"},
     {"id": 1589, "q": "Non-histone Chromosomal (NHC) proteins act as:", "o": ["Packaging proteins for higher level packaging", "Enzymes", "Structural support only", "Pigments"], "a": "Packaging proteins for higher level packaging"},
     {"id": 1590, "q": "A single human cell has approximately how much DNA thread distributed among its 46 chromosomes?", "o": ["2 meters", "1 meter", "2 centimeters", "2 millimeters"], "a": "2 meters"},
-    [attachment_0](attachment),
     {"id": 1591, "q": "Sometimes a few chromosomes have non-staining secondary constrictions at a constant location. This gives the appearance of a small fragment called:", "o": ["Satellite", "Telomere", "Kinetochore", "Centromere"], "a": "Satellite"},
     {"id": 1592, "q": "Kinetochores are:", "o": ["Disc-shaped structures on sides of centromere", "The ends of chromosomes", "The primary constriction", "Secondary constriction"], "a": "Disc-shaped structures on sides of centromere"},
 
@@ -11800,7 +11795,6 @@ BIO_QUESTIONS = [
     {"id": 1596, "q": "The peripheral doublets in cilia/flagella are interconnected by:", "o": ["Linkers", "Radial spokes", "Central sheath", "Plasma membrane"], "a": "Linkers"},
 
     # --- DEEP DIVE: CELL WALL & MEMBRANE ---
-    [attachment_1](attachment),
     {"id": 1597, "q": "In the Fluid Mosaic Model, the quasi-fluid nature of lipid enables lateral movement of proteins. This ability to move is measured as:", "o": ["Fluidity", "Permeability", "Transport", "Osmosis"], "a": "Fluidity"},
     {"id": 1598, "q": "One of the most important functions of the plasma membrane is:", "o": ["Transport of molecules", "Protein synthesis", "DNA storage", "Energy production"], "a": "Transport of molecules"},
     {"id": 1599, "q": "Algae cell wall is made of:", "o": ["Cellulose, Galactans, Mannans, Minerals", "Cellulose, Hemicellulose, Pectins", "Chitin", "Peptidoglycan"], "a": "Cellulose, Galactans, Mannans, Minerals"},
@@ -11840,7 +11834,6 @@ BIO_QUESTIONS = [
     # --- PLANT VS ANIMAL CELLS ---
     {"id": 1547, "q": "Which of the following is present in animal cells but absent in plant cells?", "o": ["Centriole", "Plastids", "Large central vacuole", "Cell wall"], "a": "Centriole"},
     {"id": 1548, "q": "Which of the following is present in plant cells but absent in animal cells?", "o": ["Plastids and Cell Wall", "Mitochondria", "Ribosomes", "Nucleus"], "a": "Plastids and Cell Wall"},
-    [attachment_0](attachment),
     {"id": 1549, "q": "In plant cells, the large central vacuole facilitates:", "o": ["Turgidity and rigidity", "Movement", "Reproduction", "Protein synthesis"], "a": "Turgidity and rigidity"},
     {"id": 1550, "q": "The core of cilia and flagella is called:", "o": ["Axoneme", "Centrosome", "Basal body", "Microvilli"], "a": "Axoneme"},
     {"id": 1551, "q": "Plant cells lack centrioles but still form spindle fibres during division. This is called:", "o": ["Anastral mitosis", "Amphiastral mitosis", "Free nuclear division", "Amitosis"], "a": "Anastral mitosis"}, # (Deep concept)
@@ -11849,7 +11842,6 @@ BIO_QUESTIONS = [
     {"id": 1552, "q": "The primary constriction on a chromosome is called:", "o": ["Centromere", "Kinetochore", "Telomere", "Satellite"], "a": "Centromere"},
     {"id": 1553, "q": "Proteinaceous discs on the surface of the centromere where spindle fibres attach are:", "o": ["Kinetochores", "Satellites", "Chromomeres", "Telomeres"], "a": "Kinetochores"},
     {"id": 1554, "q": "A chromosome with the centromere at the extreme tip is:", "o": ["Telocentric", "Acrocentric", "Metacentric", "Sub-metacentric"], "a": "Telocentric"},
-    [attachment_1](attachment),
     {"id": 1555, "q": "Satellite DNA is associated with:", "o": ["Secondary constriction", "Primary constriction", "Telomere", "Kinetochore"], "a": "Secondary constriction"},
     {"id": 1556, "q": "Chromosomes are best studied during:", "o": ["Metaphase", "Interphase", "Telophase", "Anaphase"], "a": "Metaphase"},
     {"id": 1557, "q": "The terminal ends of chromosomes that prevent fusion are called:", "o": ["Telomeres", "Centromeres", "Satellites", "Chromomeres"], "a": "Telomeres"},
@@ -11907,7 +11899,6 @@ BIO_QUESTIONS = [
     {"id": 1495, "q": "Amyloplasts store:", "o": ["Carbohydrates (Starch)", "Oils and Fats", "Proteins", "Water"], "a": "Carbohydrates (Starch)"},
     {"id": 1496, "q": "Elaioplasts store:", "o": ["Oils and Fats", "Starch", "Proteins", "Vitamins"], "a": "Oils and Fats"},
     {"id": 1497, "q": "Aleuroplasts store:", "o": ["Proteins", "Starch", "Fats", "Sugar"], "a": "Proteins"},
-    [attachment_0](attachment),
     {"id": 1498, "q": "Chloroplasts are double membrane bound. The inner membrane is:", "o": ["Relatively less permeable", "More permeable", "Absent", "Thicker"], "a": "Relatively less permeable"},
     {"id": 1499, "q": "The space limited by the inner membrane of the chloroplast is called:", "o": ["Stroma", "Matrix", "Lumen", "Cristae"], "a": "Stroma"},
     {"id": 1500, "q": "Flattened membranous sacs present in the stroma are called:", "o": ["Thylakoids", "Cristae", "Cisternae", "Tubules"], "a": "Thylakoids"},
@@ -12027,7 +12018,6 @@ BIO_QUESTIONS = [
     # --- CELL WALL ---
     {"id": 1453, "q": "Cell wall is a non-living rigid structure present in:", "o": ["Fungi and Plants", "Animals only", "Mycoplasma", "Animals and Plants"], "a": "Fungi and Plants"},
     {"id": 1454, "q": "Algae have a cell wall made of:", "o": ["Cellulose, Galactans, Mannans and Minerals (CaCO3)", "Cellulose, Hemicellulose, Pectins", "Chitin", "Peptidoglycan"], "a": "Cellulose, Galactans, Mannans and Minerals (CaCO3)"},
-    [attachment_0](attachment),
     {"id": 1455, "q": "In higher plants, the cell wall consists of:", "o": ["Cellulose, Hemicellulose, Pectins and Proteins", "Galactans and Mannans", "Chitin", "Peptidoglycan"], "a": "Cellulose, Hemicellulose, Pectins and Proteins"},
     {"id": 1456, "q": "The Primary wall of a young plant cell is:", "o": ["Capable of growth", "Rigid and dead", "Impermeable", "Absent"], "a": "Capable of growth"},
     {"id": 1457, "q": "The Secondary wall is formed on the:", "o": ["Inner side (towards membrane) of the cell", "Outer side of the cell", "Middle of the wall", "Outside cuticle"], "a": "Inner side (towards membrane) of the cell"},
