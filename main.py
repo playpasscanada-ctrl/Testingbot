@@ -10,10 +10,22 @@ from flask import Flask, request, jsonify, render_template
 import discord
 from discord import app_commands
 from discord import ui   # ⬅️ ye add karo
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from deep_translator import GoogleTranslator
 from concurrent.futures import ThreadPoolExecutor
+
+
+# --- DATABASE / STORAGE SIMULATION ---
+
+loans = {}          # Active loans store karne ke liye
+loan_cooldowns = {} # Cooldown track karne ke liye (User ID: Timestamp)
+
+# Agar aapke paas users ka data load karne ka system hai to thik hai,
+# warna ye dummy dictionary hai error na aane ke liye:
+if 'users' not in globals():
+    users = {} 
+    
 
 # ================== 🛍️ SHOP ITEMS (FULL LIST) ==================
 SHOP_ITEMS = {
@@ -875,6 +887,10 @@ async def on_ready():
     if not hasattr(bot, 'session') or bot.session is None:
         bot.session = aiohttp.ClientSession()
         print("✅ Shared Session Created")
+
+    if not loan_monitor.is_running():
+        loan_monitor.start()
+        print("✅ Loan Monitor Task Started")
 
     await load_banned_words()        
     await load_bypass_users()
@@ -7199,7 +7215,162 @@ async def restrict(i: discord.Interaction, action: app_commands.Choice[str], wor
     except Exception as e:
         print(f"RESTRICT ERROR: {e}")
         await i.followup.send(f"❌ System Error: `{e}`")
+
+# --- SLASH COMMAND: LOAN ---
+@bot.tree.command(name="loan", description="Take a loan from the bot (Max 10M).")
+@app_commands.describe(amount="Kitna paisa chahiye?")
+async def slash_loan(interaction: discord.Interaction, amount: int):
+    user_id = interaction.user.id
+    
+    # 1. Active Loan Check
+    if user_id in loans:
+        em = discord.Embed(title="❌ Loan Active", description="Pehle purana udhar wapis kar, fir naya milega!", color=discord.Color.red())
+        await interaction.response.send_message(embed=em, ephemeral=True)
+        return
+
+    # 2. Cooldown Check (1 Hour)
+    if user_id in loan_cooldowns:
+        last_loan_time = loan_cooldowns[user_id]
+        if datetime.datetime.now() < last_loan_time + datetime.timedelta(hours=1):
+            remaining = (last_loan_time + datetime.timedelta(hours=1)) - datetime.datetime.now()
+            minutes = int(remaining.total_seconds() / 60)
+            await interaction.response.send_message(f"⏳ **Cooldown!** Agla loan {minutes} minute baad le sakta hai.", ephemeral=True)
+            return
+
+    # 3. Amount Limits
+    if amount > 10000000: # 10 Million
+        await interaction.response.send_message("❌ **Limit Exceeded!** 10 Million se zyada nahi milega.", ephemeral=True)
+        return
+    if amount < 100:
+        await interaction.response.send_message("❌ Itne chutte paise nahi deta main. Kam se kam 100 maang.", ephemeral=True)
+        return
+
+    # 4. Process Loan
+    # Yahan apke database me paise add karne ka code ayega:
+    # Example: users[str(user_id)]["wallet"] += amount 
+    
+    # -- Logic for Loans Dict --
+    now = datetime.datetime.now()
+    loans[user_id] = {
+        "amount": amount,
+        "due_at": now + datetime.timedelta(hours=24), # 24 Hours time
+        "next_update": now + datetime.timedelta(hours=3), # Next reminder/interest
+        "taken_at": now
+    }
+    
+    # Set Cooldown timestamp
+    loan_cooldowns[user_id] = now
+
+    # 5. Success Embed
+    em = discord.Embed(title="💸 Loan Approved!", description=f"Successfully **{amount:,}** coins transfer kiye gaye.", color=discord.Color.green())
+    em.add_field(name="📅 Due Time", value="<t:{}:R> (24 Hours)".format(int((now + datetime.timedelta(hours=24)).timestamp())), inline=True)
+    em.add_field(name="⚠ Interest", value="Agar loan **300k+** hai to har 3 ghante me **10% interest** lagega.", inline=False)
+    em.set_footer(text="Wapis karne ke liye /repay use karein.")
+    
+    await interaction.response.send_message(embed=em)
+
+
+# --- SLASH COMMAND: REPAY ---
+@bot.tree.command(name="repay", description="Pay back your loan amount.")
+@app_commands.describe(amount="Kitna wapis karna hai? (0 for All)")
+async def slash_repay(interaction: discord.Interaction, amount: int):
+    user_id = interaction.user.id
+
+    if user_id not in loans:
+        await interaction.response.send_message("✅ Tere upar koi udhar nahi hai. Maze kar!", ephemeral=True)
+        return
+
+    loan_data = loans[user_id]
+    current_debt = loan_data["amount"]
+    
+    # Yaha check karein user ke paas paisa hai ya nahi
+    # Example: user_bal = users[str(user_id)]["wallet"]
+    # Abhi ke liye main maan leta hu user ke paas paisa hai (Dummy Logic)
+    user_bal = 999999999 # Replace this with real balance check
+    
+    pay_amount = current_debt if amount == 0 else amount # 0 likhne pe full payment
+
+    if pay_amount <= 0:
+         await interaction.response.send_message("❌ Sahi amount daal bhai.", ephemeral=True)
+         return
+
+    if user_bal < pay_amount:
+        await interaction.response.send_message(f"❌ Tere wallet me itne paise nahi hai! Tera udhar: **{current_debt:,}**", ephemeral=True)
+        return
+
+    # Logic to deduct money & update loan
+    # users[str(user_id)]["wallet"] -= pay_amount (Real DB Code Here)
+
+    if pay_amount >= current_debt:
+        # Full Paid
+        del loans[user_id]
+        em = discord.Embed(title="🎉 Loan Cleared!", description=f"Tune pura **{current_debt:,}** wapis kar diya. Ab tu free hai.", color=discord.Color.gold())
+        await interaction.response.send_message(embed=em)
+    else:
+        # Partial Paid
+        loans[user_id]["amount"] -= pay_amount
+        remaining = loans[user_id]["amount"]
+        em = discord.Embed(title="💰 Partial Payment", description=f"Tune **{pay_amount:,}** pay kiye. Abhi bhi **{remaining:,}** baki hai.", color=discord.Color.blue())
+        await interaction.response.send_message(embed=em)
+
+@tasks.loop(minutes=1)
+async def loan_monitor():
+    now = datetime.datetime.now()
+    active_users = list(loans.keys()) # Dictionary change error se bachne ke liye list banaya
+
+    for user_id in active_users:
+        data = loans[user_id]
+        
+        # --- CASE 1: TIME OVER (24 Hours) ---
+        if now >= data["due_at"]:
+            try:
+                # 💀 PENALTY CODE HERE 💀
+                # users[str(user_id)]["wallet"] = 0
+                # users[str(user_id)]["bank"] = 0
+                # users[str(user_id)]["inventory"] = [] 
                 
+                # Loan data delete
+                del loans[user_id]
+
+                # User ko DM
+                user = bot.get_user(user_id)
+                if user:
+                    em = discord.Embed(title="☠️ GAME OVER", description="Tune 24 ghante me paise nahi diye.\n**Tera Balance aur Inventory 0 kar diya gaya hai.**", color=discord.Color.dark_red())
+                    await user.send(embed=em)
+            except Exception as e:
+                print(f"Penalty Error for {user_id}: {e}")
+            continue
+
+        # --- CASE 2: INTEREST & REMINDER (Every 3 Hours) ---
+        if now >= data["next_update"]:
+            interest_added = 0
+            
+            # Interest Logic (Only if > 300k)
+            if data["amount"] > 300000:
+                interest_added = int(data["amount"] * 0.10) # 10%
+                data["amount"] += interest_added
+            
+            # Next check time update (+3 hours)
+            data["next_update"] = now + datetime.timedelta(hours=3)
+            loans[user_id] = data 
+
+            # DM User
+            try:
+                user = bot.get_user(user_id)
+                if user:
+                    time_left = data["due_at"] - now
+                    hours = int(time_left.total_seconds() / 3600)
+                    
+                    desc = f"⏰ **Reminder!** {hours} ghante bache hain paise wapis karne me."
+                    if interest_added > 0:
+                        desc += f"\n📈 **+10% Interest ({interest_added:,})** lag gaya hai kyunki amount 300k+ tha."
+                    
+                    em = discord.Embed(title="Loan Update", description=desc, color=discord.Color.orange())
+                    em.add_field(name="Current Debt", value=f"**{data['amount']:,}** coins")
+                    await user.send(embed=em)
+            except:
+                pass # Agar DM band hai to ignore karega
+
 # ================== FUN: FAKE HACK COMMAND ==================
 @bot.tree.command(name="hack", description="Prank hack a user (Funny)")
 async def hack(i: discord.Interaction, target: discord.User):
