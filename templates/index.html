@@ -16,6 +16,13 @@
             --neon-blue: #00ccff;
         }
 
+        /* --- Global Animations --- */
+        @keyframes glow {
+            0% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.2); }
+            50% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); }
+            100% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.2); }
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
 
         body {
@@ -54,6 +61,7 @@
             margin-bottom: 30px;
             font-size: 1.1rem;
             backdrop-filter: blur(5px);
+            animation: glow 3s infinite;
         }
         .status-dot { height: 10px; width: 10px; background: red; border-radius: 50%; box-shadow: 0 0 10px red; }
         .connected .status-dot { background: var(--neon-green); box-shadow: 0 0 10px var(--neon-green); }
@@ -96,7 +104,7 @@
             padding: 20px;
             position: relative;
             overflow: hidden;
-            transition: transform 0.3s, border-color 0.3s;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -107,17 +115,16 @@
             content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
         }
         
-        /* Category Colors */
-        .card.special::before { background: var(--neon-red); }
-        .card.vip::before { background: var(--gold); }
-        .card.role::before { background: var(--neon-blue); }
-        .card.lotto::before { background: var(--neon-green); }
-        .card.verification::before { background: #ffffff; }
+        .card.special::before { background: var(--neon-red); box-shadow: 0 0 10px var(--neon-red); }
+        .card.vip::before { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+        .card.role::before { background: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); }
+        .card.lotto::before { background: var(--neon-green); box-shadow: 0 0 10px var(--neon-green); }
+        .card.verification::before { background: #ffffff; box-shadow: 0 0 10px #ffffff; }
 
         .card:hover {
-            transform: translateY(-5px);
-            border-color: #555;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transform: translateY(-10px) scale(1.02);
+            border-color: #777;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.7);
         }
 
         .card-type {
@@ -173,29 +180,36 @@
             box-shadow: none;
         }
         
-        /* Login Button Style */
+        /* Login Container */
         .login-container {
             margin-top: 100px;
-            padding: 40px;
-            background: #111;
+            padding: 60px;
+            background: rgba(17, 17, 17, 0.8);
             border: 1px solid #333;
             border-radius: 20px;
             display: inline-block;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.1);
         }
         .login-btn {
             background: #5865F2;
             color: white;
-            padding: 15px 30px;
+            padding: 18px 40px;
             text-decoration: none;
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: bold;
-            border-radius: 8px;
+            border-radius: 12px;
             display: inline-block;
-            margin-top: 20px;
+            margin-top: 30px;
+            transition: 0.3s;
+            box-shadow: 0 4px 15px rgba(88, 101, 242, 0.4);
         }
-        .login-btn:hover { background: #4752c4; }
+        .login-btn:hover { 
+            background: #4752c4; 
+            transform: scale(1.05);
+            box-shadow: 0 6px 25px rgba(88, 101, 242, 0.6);
+        }
 
-        /* --- Responsive --- */
         @media (max-width: 600px) {
             h1 { font-size: 2rem; }
             .grid { grid-template-columns: 1fr; }
@@ -205,7 +219,6 @@
 <body>
 
     {% if user %}
-    
         <h1>Global Black Market</h1>
         <div class="subtitle">SECURE • ANONYMOUS • INSTANT</div>
 
@@ -213,7 +226,7 @@
             <div class="status-dot"></div>
             <span id="status-text">
                 Welcome, <span style="color:var(--gold)">{{ user.username }}</span> 
-                | Balance: <span style="color:var(--neon-green)">${{ user.balance }}</span>
+                | Balance: <span style="color:var(--neon-green)">${{ user.balance.toLocaleString() }}</span>
             </span>
         </div>
 
@@ -229,33 +242,31 @@
         <div class="grid" id="container"></div>
 
         <script>
-            // ✅ SECURE: Get ID directly from Python Backend (No URL Params)
+            // ✅ CHANNEL ID TRACKING (Fixed Logic)
+            const urlParams = new URLSearchParams(window.location.search);
+            const cid = "{{ cid }}" || urlParams.get('state') || ""; 
             const uid = "{{ user.id }}";
-            // Check if Python passed a Channel ID (cid), else empty
-            const cid = "{{ cid if cid else '' }}"; 
 
-            // 3. Item Database (EXACTLY MATCHING MAIN.PY)
+            // 📦 100% Items Protected (No deletion)
             const items = [
                 // Special
                 {id: 'izzat', name: '🧼 Izzat Wapasi', price: 150000, type: 'special'},
                 {id: 'landmine', name: '💣 Landmine', price: 500000, type: 'special'},
                 {id: 'life', name: '💖 Extra Life', price: 750000, type: 'special'},
                 {id: 'cctv', name: '📹 CCTV Camera', price: 150000, type: 'special'},
-
-                // 👇 VERIFICATION SECTION
-                {id: 'verify_1d',   name: '✅ Verify (1 Day)',   price: 50000000, type: 'verification'},
-                {id: 'verify_3d',   name: '✅ Verify (3 Days)',  price: 150000000, type: 'verification'},
-                {id: 'verify_5d',   name: '✅ Verify (5 Days)',  price: 500000000, type: 'verification'},
-                {id: 'verify_1w',   name: '✅ Verify (1 Week)',  price: 1000000000, type: 'verification'},
-                {id: 'verify_10d',  name: '✅ Verify (10 Days)', price: 1500000000, type: 'verification'},
-                {id: 'verify_15d',  name: '✅ Verify (15 Days)', price: 3000000000, type: 'verification'},
-                {id: 'verify_1m',   name: '✅ Verify (1 Month)', price: 10000000000000, type: 'verification'},
-                {id: 'verify_perm', name: '♾️ Verify (Lifetime)', price: 100000000000000, type: 'verification'},
-
-                // Fight club section 
                 {id: 'knife', name: '🔪 Combat Knife', price: 50000, type: 'special'},
-                {id: 'armor', name: '🛡️ Kevlar Vest', price: 80000, "type": "special"},
-                {id: 'steroids', name: '💉 Steroids', price: 20000, "type": "special"},
+                {id: 'armor', name: '🛡️ Kevlar Vest', price: 80000, type: 'special'},
+                {id: 'steroids', name: '💉 Steroids', price: 20000, type: 'special'},
+
+                // Verification
+                {id: 'verify_1d', name: '✅ Verify (1 Day)', price: 50000000, type: 'verification'},
+                {id: 'verify_3d', name: '✅ Verify (3 Days)', price: 150000000, type: 'verification'},
+                {id: 'verify_5d', name: '✅ Verify (5 Days)', price: 500000000, type: 'verification'},
+                {id: 'verify_1w', name: '✅ Verify (1 Week)', price: 1000000000, type: 'verification'},
+                {id: 'verify_10d', name: '✅ Verify (10 Days)', price: 1500000000, type: 'verification'},
+                {id: 'verify_15d', name: '✅ Verify (15 Days)', price: 3000000000, type: 'verification'},
+                {id: 'verify_1m', name: '✅ Verify (1 Month)', price: 10000000000000, type: 'verification'},
+                {id: 'verify_perm', name: '♾️ Verify (Lifetime)', price: 100000000000000, type: 'verification'},
 
                 // VIP
                 {id: 'vip_10m', name: '⚡ 10 Mins Escape', price: 200000, type: 'vip'},
@@ -289,7 +300,6 @@
 
             const container = document.getElementById('container');
 
-            // 4. Render Function
             function renderItems(filter = 'all') {
                 container.innerHTML = '';
                 items.forEach(item => {
@@ -307,72 +317,60 @@
                 });
             }
 
-            // 5. Filter Logic
             function filterItems(category) {
-                // Update buttons visual
                 document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
                 event.target.classList.add('active');
                 renderItems(category);
             }
 
-            // 6. Buy Logic (Connected to Python /buy route)
+            // 🛒 BUY LOGIC WITH RECEIPT TRACKING
             async function buy(itemId, btn) {
-                if (!uid) {
-                    alert("❌ ERROR: Login required.");
-                    return;
-                }
-
                 const originalText = btn.innerText;
-                btn.innerText = "PROCESSING...";
+                btn.innerText = "VERIFYING...";
                 btn.disabled = true;
-                btn.style.background = "#333";
 
                 try {
                     const res = await fetch('/buy', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        // Sending Secure ID from Session (injected variable)
+                        // Sending cid (Channel ID) to Python for Receipt
                         body: JSON.stringify({ uid: uid, cid: cid, item_id: itemId })
                     });
                     const data = await res.json();
 
                     if (data.status === 'success') {
-                        // Success Animation/Feedback
-                        btn.innerText = "SUCCESS";
+                        btn.innerText = "PURCHASED";
                         btn.style.background = "var(--neon-green)";
-                        alert(`✅ ${data.msg}\n💰 New Balance: $${data.bal.toLocaleString()}`);
+                        alert(`💸 SUCCESS!\n${data.msg}\nReceipt sent to Discord.`);
+                        location.reload(); // Refresh balance
                     } else {
-                        // Error Feedback
-                        btn.innerText = "FAILED";
+                        btn.innerText = "DENIED";
                         btn.style.background = "var(--neon-red)";
                         alert(`❌ ERROR: ${data.msg}`);
                     }
                 } catch (err) {
-                    alert("⚠️ Server Error: Please try again later.");
+                    alert("⚠️ Connection Failed. Market is offline.");
                 }
 
-                // Reset Button after 2 seconds
                 setTimeout(() => {
                     btn.disabled = false;
                     btn.innerText = originalText;
-                    btn.style.background = ""; // Reset to CSS default
+                    btn.style.background = "";
                 }, 2000);
             }
 
-            // Initial Render
             renderItems();
         </script>
-
     {% else %}
         <div class="login-container">
-            <h1 style="color:red; font-size: 3rem;">🔒 ACCESS DENIED</h1>
-            <p style="color:#aaa; font-size:1.2rem;">This shop is restricted to authorized personnel.</p>
-            <br>
+            <h1 style="color:var(--neon-red); font-size: 3.5rem;">🔒 RESTRICTED</h1>
+            <p style="color:#888; font-size:1.2rem; letter-spacing: 1px;">
+                AUTHORIZATION REQUIRED FOR MARKET ENTRY
+            </p>
             <a href="{{ login_url }}" class="login-btn">
-                🔑 Login with Discord
+                📡 ESTABLISH CONNECTION
             </a>
         </div>
     {% endif %}
-
 </body>
 </html>
