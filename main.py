@@ -15866,29 +15866,30 @@ async def check_lottery(i: discord.Interaction):
 # 🌐 FLASK LOGIN ROUTES (Paste above self_ping)
 # ==========================================
 
+from flask import render_template # ✅ Ye import zaroori hai
+
+# --- Updated Routes ---
+
 @app.route('/')
 def home():
-    if 'user_id' in session:
-        return f"""
-        <div style="background:#111; color:white; padding:50px; text-align:center; font-family:sans-serif;">
-            <h1>✅ VERIFIED USER</h1>
-            <p>ID: {session['user_id']}</p>
-            <h2 style="color:gold;">🛍️ Welcome to Black Market Shop</h2>
-        </div>
-        """
-    return f"""
-    <div style="background:#111; color:white; padding:50px; text-align:center; font-family:sans-serif;">
-        <h1>🔒 ACCESS DENIED</h1>
-        <p>Please use <b>/shop</b> command in Discord.</p>
-    </div>
-    """
+    # 1. Login Link Banao (Taaki button par click ho sake)
+    import urllib.parse
+    encoded_redirect = urllib.parse.quote(REDIRECT_URI)
+    login_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
+
+    # 2. Check karo user login hai ya nahi
+    if 'user_info' in session:
+        # User ka data HTML ko bhejo
+        return render_template('index.html', user=session['user_info'])
+    
+    # Login nahi hai to Login URL bhejo
+    return render_template('index.html', user=None, login_url=login_url)
 
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
     if not code: return "Error: No code provided."
 
-    # Token Exchange Data
     data = {
         'client_id': CLIENT_ID,
         'client_secret': CLIENT_SECRET,
@@ -15899,23 +15900,42 @@ def callback():
     }
     
     try:
-        # 1. Get Token
+        # Token Lo
         r = requests.post('https://discord.com/api/oauth2/token', data=data)
         r.raise_for_status()
         token = r.json().get('access_token')
 
-        # 2. Get User Info
+        # User Info Lo
         user_req = requests.get('https://discord.com/api/users/@me', headers={'Authorization': f'Bearer {token}'})
         user_data = user_req.json()
+
+        # Balance Fetch Karo (Database se) - Example Logic
+        # (Yahan aap apna Supabase wala logic laga sakte ho)
+        user_balance = 0 
+        try:
+            # Fake example, asli me supabase call karna
+            # res = supabase.table("economy").select("balance").eq("user_id", user_data['id']).execute()
+            # user_balance = res.data[0]['balance']
+            pass
+        except: pass
         
-        # 3. Save to Session
-        session['user_id'] = user_data['id']
+        # Session me poora data save karo
+        session['user_info'] = {
+            'id': user_data['id'],
+            'username': user_data['username'],
+            'avatar': user_data['avatar'],
+            'balance': user_balance
+        }
         
-        # 4. Redirect Home
         return redirect('/') 
         
     except Exception as e:
-        return f"<h1>Login Failed</h1><p>Error: {e}</p><p>Check Client Secret in Render Variables.</p>"
+        return f"Login Error: {e}"
+
+@app.route('/logout')
+def logout():
+    session.pop('user_info', None)
+    return redirect('/')
 
 # ==========================================
 # 🚀 FINAL STARTUP (File ka bilkul aakhri hissa)
