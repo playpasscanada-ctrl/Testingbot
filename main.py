@@ -6940,9 +6940,40 @@ class GlassBridgeGame(discord.ui.View):
                 status_report.append(f"{p.name}: {msg}")
             
             embed = discord.Embed(title="⏰ TIME OVER! ELIMINATED!", color=0x000000)
-            embed.description = ()
+            embed.description = (
                 f"**60 Seconds khatam!** Bridge toot gaya.\n\n"
-                f"💀 **Status Report:**\n" + "\n".joinplayers[self.current_player_idx]
+                f"💀 **Status Report:**\n" + "\n".join(status_report)
+            )
+            embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
+            
+            try: await self.original_interaction.edit_original_response(embed=embed, view=None)
+            except: pass
+
+    def generate_board(self):
+        board_str = ""
+        for i in range(self.bridge_len - 1, -1, -1):
+            step_marker = f"**Step {i+1}**"
+            
+            if i == self.current_step and self.current_player_idx < len(self.players):
+                left_icon = "⬜"; right_icon = "⬜"
+            elif i < self.current_step:
+                left_icon = "🟩" if self.path[i] == "LEFT" else "⬛"
+                right_icon = "🟩" if self.path[i] == "RIGHT" else "⬛"
+            else:
+                left_icon = "🌫️"; right_icon = "🌫️"
+
+            if self.revealed[i]:
+                left_icon = "✅" if self.path[i] == "LEFT" else "❌"
+                right_icon = "✅" if self.path[i] == "RIGHT" else "❌"
+            
+            pointer = "👈 **HERE**" if i == self.current_step else ""
+            board_str += f"`[{left_icon}]`  `[{right_icon}]` {step_marker} {pointer}\n"
+        return board_str
+
+    async def get_embed(self):
+        if not self.game_active: return None
+        
+        active_p = self.players[self.current_player_idx]
         next_p = self.players[self.current_player_idx + 1] if self.current_player_idx + 1 < len(self.players) else "None"
         
         desc = (
@@ -7065,13 +7096,13 @@ class GlassLobbyView(discord.ui.View):
 
 
 @bot.tree.command(name="glass_bridge", description="🦑 Squid Game Glass Bridge (Push & Survive)")
-@check_seized()
 async def glass_bridge(i: discord.Interaction):
     if not i.guild.me.guild_permissions.moderate_members:
         return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
     
     view = GlassLobbyView(i.user)
     await i.response.send_message(embed=view.get_embed(), view=view)
+
 
 # ================== 📉 ADMIN: REMOVE MONEY (ASSET SEIZURE) ==================
 
