@@ -15735,7 +15735,7 @@ async def shop_cmd(i: discord.Interaction):
     embed.add_field(name="⚠️ How to enter?", value="Click the button below and authorize your account to view your balance and start trading.", inline=False)
     
     embed.set_footer(text="Verified Underground Merchant • 2026", icon_url=i.user.display_avatar.url)
-    embed.set_thumbnail(url="https://i.imgur.com/vHpxG5M.png") 
+    embed.set_thumbnail(url="https://i.pinimg.com/originals/34/00/27/340027170a4877716f9f0945d8b7b25a.png") 
     
     # UI Button
     view = discord.ui.View()
