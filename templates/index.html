@@ -226,7 +226,7 @@
             <div class="status-dot"></div>
             <span id="status-text">
                 Welcome, <span style="color:var(--gold)">{{ user.username }}</span> 
-                | Balance: <span style="color:var(--neon-green)">${{ user.balance.toLocaleString() }}</span>
+                | Balance: <span style="color:var(--neon-green)">${{ "{:,.0f}".format(user.balance) }}</span>
             </span>
         </div>
 
