@@ -20,9 +20,6 @@ import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
 # --- 🌐 WEBSITE CONFIGURATION (Final Fix) ---
 app = Flask(__name__)
 
-# ✅ ERROR FIX: Is line ko bilkul mat badalna, yehi error rokegi
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "default_fallback_key") 
-
 # IDs (Hardcoded as per your portal)
 CLIENT_ID = "1451451135813746700"
 CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
@@ -15404,74 +15401,78 @@ C_DARK = 0x2B2D31
 
 # ================== 🌐 WEBSITE BACKEND ==================
 # ==========================================
-# 🛠️ HARDCODED LOGIN ROUTES (Error Fix Version)
+# 🌐 FINAL READY FLASK BACKEND
 # ==========================================
-
-from flask import render_template, session, redirect, request
-import urllib.parse
-import requests
+from flask import Flask, session, render_template, redirect, request, jsonify
 import os
+import requests
+import urllib.parse
 
-# 👇 MENE AAPKI ID AUR LINK YAHAN DIRECT LIKH DI HAI
-# (Ab Environment Variable ki galti nahi ho sakti)
-REAL_CLIENT_ID = "1451451135813746700" 
-REAL_REDIRECT_URI = "https://testingbot-q1jb.onrender.com/callback"
+app = Flask(__name__)
+
+# --- ⚙️ CONFIGURATION (Env + Hardcode Backup) ---
+# 1. Secret Key Fix
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "vikas_bhai_super_secure_key_786") #
+
+# 2. Discord Credentials
+CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "1451451135813746700") #
+CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET") # Must be in Render Env
+
+# 3. Redirect URI Fix (Screenshot se bilkul match karta hua)
+#
+REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "https://testingbot-q1jb.onrender.com/callback")
 
 @app.route('/')
 def home():
-    # 1. Login Link Banao
-    encoded_redirect = urllib.parse.quote(REAL_REDIRECT_URI)
-    
-    # 🔗 Final Link (Console me print bhi karega taaki check kar sakein)
-    login_url = f"https://discord.com/api/oauth2/authorize?client_id={REAL_CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
-    
-    print(f"DEBUG LOGIN URL: {login_url}") # Logs me dikhega
+    # Login URL generate karna
+    encoded_redirect = urllib.parse.quote(REDIRECT_URI)
+    login_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
 
-    # 2. Check Login
     if 'user_info' in session:
-        return render_template('index.html', user=session['user_info'], cid=request.args.get('cid'))
+        # Agar user login hai to shop dikhao
+        return render_template('index.html', user=session['user_info'])
     
-    # 3. Agar Login nahi hai
+    # Login nahi hai to Login Page (Access Denied) dikhao
     return render_template('index.html', user=None, login_url=login_url)
 
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
-    if not code: return "Error: No code provided."
-
-    # Secret abhi bhi Render se lenge (Kyunki wo secret hai)
-    c_secret = os.getenv("DISCORD_CLIENT_SECRET")
+    if not code: return "Error: No login code from Discord."
 
     data = {
-        'client_id': REAL_CLIENT_ID,        # ✅ Hardcoded
-        'client_secret': c_secret,          # 🔒 Render Env se
+        'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET,
         'grant_type': 'authorization_code',
         'code': code,
-        'redirect_uri': REAL_REDIRECT_URI,  # ✅ Hardcoded (Must match home)
+        'redirect_uri': REDIRECT_URI,
         'scope': 'identify'
     }
     
     try:
-        # Token Lo
+        # Token Exchange
         r = requests.post('https://discord.com/api/oauth2/token', data=data)
         r.raise_for_status()
-        token = r.json().get('access_token')
+        token_data = r.json()
+        access_token = token_data.get('access_token')
 
-        # User Info Lo
-        user_req = requests.get('https://discord.com/api/users/@me', headers={'Authorization': f'Bearer {token}'})
+        # Fetch User Profile Info
+        user_req = requests.get('https://discord.com/api/users/@me', 
+                                headers={'Authorization': f'Bearer {access_token}'})
         user_data = user_req.json()
         user_id = str(user_data['id'])
 
-        # Balance Check (Supabase)
-        user_balance = 0 
+        # --- 💰 DATABASE BALANCE FETCH (Supabase) ---
+        user_balance = 0
         try:
+            #
             res = supabase.table("economy").select("balance").eq("user_id", user_id).execute()
             if res.data:
                 user_balance = res.data[0]['balance']
-            else:
-                supabase.table("economy").insert({"user_id": user_id, "balance": 0, "bank": 0}).execute()
-        except: pass
+        except Exception as db_e:
+            print(f"DB Error: {db_e}")
 
+        # Session Save (Website ko login rakhne ke liye)
         session['user_info'] = {
             'id': user_id,
             'username': user_data['username'],
@@ -15482,11 +15483,12 @@ def callback():
         return redirect('/') 
         
     except Exception as e:
-        return f"<h3>Login Error</h3><p>{e}</p><br>Check: DISCORD_CLIENT_SECRET in Render."
+        #
+        return f"Login Failed: {str(e)} <br> Tip: Check if DISCORD_CLIENT_SECRET is correct in Render."
 
 @app.route('/logout')
 def logout():
-    session.pop('user_info', None)
+    session.clear()
     return redirect('/')
 
 
