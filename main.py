@@ -17,17 +17,16 @@ from concurrent.futures import ThreadPoolExecutor
 import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
 
 
-# --- 🌐 WEBSITE CONFIGURATION (Force Fix) ---
+# --- 🌐 WEBSITE CONFIGURATION (Final Fix) ---
 app = Flask(__name__)
 
-# 👇 Yahan sidhe apna secret likh do (Problem Solve!)
-app.secret_key = "vikas_bhai_ki_pakee_secret_key" 
+# ✅ ERROR FIX: Is line ko bilkul mat badalna, yehi error rokegi
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "default_fallback_key") 
 
-# Baki IDs photo se match kar lo
+# IDs (Hardcoded as per your portal)
 CLIENT_ID = "1451451135813746700"
 CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 REDIRECT_URI = "https://testingbot-q1jb.onrender.com/callback"
-
 
 # --- LOAN SYSTEM SETTINGS ---
 MAX_LOAN = 10000000      # 10 Million Limit
