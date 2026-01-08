@@ -17,20 +17,17 @@ from concurrent.futures import ThreadPoolExecutor
 import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
 
 
-# --- 🌐 WEBSITE CONFIGURATION ---
+# --- 🌐 WEBSITE CONFIGURATION (Force Fix) ---
 app = Flask(__name__)
 
-# 🔑 Flask Secret Key: Iske bina Login (Session) kaam nahi karega
-# Isse Render ke Environment Variables me 'FLASK_SECRET_KEY' naam se daalein
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "vikas_bhai_secure_key_786")
+# 👇 Yahan sidhe apna secret likh do (Problem Solve!)
+app.secret_key = "vikas_bhai_ki_pakee_secret_key" 
 
-# 🆔 Discord IDs (Jo aapne Developer Portal se li hain)
-CLIENT_ID = "1451451135813746700" #
-CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET") # Render Env se lega
+# Baki IDs photo se match kar lo
+CLIENT_ID = "1451451135813746700"
+CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
+REDIRECT_URI = "https://testingbot-q1jb.onrender.com/callback"
 
-# 🔗 Redirect URI (Jo Discord Portal me save hai)
-# Bilkul exact wahi honi chahiye jo screenshot me hai
-REDIRECT_URI = "https://testingbot-q1jb.onrender.com/callback" 
 
 # --- LOAN SYSTEM SETTINGS ---
 MAX_LOAN = 10000000      # 10 Million Limit
