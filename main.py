@@ -15401,27 +15401,29 @@ C_GREEN = 0x00FF00
 C_DARK = 0x2B2D31
 
 # ================== 🌐 WEBSITE BACKEND ==================
-
 # ==========================================
-# 🛠️ FIXED LOGIN ROUTES (Paste inside main.py)
+# 🛠️ HARDCODED LOGIN ROUTES (Error Fix Version)
 # ==========================================
 
-# 👇 YAHAN DHYAAN DO: Humne link fix kar di hai
-MY_REDIRECT_URI = "https://testingbot-q1jb.onrender.com/callback"
+from flask import render_template, session, redirect, request
+import urllib.parse
+import requests
+import os
+
+# 👇 MENE AAPKI ID AUR LINK YAHAN DIRECT LIKH DI HAI
+# (Ab Environment Variable ki galti nahi ho sakti)
+REAL_CLIENT_ID = "1451451135813746700" 
+REAL_REDIRECT_URI = "https://testingbot-q1jb.onrender.com/callback"
 
 @app.route('/')
 def home():
     # 1. Login Link Banao
-    import urllib.parse
+    encoded_redirect = urllib.parse.quote(REAL_REDIRECT_URI)
     
-    # URL Encode karna zaroori hai
-    encoded_redirect = urllib.parse.quote(MY_REDIRECT_URI)
+    # 🔗 Final Link (Console me print bhi karega taaki check kar sakein)
+    login_url = f"https://discord.com/api/oauth2/authorize?client_id={REAL_CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
     
-    # Render se Client ID uthao
-    c_id = os.getenv("DISCORD_CLIENT_ID")
-    
-    # 🔗 Final Login Link
-    login_url = f"https://discord.com/api/oauth2/authorize?client_id={c_id}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
+    print(f"DEBUG LOGIN URL: {login_url}") # Logs me dikhega
 
     # 2. Check Login
     if 'user_info' in session:
@@ -15435,16 +15437,15 @@ def callback():
     code = request.args.get('code')
     if not code: return "Error: No code provided."
 
-    # Render se Secrets uthao
-    c_id = os.getenv("DISCORD_CLIENT_ID")
+    # Secret abhi bhi Render se lenge (Kyunki wo secret hai)
     c_secret = os.getenv("DISCORD_CLIENT_SECRET")
 
     data = {
-        'client_id': c_id,
-        'client_secret': c_secret,
+        'client_id': REAL_CLIENT_ID,        # ✅ Hardcoded
+        'client_secret': c_secret,          # 🔒 Render Env se
         'grant_type': 'authorization_code',
         'code': code,
-        'redirect_uri': MY_REDIRECT_URI, # ✅ Yaha bhi same link honi chahiye
+        'redirect_uri': REAL_REDIRECT_URI,  # ✅ Hardcoded (Must match home)
         'scope': 'identify'
     }
     
@@ -15459,7 +15460,7 @@ def callback():
         user_data = user_req.json()
         user_id = str(user_data['id'])
 
-        # Balance Check Logic (Supabase)
+        # Balance Check (Supabase)
         user_balance = 0 
         try:
             res = supabase.table("economy").select("balance").eq("user_id", user_id).execute()
@@ -15479,7 +15480,7 @@ def callback():
         return redirect('/') 
         
     except Exception as e:
-        return f"Login Error: {e}"
+        return f"<h3>Login Error</h3><p>{e}</p><br>Check: DISCORD_CLIENT_SECRET in Render."
 
 @app.route('/logout')
 def logout():
