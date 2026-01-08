@@ -15424,15 +15424,21 @@ REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "https://testingbot-q1jb.onrend
 
 @app.route('/')
 def home():
-    # Login URL generate karna
+    # 1. Login URL generate karna (Env Variables ka use karke)
+    # REDIRECT_URI aur CLIENT_ID wahi hain jo humne upar set kiye hain
+    import urllib.parse
     encoded_redirect = urllib.parse.quote(REDIRECT_URI)
     login_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
 
+    # 2. URL se Channel ID (state) ko pakadna
+    cid_from_url = request.args.get('state')
+
+    # 3. Check karna ki user login hai ya nahi
     if 'user_info' in session:
-        # Agar user login hai to shop dikhao
-        return render_template('index.html', user=session['user_info'])
+        # User login hai, to use shop dikhao aur cid pass karo
+        return render_template('index.html', user=session['user_info'], cid=cid_from_url)
     
-    # Login nahi hai to Login Page (Access Denied) dikhao
+    # User login nahi hai, to use login button dikhao
     return render_template('index.html', user=None, login_url=login_url)
 
 @app.route('/callback')
@@ -15501,54 +15507,54 @@ def buy_item():
     try:
         data = request.json
         uid = str(data.get('uid'))
-        cid = data.get('cid') # Channel ID (NOTIFICATION FIX)
+        cid = data.get('cid') 
         item_id = data.get('item_id')
         
-        if item_id not in SHOP_ITEMS: return jsonify({"status": "error", "msg": "Invalid Item"})
+        if item_id not in SHOP_ITEMS: 
+            return jsonify({"status": "error", "msg": "Invalid Item"})
         
         # 1. Fetch User Data (Fresh)
         res = supabase.table("economy").select("*").eq("user_id", uid).execute()
-        if not res.data: return jsonify({"status": "error", "msg": "Account Not Found! Use /balance first."})
+        if not res.data: 
+            return jsonify({"status": "error", "msg": "Account Not Found! Use /balance first."})
         
         user_data = res.data[0]
         item = SHOP_ITEMS[item_id]
+        old_bal = int(user_data['balance']) # For Receipt Detail
         
         # 2. Check Balance
-        if user_data['balance'] < item['price']:
-            return jsonify({"status": "error", "msg": f"Garib! Need ${item['price'] - user_data['balance']:,} more."})
+        if old_bal < item['price']:
+            return jsonify({"status": "error", "msg": f"Garib! Need ${item['price'] - old_bal:,} more."})
         
-        # 3. Deduct Money IMMEDIATELY (BALANCE FIX)
-        new_bal = int(user_data['balance']) - int(item['price'])
-        
-        # Initial Update to lock funds
+        # 3. Deduct Money IMMEDIATELY
+        new_bal = old_bal - int(item['price'])
         supabase.table("economy").update({"balance": new_bal}).eq("user_id", uid).execute()
         
         result_text = f"✅ Bought {item['name']}"
         
-        # 4. Handle Item Logic
-        if item['type'] == "lotto":
+        # 4. Handle Item Logic (Same as yours)
+        if item.get('type') == "lotto":
             if random.randint(1, 100) <= item['chance']:
                 new_bal += item['win']
-                # Update Win
                 supabase.table("economy").update({"balance": new_bal}).eq("user_id", uid).execute()
                 result_text = f"🎉 JACKPOT! Won ${item['win']:,}!"
             else:
                 result_text = "😢 Bad Luck! Better luck next time."
                 
-        elif item['type'] == "item":
+        elif item.get('type') == "item":
             inv = user_data.get('inventory') or {}
             inv[item_id] = inv.get(item_id, 0) + 1
             supabase.table("economy").update({"inventory": inv}).eq("user_id", uid).execute()
             
-        elif item['type'] == "vip":
+        elif item.get('type') == "vip":
             if item.get('life'): expiry = "9999-12-31T23:59:59"
             else: expiry = (datetime.utcnow() + dt.timedelta(minutes=item['min'])).isoformat()
             supabase.table("economy").update({"vip_expiry": expiry}).eq("user_id", uid).execute()
 
-        # 5. Discord Effects (Role/Nick/Message)
+        # 5. Discord Effects (Detailed Receipt)
         if cid:
             asyncio.run_coroutine_threadsafe(
-                handle_purchase_effects(uid, cid, item['name'], item['price'], result_text), 
+                handle_purchase_effects(uid, cid, item['name'], item['price'], result_text, old_bal, new_bal), 
                 bot.loop
             )
         
@@ -15558,7 +15564,7 @@ def buy_item():
         print(f"Buy Error: {e}")
         return jsonify({"status": "error", "msg": "Server Error"})
 
-async def handle_purchase_effects(uid, cid, item_name, price, result_text):
+async def handle_purchase_effects(uid, cid, item_name, price, result_text, old_bal, new_bal):
     try:
         # 1. User & Channel Fetch
         try: user = await bot.fetch_user(int(uid))
@@ -15574,13 +15580,23 @@ async def handle_purchase_effects(uid, cid, item_name, price, result_text):
             await channel.send(f"⚠️ **Warning:** {user.name} server me nahi mila!")
             return
 
-        # 3. Receipt Send
-        embed = discord.Embed(title="🛒 SHOP RECEIPT", color=C_GOLD)
-        embed.set_thumbnail(url=user.display_avatar.url)
-        embed.description = f"👤 **Buyer:** {user.mention}\n📦 **Item:** {item_name}\n💸 **Paid:** `${price:,}`\n📝 **Status:** {result_text}"
+        # 3. 🔥 PREMIUM SHOP RECEIPT (Updated UI)
+        embed = discord.Embed(title="🕵️ BLACK MARKET RECEIPT", color=0xFFD700) # Gold Color
+        embed.set_author(name=f"Transaction: {user.name}", icon_url=user.display_avatar.url)
+        embed.set_thumbnail(url="https://i.imgur.com/vHpxG5M.png") # Shop Icon
+        
+        embed.add_field(name="📦 Item Purchased", value=f"`{item_name}`", inline=True)
+        embed.add_field(name="💸 Price Paid", value=f"`${price:,}`", inline=True)
+        embed.add_field(name="📝 Status", value=f"**{result_text}**", inline=False)
+        
+        # Wallet Details
+        embed.add_field(name="💰 Previous Balance", value=f"${old_bal:,}", inline=True)
+        embed.add_field(name="📉 Current Balance", value=f"**${new_bal:,}**", inline=True)
+        
+        embed.set_footer(text=f"Buyer ID: {uid} • Verified Transaction", icon_url=guild.icon.url if guild.icon else None)
         await channel.send(embed=embed)
 
-        # 4. Izzat Wapasi Logic
+        # 4. Izzat Wapasi Logic (Same as yours)
         if "Izzat" in item_name:
             try: await member.edit(nick=None)
             except: pass
@@ -15589,125 +15605,86 @@ async def handle_purchase_effects(uid, cid, item_name, price, result_text):
         item_data = next((v for k, v in SHOP_ITEMS.items() if v["name"] == item_name), None)
 
         # ====================================================
-        # 5. 🛡️ VERIFICATION SYSTEM (1 Day to Lifetime)
+        # 5. 🛡️ VERIFICATION SYSTEM (ORIGINAL CODE)
         # ====================================================
         if item_data and item_data.get('type') == 'verification':
-            # A. Current Expiry Check from DB
             data = await get_data(uid)
             current_expiry_str = data.get('verify_expiry')
-            
             duration = item_data['duration']
             new_expiry = None
             expiry_msg = ""
 
-            # B. Duration Calculation
             if duration == "perm":
-                new_expiry = dt.datetime(9999, 12, 31) # Lifetime Date
+                new_expiry = dt.datetime(9999, 12, 31)
                 expiry_msg = "**♾️ LIFETIME** (Amar ho gaye!)"
             else:
-                # Agar pehle se verify hai, to extend karo
                 if current_expiry_str and not current_expiry_str.startswith("9999"):
                     try:
                         current_dt = dt.datetime.fromisoformat(current_expiry_str)
                         if current_dt > dt.datetime.utcnow():
-                            # Future me expire ho raha hai, wahan se add karo
                             new_expiry = current_dt + dt.timedelta(seconds=duration)
                         else:
-                            # Expire ho chuka hai, abhi se add karo
                             new_expiry = dt.datetime.utcnow() + dt.timedelta(seconds=duration)
                     except:
                         new_expiry = dt.datetime.utcnow() + dt.timedelta(seconds=duration)
                 else:
-                    # First time verify
                     new_expiry = dt.datetime.utcnow() + dt.timedelta(seconds=duration)
-                
                 expiry_msg = f"Valid till: `{new_expiry.strftime('%d %b %Y')}`"
 
-            # C. Database Update
             await db_call(lambda: supabase.table("economy").update({"verify_expiry": str(new_expiry)}).eq("user_id", str(uid)).execute())
 
-            # D. Give 'Verified' Role (Agar server me hai to)
-            # Make sure server me "Verified" ya "✅ Verified" naam ka role ho
             v_role = discord.utils.get(guild.roles, name="Verified")
             if not v_role: v_role = discord.utils.get(guild.roles, name="✅ Verified")
             
             if v_role:
                 try: await member.add_roles(v_role)
                 except: pass
-            
             await channel.send(f"✅ **Verification Successful!**\n👤 {member.mention} is now Verified.\n📅 {expiry_msg}")
 
-
         # ====================================================
-        # 6. PREMIUM ROLES (WITH EMOJIS & COLORS) 🎨
+        # 6. PREMIUM ROLES (ORIGINAL CODE)
         # ====================================================
         if item_data and item_data.get('type') == 'role':
-            
-            # Step A: Clean Name nikalo (Comparison ke liye)
-            # Example: "🚬 Peaky Blinders" -> "Peaky Blinders"
             clean_name = item_name.split(" ", 1)[1].strip() if " " in item_name else item_name
-
-            # Step B: Configuration (Emoji Name + Color Mapping)
-            # Yahan hum define karenge ki role ka EXACT naam aur color kya hona chahiye
             role_config = {
-                "Hitman":         {"name": "🗡️ Hitman",         "color": 0x8B0000}, # Dark Red
-                "Hacker":         {"name": "💻 Hacker",         "color": 0x00FF00}, # Neon Green
-                "Gambler":        {"name": "🎲 Gambler",        "color": 0x9B59B6}, # Purple
-                "Peaky Blinders": {"name": "🚬 Peaky Blinders", "color": 0x2C3E50}, # Dark Grey
-                "Yakuza":         {"name": "👹 Yakuza",         "color": 0xFF0000}, # Bright Red
-                "Mafia Boss":     {"name": "🕶️ Mafia Boss",     "color": 0x010101}, # Pitch Black
-                "Kingpin":        {"name": "🦁 Kingpin",        "color": 0xE67E22}, # Bronze/Orange
-                "Oil Prince":     {"name": "🛢️ Oil Prince",     "color": 0xDAA520}, # GoldenRod
-                "Server God":     {"name": "⚡ Server God",     "color": 0xFFD700}, # Pure Gold
-                "Immortal":       {"name": "🔮 Immortal",       "color": 0x00FFFF}, # Cyan
+                "Hitman":         {"name": "🗡️ Hitman",         "color": 0x8B0000},
+                "Hacker":         {"name": "💻 Hacker",         "color": 0x00FF00},
+                "Gambler":        {"name": "🎲 Gambler",        "color": 0x9B59B6},
+                "Peaky Blinders": {"name": "🚬 Peaky Blinders", "color": 0x2C3E50},
+                "Yakuza":         {"name": "👹 Yakuza",         "color": 0xFF0000},
+                "Mafia Boss":     {"name": "🕶️ Mafia Boss",     "color": 0x010101},
+                "Kingpin":        {"name": "🦁 Kingpin",        "color": 0xE67E22},
+                "Oil Prince":     {"name": "🛢️ Oil Prince",     "color": 0xDAA520},
+                "Server God":     {"name": "⚡ Server God",     "color": 0xFFD700},
+                "Immortal":       {"name": "🔮 Immortal",       "color": 0x00FFFF},
             }
 
-            # Decide Final Name & Color
             if clean_name in role_config:
-                target_role_name = role_config[clean_name]["name"] # Emoji wala naam
+                target_role_name = role_config[clean_name]["name"]
                 target_color_code = role_config[clean_name]["color"]
             else:
-                # Agar list me nahi hai, to Shop Item wala naam hi use karo
                 target_role_name = item_name 
                 import random
                 target_color_code = random.randint(0, 0xFFFFFF)
 
-            # Step C: Role Dhundo (Emoji wale naam se)
             role = discord.utils.get(guild.roles, name=target_role_name)
-            
-            # Step D: Auto-Create if missing
             if not role:
                 try:
                     role_color = discord.Color(target_color_code)
+                    role = await guild.create_role(name=target_role_name, color=role_color, hoist=True, reason="Shop Premium Role")
+                    await channel.send(f"🛠️ **Premium Role Created:** `{target_role_name}`")
+                except: pass
 
-                    # ✅ Hoist=True (List me alag dikhega)
-                    role = await guild.create_role(
-                        name=target_role_name, 
-                        color=role_color, 
-                        hoist=True, 
-                        reason="Shop Premium Role Auto-Create"
-                    )
-                    await channel.send(f"🛠️ **Premium Role Created:** `{target_role_name}` (Color Set!)")
-                    
-                except discord.Forbidden:
-                    await channel.send(f"🚫 **Error:** Main `{target_role_name}` banana chahta tha, par 'Manage Roles' permission nahi hai!")
-                    return
-
-            # Step E: Assign Role
             if role:
                 try:
                     if role not in member.roles:
                         await member.add_roles(role)
                         await channel.send(f"🎉 **Role Equipped:** {member.mention} is now `{target_role_name}`!")
-                    else:
-                        await channel.send(f"ℹ️ **Info:** Inke paas pehle se `{target_role_name}` role tha.")
-                except discord.Forbidden:
-                    await channel.send(f"🚫 **Hierarchy Error:** Mera role `{target_role_name}` se neeche hai. Mere role ko upar karo!")
+                except: pass
 
     except Exception as e:
         print(f"Effect Error: {e}")
-                        
-
+        
 # ================== 🎮 DISCORD COMMANDS ==================
 
 @bot.tree.command(name="shop", description="🛒 Open the Underground Black Market")
@@ -15718,8 +15695,12 @@ async def shop_cmd(i: discord.Interaction):
     REDIRECT_URI = "https://testingbot-q1jb.onrender.com/callback"
     
     # URL Encoding
+    import urllib.parse
     encoded_redirect = urllib.parse.quote(REDIRECT_URI)
-    secure_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
+    
+    # ✨ FIX: Added '&state={i.channel_id}' to track where the command was used
+    # Isse login ke baad website ko pata chalega ki receipt kahan bhejni hai
+    secure_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify&state={i.channel_id}"
     
     # 🎨 Detailed Premium Embed
     embed = discord.Embed(
@@ -15739,7 +15720,7 @@ async def shop_cmd(i: discord.Interaction):
     embed.add_field(name="⚠️ How to enter?", value="Click the button below and authorize your account to view your balance and start trading.", inline=False)
     
     embed.set_footer(text="Verified Underground Merchant • 2026", icon_url=i.user.display_avatar.url)
-    embed.set_thumbnail(url="https://i.imgur.com/vHpxG5M.png") # Aap koi bhi dark/shop icon link daal sakte ho
+    embed.set_thumbnail(url="https://i.imgur.com/vHpxG5M.png") 
     
     # UI Button
     view = discord.ui.View()
