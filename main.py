@@ -5393,21 +5393,25 @@ class MemoryGameView(discord.ui.View):
                     await interaction.edit_original_response(embed=embed, view=self)
                     return
                 
-                self.create_grid()
-                await interaction.edit_original_response(embed=await self.get_embed(), view=self)
-            
-            else:
-                # ==================================================
+                            # --- MATCH FOUND CODE (Upper part) ---
+            self.create_grid()
+            await interaction.edit_original_response(embed=await self.get_embed(), view=self)
+
+        else:
+            # ==================================================
             # ❌ NO MATCH (Card match nahi hua)
             # ==================================================
+            # Notice: Ye 'else' ab thoda peeche hai (Sahi jagah par)
+            
             for item in self.children: item.disabled = True
             await interaction.edit_original_response(view=self)
-            await asyncio.sleep(1.5) # Wait for user to see cards
             
-            # ✅ FIX: Indentation ab sahi hai (Sab ek line me)
+            await asyncio.sleep(1.5) # Wait time
+            
             self.flipped = []
             self.create_grid()
             await interaction.edit_original_response(embed=await self.get_embed(), view=self)
+
 # ================== 🎮 COMMAND UPDATE ==================
 
 @bot.tree.command(name="memory", description="🧠 Play Memory Game (New Rewards System)")
