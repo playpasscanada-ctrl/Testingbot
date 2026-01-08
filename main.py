@@ -8317,7 +8317,7 @@ class IQTestView(discord.ui.View):
         self.stop()
         
         # 1. Generate Shame Name
-        bad_names = ["Anpadh 🤡", "Duffer 🤪", "Fail Fail Fail", "Dimag Se Paidal", "Gobar Ganesh"]
+        bad_names = ["Anpadh 🤡", "Duffer 🤪", "Fail Fail Fail", "Dimag Se Paidal", "Gobar Balusai"]
         new_nick = f"{random.choice(bad_names)} {self.user.name[:10]}"
         
         # 2. Rename User
