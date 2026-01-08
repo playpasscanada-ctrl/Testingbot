@@ -55,9 +55,9 @@ if 'users' not in globals():
 # ================== 🛍️ SHOP ITEMS (FULL LIST) ==================
 SHOP_ITEMS = {
     # Special Items
-    "izzat":      {"name": "🧼 Izzat Wapasi", "price": 100000, "type": "special"},
-    "landmine":   {"name": "💣 Landmine", "price": 25000, "type": "item"},
-    "life":       {"name": "💖 Extra Life", "price": 50000, "type": "item"},
+    "izzat":      {"name": "🧼 Izzat Wapasi", "price": 150000, "type": "special"},
+    "landmine":   {"name": "💣 Landmine", "price": 50000, "type": "item"},
+    "life":       {"name": "💖 Extra Life", "price": 75000, "type": "item"},
     "cctv":       {"name": "📹 CCTV Camera", "price": 150000, "type": "item"},
 
     # 👇 FIGHT CLUB ITEMS (Inhe list me add karo) 👇
@@ -67,42 +67,42 @@ SHOP_ITEMS = {
 
     # VIP Access
     "vip_10m":    {"name": "⚡ 10 Mins Escape", "price": 200000, "type": "vip", "min": 10},
-    "vip_1h":     {"name": "👑 1 Hour VIP", "price": 1000000, "type": "vip", "min": 60},
-    "vip_6h":     {"name": "🛡️ 6 Hours VIP", "price": 3000000, "type": "vip", "min": 360},
-    "vip_1d":     {"name": "💎 1 Day VIP", "price": 5000000, "type": "vip", "min": 1440},
-    "vip_3d":     {"name": "🗓️ 3 Days VIP", "price": 12000000, "type": "vip", "min": 4320},
-    "vip_1w":     {"name": "🔥 1 Week VIP", "price": 25000000, "type": "vip", "min": 10080},
-    "vip_life":   {"name": "♾️ Lifetime VIP", "price": 7000000000, "type": "vip", "life": True},
+    "vip_1h":     {"name": "👑 1 Hour VIP", "price": 10000000, "type": "vip", "min": 60},
+    "vip_6h":     {"name": "🛡️ 6 Hours VIP", "price": 30000000, "type": "vip", "min": 360},
+    "vip_1d":     {"name": "💎 1 Day VIP", "price": 50000000, "type": "vip", "min": 1440},
+    "vip_3d":     {"name": "🗓️ 3 Days VIP", "price": 120000000, "type": "vip", "min": 4320},
+    "vip_1w":     {"name": "🔥 1 Week VIP", "price": 250000000, "type": "vip", "min": 10080},
+    "vip_life":   {"name": "♾️ Lifetime VIP", "price": 700000000000, "type": "vip", "life": True},
 
     # Roles (Emoji hatake role name match karega)
-    "hitman":     {"name": "🗡️ Hitman", "price": 5000000, "type": "role"},
-    "hacker":     {"name": "💻 Hacker", "price": 8000000, "type": "role"},
-    "gambler":    {"name": "🎲 Gambler", "price": 10000000, "type": "role"},
-    "peaky":      {"name": "🚬 Peaky Blinders", "price": 20000000, "type": "role"},
-    "shadow":     {"name": "👻 Shadow", "price": 35000000, "type": "role"},
-    "yakuza":     {"name": "👺 Yakuza", "price": 50000000, "type": "role"},
-    "mafia":      {"name": "🕶️ Mafia Boss", "price": 100000000, "type": "role"},
-    "king":       {"name": "👑 Kingpin", "price": 500000000, "type": "role"},
-    "oil":        {"name": "🛢️ Oil Prince", "price": 1000000000, "type": "role"},
-    "god":        {"name": "🛐 Server God", "price": 10000000000, "type": "role"},
-    "immortal":   {"name": "🧟 Immortal", "price": 50000000000, "type": "role"},
+    "hitman":     {"name": "🗡️ Hitman", "price": 50000000, "type": "role"},
+    "hacker":     {"name": "💻 Hacker", "price": 100000000, "type": "role"},
+    "gambler":    {"name": "🎲 Gambler", "price": 200000000, "type": "role"},
+    "peaky":      {"name": "🚬 Peaky Blinders", "price": 300000000, "type": "role"},
+    "shadow":     {"name": "👻 Shadow", "price": 400000000, "type": "role"},
+    "yakuza":     {"name": "👺 Yakuza", "price": 500000000, "type": "role"},
+    "mafia":      {"name": "🕶️ Mafia Boss", "price": 1000000000, "type": "role"},
+    "king":       {"name": "👑 Kingpin", "price": 5000000000, "type": "role"},
+    "oil":        {"name": "🛢️ Oil Prince", "price": 100000000000, "type": "role"},
+    "god":        {"name": "🛐 Server God", "price": 10000000000000, "type": "role"},
+    "immortal":   {"name": "🧟 Immortal", "price": 5000000000000, "type": "role"},
 
     # 👇 VERIFICATION SECTION (NEW) 👇
-    "verify_1d":  {"name": "✅ Verify (1 Day)",   "price": 5000000,        "type": "verification", "duration": 86400},
-    "verify_3d":  {"name": "✅ Verify (3 Days)",  "price": 15000000,       "type": "verification", "duration": 259200},
-    "verify_5d":  {"name": "✅ Verify (5 Days)",  "price": 50000000,       "type": "verification", "duration": 432000},
-    "verify_1w":  {"name": "✅ Verify (1 Week)",  "price": 100000000,      "type": "verification", "duration": 604800},
-    "verify_10d": {"name": "✅ Verify (10 Days)", "price": 150000000,      "type": "verification", "duration": 864000},
-    "verify_15d": {"name": "✅ Verify (15 Days)", "price": 300000000,      "type": "verification", "duration": 1296000},
-    "verify_1m":  {"name": "✅ Verify (1 Month)", "price": 1000000000000,  "type": "verification", "duration": 2592000}, # 1000 Billion
-    "verify_perm": {"name": "♾️ Verify (Lifetime)","price": 10000000000000, "type": "verification", "duration": "perm"}, # 10000 Billion
+    "verify_1d":  {"name": "✅ Verify (1 Day)",   "price": 50000000,        "type": "verification", "duration": 86400},
+    "verify_3d":  {"name": "✅ Verify (3 Days)",  "price": 150000000,       "type": "verification", "duration": 259200},
+    "verify_5d":  {"name": "✅ Verify (5 Days)",  "price": 500000000,       "type": "verification", "duration": 432000},
+    "verify_1w":  {"name": "✅ Verify (1 Week)",  "price": 1000000000,      "type": "verification", "duration": 604800},
+    "verify_10d": {"name": "✅ Verify (10 Days)", "price": 1500000000,      "type": "verification", "duration": 864000},
+    "verify_15d": {"name": "✅ Verify (15 Days)", "price": 3000000000,      "type": "verification", "duration": 1296000},
+    "verify_1m":  {"name": "✅ Verify (1 Month)", "price": 10000000000000,  "type": "verification", "duration": 2592000}, # 1000 Billion
+    "verify_perm": {"name": "♾️ Verify (Lifetime)","price": 100000000000000, "type": "verification", "duration": "perm"}, # 10000 Billion
 
     # Lottery
-    "lotto_10k":  {"name": "🎟️ 10k Ticket", "price": 10000, "type": "lotto", "win": 100000, "chance": 10},
-    "lotto_50k":  {"name": "🎟️ 50k Ticket", "price": 50000, "type": "lotto", "win": 400000, "chance": 8},
-    "lotto_100k": {"name": "🎟️ 100k Ticket", "price": 100000, "type": "lotto", "win": 1000000, "chance": 5},
-    "lotto_mega": {"name": "🎫 MEGA JACKPOT", "price": 500000, "type": "lotto", "win": 10000000, "chance": 2},
-    "lotto_god":  {"name": "🎰 GOD TICKET", "price": 5000000, "type": "lotto", "win": 500000000, "chance": 1},
+    "lotto_10k":  {"name": "🎟️ 20k Ticket", "price": 20000, "type": "lotto", "win": 100000, "chance": 10},
+    "lotto_50k":  {"name": "🎟️ 100k Ticket", "price": 100000, "type": "lotto", "win": 400000, "chance": 8},
+    "lotto_100k": {"name": "🎟️ 200k Ticket", "price": 200000, "type": "lotto", "win": 1000000, "chance": 5},
+    "lotto_mega": {"name": "🎫 MEGA JACKPOT", "price": 5000000, "type": "lotto", "win": 100000000, "chance": 2},
+    "lotto_god":  {"name": "🎰 GOD TICKET", "price": 100000000, "type": "lotto", "win": 50000000000, "chance": 1},
 }
 
 # 🛡️ SYSTEM SAVER: Sirf 2 translation threads allow honge (Crash Fix)
@@ -6736,7 +6736,7 @@ class EvilSattaView(discord.ui.View):
     async def run_satta(self, interaction, multiplier, win_chance, risk_type):
         """
         multiplier: Kitna guna paisa milega (2x, 5x, 100x)
-        win_chance: Jeetne ka % chance (50, 20, 0.1)
+        win_chance: Jeetne ka % chance (20, 10, 0.1)
         risk_type: 'NORMAL' (Lose Bet), 'WIPE' (Bal 0), 'DEATH' (Bal 0 + Mute)
         """
         if interaction.user.id != self.user.id: 
@@ -6831,12 +6831,12 @@ class EvilSattaView(discord.ui.View):
     @discord.ui.button(label="SAFE (2x)", style=discord.ButtonStyle.success, row=0)
     async def bet_2x(self, i, b):
         # 50% Chance, Normal Risk
-        await self.run_satta(i, multiplier=2, win_chance=50.0, risk_type="NORMAL")
+        await self.run_satta(i, multiplier=2, win_chance=20.0, risk_type="NORMAL")
 
     @discord.ui.button(label="RISKY (3x)", style=discord.ButtonStyle.primary, row=0)
     async def bet_3x(self, i, b):
         # 20% Chance, Normal Risk
-        await self.run_satta(i, multiplier=3, win_chance=20.0, risk_type="NORMAL")
+        await self.run_satta(i, multiplier=3, win_chance=10.0, risk_type="NORMAL")
 
     @discord.ui.button(label="CRAZY (5x)", style=discord.ButtonStyle.secondary, row=0)
     async def bet_5x(self, i, b):
@@ -6874,8 +6874,8 @@ async def satta(i: discord.Interaction, amount: int):
     embed = discord.Embed(title="🎲 SATTA BAZAAR", color=0x2B2D31)
     embed.description = (
         f"💰 **Bet Amount:** `${amount:,}`\n\n"
-        f"🟢 **SAFE (2x):** 50% Win Chance\n"
-        f"🔵 **RISKY (3x):** 20% Win Chance\n"
+        f"🟢 **SAFE (2x):** 20% Win Chance\n"
+        f"🔵 **RISKY (3x):** 10% Win Chance\n"
         f"⚪ **CRAZY (5x):** 5% Win Chance\n"
         f"➖➖➖➖➖➖➖➖➖➖\n"
         f"🌑 **LALCHI (10x):** 0.1% Win Chance\n"
@@ -15442,18 +15442,85 @@ async def rob_error(i: discord.Interaction, error):
         min_left = int(error.retry_after // 60)
         await i.response.send_message(f"⏳ **Cooldown:** Police is watching! Try again in **{min_left} minutes**.", ephemeral=True)
 
-@bot.tree.command(name="give_money", description="💸 (Owner) Add Money")
-async def give_money(i: discord.Interaction, user: discord.Member, amount: int):
-    if i.user.id != OWNER_ID: return await i.response.send_message("❌ Owner Only!", ephemeral=True)
+# --- PREMIUM OWNER ADD MONEY ---
+@bot.tree.command(name="add_money", description="💸 (Owner) Inject funds into a user's balance with official UI.")
+@app_commands.describe(target="Kisko paise dene hain?", amount="Kitna amount add karna hai?")
+async def add_money(interaction: discord.Interaction, target: discord.Member, amount: int):
     
-    res = supabase.table("economy").select("*").eq("user_id", str(user.id)).execute()
-    if not res.data:
-        supabase.table("economy").insert({"user_id": str(user.id), "balance": amount, "bank": 0, "inventory": {}}).execute()
-    else:
-        new_bal = res.data[0]['balance'] + amount
-        supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(user.id)).execute()
+    # 1. OWNER CHECK (Security First)
+    if interaction.user.id != OWNER_ID:
+        return await interaction.response.send_message("❌ **Access Denied:** Sirf Owner ye command use kar sakta hai.", ephemeral=True)
+
+    if amount <= 0:
+         return await interaction.response.send_message("❌ Amount positive number hona chahiye!", ephemeral=True)
+
+    await interaction.response.defer()
+
+    try:
+        # 2. DATABASE OPERATION
+        # Fetch current balance
+        res = supabase.table("economy").select("balance").eq("user_id", target.id).execute()
         
-    await i.response.send_message(f"✅ Gave `${amount:,}` to {user.mention}")
+        current_balance = 0
+        if res.data:
+            current_balance = res.data[0].get("balance", 0)
+
+        # Calculate new balance
+        new_balance = current_balance + amount
+
+        # Update DB (Agar user nahi hai to insert, warna update)
+        if not res.data:
+             supabase.table("economy").insert({"user_id": target.id, "balance": new_balance}).execute()
+        else:
+             supabase.table("economy").update({"balance": new_balance}).eq("user_id", target.id).execute()
+
+
+        # 3. UI CONSTRUCTION (Matching the reference image style)
+        # Green Color for Addition
+        embed = discord.Embed(
+            title="📈 GOVERNMENT GRANT (FUNDS INJECTION)", 
+            color=discord.Color.green(), # Green for adding money
+            timestamp=discord.utils.utcnow()
+        )
+
+        # Author with Police/Official Icon
+        embed.set_author(name="ORDER EXECUTED", icon_url="https://cdn-icons-png.flaticon.com/512/2583/2583319.png")
+
+        # Thumbnail (Funny Rich gif, similar vibe to the reference dog)
+        embed.set_thumbnail(url="https://media.tenor.com/Y81k5aaI_c8AAAAC/rich-money.gif")
+
+        # Description Fields (Authority, Target, Source)
+        description_text = (
+            f"**Authority:** {interaction.user.mention}\n(Owner)\n"
+            f"**Target:** {target.mention}\n"
+            f"**Source:** 🏛️ balance\n\n"
+            "Official action ke tehat inke account mein funds inject kar diye gaye hain."
+        )
+        embed.description = description_text
+
+        # Money Fields (Using code blocks for the box look)
+        # 1. Added Amount (Green with + sign)
+        embed.add_field(
+            name="✅ Added Amount",
+            value=f"```diff\n+ ${amount:,}\n```",
+            inline=False
+        )
+
+        # 2. New Balance (Standard box)
+        embed.add_field(
+            name="💰 New balance Balance",
+            value=f"```\n${new_balance:,}\n```",
+            inline=False
+        )
+
+        # Footer matching the reference
+        embed.set_footer(text="Secure Banking System | Action Irreversible")
+
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        print(f"Error in add_money: {e}")
+        await interaction.followup.send(f"❌ Database Error: {e}", ephemeral=True)
 
 @bot.tree.command(name="check_lottery", description="🔒 (Owner) Check Logs")
 async def check_lottery(i: discord.Interaction):
