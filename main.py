@@ -66,8 +66,8 @@ if 'users' not in globals():
 SHOP_ITEMS = {
     # Special Items
     "izzat":      {"name": "🧼 Izzat Wapasi", "price": 150000, "type": "special"},
-    "landmine":   {"name": "💣 Landmine", "price": 500000, "type": "item"},
-    "life":       {"name": "💖 Extra Life", "price": 750000, "type": "item"},
+    "landmine":   {"name": "💣 Landmine", "price": 50000, "type": "item"},
+    "life":       {"name": "💖 Extra Life", "price": 75000, "type": "item"},
     "cctv":       {"name": "📹 CCTV Camera", "price": 150000, "type": "item"},
 
     # 👇 FIGHT CLUB ITEMS (Inhe list me add karo) 👇
@@ -15518,7 +15518,7 @@ def buy_item():
             target_channels.append(cid_from_web)
             
         # 2. Dusri ID: Aapka Backup Log Channel
-        backup_log_id = "1450514760276774967" 
+        backup_log_id = "1457066104819028089" 
         if backup_log_id not in target_channels:
             target_channels.append(backup_log_id)
         
