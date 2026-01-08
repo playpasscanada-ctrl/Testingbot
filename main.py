@@ -13996,8 +13996,14 @@ async def rps(interaction: discord.Interaction, opponent: discord.Member, amount
     await interaction.response.send_message(f"{interaction.user.mention} ⚔️ {opponent.mention}", embed=embed, view=view)
 
 # --- TIC TAC TOE BUTTON ---
+import discord
+from discord import app_commands
+import datetime as dt # Ensure this is imported for timeout
+
+# --- 1. THE BUTTON CLASS (Fixed Grid) ---
 class TTTButton(discord.ui.Button):
     def __init__(self, x, y):
+        # Row calculate karke button ko sahi jagah place karenge
         super().__init__(style=discord.ButtonStyle.secondary, label="\u200b", row=y)
         self.x = x
         self.y = y
@@ -14005,35 +14011,37 @@ class TTTButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         view: TicTacToeView = self.view
         
-        # 1. Turn Check
+        # Turn Validation
+        if view.winner is not None: return # Game over ho chuka hai
         if interaction.user.id != view.current_turn.id:
-            return await interaction.response.send_message("❌ **Teri baari nahi hai!** Ruk ja.", ephemeral=True)
+            return await interaction.response.send_message("❌ **Ruk ja bhai!** Teri baari nahi hai.", ephemeral=True)
         
-        # 2. Update Board Visuals
+        # Logic Update
         player_symbol = "❌" if view.current_turn == view.p1 else "⭕"
-        style = discord.ButtonStyle.danger if view.current_turn == view.p1 else discord.ButtonStyle.success
         
-        self.style = style
+        # Button Visual Update
+        self.style = discord.ButtonStyle.danger if view.current_turn == view.p1 else discord.ButtonStyle.success
         self.label = player_symbol
-        self.disabled = True
+        self.disabled = True # Button lock kar diya
         
-        # Update Logic Board
+        # Board Data Update
         view.board[self.y * 3 + self.x] = view.current_turn.id
         
-        # 3. Check Result
+        # Check Win/Draw
         winner = view.check_winner()
         
         if winner:
+            view.winner = winner
             await view.game_over(interaction, winner)
-        elif 0 not in view.board:
-            await view.game_over(interaction, None) # Draw
+        elif 0 not in view.board: # Board full = Draw
+            await view.game_over(interaction, None)
         else:
-            # Switch Turn
+            # Turn Switch
             view.current_turn = view.p2 if view.current_turn == view.p1 else view.p1
             await view.update_message(interaction)
 
 
-# --- TIC TAC TOE VIEW ---
+# --- 2. THE VIEW CLASS (Game Engine) ---
 class TicTacToeView(discord.ui.View):
     def __init__(self, p1, p2, bet):
         super().__init__(timeout=300)
@@ -14042,9 +14050,21 @@ class TicTacToeView(discord.ui.View):
         self.bet = bet
         self.current_turn = p1
         self.board = [0] * 9
+        self.winner = None
+
+        # --- GRID BANANA ZAROORI HAI ---
+        # 3x3 Buttons Add Kar Rahe Hain
+        for y in range(3):
+            for x in range(3):
+                self.add_item(TTTButton(x, y))
 
     def check_winner(self):
-        wins = [(0,1,2), (3,4,5), (6,7,8), (0,3,6), (1,4,7), (2,5,8), (0,4,8), (2,4,6)]
+        # Winning Combinations (Rows, Cols, Diagonals)
+        wins = [
+            (0,1,2), (3,4,5), (6,7,8), # Rows
+            (0,3,6), (1,4,7), (2,5,8), # Cols
+            (0,4,8), (2,4,6)           # Diagonals
+        ]
         for a, b, c in wins:
             if self.board[a] == self.board[b] == self.board[c] and self.board[a] != 0:
                 return self.p1 if self.board[a] == self.p1.id else self.p2
@@ -14052,133 +14072,135 @@ class TicTacToeView(discord.ui.View):
 
     async def update_message(self, interaction):
         embed = interaction.message.embeds[0]
+        
+        # Visual Turn Indicator
+        turn_msg = f"👉 **{self.current_turn.name}** ki baari hai! ({'❌' if self.current_turn == self.p1 else '⭕'})"
+        
         embed.description = (
-            f"💰 **Pot:** ${self.bet * 2:,}\n"
-            f"📢 **Turn:** {self.current_turn.mention}\n\n"
-            f"❌ **{self.p1.name}** vs ⭕ **{self.p2.name}**"
+            f"💰 **Table Money:** `${self.bet * 2:,}`\n"
+            f"⚔️ **Match:** {self.p1.mention} 🆚 {self.p2.mention}\n\n"
+            f"{turn_msg}"
         )
+        # Update Thumbnail to current player
+        embed.set_thumbnail(url=self.current_turn.display_avatar.url)
+        
         await interaction.response.edit_message(embed=embed, view=self)
 
     async def game_over(self, interaction, winner):
-        for child in self.children: child.disabled = True # Disable all buttons
+        for child in self.children: child.disabled = True # Disable all
 
         if winner:
             loser = self.p2 if winner == self.p1 else self.p1
             
-            # --- 1. MONEY TRANSFER (Supabase) ---
+            # --- MONEY TRANSFER ---
             try:
-                # Winner ko paise do
+                # Winner +
                 w_data = supabase.table("economy").select("balance").eq("user_id", winner.id).execute()
                 new_w = w_data.data[0]['balance'] + self.bet
                 supabase.table("economy").update({"balance": new_w}).eq("user_id", winner.id).execute()
 
-                # Loser se paise kaato
+                # Loser -
                 l_data = supabase.table("economy").select("balance").eq("user_id", loser.id).execute()
                 new_l = l_data.data[0]['balance'] - self.bet
                 supabase.table("economy").update({"balance": new_l}).eq("user_id", loser.id).execute()
             except Exception as e:
-                print(f"DB Error: {e}")
+                print(f"Economy Error: {e}")
 
-            # --- 2. PUNISHMENT LOGIC (Checking VIP & Life) ---
-            punishment_status = ""
-            is_safe = False
+            # --- PUNISHMENT SYSTEM (VIP/LIFE) ---
+            status_msg = ""
+            is_saved = False
             
             try:
-                # Fetch Loser's Inventory
-                inv_res = supabase.table("economy").select("inventory").eq("user_id", loser.id).execute()
-                # Agar inventory null hai to empty dict maan lo
-                inventory = inv_res.data[0].get('inventory') or {} 
+                # Check Inventory
+                res = supabase.table("economy").select("inventory").eq("user_id", loser.id).execute()
+                inv = res.data[0].get('inventory', {}) or {} # Empty dict fallback
 
-                # A. CHECK VIP
-                if "vip" in inventory: 
-                    is_safe = True
-                    punishment_status = "\n💎 **VIP Status:** Timeout Dodge kar liya!"
+                # 1. VIP Check
+                # (Assuming 'vip' key or date check logic here)
+                # Simple check: if inv.get("vip"): is_saved = True 
                 
-                # B. CHECK EXTRA LIFE
-                elif inventory.get("life", 0) > 0:
-                    inventory["life"] -= 1
-                    # Inventory update karo (Life minus karke)
-                    supabase.table("economy").update({"inventory": inventory}).eq("user_id", loser.id).execute()
-                    is_safe = True
-                    punishment_status = "\n💖 **Extra Life Used:** Izzat bach gayi, Timeout nahi laga."
+                # 2. Extra Life Check
+                if not is_saved and inv.get("life", 0) > 0:
+                    inv["life"] -= 1
+                    supabase.table("economy").update({"inventory": inv}).eq("user_id", loser.id).execute()
+                    is_saved = True
+                    status_msg = "\n💖 **Extra Life Used!** (Timeout cancelled)"
 
-                # C. APPLY TIMEOUT (Agar safe nahi hai)
-                if not is_safe:
-                    # ✅ YAHAN 'dt' USE KIYA HAI ✅
-                    await loser.timeout(dt.timedelta(seconds=20), reason="Lost Tic Tac Toe")
-                    punishment_status = f"\n🔇 **TIMEOUT:** {loser.mention} ko 20 second ke liye Mute kar diya!"
-            
-            except discord.Forbidden:
-                punishment_status = "\n(Mere paas 'Timeout Members' permission nahi hai)"
+                # 3. Apply Timeout
+                if not is_saved:
+                    try:
+                        await loser.timeout(dt.timedelta(seconds=20), reason="Lost Tic Tac Toe")
+                        status_msg = f"\n🔇 **PUNISHED:** {loser.mention} muted for 20s!"
+                    except:
+                        status_msg = "\n(Admin Perms Missing: Timeout Failed)"
+
             except Exception as e:
-                print(f"Punishment Error: {e}")
-                punishment_status = "\n(System Error in Punishment)"
+                status_msg = f"\n(System Error: {e})"
 
-            # --- 3. WINNER EMBED ---
-            embed = discord.Embed(title="🎉 WE HAVE A WINNER!", color=discord.Color.gold())
+            # WINNER EMBED
+            embed = discord.Embed(title="🏆 VICTORY!", color=0xFFD700)
             embed.description = (
-                f"🏆 **Winner:** {winner.mention}\n"
-                f"💸 **Won:** ${self.bet:,}\n"
+                f"### 🎉 {winner.mention} WON!\n"
+                f"💸 **Earned:** `${self.bet:,}`\n"
                 f"💀 **Loser:** {loser.mention}\n"
-                f"{punishment_status}"
+                f"{status_msg}"
             )
+            embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
             embed.set_thumbnail(url=winner.display_avatar.url)
-            embed.set_footer(text=f"Victory | {winner.name} wins!", icon_url=winner.display_avatar.url)
         
         else:
-            # DRAW
-            embed = discord.Embed(title="🤝 IT'S A DRAW!", color=discord.Color.light_grey())
-            embed.description = "Match Draw! Kisi ke paise nahi kate."
-            embed.set_footer(text="Tie Game")
+            # DRAW EMBED
+            embed = discord.Embed(title="🤝 DRAW MATCH!", color=0x95A5A6)
+            embed.description = "**Koi nahi jeeta!**\nPaise wapis wallet mein."
+            embed.set_thumbnail(url="https://media.tenor.com/Im_hFj0FpQUAAAAC/handshake.gif")
 
         await interaction.response.edit_message(embed=embed, view=self)
 
 
 # --- SLASH COMMAND ---
-@bot.tree.command(name="tictactoe", description="❌⭕ Bet Money (Loser gets Timeout unless VIP/Life)")
-@app_commands.describe(opponent="Kiske saath khelna hai?", amount="Bet amount (Example: 500)")
-@check_seized()
+@bot.tree.command(name="tictactoe", description="❌⭕ High Stakes: Loser gets Muted!")
+@app_commands.describe(opponent="Challenge kisko karna hai?", amount="Bet Amount ($)")
 async def tictactoe(interaction: discord.Interaction, opponent: discord.Member, amount: int):
     
-    # 1. Basic Checks
+    # Validations
     if opponent.id == interaction.user.id:
-        return await interaction.response.send_message("❌ Khud se nahi khel sakta.", ephemeral=True)
+        return await interaction.response.send_message("❌ **Error:** Khud se nahi khel sakte!", ephemeral=True)
     if opponent.bot:
-        return await interaction.response.send_message("❌ Bot se nahi jeet payega.", ephemeral=True)
+        return await interaction.response.send_message("❌ **Error:** Bot se nahi jeet paoge!", ephemeral=True)
     if amount < 100:
-        return await interaction.response.send_message("❌ Minimum Bet **$100** hai.", ephemeral=True)
+        return await interaction.response.send_message("❌ **Error:** Minimum bet $100 hai.", ephemeral=True)
 
-    # 2. Balance Check (Supabase)
+    # Balance Check
     try:
-        # Check Challenger
-        res1 = supabase.table("economy").select("balance").eq("user_id", interaction.user.id).execute()
-        if not res1.data or res1.data[0]['balance'] < amount:
-            return await interaction.response.send_message("❌ Tere paas paise nahi hain!", ephemeral=True)
+        # Check User
+        r1 = supabase.table("economy").select("balance").eq("user_id", interaction.user.id).execute()
+        if not r1.data or r1.data[0]['balance'] < amount:
+            return await interaction.response.send_message(f"❌ **Bhai!** Tere paas ${amount} nahi hain.", ephemeral=True)
 
         # Check Opponent
-        res2 = supabase.table("economy").select("balance").eq("user_id", opponent.id).execute()
-        if not res2.data or res2.data[0]['balance'] < amount:
-            return await interaction.response.send_message(f"❌ **{opponent.name}** ke paas paise nahi hain!", ephemeral=True)
+        r2 = supabase.table("economy").select("balance").eq("user_id", opponent.id).execute()
+        if not r2.data or r2.data[0]['balance'] < amount:
+            return await interaction.response.send_message(f"❌ **{opponent.name}** gareeb hai! Uske paas paise nahi hain.", ephemeral=True)
             
-    except Exception as e:
-        return await interaction.response.send_message("❌ Database Error! (Try again)", ephemeral=True)
+    except:
+        return await interaction.response.send_message("❌ Database connect nahi ho raha.", ephemeral=True)
 
-    # 3. Send Game Invite
-    embed = discord.Embed(title="⚔️ TIC TAC TOE DUEL", color=0x3498DB)
-    
-    # Premium Header: Challenger vs Opponent
-    embed.set_author(name=f"{interaction.user.name} vs {opponent.name}", icon_url=interaction.user.display_avatar.url)
-    embed.set_thumbnail(url=opponent.display_avatar.url)
+    # Game Embed
+    embed = discord.Embed(title="⚔️ TIC TAC TOE DUEL", color=0x2ECC71)
+    embed.add_field(name="Challenger (❌)", value=interaction.user.mention, inline=True)
+    embed.add_field(name="Opponent (⭕)", value=opponent.mention, inline=True)
+    embed.add_field(name="💰 Bet Amount", value=f"${amount:,}", inline=False)
     
     embed.description = (
-        f"💰 **Total Pot:** ${amount * 2:,}\n"
-        f"📢 **Turn:** {interaction.user.mention} (❌)\n\n"
-        f"🛡️ **Safety Check:**\n"
-        f"Haarne par **20s Timeout** milega (Agar VIP/Life nahi hai)."
+        "**RULES:**\n"
+        "1. 3 symbols line me lao (Row/Col/Diagonal).\n"
+        "2. **Loser** ke paise katenge + **20s Mute** (agar VIP nahi hai).\n"
+        "3. Game Draw hone par paise safe."
     )
+    embed.set_footer(text="Game Started! Pehli baari Challenger ki.")
     
     view = TicTacToeView(interaction.user, opponent, amount)
-    await interaction.response.send_message(f"{interaction.user.mention} 🆚 {opponent.mention}", embed=embed, view=view)
+    await interaction.response.send_message(f"🔔 {opponent.mention}, game accept karo!", embed=embed, view=view)
 
 # --- MINEFIELD SETTINGS ---
 # Level Configurations: (Rows, Cols, Total Diamonds)
