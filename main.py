@@ -9335,87 +9335,84 @@ async def matrix_terminal(i: discord.Interaction):
         
         
 # ================== 🧑‍💻 THE HACKER RUN (TYPING SPEED GAME) ==================
-import io
-import string  # ✅ YE MISSING THA (Isiliye crash ho raha tha)
-import random  # ✅ YE BHI ZAROORI HAI
-import asyncio
 import discord
 from discord import app_commands
-from PIL import Image, ImageDraw, ImageFont # pip install pillow
+from discord.ext import commands
+import random
+import asyncio
+import io
+import string
+import datetime # ✅ Fix: dt error hatane ke liye
+from PIL import Image, ImageDraw, ImageFont
 
-# ================== 🧑‍💻 PREMIUM HACKER RUN (RENAMED) ==================
-
-# ⚙️ SETTINGS (Naam badal diya taaki purane se mix na ho)
+# ================== ⚙️ CONFIGURATION ==================
 HACKER_GAME_CONFIG = {
-    1: {"len": 5,  "time": 30, "fee": 5000,  "prize": 10000,  "label": "Level 1: Script Kiddie", "desc": "Easy | 5 Chars"},
-    2: {"len": 7,  "time": 25, "fee": 10000, "prize": 25000,  "label": "Level 2: Code Breaker", "desc": "Medium | 7 Chars"},
-    3: {"len": 8,  "time": 20, "fee": 20000, "prize": 50000,  "label": "Level 3: Black Hat", "desc": "Hard | 8 Chars"},
-    4: {"len": 10, "time": 15, "fee": 50000, "prize": 120000, "label": "Level 4: Elite Hacker", "desc": "Expert | 10 Chars"},
-    5: {"len": 12, "time": 12, "fee": 100000,"prize": 300000, "label": "Level 5: ANONYMOUS", "desc": "GOD MODE | 12 Chars"},
+    1: {"len": 5,  "time": 45, "fee": 5000,  "prize": 10000,  "label": "Level 1: Script Kiddie", "desc": "Easy | 5 Chars"},
+    2: {"len": 6,  "time": 40, "fee": 10000, "prize": 25000,  "label": "Level 2: Code Breaker", "desc": "Medium | 6 Chars"},
+    3: {"len": 8,  "time": 35, "fee": 20000, "prize": 50000,  "label": "Level 3: Black Hat", "desc": "Hard | 8 Chars"},
+    4: {"len": 10, "time": 30, "fee": 50000, "prize": 120000, "label": "Level 4: Elite Hacker", "desc": "Expert | 10 Chars"},
+    5: {"len": 12, "time": 25, "fee": 100000,"prize": 300000, "label": "Level 5: ANONYMOUS", "desc": "GOD MODE | 12 Chars"},
 }
 
-# 🖼️ HELPER: Premium Matrix Image Generator
+# 🖼️ SAFE IMAGE GENERATOR
 def generate_hacker_image(text):
-    width, height = 500, 150
-    background_color = (10, 10, 10) # Dark Grey/Black
-    text_color = (0, 255, 65) # Matrix Green
-    
-    image = Image.new('RGB', (width, height), color=background_color)
-    draw = ImageDraw.Draw(image)
-    
-    # Font Loading
-    font = None
     try:
-        font_paths = ["arial.ttf", "calibri.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "C:\\Windows\\Fonts\\arial.ttf"]
-        for path in font_paths:
-            try:
-                font = ImageFont.truetype(path, 50)
-                break
-            except: continue
-    except: pass
-    
-    if font is None:
-        font = ImageFont.load_default()
-
-    # Calculate Center
-    try:
-        bbox = draw.textbbox((0, 0), text, font=font)
-        text_w = bbox[2] - bbox[0]
-        text_h = bbox[3] - bbox[1]
-    except:
-        text_w, text_h = draw.textsize(text, font=font)
+        width, height = 500, 150
+        background_color = (10, 10, 10)
+        text_color = (0, 255, 65) 
         
-    x = (width - text_w) / 2
-    y = (height - text_h) / 2
+        image = Image.new('RGB', (width, height), color=background_color)
+        draw = ImageDraw.Draw(image)
+        
+        # Safe Font Loading
+        font = None
+        try:
+            # Common paths try karenge
+            font = ImageFont.truetype("arial.ttf", 50)
+        except:
+            # Agar fail hua to default load karenge (Size adjust karke)
+            font = ImageFont.load_default()
 
-    # Add Hacker Noise
-    for _ in range(30):
-        nx = random.randint(0, width)
-        ny = random.randint(0, height)
-        draw.text((nx, ny), random.choice(string.digits), font=font, fill=(0, 50, 0))
+        # Center Text
+        try:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
+            x = (width - text_w) / 2
+            y = (height - text_h) / 2
+        except:
+            x, y = 50, 50 # Fallback position
 
-    # Draw Main Text
-    draw.text((x, y), text, font=font, fill=text_color)
-    
-    # Add Lines
-    for _ in range(8):
-        x1 = random.randint(0, width)
-        y1 = random.randint(0, height)
-        x2 = random.randint(0, width)
-        y2 = random.randint(0, height)
-        draw.line([(x1, y1), (x2, y2)], fill=(0, 255, 0), width=2)
+        # Noise
+        for _ in range(20):
+            nx = random.randint(0, width)
+            ny = random.randint(0, height)
+            draw.text((nx, ny), random.choice(string.digits), font=font, fill=(0, 50, 0))
 
-    buffer = io.BytesIO()
-    image.save(buffer, format='PNG')
-    buffer.seek(0)
-    return discord.File(buffer, filename="matrix_code.png")
+        draw.text((x, y), text, font=font, fill=text_color)
+        
+        # Lines
+        for _ in range(5):
+            x1 = random.randint(0, width)
+            y1 = random.randint(0, height)
+            x2 = random.randint(0, width)
+            y2 = random.randint(0, height)
+            draw.line([(x1, y1), (x2, y2)], fill=(0, 255, 0), width=1)
+
+        buffer = io.BytesIO()
+        image.save(buffer, format='PNG')
+        buffer.seek(0)
+        return discord.File(buffer, filename="matrix_code.png")
+    except Exception as e:
+        print(f"Image Error: {e}")
+        return None
 
 
-# --- ⌨️ INPUT MODAL ---
+# --- ⌨️ MODAL ---
 class HackerInputModal(discord.ui.Modal, title="TERMINAL ACCESS"):
     answer = discord.ui.TextInput(
-        label="DECRYPT THE CODE",
-        placeholder="Type exactly what you see in the image...",
+        label="DECRYPT CODE",
+        placeholder="Type the code from the image...",
         required=True,
         style=discord.TextStyle.short
     )
@@ -9425,36 +9422,40 @@ class HackerInputModal(discord.ui.Modal, title="TERMINAL ACCESS"):
         self.view = view
 
     async def on_submit(self, interaction: discord.Interaction):
-        await self.view.check_code(interaction, self.answer.value)
+        # Yahan try-except zaroori hai
+        try:
+            await self.view.check_code(interaction, self.answer.value)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
 
 
-# --- 🎮 GAME LOGIC VIEW ---
+# --- 🎮 GAME VIEW ---
 class HackerRunView(discord.ui.View):
     def __init__(self, player, level_id):
         super().__init__(timeout=180) 
         self.player = player
         self.level_id = level_id
-        # ✅ Yahan ab naya naam use kar rahe hain
         self.config = HACKER_GAME_CONFIG[level_id]
         self.current_code = self.generate_code(self.config["len"])
 
     def generate_code(self, length):
-        chars = string.ascii_uppercase + string.digits
+        # Sirf Uppercase aur Digits (Confusion kam karne ke liye)
+        chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" 
         return ''.join(random.choice(chars) for _ in range(length))
 
     async def send_challenge(self, interaction):
         file = generate_hacker_image(self.current_code)
-        
+        if not file:
+            return await interaction.edit_original_response(content="❌ Image Generation Failed. Try again.")
+
         embed = discord.Embed(title=f"👨‍💻 SYSTEM BREACH: {self.config['label']}", color=0x00FF41)
         embed.description = (
-            f"**Mission:** Decrypt the security code below.\n"
-            f"💰 **Bounty:** `${self.config['prize']:,}`\n"
-            f"⏳ **Time Limit:** {self.config['time']} Seconds\n\n"
-            f"👇 **Click button & Type the code!**"
+            f"💰 **Prize:** `${self.config['prize']:,}`\n"
+            f"⏳ **Time:** {self.config['time']}s\n\n"
+            f"👇 **Click Button & Type Code!**"
         )
         embed.set_image(url="attachment://matrix_code.png")
-        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2092/2092663.png")
-        embed.set_footer(text="⚠️ Case Sensitive | Copy-Paste Blocked")
+        embed.set_footer(text="⚠️ Case Sensitive")
 
         self.clear_items()
         btn = discord.ui.Button(label="⌨️ ENTER CODE", style=discord.ButtonStyle.success, emoji="🔓")
@@ -9465,39 +9466,36 @@ class HackerRunView(discord.ui.View):
 
     async def open_modal(self, interaction: discord.Interaction):
         if interaction.user.id != self.player.id:
-            return await interaction.response.send_message("❌ Access Denied: Not your session.", ephemeral=True)
+            return await interaction.response.send_message("❌ Not your game!", ephemeral=True)
         await interaction.response.send_modal(HackerInputModal(self))
 
     async def check_code(self, interaction: discord.Interaction, user_input: str):
-        if user_input == self.current_code:
-            # ✅ WIN LOGIC
-            await interaction.response.defer()
-            
-            res = supabase.table("economy").select("balance").eq("user_id", self.player.id).execute()
-            current_bal = res.data[0]['balance']
-            new_bal = current_bal + self.config["prize"]
-            supabase.table("economy").update({"balance": new_bal}).eq("user_id", self.player.id).execute()
-            
-            embed = discord.Embed(title="✅ SYSTEM HACKED SUCCESSFULLY!", color=0xFFD700)
-            embed.description = (
-                f"🎉 **ACCESS GRANTED**\n"
-                f"Firewall bypassed.\n\n"
-                f"💸 **Bounty Transferred:** `${self.config['prize']:,}`\n"
-                f"💳 **New Balance:** `${new_bal:,}`"
-            )
-            embed.set_image(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif")
-            await interaction.edit_original_response(embed=embed, view=None, attachments=[])
-            
+        # 1. Defer First (Crucial)
+        await interaction.response.defer()
+
+        if user_input.strip() == self.current_code:
+            # ✅ WIN
+            try:
+                # Direct DB Update
+                res = supabase.table("economy").select("balance").eq("user_id", self.player.id).execute()
+                new_bal = res.data[0]['balance'] + self.config["prize"]
+                supabase.table("economy").update({"balance": new_bal}).eq("user_id", self.player.id).execute()
+                
+                embed = discord.Embed(title="✅ ACCESS GRANTED", color=0xFFD700)
+                embed.description = f"💸 **Won:** `${self.config['prize']:,}`\n💳 **Balance:** `${new_bal:,}`"
+                embed.set_image(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif")
+                
+                await interaction.edit_original_response(embed=embed, view=None, attachments=[])
+            except Exception as e:
+                await interaction.followup.send(f"❌ DB Error: {e}")
         else:
-            # ❌ LOSE LOGIC
+            # ❌ LOSE
             await self.game_over(interaction, user_input)
 
     async def game_over(self, interaction: discord.Interaction, wrong_input):
-        await interaction.response.defer()
+        punish_msg = "💀 Punishment: None (Saved)"
         
-        punish_txt = "💀 Punishment: 30s System Lock"
-        is_safe = False
-        
+        # Safe Punishment Logic
         try:
             res = supabase.table("economy").select("inventory").eq("user_id", self.player.id).execute()
             inv = res.data[0].get('inventory', {})
@@ -9505,90 +9503,79 @@ class HackerRunView(discord.ui.View):
             if inv.get("life", 0) > 0:
                 inv["life"] -= 1
                 supabase.table("economy").update({"inventory": inv}).eq("user_id", self.player.id).execute()
-                is_safe = True
-                punish_txt = "💖 Extra Life Used: Saved!"
-        except: pass
+                punish_msg = "💖 Extra Life Used!"
+            else:
+                # Timeout User (datetime.timedelta use kiya hai ab)
+                try:
+                    await self.player.timeout(datetime.timedelta(seconds=30), reason="Hack Fail")
+                    punish_msg = "🚫 **Muted:** 30 Seconds"
+                except:
+                    punish_msg = "🚫 Punishment Failed (Check Bot Perms)"
+        except Exception as e:
+            punish_msg = f"Error: {e}"
 
-        if not is_safe:
-            try: await self.player.timeout(dt.timedelta(seconds=30), reason="Hack Failed")
-            except: punish_txt = "💀 Punishment: Failed (Admin Perms Missing)"
-
-        embed = discord.Embed(title="🚫 ACCESS DENIED / CAUGHT!", color=0xFF0000)
+        embed = discord.Embed(title="🚫 ACCESS DENIED", color=0xFF0000)
         embed.description = (
-            f"❌ **Decryption Failed!**\n\n"
-            f"📥 **You Typed:** `{wrong_input}`\n"
-            f"🔑 **Correct Code:** `{self.current_code}`\n\n"
-            f"📉 **Lost Fee:** `${self.config['fee']:,}`\n"
-            f"{punish_txt}"
+            f"❌ **Wrong Code!**\n"
+            f"Input: `{wrong_input}`\n"
+            f"Correct: `{self.current_code}`\n\n"
+            f"{punish_msg}"
         )
-        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/564/564619.png")
         embed.set_image(url="https://media.tenor.com/J3i6jGgFqsgAAAAC/money-transfer.gif") 
         await interaction.edit_original_response(embed=embed, view=None, attachments=[])
 
 
-# --- 🕹️ MENU VIEW ---
+# --- 🕹️ SELECTOR ---
 class HackerLevelSelectView(discord.ui.View):
     def __init__(self, player):
         super().__init__(timeout=60)
         self.player = player
 
     @discord.ui.select(
-        placeholder="Select Difficulty Level...",
-        # ✅ Yahan bhi naya naam (HACKER_GAME_CONFIG) use kiya hai
+        placeholder="Select Difficulty...",
         options=[
-            discord.SelectOption(label=info["label"], value=str(lvl), description=f"{info['desc']} | Fee: ${info['fee']:,}")
+            discord.SelectOption(label=info["label"], value=str(lvl), description=f"Fee: ${info['fee']:,}")
             for lvl, info in HACKER_GAME_CONFIG.items()
         ]
     )
     async def select_level(self, interaction: discord.Interaction, select: discord.ui.Select):
         if interaction.user.id != self.player.id:
-            return await interaction.response.send_message("❌ This is not your terminal!", ephemeral=True)
+            return await interaction.response.send_message("❌ Not your terminal!", ephemeral=True)
         
+        # CRITICAL: Pehle Defer karo
         await interaction.response.defer()
 
         lvl_id = int(select.values[0])
-        # ✅ Config load karte waqt naya variable
         config = HACKER_GAME_CONFIG[lvl_id]
         
         try:
             res = supabase.table("economy").select("balance").eq("user_id", interaction.user.id).execute()
-            if not res.data:
-                return await interaction.followup.send("❌ Account not found. Use `/start` first.", ephemeral=True)
+            bal = res.data[0]['balance'] if res.data else 0
             
-            balance = res.data[0]['balance']
-            
-            # Ab ye 'fee' key dhoond lega kyunki nayi list use ho rahi hai
-            if balance < config["fee"]:
-                return await interaction.followup.send(f"❌ **Insufficient Funds!**\nRequired: `${config['fee']:,}`\nBalance: `${balance:,}`", ephemeral=True)
+            if bal < config["fee"]:
+                return await interaction.followup.send(f"❌ **Need ${config['fee']:,}**", ephemeral=True)
 
-            new_bal = balance - config["fee"]
-            supabase.table("economy").update({"balance": new_bal}).eq("user_id", interaction.user.id).execute()
+            # Deduct Fee
+            supabase.table("economy").update({"balance": bal - config["fee"]}).eq("user_id", interaction.user.id).execute()
 
+            # Start Game
             game_view = HackerRunView(interaction.user, lvl_id)
             await game_view.send_challenge(interaction)
 
         except Exception as e:
-            print(f"Hacker Run Error: {e}")
-            await interaction.followup.send(f"❌ System Error: {e}", ephemeral=True)
+            await interaction.followup.send(f"❌ Error: {e}", ephemeral=True)
 
 
-@bot.tree.command(name="hacker_run", description="🧑‍💻 Hack the system (Image Code Breaker)")
+@bot.tree.command(name="hacker_run", description="🧑‍💻 Hack System (Fix Version)")
 @check_seized()
 async def hacker_run(i: discord.Interaction):
     embed = discord.Embed(title="🖥️ HACKER'S TERMINAL", color=0x2ECC71)
-    embed.description = (
-        "**Initialize Attack Sequence...**\n"
-        "Select a security level to breach.\n\n"
-        "📸 **The Challenge:**\n"
-        "You will see a distorted image code.\n"
-        "Type it exactly to bypass the firewall.\n\n"
-        "⚠️ **High Risk, High Reward!**"
-    )
-    embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2092/2092663.png")
-    embed.set_image(url="https://media.tenor.com/4J1d3uJtB3QAAAAC/matrix-code.gif") 
+    embed.description = "**Select Level to Start Hack:**"
+    embed.set_image(url="https://media.tenor.com/4J1d3uJtB3QAAAAC/matrix-code.gif")
     
     view = HackerLevelSelectView(i.user)
     await i.response.send_message(embed=embed, view=view)
+        
             
 
 # ================== 🧠 INSANE TRIVIA (UPSC LEVEL) ==================
