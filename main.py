@@ -6940,7 +6940,7 @@ class GlassBridgeGame(discord.ui.View):
                 status_report.append(f"{p.name}: {msg}")
             
             embed = discord.Embed(title="⏰ TIME OVER! ELIMINATED!", color=0x000000)
-            embed.description = (
+            embed.description = ()
                 f"**60 Seconds khatam!** Bridge toot gaya.\n\n"
                 f"💀 **Status Report:**\n" + "\n".joinplayers[self.current_player_idx]
         next_p = self.players[self.current_player_idx + 1] if self.current_player_idx + 1 < len(self.players) else "None"
