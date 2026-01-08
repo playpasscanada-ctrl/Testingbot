@@ -6726,106 +6726,143 @@ async def marbles(i: discord.Interaction, opponent: discord.Member):
     await i.response.send_message(embed=embed, view=view)
 
 # ================== 🎲 SATTA SYSTEM (FAIR & EVIL MODES) ==================
+(status_report)
+            )
+            embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
+            
+            try: await self.original_interaction.edit_original_response(embed=embed, view=None)
+            except: pass
 
+    def generate_board(self):
+        board_str = ""
+        for i in range(self.bridge_len - 1, -1, -1):
+            step_marker = f"**Step {i+1}**"
+            
+            if i == self.current_step and self.current_player_idx < len(self.players):
+                left_icon = "⬜"; right_icon = "⬜"
+            elif i < self.current_step:
+                left_icon = "🟩" if self.path[i] == "LEFT" else "⬛"
+                right_icon = "🟩" if self.path[i] == "RIGHT" else "⬛"
+            else:
+                left_icon = "🌫️"; right_icon = "🌫️"
+
+            if self.revealed[i]:
+                left_icon = "✅" if self.path[i] == "LEFT" else "❌"
+                right_icon = "✅" if self.path[i] == "RIGHT" else "❌"
+            
+            pointer = "👈 **HERE**" if i == self.current_step else ""
+            board_str += f"`[{left_icon}]`  `[{right_icon}]` {step_marker} {pointer}\n"
+        return board_str
+
+    async def get_embed(self):
+        if not self.game_active: return None
+        
+        active_p = self.
 class EvilSattaView(discord.ui.View):
     def __init__(self, user, bet_amount):
         super().__init__(timeout=60)
         self.user = user
         self.bet = bet_amount
 
-    async def run_satta(self, interaction, multiplier, win_chance, risk_type):
-        """
-        multiplier: Kitna guna paisa milega (2x, 5x, 100x)
-        win_chance: Jeetne ka % chance (20, 10, 0.1)
-        risk_type: 'NORMAL' (Lose Bet), 'WIPE' (Bal 0), 'DEATH' (Bal 0 + Mute)
-        """
+    async def run_satta(self, interaction: discord.Interaction, multiplier, win_chance, risk_type):
         if interaction.user.id != self.user.id: 
             return await interaction.response.send_message("❌ Apna paisa lagao!", ephemeral=True)
         
-        # 1. Disable & Animate
-        for child in self.children: child.disabled = True
-        
-        # Color Logic based on difficulty
+        # 1. Start Spinning (Ye response hai, iske baad wait karenge)
+        # Color Logic
         embed_color = 0x00FF00 if win_chance >= 20 else 0xFFFF00
-        if win_chance < 1: embed_color = 0x000000 # Black for Evil Modes
+        if win_chance < 1: embed_color = 0x000000 
 
-        embed = discord.Embed(title="🎲 SATTA SPINNING...", color=embed_color)
-        embed.description = (
+        spin_embed = discord.Embed(title="🎲 SATTA SPINNING...", color=embed_color)
+        spin_embed.description = (
             f"💰 **Bet:** `${self.bet:,}`\n"
             f"🚀 **Target:** {multiplier}x Payout\n"
             f"🍀 **Win Chance:** {win_chance}%\n\n"
             f"**🤞 Rolling the dice...**"
         )
-        embed.set_image(url="https://media.tenor.com/GoMvLaZs8KkAAAAC/slot-machine-casino.gif")
-        await interaction.response.edit_message(embed=embed, view=self)
+        spin_embed.set_image(url="https://media.tenor.com/GoMvLaZs8KkAAAAC/slot-machine-casino.gif")
         
-        await asyncio.sleep(3) # Suspense
-
-        # 2. LOGIC (Roll the Dice)
-        # Random number between 0.0 and 100.0
-        roll = random.uniform(0, 100)
-        is_win = roll <= win_chance 
+        # Disable buttons immediately
+        for child in self.children: child.disabled = True
         
-        final_embed = discord.Embed()
+        # Update UI to Spinning
+        await interaction.response.edit_message(embed=spin_embed, view=self)
+        
+        # -------------------------------------------------
+        # WAIT (Animation)
+        await asyncio.sleep(3)
+        # -------------------------------------------------
 
-        if is_win:
-            # --- 🏆 WINNER ---
-            winnings = int(self.bet * multiplier)
-            await update_balance(self.user.id, winnings) # Add winnings (Bet already safe)
+        try:
+            # 2. LOGIC & CALCULATION
+            # Fetch fresh balance
+            res = supabase.table("economy").select("balance").eq("user_id", self.user.id).execute()
+            current_bal = res.data[0]['balance'] if res.data else 0
+
+            # Dice Roll
+            roll = random.uniform(0, 100)
+            is_win = roll <= win_chance 
             
-            final_embed.title = f"🎉 WINNER! ({multiplier}x)"
-            final_embed.color = 0xFFD700 # Gold
-            final_embed.description = (
-                f"### 🎯 JACKPOT HIT!\n"
-                f"🎲 **Roll:** {roll:.2f} (Needed < {win_chance})\n"
-                f"💸 **WON:** `${winnings:,}`\n"
-                f"**Kismat chamak gayi!** ✨"
-            )
-            
-            # Special Gif for Evil Wins (0.1%)
-            if win_chance < 1:
-                final_embed.description += "\n\n🚨 **IMPOSSIBLE!** Tumne System tod diya! 🤯"
-                final_embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
-            else:
-                final_embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
+            final_embed = discord.Embed()
 
-        else:
-            # --- 💀 LOSS ---
-            punish_msg = ""
-            desc = ""
-            
-            # Roast Messages
-            roast = random.choice(["L lag gaye.", "Paisaa barbad.", "Better luck next time.", "Sed lyf."])
-            if win_chance < 1: roast = "System ke aage koi nahi bol sakta! 📉"
-
-            if risk_type == "NORMAL": 
-                # Sirf Bet Amount Jayega (Already deducted nahi tha, ab katega)
-                # NOTE: Agar aap bet pehle nahi kat rahe, to yahan negative update karo
-                await update_balance(self.user.id, -self.bet)
-                desc = f"💸 **Loss:** -${self.bet:,}\n📉 **Wallet:** Thoda halka hua."
-
-            elif risk_type == "WIPE": 
-                # Pura Bank Balance 0
-                data = await get_data(self.user.id)
-                current_bal = data["balance"]
-                await update_balance(self.user.id, -current_bal)
-                desc = f"💸 **Loss:** YOUR ENTIRE BANK ACCOUNT!\n💀 **Balance:** $0\n*Sadak pe aa gaye bhai tum.*"
-
-            elif risk_type == "DEATH": 
-                # Balance 0 + Mute
-                data = await get_data(self.user.id)
-                current_bal = data["balance"]
-                await update_balance(self.user.id, -current_bal)
+            if is_win:
+                # --- WIN ---
+                winnings = int(self.bet * multiplier)
+                new_bal = current_bal + winnings
                 
-                punish_msg = await smart_timeout(interaction, self.user, 3600, "Greedy Satta Loss")
-                desc = f"💸 **Loss:** EVERYTHING ($0)\n🤐 **Izzat:** Nil\n{punish_msg}"
+                # DB Update
+                supabase.table("economy").update({"balance": new_bal}).eq("user_id", self.user.id).execute()
 
-            final_embed.title = "❌ HAAR GAYE!"
-            final_embed.color = 0xFF0000
-            final_embed.description = f"### {roast}\n🎲 **Roll:** {roll:.2f} (Needed < {win_chance})\n\n{desc}"
-            final_embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+                final_embed.title = f"🎉 WINNER! ({multiplier}x)"
+                final_embed.color = 0xFFD700
+                final_embed.description = (
+                    f"### 🎯 JACKPOT HIT!\n"
+                    f"🎲 **Roll:** {roll:.2f} (Needed < {win_chance})\n"
+                    f"💸 **WON:** `${winnings:,}`\n"
+                    f"💰 **New Balance:** `${new_bal:,}`"
+                )
+                if win_chance < 1:
+                    final_embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
+                else:
+                    final_embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
 
-        await interaction.edit_original_response(embed=final_embed, view=None)
+            else:
+                # --- LOSE ---
+                desc = ""
+                punish_msg = ""
+                
+                if risk_type == "NORMAL":
+                    # Paise balance se kaato (Kyunki command me nahi kaate the)
+                    new_bal = current_bal - self.bet
+                    supabase.table("economy").update({"balance": new_bal}).eq("user_id", self.user.id).execute()
+                    desc = f"💸 **Lost:** -${self.bet:,}\n📉 **New Balance:** `${new_bal:,}`"
+
+                elif risk_type == "WIPE":
+                    supabase.table("economy").update({"balance": 0}).eq("user_id", self.user.id).execute()
+                    desc = f"💸 **LOSS:** EVERYTHING!\n💀 **Balance:** $0"
+
+                elif risk_type == "DEATH":
+                    supabase.table("economy").update({"balance": 0}).eq("user_id", self.user.id).execute()
+                    try:
+                        await self.user.timeout(dt.timedelta(minutes=60), reason="Satta Suicide")
+                        punish_msg = "\n🤐 **Muted:** 1 Hour"
+                    except: pass
+                    desc = f"💸 **LOSS:** EVERYTHING + MUTE\n💀 **Balance:** $0{punish_msg}"
+
+                final_embed.title = "❌ HAAR GAYE!"
+                final_embed.color = 0xFF0000
+                final_embed.description = f"🎲 **Roll:** {roll:.2f} (Needed < {win_chance})\n{desc}"
+                final_embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+
+            # 3. FINAL UI UPDATE (The Fix)
+            # Hum seedha us message ko edit karenge jisme button laga tha
+            await interaction.message.edit(embed=final_embed, view=None)
+
+        except Exception as e:
+            print(f"Error in Satta: {e}")
+            # Agar edit fail ho jaye, to naya message bhej do backup ke liye
+            await interaction.followup.send(f"⚠️ **Result:** Game khatam, par UI update nahi hua.\nCheck balance manually.", ephemeral=True)
+
 
     # --- ROW 1: FAIR PLAY (New Options) ---
     @discord.ui.button(label="SAFE (2x)", style=discord.ButtonStyle.success, row=0)
@@ -6938,38 +6975,7 @@ class GlassBridgeGame(discord.ui.View):
             embed = discord.Embed(title="⏰ TIME OVER! ELIMINATED!", color=0x000000)
             embed.description = (
                 f"**60 Seconds khatam!** Bridge toot gaya.\n\n"
-                f"💀 **Status Report:**\n" + "\n".join(status_report)
-            )
-            embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
-            
-            try: await self.original_interaction.edit_original_response(embed=embed, view=None)
-            except: pass
-
-    def generate_board(self):
-        board_str = ""
-        for i in range(self.bridge_len - 1, -1, -1):
-            step_marker = f"**Step {i+1}**"
-            
-            if i == self.current_step and self.current_player_idx < len(self.players):
-                left_icon = "⬜"; right_icon = "⬜"
-            elif i < self.current_step:
-                left_icon = "🟩" if self.path[i] == "LEFT" else "⬛"
-                right_icon = "🟩" if self.path[i] == "RIGHT" else "⬛"
-            else:
-                left_icon = "🌫️"; right_icon = "🌫️"
-
-            if self.revealed[i]:
-                left_icon = "✅" if self.path[i] == "LEFT" else "❌"
-                right_icon = "✅" if self.path[i] == "RIGHT" else "❌"
-            
-            pointer = "👈 **HERE**" if i == self.current_step else ""
-            board_str += f"`[{left_icon}]`  `[{right_icon}]` {step_marker} {pointer}\n"
-        return board_str
-
-    async def get_embed(self):
-        if not self.game_active: return None
-        
-        active_p = self.players[self.current_player_idx]
+                f"💀 **Status Report:**\n" + "\n".joinplayers[self.current_player_idx]
         next_p = self.players[self.current_player_idx + 1] if self.current_player_idx + 1 < len(self.players) else "None"
         
         desc = (
@@ -9403,71 +9409,82 @@ import discord
 from discord import app_commands
 from PIL import Image, ImageDraw, ImageFont # pip install pillow
 
-# ================== 🧑‍💻 HACKER RUN (IMAGE BASED) ==================
+# ================== 🧑‍💻 PREMIUM HACKER RUN ==================
 
 # ⚙️ LEVEL CONFIGURATION
 HACKER_LEVELS = {
-    1: {"len": 5,  "time": 15, "fee": 5000,  "prize": 10000,  "label": "Level 1 (Script Kiddie)"},
-    2: {"len": 7,  "time": 15, "fee": 10000, "prize": 25000,  "label": "Level 2 (Code Breaker)"},
-    3: {"len": 9,  "time": 20, "fee": 20000, "prize": 50000,  "label": "Level 3 (Professional)"},
-    4: {"len": 12, "time": 25, "fee": 50000, "prize": 120000, "label": "Level 4 (Elite Hacker)"},
-    5: {"len": 15, "time": 30, "fee": 100000,"prize": 300000, "label": "Level 5 (GOD MODE)"},
+    1: {"len": 5,  "time": 30, "fee": 5000,  "prize": 10000,  "label": "Level 1: Script Kiddie", "desc": "Easy | 5 Chars"},
+    2: {"len": 7,  "time": 25, "fee": 10000, "prize": 25000,  "label": "Level 2: Code Breaker", "desc": "Medium | 7 Chars"},
+    3: {"len": 8,  "time": 20, "fee": 20000, "prize": 50000,  "label": "Level 3: Black Hat", "desc": "Hard | 8 Chars"},
+    4: {"len": 10, "time": 15, "fee": 50000, "prize": 120000, "label": "Level 4: Elite Hacker", "desc": "Expert | 10 Chars"},
+    5: {"len": 12, "time": 12, "fee": 100000,"prize": 300000, "label": "Level 5: ANONYMOUS", "desc": "GOD MODE | 12 Chars"},
 }
 
-# 🖼️ HELPER FUNCTION: Text to Image Generator
+# 🖼️ HELPER: Premium Matrix Image Generator
 def generate_hacker_image(text):
-    # 1. Image Settings
-    width = 400
-    height = 100
-    background_color = (0, 0, 0) # Black
-    text_color = (0, 255, 0) # Hacker Green
+    width, height = 500, 150
+    background_color = (10, 10, 10) # Dark Grey/Black
+    text_color = (0, 255, 65) # Matrix Green
     
-    # 2. Create Image
     image = Image.new('RGB', (width, height), color=background_color)
     draw = ImageDraw.Draw(image)
     
-    # 3. Load Font (Default agar custom nahi hai)
+    # Font Loading (Try generic paths for Linux/Windows)
+    font = None
     try:
-        # Koshish karenge bada font lene ki
-        font = ImageFont.truetype("arial.ttf", 40)
-    except:
+        # Windows/Linux common paths check
+        font_paths = ["arial.ttf", "calibri.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "C:\\Windows\\Fonts\\arial.ttf"]
+        for path in font_paths:
+            try:
+                font = ImageFont.truetype(path, 50)
+                break
+            except: continue
+    except: pass
+    
+    if font is None:
         font = ImageFont.load_default() # Fallback
 
-    # 4. Center Text Calculation
+    # Calculate Center
     try:
         bbox = draw.textbbox((0, 0), text, font=font)
         text_w = bbox[2] - bbox[0]
         text_h = bbox[3] - bbox[1]
     except:
-        text_w, text_h = draw.textsize(text, font=font)
+        text_w, text_h = draw.textsize(text, font=font) # Old PIL version
         
     x = (width - text_w) / 2
     y = (height - text_h) / 2
 
-    # 5. Draw Text & Noise (Lines to prevent OCR)
+    # Add Hacker Noise (Matrix Rain Effect)
+    for _ in range(30):
+        nx = random.randint(0, width)
+        ny = random.randint(0, height)
+        draw.text((nx, ny), random.choice(string.digits), font=font, fill=(0, 50, 0)) # Faint background numbers
+
+    # Draw Main Text
     draw.text((x, y), text, font=font, fill=text_color)
     
-    # Thodi lines bana dete hain taaki koi OCR tool use na kar paye
-    for _ in range(5):
+    # Add Interference Lines (Anti-OCR)
+    for _ in range(8):
         x1 = random.randint(0, width)
         y1 = random.randint(0, height)
         x2 = random.randint(0, width)
         y2 = random.randint(0, height)
-        draw.line([(x1, y1), (x2, y2)], fill=(0, 100, 0), width=1)
+        draw.line([(x1, y1), (x2, y2)], fill=(0, 255, 0), width=2)
 
-    # 6. Convert to Bytes for Discord
     buffer = io.BytesIO()
     image.save(buffer, format='PNG')
     buffer.seek(0)
-    return discord.File(buffer, filename="security_code.png")
+    return discord.File(buffer, filename="matrix_code.png")
 
 
-class HackerInputModal(discord.ui.Modal, title="⌨️ ENTER SECURITY CODE"):
+# --- ⌨️ INPUT MODAL ---
+class HackerInputModal(discord.ui.Modal, title="TERMINAL ACCESS"):
     answer = discord.ui.TextInput(
-        label="TYPE THE CODE FROM IMAGE",
-        placeholder="Case Sensitive (Jaisa photo me hai waisa likho)",
+        label="DECRYPT THE CODE",
+        placeholder="Type exactly what you see in the image...",
         required=True,
-        max_length=30
+        style=discord.TextStyle.short
     )
 
     def __init__(self, view):
@@ -9478,105 +9495,112 @@ class HackerInputModal(discord.ui.Modal, title="⌨️ ENTER SECURITY CODE"):
         await self.view.check_code(interaction, self.answer.value)
 
 
+# --- 🎮 GAME LOGIC VIEW ---
 class HackerRunView(discord.ui.View):
-    def __init__(self, player, interaction, level_id):
+    def __init__(self, player, level_id):
         super().__init__(timeout=180) 
         self.player = player
-        self.interaction = interaction
         self.level_id = level_id
         self.config = HACKER_LEVELS[level_id]
-        
-        asyncio.create_task(self.start_game())
+        self.current_code = self.generate_code(self.config["len"])
 
     def generate_code(self, length):
-        # YAHAN CRASH HO RAHA THA KYUNKI 'string' IMPORTED NAHI THA
-        chars = string.ascii_letters + string.digits
+        chars = string.ascii_uppercase + string.digits # Uppercase is easier to read
         return ''.join(random.choice(chars) for _ in range(length))
 
-    async def start_game(self):
-        # 1. Generate Logic
-        self.current_code = self.generate_code(self.config["len"])
-        
-        # 2. Generate Image
+    async def send_challenge(self, interaction):
+        # Image Generate
         file = generate_hacker_image(self.current_code)
         
-        # 3. Embed
-        embed = discord.Embed(title=f"🧑‍💻 HACKER RUN: {self.config['label']}", color=0x00FF00)
+        embed = discord.Embed(title=f"👨‍💻 SYSTEM BREACH: {self.config['label']}", color=0x00FF41)
         embed.description = (
-            f"💰 **Prize:** ${self.config['prize']:,}\n"
-            f"🔒 **Security:** {self.config['len']} Characters\n\n"
-            f"👇 **Niche Photo dekho aur Code Type karo!**\n"
-            f"⏳ **Time Limit:** {self.config['time']} Seconds"
+            f"**Mission:** Decrypt the security code below.\n"
+            f"💰 **Bounty:** `${self.config['prize']:,}`\n"
+            f"⏳ **Time Limit:** {self.config['time']} Seconds\n\n"
+            f"👇 **Click button & Type the code!**"
         )
-        embed.set_image(url="attachment://security_code.png")
-        embed.set_footer(text="Copy-Paste Protected System 🛡️")
+        embed.set_image(url="attachment://matrix_code.png")
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2092/2092663.png") # Hacker Icon
+        embed.set_footer(text="⚠️ Case Sensitive | Copy-Paste Blocked")
 
         self.clear_items()
-        btn = discord.ui.Button(label="⌨️ TYPE CODE NOW", style=discord.ButtonStyle.success, emoji="📟")
+        btn = discord.ui.Button(label="⌨️ ENTER CODE", style=discord.ButtonStyle.success, emoji="🔓")
         btn.callback = self.open_modal
         self.add_item(btn)
         
-        await self.interaction.edit_original_response(embed=embed, view=self, attachments=[file])
+        # Edit original response (Defer use kiya tha isliye edit karna hai)
+        await interaction.edit_original_response(embed=embed, view=self, attachments=[file])
 
     async def open_modal(self, interaction: discord.Interaction):
         if interaction.user.id != self.player.id:
-            return await interaction.response.send_message("❌ Apna game khelo!", ephemeral=True)
+            return await interaction.response.send_message("❌ Access Denied: Not your session.", ephemeral=True)
         await interaction.response.send_modal(HackerInputModal(self))
 
     async def check_code(self, interaction: discord.Interaction, user_input: str):
-        # Case Sensitive Check
+        # Case Check
         if user_input == self.current_code:
-            # ✅ WIN
-            await interaction.response.defer()
-            await update_balance(self.player.id, self.config["prize"])
+            # ✅ WIN LOGIC
+            await interaction.response.defer() # Processing time lo
             
-            embed = discord.Embed(title="✅ SYSTEM HACKED!", color=0xFFD700)
+            # DB Update
+            res = supabase.table("economy").select("balance").eq("user_id", self.player.id).execute()
+            current_bal = res.data[0]['balance']
+            new_bal = current_bal + self.config["prize"]
+            supabase.table("economy").update({"balance": new_bal}).eq("user_id", self.player.id).execute()
+            
+            embed = discord.Embed(title="✅ SYSTEM HACKED SUCCESSFULLY!", color=0xFFD700)
             embed.description = (
-                f"🎉 **ACCESS GRANTED!**\n"
-                f"Tumne firewall tod diya.\n\n"
-                f"💸 **Earned:** ${self.config['prize']:,}"
+                f"🎉 **ACCESS GRANTED**\n"
+                f"Firewall bypassed.\n\n"
+                f"💸 **Bounty Transferred:** `${self.config['prize']:,}`\n"
+                f"💳 **New Balance:** `${new_bal:,}`"
             )
             embed.set_image(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif")
+            
             await interaction.edit_original_response(embed=embed, view=None, attachments=[])
             
         else:
-            # ❌ LOSE
+            # ❌ LOSE LOGIC
             await self.game_over(interaction, user_input)
 
     async def game_over(self, interaction: discord.Interaction, wrong_input):
-        self.clear_items()
+        await interaction.response.defer()
         
-        # --- PUNISHMENT LOGIC ---
-        data = await get_data(self.player.id)
+        # Check Protection
+        punish_txt = "💀 Punishment: 30s System Lock"
         is_safe = False
-        footer_txt = "💀 Penalty: 30s Timeout"
         
-        if data.get("vip_expiry"):
-            is_safe = True
-            footer_txt = "🛡️ VIP Access: Saved"
-        elif data.get("inventory", {}).get("life", 0) > 0:
-            await update_inventory(self.player.id, "life", -1)
-            is_safe = True
-            footer_txt = "💖 Extra Life: Saved"
+        try:
+            res = supabase.table("economy").select("inventory").eq("user_id", self.player.id).execute()
+            inv = res.data[0].get('inventory', {})
+            
+            if inv.get("life", 0) > 0:
+                inv["life"] -= 1
+                supabase.table("economy").update({"inventory": inv}).eq("user_id", self.player.id).execute()
+                is_safe = True
+                punish_txt = "💖 Extra Life Used: Saved!"
+        except: pass
 
         if not is_safe:
-            await smart_timeout(self.interaction, self.player, 30, "Hack Failed")
+            # Timeout User
+            try: await self.player.timeout(datetime.timedelta(seconds=30), reason="Hack Failed")
+            except: punish_txt = "💀 Punishment: Failed (Admin Perms Missing)"
 
-        embed = discord.Embed(title="🚫 ACCESS DENIED", color=0xFF0000)
+        embed = discord.Embed(title="🚫 ACCESS DENIED / CAUGHT!", color=0xFF0000)
         embed.description = (
-            f"❌ **Incorrect Code!**\n"
-            f"📝 You Typed: `{wrong_input}`\n"
-            f"🔑 Real Code: `{self.current_code}`\n\n"
-            f"💸 **Fee Lost:** ${self.config['fee']:,}"
+            f"❌ **Decryption Failed!**\n\n"
+            f"📥 **You Typed:** `{wrong_input}`\n"
+            f"🔑 **Correct Code:** `{self.current_code}`\n\n"
+            f"📉 **Lost Fee:** `${self.config['fee']:,}`\n"
+            f"{punish_txt}"
         )
-        embed.set_footer(text=footer_txt)
-        
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/564/564619.png") # Alarm Icon
         embed.set_image(url="https://media.tenor.com/J3i6jGgFqsgAAAAC/money-transfer.gif") 
         
         await interaction.edit_original_response(embed=embed, view=None, attachments=[])
 
 
-# --- 🕹️ SELECTOR VIEW ---
+# --- 🕹️ MENU VIEW ---
 class HackerLevelSelectView(discord.ui.View):
     def __init__(self, player):
         super().__init__(timeout=60)
@@ -9585,40 +9609,59 @@ class HackerLevelSelectView(discord.ui.View):
     @discord.ui.select(
         placeholder="Select Difficulty Level...",
         options=[
-            discord.SelectOption(label=info["label"], value=str(lvl), description=f"Fee: ${info['fee']:,} | Prize: ${info['prize']:,}")
+            discord.SelectOption(label=info["label"], value=str(lvl), description=f"{info['desc']} | Fee: ${info['fee']:,}")
             for lvl, info in HACKER_LEVELS.items()
         ]
     )
     async def select_level(self, interaction: discord.Interaction, select: discord.ui.Select):
         if interaction.user.id != self.player.id:
-            return await interaction.response.send_message("❌ Apna game start karo!", ephemeral=True)
+            return await interaction.response.send_message("❌ This is not your terminal!", ephemeral=True)
         
+        # ✅ FIX: DEFER HERE (Ye line crash rokegi)
+        await interaction.response.defer()
+
         lvl_id = int(select.values[0])
         config = HACKER_LEVELS[lvl_id]
         
-        # Balance Check
-        data = await get_data(interaction.user.id)
-        if data["balance"] < config["fee"]:
-            return await interaction.response.send_message(f"❌ Is level ke liye ${config['fee']:,} chahiye!", ephemeral=True)
+        # 1. Check Balance
+        try:
+            res = supabase.table("economy").select("balance").eq("user_id", interaction.user.id).execute()
+            if not res.data:
+                return await interaction.followup.send("❌ Account not found. Use `/start` first.", ephemeral=True)
             
-        await update_balance(interaction.user.id, -config["fee"])
-        
-        # Start Game
-        game_view = HackerRunView(interaction.user, interaction, lvl_id)
-        await interaction.response.edit_message(content=f"🚀 **Initializing Attack Sequence...**", embed=None, view=game_view)
+            balance = res.data[0]['balance']
+            
+            if balance < config["fee"]:
+                return await interaction.followup.send(f"❌ **Insufficient Funds!**\nRequired: `${config['fee']:,}`\nBalance: `${balance:,}`", ephemeral=True)
+
+            # 2. Deduct Fee
+            new_bal = balance - config["fee"]
+            supabase.table("economy").update({"balance": new_bal}).eq("user_id", interaction.user.id).execute()
+
+            # 3. Start Game
+            game_view = HackerRunView(interaction.user, lvl_id)
+            await game_view.send_challenge(interaction)
+
+        except Exception as e:
+            print(f"Hacker Run Error: {e}")
+            await interaction.followup.send(f"❌ System Error: {e}", ephemeral=True)
 
 
-@bot.tree.command(name="hacker_run", description="🧑‍💻 Hack the system by typing the code from Image")
+@bot.tree.command(name="hacker_run", description="🧑‍💻 Hack the system (Image Code Breaker)")
 @check_seized()
 async def hacker_run(i: discord.Interaction):
-    embed = discord.Embed(title="🧑‍💻 HACKER RUN (ANTI-BOT SYSTEM)", color=0x2ECC71)
+    embed = discord.Embed(title="🖥️ HACKER'S TERMINAL", color=0x2ECC71)
     embed.description = (
-        "**Welcome, Black Hat.**\n"
-        "Security Level select karo.\n\n"
-        "📸 **Rule:** Ek Image (Photo) aayegi, uska code dekh kar type karna hai.\n"
-        "🚫 **No Copy Paste:** Text copy nahi hoga, photo hai!\n"
-        "💀 **Risk:** Galat code = Timeout."
+        "**Initialize Attack Sequence...**\n"
+        "Select a security level to breach.\n\n"
+        "📸 **The Challenge:**\n"
+        "You will see a distorted image code.\n"
+        "Type it exactly to bypass the firewall.\n\n"
+        "⚠️ **High Risk, High Reward!**"
     )
+    embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2092/2092663.png")
+    embed.set_image(url="https://media.tenor.com/4J1d3uJtB3QAAAAC/matrix-code.gif") # Cool Matrix Banner
+    
     view = HackerLevelSelectView(i.user)
     await i.response.send_message(embed=embed, view=view)
 
