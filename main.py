@@ -69,6 +69,11 @@ SHOP_ITEMS = {
     "landmine":   {"name": "💣 Landmine", "price": 50000, "type": "item"},
     "life":       {"name": "💖 Extra Life", "price": 75000, "type": "item"},
     "cctv":       {"name": "📹 CCTV Camera", "price": 150000, "type": "item"},
+        # --- 🔥 NEW HEIST ITEMS ---
+    "master_key":   {"name": "🗝️ Master Key", "price": 5000000, "type": "item"},
+    "guard_dog":    {"name": "🐕 Guard Dog", "price": 10000000, "type": "item"},
+    "nuclear_bomb": {"name": "☢️ Nuclear Bomb", "price": 50000000, "type": "item"},
+    
 
     # 👇 FIGHT CLUB ITEMS (Inhe list me add karo) 👇
     "knife":      {"name": "🔪 Combat Knife", "price": 50000, "type": "item"},
@@ -8844,155 +8849,204 @@ async def hide_seek(i: discord.Interaction):
     await i.response.send_message(embed=view.get_embed(), view=view)
 
 # ================== 🚦 RED LIGHT, GREEN LIGHT (SQUID GAME) ==================
+# --- 🛠️ HELPER: PROGRESS BAR ---
+def create_track(dist, goal=100, length=12):
+    """Creates a visual progress bar like [==🏃=========]"""
+    if dist >= goal:
+        return f"🏆 **FINISHED**"
+    
+    progress = int((dist / goal) * length)
+    # Track construction
+    bar = "➖" * progress + "🏃" + "➖" * (length - progress - 1)
+    return f"`🏁{bar}🔥` **{dist}m**"
 
+# --- 🚥 GAME VIEW ---
 class RedLightGameView(discord.ui.View):
-    def __init__(self, players, pot_money, interaction):
-        super().__init__(timeout=300) # 5 Minutes Max Game
-        self.players = players # List of user IDs
-        self.pot_money = pot_money
+    def __init__(self, players, interaction):
+        super().__init__(timeout=600) # 10 Minutes Max
+        self.players = players # List of IDs
+        self.prize_pool = 50000 # Fixed Prize as requested
         self.interaction = interaction
-        self.active_players = {uid: {"dist": 0, "status": "ALIVE"} for uid in players} # 0 to 100m
+        
+        # Player Data: dist = distance, status = ALIVE/DEAD/WON
+        self.active_players = {uid: {"dist": 0, "status": "ALIVE", "name": f"<@{uid}>"} for uid in players}
         
         self.game_state = "GREEN" # GREEN, YELLOW, RED
         self.goal = 100
         self.is_game_over = False
         
-        # Setup Run Button
-        self.run_btn = discord.ui.Button(label="🏃 RUN! (Click Fast)", style=discord.ButtonStyle.success, custom_id="run_btn")
+        # 🏃 RUN BUTTON
+        self.run_btn = discord.ui.Button(
+            label="TAP TO RUN!", 
+            style=discord.ButtonStyle.success, 
+            custom_id="run_btn",
+            emoji="🏃‍♂️"
+        )
         self.run_btn.callback = self.run_callback
         self.add_item(self.run_btn)
         
-        # Start Game Loop
+        # Start Loop
         self.loop_task = asyncio.create_task(self.game_loop())
 
+    def get_leaderboard(self):
+        """Generates the premium leaderboard string"""
+        desc = ""
+        # Sort by distance (Top runners first)
+        sorted_players = sorted(self.active_players.items(), key=lambda x: x[1]['dist'], reverse=True)
+        
+        for uid, data in sorted_players:
+            status_icon = "💀" if data['status'] == "DEAD" else "✅" if data['status'] == "WON" else "alive"
+            
+            if status_icon == "alive":
+                track = create_track(data['dist'], self.goal)
+                desc += f"{data['name']}: {track}\n"
+            elif status_icon == "💀":
+                 desc += f"💀 ~~{data['name']}~~ (ELIMINATED)\n"
+            else:
+                 desc += f"👑 **{data['name']}** HAS FINISHED!\n"
+                 
+        return desc
+
+    async def update_display(self, embed_color, title, image_url, footer_text):
+        """Updates the main game message"""
+        embed = discord.Embed(title=title, color=embed_color)
+        embed.description = (
+            f"💰 **Prize Pool:** ${self.prize_pool:,}\n"
+            f"🏁 **Goal:** {self.goal} meters\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"{self.get_leaderboard()}"
+            f"━━━━━━━━━━━━━━━━━━━━━━"
+        )
+        embed.set_image(url=image_url)
+        embed.set_footer(text=footer_text)
+        
+        try: await self.interaction.edit_original_response(embed=embed, view=self)
+        except: pass
+
     async def game_loop(self):
-        """
-        Ye loop Light Change karega:
-        Green (Run) -> Yellow (Warning) -> Red (Kill) -> Green...
-        """
         while not self.is_game_over:
-            # --- 🟢 GREEN LIGHT (Safe to Run) ---
+            # --- 🟢 GREEN LIGHT ---
             self.game_state = "GREEN"
             self.run_btn.style = discord.ButtonStyle.success
-            self.run_btn.label = "🏃 RUN! (SPAM CLICK)"
+            self.run_btn.label = "RUN! (SPAM CLICK)"
             self.run_btn.disabled = False
             
-            embed = discord.Embed(title="🟢 GREEN LIGHT", description="**BHAAGO!** Button spam karo!", color=0x00FF00)
-            embed.set_image(url="https://media.tenor.com/F_r_03yJqG4AAAAC/squid-game-green-light.gif") # Doll Running
-            embed.set_footer(text=f"Survivors: {len([p for p in self.active_players.values() if p['status']=='ALIVE'])}")
+            await self.update_display(
+                0x00FF00, 
+                "🟢 GREEN LIGHT - BHAAGO!", 
+                "https://media.tenor.com/F_r_03yJqG4AAAAC/squid-game-green-light.gif",
+                "Spam click the button to run!"
+            )
             
-            try: await self.interaction.edit_original_response(embed=embed, view=self)
-            except: break
-            
-            await asyncio.sleep(random.uniform(3, 6)) # 3-6 sec run time
+            # Wait for 3-6 seconds (Random)
+            sleep_time = random.uniform(3, 6)
+            await asyncio.sleep(sleep_time)
 
-            # --- 🟡 YELLOW LIGHT (Warning) ---
+            # --- 🟡 YELLOW LIGHT ---
             self.game_state = "YELLOW"
-            embed.title = "👀 DOLL IS TURNING..."
-            embed.description = "🛑 **RUK JAO!** Doll dekhne wali hai!"
-            embed.color = 0xFFA500
+            self.run_btn.style = discord.ButtonStyle.primary
+            self.run_btn.label = "SLOW DOWN..."
             
-            try: await self.interaction.edit_original_response(embed=embed, view=self)
-            except: break
+            await self.update_display(
+                0xFFA500, 
+                "🟡 YELLOW LIGHT - SAMBHAL JAO!", 
+                "https://media.tenor.com/13_uMh8cM9gAAAAC/squid-game.gif",
+                "Doll is about to turn around..."
+            )
             
-            await asyncio.sleep(1.5) # 1.5 sec warning
+            await asyncio.sleep(1.5) # Short warning
 
-            # --- 🔴 RED LIGHT (Death Trap) ---
+            # --- 🔴 RED LIGHT ---
             self.game_state = "RED"
             self.run_btn.style = discord.ButtonStyle.danger
-            self.run_btn.label = "🛑 DON'T MOVE!" 
-            # Note: Button disabled nahi kiya, taaki log galti karein!
+            self.run_btn.label = "🛑 FREEZE! (DON'T CLICK)"
             
-            embed = discord.Embed(title="🔴 RED LIGHT", description="**HILNA MAT!** (Don't Click)", color=0xFF0000)
-            embed.set_image(url="https://media.tenor.com/v1sLzJqf8i8AAAAC/squid-game-doll.gif") # Doll Staring (Laser Eyes)
+            await self.update_display(
+                0xFF0000, 
+                "🔴 RED LIGHT - HILNA MAT!", 
+                "https://media.tenor.com/v1sLzJqf8i8AAAAC/squid-game-doll.gif",
+                "Clicking now = INSTANT DEATH"
+            )
             
-            try: await self.interaction.edit_original_response(embed=embed, view=self)
-            except: break
+            # Death Check Window (2-4 seconds)
+            await asyncio.sleep(random.uniform(2, 4))
             
-            await asyncio.sleep(random.uniform(2, 4)) # 2-4 sec death time
-            
-            # Check for Winners/Losers
-            alive_count = len([p for p in self.active_players.values() if p['status']=='ALIVE'])
+            # Check End Condition
+            alive_count = len([p for p in self.active_players.values() if p['status'] == "ALIVE"])
             if alive_count == 0:
                 await self.end_game("NO_SURVIVORS")
                 break
+                
+            # Update board visually after Red Light phase
+            await self.check_all_finished()
 
     async def run_callback(self, interaction: discord.Interaction):
         uid = interaction.user.id
         
         if uid not in self.players:
-            return await interaction.response.send_message("❌ Tum game mein nahi ho!", ephemeral=True)
+            return await interaction.response.send_message("❌ Tum spectator ho, khel nahi rahe!", ephemeral=True)
             
-        player_data = self.active_players[uid]
+        p_data = self.active_players[uid]
         
-        if player_data["status"] == "DEAD" or player_data["status"] == "WON":
-            return await interaction.response.send_message("🚫 Tum game se bahar ho.", ephemeral=True)
+        if p_data["status"] != "ALIVE":
+            return await interaction.response.send_message("🚫 Tum game se bahar ho chuke ho.", ephemeral=True)
 
-        # --- LOGIC ---
+        # --- LOGIC HANDLING ---
         if self.game_state == "GREEN":
-            # ✅ Safe Run
-            move = random.randint(3, 7) # Random speed
-            player_data["dist"] += move
+            # ✅ Safe Movement
+            move = random.randint(4, 8) # Good speed
+            p_data["dist"] += move
             
-            if player_data["dist"] >= self.goal:
-                player_data["status"] = "WON"
-                await interaction.response.send_message(f"🎉 **FINISH LINE!** Tum Jeet gaye!", ephemeral=True)
-                await self.check_all_finished()
+            if p_data["dist"] >= self.goal:
+                p_data["status"] = "WON"
+                await interaction.response.send_message("🎉 **CROSS THE LINE!** Tum Jeet gaye!", ephemeral=True)
             else:
-                # Silent update to avoid rate limit (Show progress in ephemeral)
-                # Har click pe message bhejna spam hoga, isliye defer kar rahe hain
-                await interaction.response.defer() 
+                await interaction.response.defer() # Silent update
 
         elif self.game_state == "YELLOW":
-            # ⚠️ Risky (High chance to slip into Red)
-            # Yellow me click karne par 20% chance hai girne ka
-            if random.random() < 0.2:
-                 await interaction.response.send_message("⚠️ **Ladkhada gaye!** (Movement Stalled)", ephemeral=True)
+            # ⚠️ Risky Movement
+            if random.random() < 0.3: # 30% chance to trip
+                await interaction.response.send_message("⚠️ **Ladkhada gaye!** (Stumbled)", ephemeral=True)
             else:
-                 player_data["dist"] += 2 # Slow movement
-                 await interaction.response.defer()
+                p_data["dist"] += 2 # Very slow
+                await interaction.response.defer()
 
         elif self.game_state == "RED":
-            # 💀 DEATH CHECK
-            user_db = await get_data(uid)
+            # 💀 DEATH LOGIC
+            user_db = await get_data(uid) # Using your existing function
             saved = False
-            reason = "Dead"
             
-            # 1. VIP Check (50% Matrix Dodge)
-            is_vip = False
-            if user_db.get("vip_expiry"): is_vip = True # Add proper date check
-            
-            if is_vip and random.random() < 0.5:
+            # Inventory Check (Extra Life)
+            if user_db.get("inventory", {}).get("life", 0) > 0:
+                await update_inventory(uid, "life", -1) # Using your function
                 saved = True
-                reason = "🛡️ **VIP Freeze:** Doll ne ignore kar diya!"
+                await interaction.response.send_message("💖 **EXTRA LIFE USED!** Bullet proof jacket ne bacha liya!", ephemeral=True)
             
-            # 2. Extra Life Check (Guaranteed Save)
-            elif user_db.get("inventory", {}).get("life", 0) > 0:
-                await update_inventory(uid, "life", -1)
-                saved = True
-                reason = "💖 **Extra Life:** Bullet proof jacket ne bacha liya!"
+            # VIP Logic (Matrix Dodge)
+            elif user_db.get("vip_expiry"): # Simple check, add date logic if needed
+                if random.random() < 0.4: # 40% Chance for VIP
+                    saved = True
+                    await interaction.response.send_message("🛡️ **VIP PRIVILEGE:** Doll ne ignore kar diya!", ephemeral=True)
 
-            if saved:
-                await interaction.response.send_message(f"😰 **BACH GAYE!** {reason}\nAgli baar mat hilna!", ephemeral=True)
-            else:
-                # 🔫 ELIMINATED
-                player_data["status"] = "DEAD"
+            if not saved:
+                # 🔫 Kill Player
+                p_data["status"] = "DEAD"
                 
-                # Visual Feedback
-                embed = discord.Embed(title="🔫 ELIMINATED!", color=0x2f3136)
+                # Visual Kill Feed
+                embed = discord.Embed(title="🔫 ELIMINATED", color=0x2f3136)
                 embed.description = f"**{interaction.user.mention}** hila aur mara gaya.\n💀 **Headshot.**"
                 embed.set_thumbnail(url=interaction.user.display_avatar.url)
                 try: await interaction.channel.send(embed=embed)
                 except: pass
                 
                 # Mute Punishment
-                await smart_timeout(interaction, interaction.user, 300, "Moved in Red Light")
-                await interaction.response.send_message("💀 **YOU DIED.**", ephemeral=True)
+                await smart_timeout(interaction, interaction.user, 60, "Moved in Red Light") # 1 Min Mute
+                await interaction.response.send_message("💀 **YOU DIED!**", ephemeral=True)
 
     async def check_all_finished(self):
-        # Check agar sab ya to Jeet gaye ya Mar gaye
-        active = [p for p in self.active_players.values() if p['status'] == "ALIVE"]
-        if not active:
+        # Check if anyone is still running
+        still_running = [p for p in self.active_players.values() if p['status'] == "ALIVE"]
+        if not still_running:
             await self.end_game("FINISHED")
 
     async def end_game(self, reason):
@@ -9003,97 +9057,85 @@ class RedLightGameView(discord.ui.View):
         winners = [uid for uid, data in self.active_players.items() if data["status"] == "WON"]
         
         if winners:
-            prize = self.pot_money // len(winners)
+            share = self.prize_pool // len(winners)
             names = []
             for uid in winners:
-                await update_balance(uid, prize)
+                await update_balance(uid, share) # Give Money
                 names.append(f"<@{uid}>")
             
-            desc = f"💰 **Total Pot:** ${self.pot_money:,}\n🏆 **Winners:** {', '.join(names)}\n💵 **Prize Each:** ${prize:,}"
-            color = 0x00FF00
-            img = "https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif"
+            embed = discord.Embed(title="🏆 GAME OVER - SURVIVORS", color=0xFFD700)
+            embed.description = (
+                f"🎉 **Congratulations!**\n"
+                f"{', '.join(names)}\n\n"
+                f"💰 **Total Prize:** ${self.prize_pool:,}\n"
+                f"💵 **Each gets:** ${share:,}"
+            )
+            embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
         else:
-            desc = f"💀 **SAB MAR GAYE!**\nKoi nahi bacha.\n💰 **Pot Lost:** ${self.pot_money:,}"
-            color = 0xFF0000
-            img = "https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif"
+            embed = discord.Embed(title="💀 GAME OVER - SLAUGHTER", color=0x2f3136)
+            embed.description = "**No Survivors.** Sab maare gaye.\nPot money burned. 🔥"
+            embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
 
-        embed = discord.Embed(title="🏁 GAME OVER", description=desc, color=color)
-        embed.set_image(url=img)
-        
         try: await self.interaction.edit_original_response(embed=embed, view=None)
         except: pass
 
-
-# --- LOBBY VIEW (Entry System) ---
+# --- 🏨 PREMIUM LOBBY ---
 class RedLightLobby(discord.ui.View):
-    def __init__(self, host, fee=50000):
-        super().__init__(timeout=120)
+    def __init__(self, host):
+        super().__init__(timeout=180)
         self.host = host
-        self.players = [host.id] # Store IDs
-        self.fee = fee
+        self.players = [host.id]
         self.started = False
 
     def get_embed(self):
-        embed = discord.Embed(title="🚥 RED LIGHT, GREEN LIGHT", color=0xE74C3C)
+        embed = discord.Embed(title="🦑 SQUID GAME: RED LIGHT", color=0xE74C3C)
         embed.description = (
             f"**Host:** {self.host.mention}\n"
-            f"💵 **Entry Fee:** ${self.fee:,}\n"
-            f"👥 **Players:** {len(self.players)}\n\n"
-            f"🟢 **Green:** Bhagoooo!\n"
-            f"🔴 **Red:** Hilo mat warna **Maut**.\n"
-            f"👇 **JOIN NOW!**"
+            f"🎟️ **Entry Fee:** FREE\n"
+            f"💰 **Prize Pool:** $50,000\n"
+            f"👥 **Players Joined:** {len(self.players)}\n\n"
+            f"👇 **Click JOIN to enter!**"
         )
+        embed.set_thumbnail(url="https://i.pinimg.com/originals/c6/32/30/c63230ws.jpg") # Squid Game Icon
         embed.set_image(url="https://media.tenor.com/Xv5Wl2l_u-AAAAAC/squid-game-soldier.gif")
-        embed.set_footer(text="VIPs have 50% chance to survive Red Light.")
+        embed.set_footer(text="Rules: Green pe bhago, Red pe ruko. Warna Maut.")
         return embed
 
-    @discord.ui.button(label="JOIN GAME ($50k)", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="JOIN GAME (Free)", style=discord.ButtonStyle.primary, emoji="🎫")
     async def join(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id in self.players:
-            return await interaction.response.send_message("Already joined!", ephemeral=True)
+            return await interaction.response.send_message("Already joined, wait for start!", ephemeral=True)
         
-        data = await get_data(interaction.user.id)
-        if data["balance"] < self.fee:
-            return await interaction.response.send_message("❌ Paise nahi hai tere paas!", ephemeral=True)
-            
-        await update_balance(interaction.user.id, -self.fee)
         self.players.append(interaction.user.id)
         await interaction.response.edit_message(embed=self.get_embed(), view=self)
 
-    @discord.ui.button(label="START GAME", style=discord.ButtonStyle.success)
+    @discord.ui.button(label="START GAME", style=discord.ButtonStyle.success, emoji="▶️")
     async def start(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.host.id: return
-        if len(self.players) < 1: return # Testing ke liye 1 allow kar raha hu, production me 2 karna
+        if interaction.user.id != self.host.id:
+            return await interaction.response.send_message("Sirf Host start kar sakta hai!", ephemeral=True)
+        
+        if len(self.players) < 1: # Testing ke liye 1, Production ke liye increase karein
+            return await interaction.response.send_message("Not enough players!", ephemeral=True)
         
         self.started = True
-        pot = len(self.players) * self.fee
+        game_view = RedLightGameView(self.players, interaction)
         
-        game_view = RedLightGameView(self.players, pot, interaction)
-        
-        # Initial Message
-        embed = discord.Embed(title="🟢 GAME STARTING...", description="Tayyar ho jao!", color=0x00FF00)
+        # Initial Loading Screen
+        embed = discord.Embed(title="🎲 LOADING GAME...", description="Loading assets...\nPreparing Doll...", color=0x2f3136)
         await interaction.response.edit_message(embed=embed, view=game_view)
 
 
-@bot.tree.command(name="red_light", description="🚥 Squid Game: Run on Green, Freeze on Red")
+# --- COMMAND ---
+@bot.tree.command(name="red_light", description="🚥 Play Squid Game (Free Entry, 50k Prize)")
 @check_seized()
 async def red_light(i: discord.Interaction):
     if not i.guild.me.guild_permissions.moderate_members:
-        return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
-        
-    # Host ki fee pehle kaat lo ya lobby me join karwao (Lobby logic use kar rahe hain)
-    # Host auto-join karega lobby code me
+        return await i.response.send_message("❌ Mere paas 'Timeout Members' permission nahi hai!", ephemeral=True)
     
-    # Check Host Balance for safety
-    data = await get_data(i.user.id)
-    if data["balance"] < 50000:
-        return await i.response.send_message("❌ $50,000 chahiye host karne ke liye.", ephemeral=True)
-    
-    # Deduct Host Fee immediately
-    await update_balance(i.user.id, -50000)
-    
+    # Host Fee Removed as requested (Entry is Free)
     view = RedLightLobby(i.user)
     await i.response.send_message(embed=view.get_embed(), view=view)
+
 
 # ================== 🦑 SQUID PENTATHLON (TEAM RELAY MODE) ==================
 
@@ -15124,6 +15166,164 @@ async def black_market(i: discord.Interaction):
     view = BlackMarketView(i.user)
     await i.response.send_message(embed=embed, view=view)
 
+# --- 💾 MEMORY FOR COOLDOWNS ---
+wipeout_cooldowns = {}
+
+@bot.tree.command(name="wipeout", description="☠️ 100M RISK: Steal EVERYTHING (50% Chance)")
+@check_seized()
+async def wipeout(i: discord.Interaction, victim: discord.Member):
+    user = i.user
+    
+    # 1. Self Check
+    if user.id == victim.id or victim.bot:
+        return await i.response.send_message("❌ Khud ko barbad nahi kar sakte!", ephemeral=True)
+
+    # --- 🕒 COOLDOWN (3 HOURS) ---
+    import datetime
+    from datetime import timedelta
+    
+    key = f"{user.id}-{victim.id}"
+    now = datetime.datetime.now()
+    
+    if key in wipeout_cooldowns:
+        last_time = wipeout_cooldowns[key]
+        if now < last_time + timedelta(hours=3):
+            remaining = (last_time + timedelta(hours=3)) - now
+            h, m = divmod(remaining.seconds // 60, 60)
+            return await i.response.send_message(f"⏳ **Cooldown:** {victim.name} par abhi hamla nahi kar sakte.\nWait: **{h}h {m}m**", ephemeral=True)
+
+    # 2. Database Fetch
+    vic_data = supabase.table("economy").select("*").eq("user_id", str(victim.id)).execute().data
+    rob_data = supabase.table("economy").select("*").eq("user_id", str(user.id)).execute().data
+    
+    if not vic_data: return await i.response.send_message("❌ Victim ke paas account nahi hai.", ephemeral=True)
+    if not rob_data: return await i.response.send_message("❌ Apna account banao pehle.", ephemeral=True)
+
+    vic = vic_data[0]
+    robber = rob_data[0]
+    
+    vic_inv = vic.get('inventory') or {}
+    rob_inv = robber.get('inventory') or {}
+
+    # --- 🔒 HIGH STAKES REQUIREMENTS ---
+    
+    REQUIRED_RISK = 100000000 # 100 Million
+    
+    # Req 1: 100M Cash Check
+    if robber['balance'] < REQUIRED_RISK:
+        return await i.response.send_message(f"🚫 **Too Poor:** Is raid ke liye **$100,000,000** (100M) risk money chahiye!", ephemeral=True)
+
+    # Req 2: Master Key
+    if rob_inv.get('master_key', 0) < 1:
+        return await i.response.send_message("🚫 **Locked:** Pura account saaf karne ke liye **'Master Key'** chahiye!", ephemeral=True)
+
+    # Req 3: Victim Check
+    if vic['balance'] < 1000 and not vic_inv:
+        return await i.response.send_message("⚠️ **Target Empty:** Iske paas lootne layk kuch nahi hai.", ephemeral=True)
+
+    # --- 🛡️ DEFENSE SYSTEM (Special Bomb > Dog) ---
+    # Note: Normal 'landmine' yahan kaam nahi karega, sirf 'nuclear_bomb'.
+
+    # 1. ☢️ SPECIAL NUCLEAR BOMB (100% Protection, 1-Time Use)
+    if vic_inv.get('nuclear_bomb', 0) > 0:
+        # Bomb Explodes (Remove 1)
+        vic_inv['nuclear_bomb'] -= 1
+        
+        # 🩸 PUNISHMENT: Robber loses 100M
+        new_bal = max(0, robber['balance'] - REQUIRED_RISK)
+        
+        # Update DB
+        supabase.table("economy").update({"inventory": vic_inv}).eq("user_id", str(victim.id)).execute()
+        supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(user.id)).execute()
+        
+        wipeout_cooldowns[key] = now
+        
+        embed = discord.Embed(title="☢️ NUCLEAR TRAP TRIGGERED!", color=0x000000)
+        embed.description = (
+            f"💀 **CATASTROPHIC FAILURE!**\n"
+            f"Victim ne **Special Nuclear Bomb** laga rakha tha!\n\n"
+            f"💸 **Your Loss:** `$100,000,000` (Vaporized)\n"
+            f"🛡️ **Victim:** 100% Safe."
+        )
+        embed.set_image(url="https://media.tenor.com/2sEnpXg4w0QAAAAC/explosion-boom.gif")
+        return await i.response.send_message(embed=embed)
+
+    # 2. 🐕 GUARD DOG (70% Chance to Bite, Permanent)
+    if vic_inv.get('guard_dog', 0) > 0:
+        import random
+        if random.randint(1, 100) <= 70: # 70% Protection
+            
+            # 🩸 PUNISHMENT: Robber loses 100M
+            new_bal = max(0, robber['balance'] - REQUIRED_RISK)
+            supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(user.id)).execute()
+            
+            wipeout_cooldowns[key] = now
+            
+            embed = discord.Embed(title="🐕 GUARD DOG ATTACK!", color=0xFF0000)
+            embed.description = (
+                f"🩸 **Brutal Attack:** {victim.name} ke kutte ne aapko dabocha!\n"
+                f"💸 **Medical Bill:** `$100,000,000` (Deducted)\n"
+                f"🛡️ **Defense:** Robbery Failed."
+            )
+            embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/616/616408.png")
+            return await i.response.send_message(embed=embed)
+
+    # --- 🎲 WIPEOUT EXECUTION (50% Chance) ---
+    
+    if random.randint(1, 100) <= 50: # 50% Success
+        
+        # ✅ SUCCESS: STEAL EVERYTHING
+        loot_money = vic['balance']
+        
+        # Merge Inventory (Victim -> Robber)
+        stolen_count = 0
+        for item_name, qty in vic_inv.items():
+            if qty > 0:
+                rob_inv[item_name] = rob_inv.get(item_name, 0) + qty
+                stolen_count += qty
+        
+        # Victim -> 0 (Bankrupt)
+        empty_inv = {} 
+        
+        # DB Updates
+        supabase.table("economy").update({"balance": 0, "inventory": empty_inv}).eq("user_id", str(victim.id)).execute()
+        supabase.table("economy").update({"balance": robber['balance'] + loot_money, "inventory": rob_inv}).eq("user_id", str(user.id)).execute()
+        
+        wipeout_cooldowns[key] = now
+        
+        embed = discord.Embed(title="🏴‍☠️ TOTAL WIPEOUT - GODLIKE!", color=0xFFD700) # Gold
+        embed.description = (
+            f"😈 **{user.mention}** ne **{victim.mention}** ki puri duniya loot li!\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"💰 **Cash Looted:** `${loot_money:,}` (ALL)\n"
+            f"📦 **Items Looted:** `{stolen_count}` Items (ALL)\n"
+            f"💀 **Victim Status:** BANKRUPT ($0)\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━"
+        )
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2953/2953363.png")
+        embed.set_image(url="https://media.tenor.com/O6aTqJkK3hQAAAAC/robber-running.gif")
+        return await i.response.send_message(embed=embed)
+
+    else:
+        # ❌ FAILED (50% Chance Fail)
+        # 🩸 PUNISHMENT: Lose 100M + Break Key
+        rob_inv['master_key'] -= 1
+        new_bal = max(0, robber['balance'] - REQUIRED_RISK)
+        
+        supabase.table("economy").update({"inventory": rob_inv, "balance": new_bal}).eq("user_id", str(user.id)).execute()
+        wipeout_cooldowns[key] = now
+        
+        embed = discord.Embed(title="☠️ MISSION FAILED!", color=0x2f3136) # Dark
+        embed.description = (
+            f"👮 **Bad Luck!** Master Key toot gayi aur Police aa gayi.\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"💸 **Loss:** `$100,000,000` (Gone)\n"
+            f"🗝️ **Key:** Broken\n"
+            f"⚖️ **Result:** You escaped, but lost huge money.\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━"
+        )
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/9290/9290469.png")
+        return await i.response.send_message(embed=embed)
      
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
@@ -15829,60 +16029,136 @@ async def withdraw(i: discord.Interaction, amount: str):
     embed = discord.Embed(description=f"✅ **Withdrawn:** `${amt:,}`", color=C_GREEN)
     await i.response.send_message(embed=embed)
 
-@bot.tree.command(name="rob", description="🔫 Rob User (1H Cooldown, Victim needs 100k)")
+@bot.tree.command(name="rob", description="🔫 Rob a rich user (Risky! Needs strategy)")
 @check_seized()
 @app_commands.checks.cooldown(1, 3600) # 1 Hour Cooldown
 async def rob(i: discord.Interaction, victim: discord.Member):
-    if i.user.id == victim.id or victim.bot: return await i.response.send_message("❌ Cannot rob yourself/bots", ephemeral=True)
+    # 1. Basic Checks
+    if i.user.id == victim.id or victim.bot: 
+        return await i.response.send_message("❌ **Error:** Khud ko ya Bots ko nahi loot sakte!", ephemeral=True)
     
-    # Fetch Data
+    # 2. Fetch Data (Securely)
     vic_data = supabase.table("economy").select("*").eq("user_id", str(victim.id)).execute().data
     rob_data = supabase.table("economy").select("*").eq("user_id", str(i.user.id)).execute().data
     
-    if not vic_data: return await i.response.send_message("❌ Victim ke paas account hi nahi hai", ephemeral=True)
+    # Check Account Existence
+    if not vic_data: 
+        return await i.response.send_message(f"❌ **Error:** {victim.mention} ke paas bank account hi nahi hai.", ephemeral=True)
+    if not rob_data:
+        return await i.response.send_message(f"❌ **Error:** Pehle apna account banao (`/balance`).", ephemeral=True)
+
     vic = vic_data[0]
     robber = rob_data[0]
+    vic_inv = vic.get('inventory') or {} # Safe Inventory Fetch
     
-    # 1. Minimum Balance Check (100k) (USER REQUEST)
+    # 3. Strength Logic: Robber needs minimum cash to take risk
+    if robber['balance'] < 5000:
+        return await i.response.send_message("⚠️ **Too Poor:** Rob karne ke liye jeb mein kam se kam **$5,000** hone chahiye (Fine bharne ke liye)!", ephemeral=True)
+
+    # 4. Minimum Victim Balance (100k Rule)
     if vic['balance'] < 100000:
-        return await i.response.send_message(f"⚠️ **Safe:** {victim.name} ke paas 100k se kam hain. Loot bekar hai.", ephemeral=True)
+        return await i.response.send_message(f"⚠️ **Safe Target:** {victim.name} ke paas 100k se kam hain. Police risk lena bekar hai.", ephemeral=True)
+
+    # --- 💣 TRAP 1: LANDMINE (High Damage) ---
+    if vic_inv.get('landmine', 0) > 0:
+        # Logic: Robber loses 30%, Victim gets it. Landmine explodes (-1).
+        fine = int(robber['balance'] * 0.3) 
         
-    # 2. Landmine Trap Check
-    if vic.get('inventory', {}).get('landmine', 0) > 0:
-        inv = vic['inventory']
-        inv['landmine'] -= 1
-        fine = int(robber['balance'] * 0.3) # 30% Fine
-        
-        supabase.table("economy").update({"inventory": inv, "balance": vic['balance'] + fine}).eq("user_id", str(victim.id)).execute()
+        # Update Inventories & Balances
+        vic_inv['landmine'] -= 1
+        supabase.table("economy").update({"inventory": vic_inv, "balance": vic['balance'] + fine}).eq("user_id", str(victim.id)).execute()
         supabase.table("economy").update({"balance": robber['balance'] - fine}).eq("user_id", str(i.user.id)).execute()
         
-        embed = discord.Embed(title="💥 BOOM! LANDMINE!", color=C_RED)
-        embed.description = f"💀 **{i.user.mention}** stepped on a Landmine!\n💸 You paid `${fine:,}` hospital bill to **{victim.name}**."
-        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/1166/1166469.png")
+        # 💥 PREMIUM EMBED: LANDMINE
+        embed = discord.Embed(title="💥 KABOOM! LANDMINE TRIGGERED", color=0xFF0000)
+        embed.description = (
+            f"💀 **{i.user.mention}** ne ghar mein ghusne ki koshish ki aur **Landmine** uda diya!\n\n"
+            f"🏥 **Hospital Bill:** `${fine:,}` (Paid to Victim)\n"
+            f"🛡️ **Defense:** Landmine destroyed."
+        )
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/4980/4980064.png") # Explosion Icon
+        embed.set_image(url="https://media.tenor.com/2sEnpXg4w0QAAAAC/explosion-boom.gif")
         return await i.response.send_message(embed=embed)
 
-    # 3. Normal Robbery Logic
-    if random.choice([True, False]):
+    # --- 📹 TRAP 2: CCTV CAMERA (Caught & Exposed) ---
+    if vic_inv.get('cctv', 0) > 0:
+        # Logic: Robbery Fails 100%. Small Fine. Victim gets DM.
+        fine = 10000 # Fixed fine for CCTV
+        new_bal = max(0, robber['balance'] - fine)
+        supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(i.user.id)).execute()
+        
+        # 📸 PREMIUM EMBED: CCTV CAUGHT
+        embed = discord.Embed(title="📹 CAUGHT IN 4K!", color=0xFFA500) # Orange for Warning
+        embed.description = (
+            f"👮 **Security Alert!**\n"
+            f"**{i.user.mention}** ko **CCTV** ne record kar liya!\n\n"
+            f"📸 **Identity:** Exposed to Victim\n"
+            f"💸 **Police Fine:** `$10,000`"
+        )
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/3686/3686918.png") # CCTV Icon
+        await i.response.send_message(embed=embed)
+        
+        # 📩 DM LOGIC (Send Proof to Victim)
+        try:
+            dm_embed = discord.Embed(title="🚨 HOME SECURITY ALERT", color=0xFF0000)
+            dm_embed.description = (
+                f"⚠️ **Intruder Detected!**\n"
+                f"👤 **Robber:** {i.user.name} (ID: {i.user.id})\n"
+                f"🕒 **Time:** Just now\n"
+                f"✅ **Status:** Robbery Prevented by CCTV."
+            )
+            dm_embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/1166/1166469.png") # Shield Icon
+            await victim.send(embed=dm_embed)
+        except:
+            pass # Agar DM band hai to ignore karo (Crash nahi karega)
+        return
+
+    # --- 🎲 ROBBERY ATTEMPT (RNG) ---
+    import random
+    success_chance = random.randint(1, 100)
+    
+    # 5. Success Logic (45% Chance - Harder Logic)
+    if success_chance <= 45:
         loot = int(vic['balance'] * random.uniform(0.2, 0.5)) # Loot 20-50%
+        
         supabase.table("economy").update({"balance": vic['balance'] - loot}).eq("user_id", str(victim.id)).execute()
         supabase.table("economy").update({"balance": robber['balance'] + loot}).eq("user_id", str(i.user.id)).execute()
         
-        embed = discord.Embed(title="💰 ROBBERY SUCCESS", color=C_GOLD)
-        embed.description = f"😈 You stole `${loot:,}` from **{victim.mention}**!"
+        # 💰 PREMIUM EMBED: SUCCESS
+        embed = discord.Embed(title="💰 HEIST SUCCESSFUL!", color=0xFFD700) # Gold
+        embed.description = (
+            f"😈 **Mission Passed!**\n"
+            f"You successfully looted **{victim.mention}** and escaped!\n\n"
+            f"💵 **Stolen Amount:** `${loot:,}`\n"
+            f"🔥 **Status:** Untraceable"
+        )
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2953/2953363.png") # Money Bag
+        embed.set_image(url="https://media.tenor.com/O6aTqJkK3hQAAAAC/robber-running.gif") # Running GIF
         await i.response.send_message(embed=embed)
+    
+    # 6. Failed Logic (Police Catch)
     else:
         fine = 5000
         supabase.table("economy").update({"balance": robber['balance'] - fine}).eq("user_id", str(i.user.id)).execute()
         
-        embed = discord.Embed(title="🚔 POLICE ARREST", color=C_RED)
-        embed.description = f"👮 Police caught you robbing **{victim.name}**!\n💸 Fine Paid: `$5,000`"
+        # 🚔 PREMIUM EMBED: FAILED
+        embed = discord.Embed(title="🚔 BUSTED! POLICE ARREST", color=0x2f3136) # Dark Grey
+        embed.description = (
+            f"👮 **Hands in the air!**\n"
+            f"You tripped the silent alarm while robbing **{victim.name}**.\n\n"
+            f"⚖️ **Sentence:** Jail Time\n"
+            f"💸 **Bail Paid:** `$5,000`"
+        )
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2504/2504660.png") # Police Car
         await i.response.send_message(embed=embed)
 
+# Error Handler (For Cooldown)
 @rob.error
 async def rob_error(i: discord.Interaction, error):
     if isinstance(error, app_commands.CommandOnCooldown):
         min_left = int(error.retry_after // 60)
-        await i.response.send_message(f"⏳ **Cooldown:** Police is watching! Try again in **{min_left} minutes**.", ephemeral=True)
+        embed = discord.Embed(title="⏳ POLICE HEAT IS HIGH", description=f"Police are patrolling the area!\nWait **{min_left} minutes** before next robbery.", color=0xE74C3C)
+        await i.response.send_message(embed=embed, ephemeral=True)
 
 # --- PREMIUM OWNER ADD MONEY ---
 @bot.tree.command(name="add_money", description="💸 (Owner) Inject funds into a user's balance with official UI.")
