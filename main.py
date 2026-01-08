@@ -14893,6 +14893,114 @@ async def admin_seize(interaction: discord.Interaction, action: str, user: disco
         except Exception as e:
             await interaction.followup.send(f"❌ Error: {e}")
 
+import random
+import discord
+from discord import app_commands
+
+# --- 🌑 BLACK MARKET VIEW ---
+class BlackMarketView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=None) # ✅ No Timeout (Jab tak man kare khelo)
+        self.user = user
+
+    async def run_spin(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user.id:
+            return await interaction.response.send_message("❌ Apna paisa lagao!", ephemeral=True)
+
+        # 1. Check Balance & Deduct $1
+        # (Hum yahan database call optimize kar rahe hain taaki spam kar sake)
+        try:
+            res = supabase.table("economy").select("balance").eq("user_id", self.user.id).execute()
+            if not res.data:
+                return await interaction.response.send_message("❌ Account nahi mila. /start karo.", ephemeral=True)
+            
+            current_bal = res.data[0]['balance']
+            
+            if current_bal < 1:
+                return await interaction.response.send_message("❌ **Kangaal!** $1 bhi nahi hai tere paas?", ephemeral=True)
+
+            # Deduct $1 instantly
+            new_bal = current_bal - 1
+            supabase.table("economy").update({"balance": new_bal}).eq("user_id", self.user.id).execute()
+
+        except Exception as e:
+            return await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+
+        # 2. THE 0.01% LUCK LOGIC
+        # 1 se 10,000 ke beech number socho. Agar '1' aaya to Jackpot.
+        lucky_number = random.randint(1, 10000) 
+        is_jackpot = (lucky_number == 1)
+
+        embed = discord.Embed()
+        
+        if is_jackpot:
+            # 🎉 WINNER ($100k - $500k)
+            prize = random.randint(100000, 500000)
+            final_bal = new_bal + prize
+            supabase.table("economy").update({"balance": final_bal}).eq("user_id", self.user.id).execute()
+
+            embed.title = "💎 BLACK MARKET JACKPOT!!"
+            embed.color = 0xFFD700 # Gold
+            embed.description = (
+                f"### 🤯 IMPOSSIBLE HIT! (0.01%)\n"
+                f"💰 **WON:** `${prize:,}`\n"
+                f"💳 **New Balance:** `${final_bal:,}`\n\n"
+                f"**System Hacked Successfully.** 💀"
+            )
+            embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
+            embed.set_thumbnail(url=self.user.display_avatar.url)
+
+        else:
+            # 🌑 LOSS (Just $1 gone)
+            # Embed ko update karenge taaki user spam karta rahe
+            embed.title = "🌑 BLACK MARKET SPIN"
+            embed.color = 0x000000 # Pitch Black
+            embed.description = (
+                f"👤 **{self.user.name}**\n"
+                f"💳 **Wallet:** `${new_bal:,}`\n\n"
+                f"📉 **Result:** Nothing.\n"
+                f"💸 **Lost:** $1\n"
+                f"🎲 **Roll:** {lucky_number} (Needed: 1)\n\n"
+                f"*Try again... kismat kabhi bhi palat sakti hai.*"
+            )
+            embed.set_thumbnail(url=self.user.display_avatar.url)
+            # Loss image (Optional, hata bhi sakte ho speed ke liye)
+            # embed.set_image(url="https://media.tenor.com/P1f8q1dd2fAAAAAC/glitch-static.gif") 
+
+        # Update the message (Naya message nahi bhejenge, purana edit karenge speed ke liye)
+        await interaction.response.edit_message(embed=embed, view=self)
+
+
+    @discord.ui.button(label="🎲 SPIN ($1)", style=discord.ButtonStyle.secondary, emoji="🩸")
+    async def spin_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.run_spin(interaction)
+
+
+# --- COMMAND ---
+@bot.tree.command(name="black_market", description="🩸 $1 Spin. 0.01% Chance. Unlimited Greed.")
+@check_seized()
+async def black_market(i: discord.Interaction):
+    
+    # Initial Check
+    res = supabase.table("economy").select("balance").eq("user_id", i.user.id).execute()
+    bal = res.data[0]['balance'] if res.data else 0
+
+    embed = discord.Embed(title="🌑 WELCOME TO THE UNDERGROUND", color=0x000000)
+    embed.description = (
+        f"👤 **User:** {i.user.mention}\n"
+        f"💳 **Balance:** `${bal:,}`\n\n"
+        "🎰 **THE DEAL:**\n"
+        "• Cost: **$1** / Spin\n"
+        "• Prize: **$100,000 - $500,000**\n"
+        "• Chance: **0.01% (1 in 10,000)**\n\n"
+        "⚠️ **No Refund. No Rules. No Limit.**\n"
+        "*Keep spinning until you bleed money or become a king.*"
+    )
+    embed.set_thumbnail(url=i.user.display_avatar.url)
+    
+    view = BlackMarketView(i.user)
+    await i.response.send_message(embed=embed, view=view)
+
      
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
