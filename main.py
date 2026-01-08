@@ -5401,7 +5401,8 @@ class MemoryGameView(discord.ui.View):
                 for item in self.children: item.disabled = True
                 await interaction.edit_original_response(view=self)
                 await asyncio.sleep(1.5) # Wait for user to see cards
-                self.flipped = []                self.create_grid()
+                self.flipped = []     
+                self.create_grid()
                 await interaction.edit_original_response(embed=await self.get_embed(), view=self)
 
 # ================== 🎮 COMMAND UPDATE ==================
