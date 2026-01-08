@@ -15719,7 +15719,7 @@ async def shop_cmd(i: discord.Interaction):
     CLIENT_ID = "1451451135813746700" 
     
     # 2. Apki Render Website ka Callback URL
-    REDIRECT_URI = "https://tingbot-q1jb.onrender.com/callback"
+    REDIRECT_URI = "https://testingbot-q1jb.onrender.com/callback"
     
     # 3. URL ko safe format me convert karna (Encoding)
     encoded_redirect = urllib.parse.quote(REDIRECT_URI)
