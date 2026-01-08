@@ -6726,7 +6726,8 @@ async def marbles(i: discord.Interaction, opponent: discord.Member):
     await i.response.send_message(embed=embed, view=view)
 
 # ================== 🎲 SATTA SYSTEM (FAIR & EVIL MODES) =================
-Class EvilSattaView(discord.ui.View):
+
+class EvilSattaView(discord.ui.View):
     def __init__(self, user, bet_amount):
         super().__init__(timeout=60)
         self.user = user
