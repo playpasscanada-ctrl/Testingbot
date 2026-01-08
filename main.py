@@ -6725,40 +6725,8 @@ async def marbles(i: discord.Interaction, opponent: discord.Member):
     
     await i.response.send_message(embed=embed, view=view)
 
-# ================== 🎲 SATTA SYSTEM (FAIR & EVIL MODES) ==================
-(status_report)
-            )
-            embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
-            
-            try: await self.original_interaction.edit_original_response(embed=embed, view=None)
-            except: pass
-
-    def generate_board(self):
-        board_str = ""
-        for i in range(self.bridge_len - 1, -1, -1):
-            step_marker = f"**Step {i+1}**"
-            
-            if i == self.current_step and self.current_player_idx < len(self.players):
-                left_icon = "⬜"; right_icon = "⬜"
-            elif i < self.current_step:
-                left_icon = "🟩" if self.path[i] == "LEFT" else "⬛"
-                right_icon = "🟩" if self.path[i] == "RIGHT" else "⬛"
-            else:
-                left_icon = "🌫️"; right_icon = "🌫️"
-
-            if self.revealed[i]:
-                left_icon = "✅" if self.path[i] == "LEFT" else "❌"
-                right_icon = "✅" if self.path[i] == "RIGHT" else "❌"
-            
-            pointer = "👈 **HERE**" if i == self.current_step else ""
-            board_str += f"`[{left_icon}]`  `[{right_icon}]` {step_marker} {pointer}\n"
-        return board_str
-
-    async def get_embed(self):
-        if not self.game_active: return None
-        
-        active_p = self.
-class EvilSattaView(discord.ui.View):
+# ================== 🎲 SATTA SYSTEM (FAIR & EVIL MODES) =================
+Class EvilSattaView(discord.ui.View):
     def __init__(self, user, bet_amount):
         super().__init__(timeout=60)
         self.user = user
@@ -6863,7 +6831,6 @@ class EvilSattaView(discord.ui.View):
             # Agar edit fail ho jaye, to naya message bhej do backup ke liye
             await interaction.followup.send(f"⚠️ **Result:** Game khatam, par UI update nahi hua.\nCheck balance manually.", ephemeral=True)
 
-
     # --- ROW 1: FAIR PLAY (New Options) ---
     @discord.ui.button(label="SAFE (2x)", style=discord.ButtonStyle.success, row=0)
     async def bet_2x(self, i, b):
@@ -6923,7 +6890,6 @@ async def satta(i: discord.Interaction, amount: int):
     
     view = EvilSattaView(i.user, amount)
     await i.response.send_message(embed=embed, view=view)
-
             
 
 # ================== 🦑 SQUID GAME: GLASS BRIDGE (ECONOMY + VIP) ==================
