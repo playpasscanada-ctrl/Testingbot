@@ -15507,8 +15507,20 @@ def buy_item():
     try:
         data = request.json
         uid = str(data.get('uid'))
-        cid = data.get('cid') 
+        cid_from_web = data.get('cid') # Website se aayi channel ID
         item_id = data.get('item_id')
+
+        # --- 🏹 MULTI-CHANNEL SETUP (Dono ID fix hain) ---
+        target_channels = []
+        
+        # 1. Pehli ID: Jahan se shop khuli
+        if cid_from_web and cid_from_web != "None" and cid_from_web != "":
+            target_channels.append(cid_from_web)
+            
+        # 2. Dusri ID: Aapka Backup Log Channel
+        backup_log_id = "1450514760276774967" 
+        if backup_log_id not in target_channels:
+            target_channels.append(backup_log_id)
         
         if item_id not in SHOP_ITEMS: 
             return jsonify({"status": "error", "msg": "Invalid Item"})
@@ -15520,7 +15532,7 @@ def buy_item():
         
         user_data = res.data[0]
         item = SHOP_ITEMS[item_id]
-        old_bal = int(user_data['balance']) # For Receipt Detail
+        old_bal = int(user_data['balance'])
         
         # 2. Check Balance
         if old_bal < item['price']:
@@ -15532,8 +15544,9 @@ def buy_item():
         
         result_text = f"✅ Bought {item['name']}"
         
-        # 4. Handle Item Logic (Same as yours)
+        # 4. Handle Item Logic (Lotto/Inventory/VIP)
         if item.get('type') == "lotto":
+            import random
             if random.randint(1, 100) <= item['chance']:
                 new_bal += item['win']
                 supabase.table("economy").update({"balance": new_bal}).eq("user_id", uid).execute()
@@ -15547,14 +15560,16 @@ def buy_item():
             supabase.table("economy").update({"inventory": inv}).eq("user_id", uid).execute()
             
         elif item.get('type') == "vip":
+            import datetime as dt
+            from datetime import datetime
             if item.get('life'): expiry = "9999-12-31T23:59:59"
             else: expiry = (datetime.utcnow() + dt.timedelta(minutes=item['min'])).isoformat()
             supabase.table("economy").update({"vip_expiry": expiry}).eq("user_id", uid).execute()
 
-        # 5. Discord Effects (Detailed Receipt)
-        if cid:
+        # 5. 📣 SEND LOGS TO ALL CHANNELS (Fixed Loop)
+        for channel_id in target_channels:
             asyncio.run_coroutine_threadsafe(
-                handle_purchase_effects(uid, cid, item['name'], item['price'], result_text, old_bal, new_bal), 
+                handle_purchase_effects(uid, channel_id, item['name'], item['price'], result_text, old_bal, new_bal), 
                 bot.loop
             )
         
