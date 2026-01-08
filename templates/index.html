@@ -112,6 +112,7 @@
         .card.vip::before { background: var(--gold); }
         .card.role::before { background: var(--neon-blue); }
         .card.lotto::before { background: var(--neon-green); }
+        .card.verification::before { background: #ffffff; }
 
         .card:hover {
             transform: translateY(-5px);
@@ -171,6 +172,28 @@
             cursor: not-allowed;
             box-shadow: none;
         }
+        
+        /* Login Button Style */
+        .login-container {
+            margin-top: 100px;
+            padding: 40px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 20px;
+            display: inline-block;
+        }
+        .login-btn {
+            background: #5865F2;
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 8px;
+            display: inline-block;
+            margin-top: 20px;
+        }
+        .login-btn:hover { background: #4752c4; }
 
         /* --- Responsive --- */
         @media (max-width: 600px) {
@@ -181,169 +204,175 @@
 </head>
 <body>
 
-    <h1>Global Black Market</h1>
-    <div class="subtitle">SECURE • ANONYMOUS • INSTANT</div>
+    {% if user %}
+    
+        <h1>Global Black Market</h1>
+        <div class="subtitle">SECURE • ANONYMOUS • INSTANT</div>
 
-    <div id="status-bar">
-        <div class="status-dot"></div>
-        <span id="status-text">Disconnected</span>
-    </div>
+        <div id="status-bar" class="connected">
+            <div class="status-dot"></div>
+            <span id="status-text">
+                Welcome, <span style="color:var(--gold)">{{ user.username }}</span> 
+                | Balance: <span style="color:var(--neon-green)">${{ user.balance }}</span>
+            </span>
+        </div>
 
-    <div class="filters">
-        <button class="filter-btn active" onclick="filterItems('all')">All</button>
-        <button class="filter-btn" onclick="filterItems('special')">Items</button>
-        <button class="filter-btn" onclick="filterItems('vip')">VIP Access</button>
-        <button class="filter-btn" onclick="filterItems('verification')">VERIFICATION</button>
-        <button class="filter-btn" onclick="filterItems('role')">Roles</button>
-        <button class="filter-btn" onclick="filterItems('lotto')">Lottery</button>
-    </div>
+        <div class="filters">
+            <button class="filter-btn active" onclick="filterItems('all')">All</button>
+            <button class="filter-btn" onclick="filterItems('special')">Items</button>
+            <button class="filter-btn" onclick="filterItems('vip')">VIP Access</button>
+            <button class="filter-btn" onclick="filterItems('verification')">VERIFICATION</button>
+            <button class="filter-btn" onclick="filterItems('role')">Roles</button>
+            <button class="filter-btn" onclick="filterItems('lotto')">Lottery</button>
+        </div>
 
-    <div class="grid" id="container"></div>
+        <div class="grid" id="container"></div>
 
-    <script>
-        // 1. Get Params from URL
-        const params = new URLSearchParams(window.location.search);
-        const uid = params.get('uid');
-        const cid = params.get('cid');
+        <script>
+            // ✅ SECURE: Get ID directly from Python Backend (No URL Params)
+            const uid = "{{ user.id }}";
+            // Check if Python passed a Channel ID (cid), else empty
+            const cid = "{{ cid if cid else '' }}"; 
 
-        // 2. Update Status Bar
-        const statusText = document.getElementById('status-text');
-        const statusBar = document.getElementById('status-bar');
-        
-        if (uid) {
-            statusBar.classList.add('connected');
-            statusText.innerHTML = `Connected as: <span style="color:var(--gold)">${uid}</span>`;
-        } else {
-            statusText.innerHTML = `⚠️ ACCESS DENIED: Use /shop in Discord`;
-        }
+            // 3. Item Database (EXACTLY MATCHING MAIN.PY)
+            const items = [
+                // Special
+                {id: 'izzat', name: '🧼 Izzat Wapasi', price: 150000, type: 'special'},
+                {id: 'landmine', name: '💣 Landmine', price: 500000, type: 'special'},
+                {id: 'life', name: '💖 Extra Life', price: 750000, type: 'special'},
+                {id: 'cctv', name: '📹 CCTV Camera', price: 150000, type: 'special'},
 
-        // 3. Item Database (EXACTLY MATCHING MAIN.PY)
-        const items = [
-            // Special
-            {id: 'izzat', name: '🧼 Izzat Wapasi', price: 150000, type: 'special'},
-            {id: 'landmine', name: '💣 Landmine', price: 500000, type: 'special'},
-            {id: 'life', name: '💖 Extra Life', price: 750000, type: 'special'},
-            {id: 'cctv', name: '📹 CCTV Camera', price: 150000, type: 'special'},
+                // 👇 VERIFICATION SECTION
+                {id: 'verify_1d',   name: '✅ Verify (1 Day)',   price: 50000000, type: 'verification'},
+                {id: 'verify_3d',   name: '✅ Verify (3 Days)',  price: 150000000, type: 'verification'},
+                {id: 'verify_5d',   name: '✅ Verify (5 Days)',  price: 500000000, type: 'verification'},
+                {id: 'verify_1w',   name: '✅ Verify (1 Week)',  price: 1000000000, type: 'verification'},
+                {id: 'verify_10d',  name: '✅ Verify (10 Days)', price: 1500000000, type: 'verification'},
+                {id: 'verify_15d',  name: '✅ Verify (15 Days)', price: 3000000000, type: 'verification'},
+                {id: 'verify_1m',   name: '✅ Verify (1 Month)', price: 10000000000000, type: 'verification'},
+                {id: 'verify_perm', name: '♾️ Verify (Lifetime)', price: 100000000000000, type: 'verification'},
 
-             // 👇 VERIFICATION SECTION
-            {id: 'verify_1d',   name: '✅ Verify (1 Day)',   price: 50000000, type: 'verification'},
-            {id: 'verify_3d',   name: '✅ Verify (3 Days)',  price: 150000000, type: 'verification'},
-            {id: 'verify_5d',   name: '✅ Verify (5 Days)',  price: 500000000, type: 'verification'},
-            {id: 'verify_1w',   name: '✅ Verify (1 Week)',  price: 1000000000, type: 'verification'},
-            {id: 'verify_10d',  name: '✅ Verify (10 Days)', price: 1500000000, type: 'verification'},
-            {id: 'verify_15d',  name: '✅ Verify (15 Days)', price: 3000000000, type: 'verification'},
-            {id: 'verify_1m',   name: '✅ Verify (1 Month)', price: 10000000000000, type: 'verification'},
-            {id: 'verify_perm', name: '♾️ Verify (Lifetime)', price: 100000000000000, type: 'verification'},
+                // Fight club section 
+                {id: 'knife', name: '🔪 Combat Knife', price: 50000, type: 'special'},
+                {id: 'armor', name: '🛡️ Kevlar Vest', price: 80000, "type": "special"},
+                {id: 'steroids', name: '💉 Steroids', price: 20000, "type": "special"},
 
-            // Fight club section 
-            {id: 'knife', name: '🔪 Combat Knife', price: 50000, type: 'special'},
-            {id: 'armor', name: '🛡️ Kevlar Vest', price: 80000, "type": "special"},
-            {id: 'steroids', name: '💉 Steroids', price: 20000, "type": "special"},
+                // VIP
+                {id: 'vip_10m', name: '⚡ 10 Mins Escape', price: 200000, type: 'vip'},
+                {id: 'vip_1h', name: '👑 1 Hour VIP', price: 10000000, type: 'vip'},
+                {id: 'vip_6h', name: '🛡️ 6 Hours VIP', price: 30000000, type: 'vip'},
+                {id: 'vip_1d', name: '💎 1 Day VIP', price: 50000000, type: 'vip'},
+                {id: 'vip_3d', name: '🗓️ 3 Days VIP', price: 120000000, type: 'vip'},
+                {id: 'vip_1w', name: '🔥 1 Week VIP', price: 250000000, type: 'vip'},
+                {id: 'vip_life', name: '♾️ Lifetime VIP', price: 700000000000, type: 'vip'},
 
-            // VIP
-            {id: 'vip_10m', name: '⚡ 10 Mins Escape', price: 200000, type: 'vip'},
-            {id: 'vip_1h', name: '👑 1 Hour VIP', price: 10000000, type: 'vip'},
-            {id: 'vip_6h', name: '🛡️ 6 Hours VIP', price: 30000000, type: 'vip'},
-            {id: 'vip_1d', name: '💎 1 Day VIP', price: 50000000, type: 'vip'},
-            {id: 'vip_3d', name: '🗓️ 3 Days VIP', price: 120000000, type: 'vip'},
-            {id: 'vip_1w', name: '🔥 1 Week VIP', price: 250000000, type: 'vip'},
-            {id: 'vip_life', name: '♾️ Lifetime VIP', price: 700000000000, type: 'vip'},
+                // Roles
+                {id: 'hitman', name: '🗡️ Hitman', price: 50000000, type: 'role'},
+                {id: 'hacker', name: '💻 Hacker', price: 100000000, type: 'role'},
+                {id: 'gambler', name: '🎲 Gambler', price: 200000000, type: 'role'},
+                {id: 'peaky', name: '🚬 Peaky Blinders', price: 300000000, type: 'role'},
+                {id: 'shadow', name: '👻 Shadow', price: 400000000, type: 'role'},
+                {id: 'yakuza', name: '👺 Yakuza', price: 500000000, type: 'role'},
+                {id: 'mafia', name: '🕶️ Mafia Boss', price: 1000000000, type: 'role'},
+                {id: 'king', name: '👑 Kingpin', price: 5000000000, type: 'role'},
+                {id: 'oil', name: '🛢️ Oil Prince', price: 100000000000, type: 'role'},
+                {id: 'god', name: '🛐 Server God', price: 10000000000000, type: 'role'},
+                {id: 'immortal', name: '🧟 Immortal', price: 5000000000000, type: 'role'},
 
-            // Roles
-            {id: 'hitman', name: '🗡️ Hitman', price: 50000000, type: 'role'},
-            {id: 'hacker', name: '💻 Hacker', price: 100000000, type: 'role'},
-            {id: 'gambler', name: '🎲 Gambler', price: 200000000, type: 'role'},
-            {id: 'peaky', name: '🚬 Peaky Blinders', price: 300000000, type: 'role'},
-            {id: 'shadow', name: '👻 Shadow', price: 400000000, type: 'role'},
-            {id: 'yakuza', name: '👺 Yakuza', price: 500000000, type: 'role'},
-            {id: 'mafia', name: '🕶️ Mafia Boss', price: 1000000000, type: 'role'},
-            {id: 'king', name: '👑 Kingpin', price: 5000000000, type: 'role'},
-            {id: 'oil', name: '🛢️ Oil Prince', price: 100000000000, type: 'role'},
-            {id: 'god', name: '🛐 Server God', price: 10000000000000, type: 'role'},
-            {id: 'immortal', name: '🧟 Immortal', price: 5000000000000, type: 'role'},
+                // Lotto
+                {id: 'lotto_10k', name: '🎟️ 20k Ticket', price: 20000, type: 'lotto'},
+                {id: 'lotto_50k', name: '🎟️ 100k Ticket', price: 100000, type: 'lotto'},
+                {id: 'lotto_100k', name: '🎟️ 150k Ticket', price: 150000, type: 'lotto'},
+                {id: 'lotto_mega', name: '🎫 MEGA JACKPOT', price: 5000000, type: 'lotto'},
+                {id: 'lotto_god', name: '🎰 GOD TICKET', price: 100000000, type: 'lotto'}
+            ];
 
-            // Lotto
-            {id: 'lotto_10k', name: '🎟️ 20k Ticket', price: 20000, type: 'lotto'},
-            {id: 'lotto_50k', name: '🎟️ 100k Ticket', price: 100000, type: 'lotto'},
-            {id: 'lotto_100k', name: '🎟️ 150k Ticket', price: 150000, type: 'lotto'},
-            {id: 'lotto_mega', name: '🎫 MEGA JACKPOT', price: 5000000, type: 'lotto'},
-            {id: 'lotto_god', name: '🎰 GOD TICKET', price: 100000000, type: 'lotto'}
-        ];
+            const container = document.getElementById('container');
 
-        const container = document.getElementById('container');
-
-        // 4. Render Function
-        function renderItems(filter = 'all') {
-            container.innerHTML = '';
-            items.forEach(item => {
-                if (filter === 'all' || item.type === filter) {
-                    const card = document.createElement('div');
-                    card.className = `card ${item.type}`;
-                    card.innerHTML = `
-                        <div class="card-type">${item.type.toUpperCase()}</div>
-                        <div class="card-name">${item.name}</div>
-                        <div class="card-price">$${item.price.toLocaleString()}</div>
-                        <button class="buy-btn" onclick="buy('${item.id}', this)">PURCHASE</button>
-                    `;
-                    container.appendChild(card);
-                }
-            });
-        }
-
-        // 5. Filter Logic
-        function filterItems(category) {
-            // Update buttons visual
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            renderItems(category);
-        }
-
-        // 6. Buy Logic
-        async function buy(itemId, btn) {
-            if (!uid) {
-                alert("❌ ERROR: Please open this link from Discord using /shop command.");
-                return;
-            }
-
-            const originalText = btn.innerText;
-            btn.innerText = "PROCESSING...";
-            btn.disabled = true;
-            btn.style.background = "#333";
-
-            try {
-                const res = await fetch('/buy', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ uid: uid, cid: cid, item_id: itemId })
+            // 4. Render Function
+            function renderItems(filter = 'all') {
+                container.innerHTML = '';
+                items.forEach(item => {
+                    if (filter === 'all' || item.type === filter) {
+                        const card = document.createElement('div');
+                        card.className = `card ${item.type}`;
+                        card.innerHTML = `
+                            <div class="card-type">${item.type.toUpperCase()}</div>
+                            <div class="card-name">${item.name}</div>
+                            <div class="card-price">$${item.price.toLocaleString()}</div>
+                            <button class="buy-btn" onclick="buy('${item.id}', this)">PURCHASE</button>
+                        `;
+                        container.appendChild(card);
+                    }
                 });
-                const data = await res.json();
-
-                if (data.status === 'success') {
-                    // Success Animation/Feedback
-                    btn.innerText = "SUCCESS";
-                    btn.style.background = "var(--neon-green)";
-                    alert(`✅ ${data.msg}\n💰 New Balance: $${data.bal.toLocaleString()}`);
-                } else {
-                    // Error Feedback
-                    btn.innerText = "FAILED";
-                    btn.style.background = "var(--neon-red)";
-                    alert(`❌ ERROR: ${data.msg}`);
-                }
-            } catch (err) {
-                alert("⚠️ Server Error: Please try again later.");
             }
 
-            // Reset Button after 2 seconds
-            setTimeout(() => {
-                btn.disabled = false;
-                btn.innerText = originalText;
-                btn.style.background = ""; // Reset to CSS default
-            }, 2000);
-        }
+            // 5. Filter Logic
+            function filterItems(category) {
+                // Update buttons visual
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+                renderItems(category);
+            }
 
-        // Initial Render
-        renderItems();
+            // 6. Buy Logic (Connected to Python /buy route)
+            async function buy(itemId, btn) {
+                if (!uid) {
+                    alert("❌ ERROR: Login required.");
+                    return;
+                }
 
-    </script>
+                const originalText = btn.innerText;
+                btn.innerText = "PROCESSING...";
+                btn.disabled = true;
+                btn.style.background = "#333";
+
+                try {
+                    const res = await fetch('/buy', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        // Sending Secure ID from Session (injected variable)
+                        body: JSON.stringify({ uid: uid, cid: cid, item_id: itemId })
+                    });
+                    const data = await res.json();
+
+                    if (data.status === 'success') {
+                        // Success Animation/Feedback
+                        btn.innerText = "SUCCESS";
+                        btn.style.background = "var(--neon-green)";
+                        alert(`✅ ${data.msg}\n💰 New Balance: $${data.bal.toLocaleString()}`);
+                    } else {
+                        // Error Feedback
+                        btn.innerText = "FAILED";
+                        btn.style.background = "var(--neon-red)";
+                        alert(`❌ ERROR: ${data.msg}`);
+                    }
+                } catch (err) {
+                    alert("⚠️ Server Error: Please try again later.");
+                }
+
+                // Reset Button after 2 seconds
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                    btn.style.background = ""; // Reset to CSS default
+                }, 2000);
+            }
+
+            // Initial Render
+            renderItems();
+        </script>
+
+    {% else %}
+        <div class="login-container">
+            <h1 style="color:red; font-size: 3rem;">🔒 ACCESS DENIED</h1>
+            <p style="color:#aaa; font-size:1.2rem;">This shop is restricted to authorized personnel.</p>
+            <br>
+            <a href="{{ login_url }}" class="login-btn">
+                🔑 Login with Discord
+            </a>
+        </div>
+    {% endif %}
+
 </body>
 </html>
