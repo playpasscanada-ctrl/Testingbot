@@ -56,8 +56,8 @@ if 'users' not in globals():
 SHOP_ITEMS = {
     # Special Items
     "izzat":      {"name": "🧼 Izzat Wapasi", "price": 150000, "type": "special"},
-    "landmine":   {"name": "💣 Landmine", "price": 50000, "type": "item"},
-    "life":       {"name": "💖 Extra Life", "price": 75000, "type": "item"},
+    "landmine":   {"name": "💣 Landmine", "price": 500000, "type": "item"},
+    "life":       {"name": "💖 Extra Life", "price": 750000, "type": "item"},
     "cctv":       {"name": "📹 CCTV Camera", "price": 150000, "type": "item"},
 
     # 👇 FIGHT CLUB ITEMS (Inhe list me add karo) 👇
