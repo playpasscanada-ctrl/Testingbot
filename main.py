@@ -15710,29 +15710,49 @@ async def handle_purchase_effects(uid, cid, item_name, price, result_text):
 
 # ================== 🎮 DISCORD COMMANDS ==================
 
-@bot.tree.command(name="shop", description="🛒 Open Premium Store")
+@bot.tree.command(name="shop", description="🛒 Open the Underground Black Market")
 @check_seized()
 async def shop_cmd(i: discord.Interaction):
-    # ⚠️ 1. APNI CLIENT ID YAHAN DALO (Developer Portal > General Information > App ID)
+    # 🔗 Configuration (As per your details)
     CLIENT_ID = "1451451135813746700" 
-    
-    # 2. Apki Render Website ka Callback URL
     REDIRECT_URI = "https://testingbot-q1jb.onrender.com/callback"
     
-    # 3. URL ko safe format me convert karna (Encoding)
+    # URL Encoding
     encoded_redirect = urllib.parse.quote(REDIRECT_URI)
-    
-    # 4. Final Secure Login Link
     secure_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
     
-    embed = discord.Embed(title="⚜️ GLOBAL BLACK MARKET", description="Underground store access granted.\n**Secure Login Required.**", color=C_GOLD)
+    # 🎨 Detailed Premium Embed
+    embed = discord.Embed(
+        title="🕵️ GLOBAL BLACK MARKET ACCESS",
+        description=(
+            "Welcome to the high-security underground vault. "
+            "Our market is now **OAuth2 Protected** for your account's safety.\n\n"
+            "**━━━━━━━━━━━━━━━━━━━━━━━━━━**"
+        ),
+        color=0xFFD700 # Gold Color
+    )
+
+    # Adding Details to make it look bigger/better
+    embed.add_field(name="📦 Available Categories", value="• Special Items\n• VIP Access\n• Verification Badges\n• Custom Roles\n• Mega Lottery", inline=True)
+    embed.add_field(name="🛡️ Security Level", value="**Level 4 Encrypted**\nAnonymous Trading\nInstant Delivery", inline=True)
+    
+    embed.add_field(name="⚠️ How to enter?", value="Click the button below and authorize your account to view your balance and start trading.", inline=False)
+    
+    embed.set_footer(text="Verified Underground Merchant • 2026", icon_url=i.user.display_avatar.url)
+    embed.set_thumbnail(url="https://i.imgur.com/vHpxG5M.png") # Aap koi bhi dark/shop icon link daal sakte ho
+    
+    # UI Button
     view = discord.ui.View()
+    view.add_item(discord.ui.Button(
+        label="ENTER THE MARKET", 
+        url=secure_url, 
+        style=discord.ButtonStyle.link, 
+        emoji="💳"
+    ))
     
-    # Button ab seedha website nahi, pehle Discord Login kholega
-    view.add_item(discord.ui.Button(label="🌐 LOGIN & OPEN STORE", url=secure_url, style=discord.ButtonStyle.link, emoji="🛒"))
-    
-    # Ephemeral True rakha hai taaki link private rahe
-    await i.response.send_message(embed=embed, view=view, ephemeral=True)
+    # ✅ ephemeral=False (Ab sabko dikhega)
+    await i.response.send_message(embed=embed, view=view, ephemeral=False)
+
 
 @bot.tree.command(name="balance", description="💰 View Wallet, Bank & Inventory")
 @check_seized()
