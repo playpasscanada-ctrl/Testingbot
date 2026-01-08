@@ -15390,6 +15390,103 @@ async def roblox_info(uid):
 
 # 💰 PURE ECONOMY & WEB SHOP SYSTEM (NO EXTRA GAMES)
 
+# ==========================================
+# 🌐 FLASK ROUTES (Isse purane code se replace karein)
+# ==========================================
+
+# Zaroori Imports (Agar upar nahi hain to yahan rehne do)
+from flask import render_template, session, redirect, request
+import urllib.parse
+import requests
+import os
+
+@app.route('/')
+def home():
+    # 1. RENDER_URL Environment Variable se uthao
+    # (Render settings me jo URL hai wo lega automatically)
+    base_url = os.getenv("RENDER_URL", "https://testingbot-q1jb.onrender.com").rstrip("/")
+    redirect_uri = f"{base_url}/callback"
+    
+    # 2. Login URL Create Karo
+    encoded_redirect = urllib.parse.quote(redirect_uri)
+    
+    # Render se IDs uthao
+    c_id = os.getenv("DISCORD_CLIENT_ID")
+    
+    login_url = f"https://discord.com/api/oauth2/authorize?client_id={c_id}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
+
+    # 3. Check karo User Login hai ya nahi
+    if 'user_info' in session:
+        # Login hai -> Shop dikhao
+        return render_template('index.html', user=session['user_info'], cid=request.args.get('cid'))
+    
+    # 4. Login nahi hai -> Login Button wali screen dikhao
+    return render_template('index.html', user=None, login_url=login_url)
+
+@app.route('/callback')
+def callback():
+    code = request.args.get('code')
+    if not code: return "Error: No code provided."
+
+    # Dynamic Redirect URI (Same as home)
+    base_url = os.getenv("RENDER_URL", "https://testingbot-q1jb.onrender.com").rstrip("/")
+    redirect_uri = f"{base_url}/callback"
+
+    # Secrets Render se lo
+    c_id = os.getenv("DISCORD_CLIENT_ID")
+    c_secret = os.getenv("DISCORD_CLIENT_SECRET")
+
+    data = {
+        'client_id': c_id,
+        'client_secret': c_secret,
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': redirect_uri,
+        'scope': 'identify'
+    }
+    
+    try:
+        # Step A: Token Lo
+        r = requests.post('https://discord.com/api/oauth2/token', data=data)
+        r.raise_for_status()
+        token = r.json().get('access_token')
+
+        # Step B: User Info Lo
+        user_req = requests.get('https://discord.com/api/users/@me', headers={'Authorization': f'Bearer {token}'})
+        user_data = user_req.json()
+        user_id = str(user_data['id'])
+
+        # Step C: Supabase se Balance Check Karo (Asli Money)
+        user_balance = 0 
+        try:
+            # Ye wahi logic hai jo aapke bot me hai
+            res = supabase.table("economy").select("balance").eq("user_id", user_id).execute()
+            if res.data:
+                user_balance = res.data[0]['balance']
+            else:
+                # Agar user database me nahi hai, to account bana do
+                supabase.table("economy").insert({"user_id": user_id, "balance": 0, "bank": 0}).execute()
+        except Exception as db_err:
+            print(f"Database Error: {db_err}")
+
+        # Step D: Session Save (Website ko yaad rahega)
+        session['user_info'] = {
+            'id': user_id,
+            'username': user_data['username'],
+            'avatar': user_data['avatar'],
+            'balance': user_balance
+        }
+        
+        return redirect('/') 
+        
+    except Exception as e:
+        return f"<h3>Login Error</h3><p>{e}</p><br>Check: DISCORD_CLIENT_SECRET in Render & Redirect URI in Developer Portal."
+
+@app.route('/logout')
+def logout():
+    session.pop('user_info', None)
+    return redirect('/')
+
 # ================== ⚙️ CONFIGURATION ==================
 LOG_CHANNEL_ID = 1451973589342621791  
 
@@ -15862,89 +15959,6 @@ async def check_lottery(i: discord.Interaction):
     if i.user.id != OWNER_ID: return await i.response.send_message("❌ Admin Only", ephemeral=True)
     await i.response.send_message("ℹ️ Website Lottery is Instant. No pending tickets.", ephemeral=True)
 
-# ==========================================
-# 🌐 FLASK LOGIN ROUTES (Paste above self_ping)
-# ==========================================
-
-# --- IMPORTS CHECK KARO ---
-from flask import render_template # ✅ Ye zaroor hona chahiye
-
-@app.route('/')
-def home():
-    # 1. Login Link Banao (Taaki button kaam kare)
-    import urllib.parse
-    # RENDER_URL aur /callback ko jod kar redirect uri banao
-    base_url = os.getenv("RENDER_URL", "http://127.0.0.1:10000").rstrip("/")
-    redirect_uri = f"{base_url}/callback"
-    
-    encoded_redirect = urllib.parse.quote(redirect_uri)
-    
-    # Ye wo link hai jo button par lagegi
-    login_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
-
-    # 2. Check karo user login hai ya nahi
-    if 'user_info' in session:
-        # User ka data HTML ko bhejo (Login Ho Gaya)
-        return render_template('index.html', user=session['user_info'])
-    
-    # 3. Login Nahi hai -> HTML ko Login Link bhejo
-    return render_template('index.html', user=None, login_url=login_url)
-
-@app.route('/callback')
-def callback():
-    code = request.args.get('code')
-    if not code: return "Error: No code provided."
-
-    # Dynamic Redirect URI (Error se bachne ke liye)
-    base_url = os.getenv("RENDER_URL", "http://127.0.0.1:10000").rstrip("/")
-    redirect_uri = f"{base_url}/callback"
-
-    data = {
-        'client_id': CLIENT_ID,
-        'client_secret': CLIENT_SECRET,
-        'grant_type': 'authorization_code',
-        'code': code,
-        'redirect_uri': redirect_uri,
-        'scope': 'identify'
-    }
-    
-    try:
-        # Token Lo
-        r = requests.post('https://discord.com/api/oauth2/token', data=data)
-        r.raise_for_status()
-        token = r.json().get('access_token')
-
-        # User Info Lo
-        user_req = requests.get('https://discord.com/api/users/@me', headers={'Authorization': f'Bearer {token}'})
-        user_data = user_req.json()
-
-        # --- DATABASE BALANCE CHECK (Supabase) ---
-        user_balance = 0
-        try:
-            # Yahan hum aapka Supabase logic use kar rahe hain
-            res = supabase.table("economy").select("balance").eq("user_id", str(user_data['id'])).execute()
-            if res.data:
-                user_balance = res.data[0]['balance']
-        except:
-            print("Database Error: Balance fetch nahi hua")
-
-        # Session me poora data save karo
-        session['user_info'] = {
-            'id': user_data['id'],
-            'username': user_data['username'],
-            'avatar': user_data['avatar'],
-            'balance': user_balance
-        }
-        
-        return redirect('/') 
-        
-    except Exception as e:
-        return f"Login Error: {e} <br> Check Client Secret or Redirect URI."
-
-@app.route('/logout')
-def logout():
-    session.pop('user_info', None)
-    return redirect('/')
 
 # ==========================================
 # 🚀 FINAL STARTUP (File ka bilkul aakhri hissa)
