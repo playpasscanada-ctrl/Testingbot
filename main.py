@@ -4,7 +4,7 @@ import aiohttp
 from discord.ext import commands, tasks
 from gtts import gTTS
 import edge_tts
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, session
 from typing import Literal
 
 import discord
@@ -14,6 +14,17 @@ from discord.ext import commands, tasks
 
 from deep_translator import GoogleTranslator
 from concurrent.futures import ThreadPoolExecutor
+import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
+
+
+# --- 🌐 WEBSITE CONFIGURATION ---
+app = Flask(__name__)
+
+# Secrets ab Environment Variable se aayenge
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "fallback_secret_key_here")
+CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
+CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
+REDIRECT_URI = os.getenv("REDIRECT_URI")
 
 # --- LOAN SYSTEM SETTINGS ---
 MAX_LOAN = 10000000      # 10 Million Limit
@@ -15611,14 +15622,26 @@ async def handle_purchase_effects(uid, cid, item_name, price, result_text):
 @bot.tree.command(name="shop", description="🛒 Open Premium Store")
 @check_seized()
 async def shop_cmd(i: discord.Interaction):
-    base_url = os.getenv("RENDER_URL", "https://tingbot-q1jb.onrender.com")
-    # Passing Channel ID (cid) is IMPORTANT
-    url = f"{base_url}/?uid={i.user.id}&cid={i.channel_id}"
+    # ⚠️ 1. APNI CLIENT ID YAHAN DALO (Developer Portal > General Information > App ID)
+    CLIENT_ID = "1451451135813746700" 
     
-    embed = discord.Embed(title="⚜️ GLOBAL BLACK MARKET", description="Underground store access granted.\nClick button to buy illegal items & roles.", color=C_GOLD)
+    # 2. Apki Render Website ka Callback URL
+    REDIRECT_URI = "https://tingbot-q1jb.onrender.com/callback"
+    
+    # 3. URL ko safe format me convert karna (Encoding)
+    encoded_redirect = urllib.parse.quote(REDIRECT_URI)
+    
+    # 4. Final Secure Login Link
+    secure_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
+    
+    embed = discord.Embed(title="⚜️ GLOBAL BLACK MARKET", description="Underground store access granted.\n**Secure Login Required.**", color=C_GOLD)
     view = discord.ui.View()
-    view.add_item(discord.ui.Button(label="🌐 OPEN STORE", url=url, style=discord.ButtonStyle.link, emoji="🛒"))
-    await i.response.send_message(embed=embed, view=view)
+    
+    # Button ab seedha website nahi, pehle Discord Login kholega
+    view.add_item(discord.ui.Button(label="🌐 LOGIN & OPEN STORE", url=secure_url, style=discord.ButtonStyle.link, emoji="🛒"))
+    
+    # Ephemeral True rakha hai taaki link private rahe
+    await i.response.send_message(embed=embed, view=view, ephemeral=True)
 
 @bot.tree.command(name="balance", description="💰 View Wallet, Bank & Inventory")
 @check_seized()
@@ -15839,24 +15862,94 @@ async def check_lottery(i: discord.Interaction):
     if i.user.id != OWNER_ID: return await i.response.send_message("❌ Admin Only", ephemeral=True)
     await i.response.send_message("ℹ️ Website Lottery is Instant. No pending tickets.", ephemeral=True)
 
+# ==========================================
+# 🌐 FLASK LOGIN ROUTES (Paste above self_ping)
+# ==========================================
 
-# ================== 🚀 FINAL STARTUP ==================
+@app.route('/')
+def home():
+    if 'user_id' in session:
+        return f"""
+        <div style="background:#111; color:white; padding:50px; text-align:center; font-family:sans-serif;">
+            <h1>✅ VERIFIED USER</h1>
+            <p>ID: {session['user_id']}</p>
+            <h2 style="color:gold;">🛍️ Welcome to Black Market Shop</h2>
+        </div>
+        """
+    return f"""
+    <div style="background:#111; color:white; padding:50px; text-align:center; font-family:sans-serif;">
+        <h1>🔒 ACCESS DENIED</h1>
+        <p>Please use <b>/shop</b> command in Discord.</p>
+    </div>
+    """
+
+@app.route('/callback')
+def callback():
+    code = request.args.get('code')
+    if not code: return "Error: No code provided."
+
+    # Token Exchange Data
+    data = {
+        'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET,
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': REDIRECT_URI,
+        'scope': 'identify'
+    }
+    
+    try:
+        # 1. Get Token
+        r = requests.post('https://discord.com/api/oauth2/token', data=data)
+        r.raise_for_status()
+        token = r.json().get('access_token')
+
+        # 2. Get User Info
+        user_req = requests.get('https://discord.com/api/users/@me', headers={'Authorization': f'Bearer {token}'})
+        user_data = user_req.json()
+        
+        # 3. Save to Session
+        session['user_id'] = user_data['id']
+        
+        # 4. Redirect Home
+        return redirect('/') 
+        
+    except Exception as e:
+        return f"<h1>Login Failed</h1><p>Error: {e}</p><p>Check Client Secret in Render Variables.</p>"
+
+# ==========================================
+# 🚀 FINAL STARTUP (File ka bilkul aakhri hissa)
+# ==========================================
 
 # 1. Pinger (Bot ko sone nahi dega)
 def self_ping():
     while True:
-        time.sleep(45)
-        try: requests.get(f"{os.getenv('RENDER_URL')}/ping")
-        except: pass
+        try:
+            # Apni khud ki site ko ping karega
+            requests.get(f"{os.getenv('RENDER_URL', 'http://127.0.0.1:5000')}/")
+        except:
+            pass
+        # 10 minute me ek baar ping (Render ke liye kaafi hai)
+        asyncio.sleep(600) 
 
-# 2. Server Start (Website + Shop)
+# 2. Server Start (Port Fix ke saath)
 def run_server():
-    # Render Port 10000 use karta hai
-    app.run(host='0.0.0.0', port=10000)
+    # Render se PORT lo, nahi to 10000 use karo
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
 
-# ✅ THREADS KO SABSE LAST ME START KARO
-threading.Thread(target=run_server, daemon=True).start()
-threading.Thread(target=self_ping, daemon=True).start()
+if __name__ == "__main__":
+    # A. Website Start (Background Thread)
+    t1 = threading.Thread(target=run_server, daemon=True)
+    t1.start()
+    
+    # B. Pinger Start (Background Thread)
+    t2 = threading.Thread(target=self_ping, daemon=True)
+    t2.start()
 
-# ✅ BOT START (Ye file ki bilkul aakhiri line honi chahiye)
-bot.run(os.getenv("DISCORD_TOKEN"))
+    # C. Bot Start (Main Process)
+    TOKEN = os.getenv("DISCORD_TOKEN")
+    if not TOKEN:
+        print("❌ Error: DISCORD_TOKEN nahi mila environment me!")
+    else:
+        bot.run(TOKEN)
