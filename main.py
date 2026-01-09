@@ -16119,10 +16119,10 @@ class DalgonaRequestView(discord.ui.View):
 
 
 # --- 4. MAIN COMMAND ---
-@bot.tree.command(name="dalgona", description="🍪 Squid Game: Cut the cookie or die!")
+@bot.tree.command(name="dalgona_duel", description="🍪 Squid Game: Cut the cookie or die!")
 @app_commands.describe(opponent="Opponent", amount="Bet Amount")
 @check_seized()
-async def dalgona(interaction: discord.Interaction, opponent: discord.Member, amount: int):
+async def dalgona_duel(interaction: discord.Interaction, opponent: discord.Member, amount: int):
     
     if opponent.bot or opponent.id == interaction.user.id:
         return await interaction.response.send_message("❌ Invalid Opponent.", ephemeral=True)
