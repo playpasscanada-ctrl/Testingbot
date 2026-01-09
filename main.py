@@ -15597,42 +15597,44 @@ async def staff_stats(i: discord.Interaction):
         print(f"Error in stats: {e}")
         await i.followup.send("⚠️ System busy, please try again later.")
 
-# --- 🔧 MANUAL STAFF NAME FIX ---
-@bot.tree.command(name="fix_name", description="🔧 Force update name for Staff members only")
+## --- 🔧 MANUAL STAFF NAME FIX (Display Name Version) ---
+@bot.tree.command(name="fix_name", description="🔧 Force update name for Staff (Uses Display Name)")
 async def fix_name(i: discord.Interaction, member: discord.Member):
-    # 1. Staff Check (Sabse Zaroori)
+    # 1. Staff Check
     if not is_user_staff(member.id):
         return await i.response.send_message(
-            f"❌ **Reject:** {member.mention} abhi **Top 3 Staff List** mein nahi hai.\n"
-            "Main sirf asli Staff members ka naam change kar sakta hoon.", 
+            f"❌ **Reject:** {member.mention} Top 3 Staff List mein nahi hai.", 
             ephemeral=True
         )
 
-    # 2. Safety Check (Server Owner ka naam bot change nahi kar sakta)
+    # 2. Safety Checks
     if member.id == i.guild.owner_id:
-        return await i.response.send_message("❌ Main Server Owner ka naam change nahi kar sakta (Discord Rules).", ephemeral=True)
-
-    # 3. Hierarchy Check (Bot ka role uper hona chahiye)
+        return await i.response.send_message("❌ Owner ka naam main change nahi kar sakta.", ephemeral=True)
+    
     if i.guild.me.top_role <= member.top_role:
-        return await i.response.send_message("❌ Mera Role is user se neeche hai, main naam nahi badal sakta.", ephemeral=True)
+        return await i.response.send_message("❌ Mera Role is user se neeche hai.", ephemeral=True)
 
-    # 4. Action: Change Name
+    # 3. Action: Change Name (Display Name Logic)
     try:
-        # Original naam lo aur Staff tag lagao
-        # Hum user.name lete hain taaki agar purana tag ho to hat jaye
-        clean_name = member.name[:20] 
-        new_nick = f"[BOT STAFF] {clean_name}"
+        # 👇 YAHAN CHANGE KIYA HAI 👇
+        # Pehle check karega 'Global Display Name' (Jo profile pe hota hai)
+        # Agar wo nahi hai, tab 'Username' lega.
+        real_name = member.global_name if member.global_name else member.name
+        
+        # Naam lamba ho to cut karke 20 words ka rakhega
+        clean_name = real_name[:20]
+        new_nick = f"[STAFF] {clean_name}"
         
         await member.edit(nick=new_nick)
         
         embed = discord.Embed(title="✅ STAFF NAME FIXED", color=0x00FF00)
-        embed.description = f"**User:** {member.mention}\n**New Name:** `{new_nick}`\n**Status:** Verified Staff Member 🛡️"
+        embed.description = f"**User:** {member.mention}\n**New Name:** `{new_nick}`\n**Source:** Display Name ✨"
         
         await i.response.send_message(embed=embed)
         
     except Exception as e:
-        await i.response.send_message(f"⚠️ Error: Main naam change nahi kar pa raha. (Check Permissions)\nError: {e}", ephemeral=True)
-   
+        await i.response.send_message(f"⚠️ Error: Permissions check karein.\nLog: {e}", ephemeral=True)
+
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
 import time
