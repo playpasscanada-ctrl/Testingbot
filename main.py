@@ -273,9 +273,6 @@ async def pay_staff_salary():
 async def before_salary():
     await bot.wait_until_ready()
 
-pay_staff_salary.start()
-
-
 # 🛡️ SYSTEM SAVER: Sirf 2 translation threads allow honge (Crash Fix)
 roast_executor = ThreadPoolExecutor(max_workers=2)
 
@@ -1168,6 +1165,10 @@ async def on_ready():
     if not check_loans.is_running():
         check_loans.start()
         print("✅ Loan System Started")
+
+    if not pay_staff_salary.is_running():
+        pay_staff_salary.start()
+        print("✅ Staff Salary System Started")
     
     await load_banned_words()        
     await load_bypass_users()
