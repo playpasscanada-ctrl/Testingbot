@@ -143,15 +143,32 @@ GUILD_ID = 1257403231127076915       # Server ID
 SALARY_LOG_CHANNEL_ID = 1457066104819028089 # 👈 Yahan Channel ID dalein jahan message aayega
 STAFF_SALARY = 50000000          # $50 Million
 
-# --- 🔄 1. COMMAND TRACKER (Har command pe chalega) ---
+# --- 🧠 SMART STAFF SYSTEM MEMORY ---
+xp_cooldowns = {} # User ID : Last Point Time
+
+# Is function ko replace karein (Purana wala hata dein)
 async def track_command_usage(user_id):
     if user_id == OWNER_ID: return 
     
-    # Simple Increment Logic
+    current_time = datetime.now()
+    
+    # 🚫 ANTI-SPAM CHECK (Smart Filter)
+    if user_id in xp_cooldowns:
+        last_time = xp_cooldowns[user_id]
+        # Agar 30 Second se pehle dobara command use kiya, to POINT MAT DO
+        time_diff = (current_time - last_time).total_seconds()
+        if time_diff < 30: 
+            return # Spammer detected, ignore karo!
+            
+    # ✅ Agar banda aaram se khel raha hai, tabhi point do
+    xp_cooldowns[user_id] = current_time # Time note kar lo
+    
+    # Database Update (+1 Score)
     res = supabase.table("economy").select("command_count").eq("user_id", str(user_id)).execute()
     
     if res.data:
         current = res.data[0].get('command_count', 0) or 0
+        # Point Badhao
         supabase.table("economy").update({"command_count": current + 1}).eq("user_id", str(user_id)).execute()
     else:
         supabase.table("economy").insert({"user_id": str(user_id), "balance": 0, "command_count": 1}).execute()
@@ -15508,54 +15525,78 @@ async def wipeout(i: discord.Interaction, victim: discord.Member):
         embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/9290/9290469.png")
         return await i.response.send_message(embed=embed)
 
-@bot.tree.command(name="staff_stats", description="👑 Check Top 3 Candidates for Staff Role")
+# --- 📊 COMMAND: STAFF LEADERBOARD (Premium & Fix) ---
+@bot.tree.command(name="staff_stats", description="👑 Check True Active Staff (Anti-Spam Enabled)")
 async def staff_stats(i: discord.Interaction):
-    # Live update (Roles check kar lo pehle)
-    guild = i.guild
-    await update_staff_roles(guild)
+    # 1. ⏳ DEFER (Ye "Loading..." dikhayega taaki timeout error na aaye)
+    await i.response.defer()
     
-    # Data Fetch
-    data = supabase.table("economy").select("*").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(10).execute().data
-    
-    if not data:
-        return await i.response.send_message("❌ Abhi kisi ne command use nahi kiya.", ephemeral=True)
-
-    embed = discord.Embed(title="👑 STAFF RECRUITMENT LEADERBOARD", color=0xFFD700)
-    embed.description = (
-        f"**Daily Salary:** $50,000,000 💸\n"
-        f"**Requirement:** Be in Top 3 Active Players\n"
-        f"**Benefit:** Auto 'Staff' Role + Protection\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━"
-    )
-
-    rank_text = ""
-    for idx, user in enumerate(data):
-        uid = user['user_id']
-        cmds = user.get('command_count', 0)
+    try:
+        # 2. 🔄 Live Update (Roles check karein)
+        # Note: Agar ye function slow hai, toh isse hata sakte hain, par accuracy ke liye rehne do
+        await update_staff_roles(i.guild)
         
-        # Rank Icons
-        if idx == 0: icon = "🥇 **GOD**"
-        elif idx == 1: icon = "🥈 **ELITE**"
-        elif idx == 2: icon = "🥉 **PRO**"
-        else: icon = f"#{idx+1}"
+        # 3. 📥 Data Fetch (Top 10 Active Users)
+        data = supabase.table("economy").select("*").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(10).execute().data
         
-        # Staff Indicator
-        is_staff = "✅ [STAFF]" if idx < 3 else ""
-        
-        rank_text += f"{icon} <@{uid}> — **{cmds} Cmds** {is_staff}\n"
+        if not data:
+            return await i.followup.send("❌ **Database Empty:** Abhi kisi ne game start nahi kiya.")
 
-    embed.add_field(name="🏆 ACTIVE AGENTS", value=rank_text, inline=False)
-    
-    # Current User Rank Logic
-    my_cmds = 0
-    for u in data:
-        if u['user_id'] == str(i.user.id):
-            my_cmds = u.get('command_count', 0)
-            break
+        # --- 🎨 PREMIUM EMBED DESIGN ---
+        embed = discord.Embed(
+            title="👑 ELITE STAFF RECRUITMENT", 
+            color=0x2b2d31 # Dark Premium Grey
+        )
+        
+        # Description with System Info
+        embed.description = (
+            f"⚡ **SYSTEM STATUS: ONLINE**\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🛡️ **Anti-Spam Active:** You earn **1 Point** every 30s.\n"
+            f"💰 **Daily Salary:** `$50,000,000` (Top 3 Users)\n"
+            f"👮 **Privilege:** Auto-Staff Role + Protection.\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━"
+        )
+        
+        # 4. 🏆 Rank List Build
+        rank_text = ""
+        user_rank_info = "You are not in Top 10." # Default Footer Text
+        
+        for idx, user in enumerate(data):
+            uid = user['user_id']
+            score = user.get('command_count', 0)
             
-    embed.set_footer(text=f"Your Commands: {my_cmds} | Grind to reach Top 3!")
-    await i.response.send_message(embed=embed)
-     
+            # Icons Setup
+            if idx == 0:   icon = "🥇 **GOD**"
+            elif idx == 1: icon = "🥈 **BOSS**"
+            elif idx == 2: icon = "🥉 **PRO**"
+            else:          icon = f"`#{idx+1}`"
+            
+            # Staff Status Check
+            status = "✅ [STAFF]" if idx < 3 else "⏳ [WAITING]"
+            
+            # List Line
+            rank_text += f"{icon} <@{uid}> • **{score} XP** {status}\n"
+            
+            # Check user's own rank for footer
+            if str(uid) == str(i.user.id):
+                user_rank_info = f"Your Rank: #{idx+1} • Score: {score} XP"
+
+        # Add Field (Clean Look)
+        embed.add_field(name="🧬 TOP AGENTS (Real Activity)", value=rank_text if rank_text else "No Data", inline=False)
+        
+        # Footer & Thumbnail
+        embed.set_footer(text=f"{user_rank_info} | Keep Grinding!")
+        if i.guild.icon:
+            embed.set_thumbnail(url=i.guild.icon.url)
+        
+        # 5. 🚀 SEND (Followup use karein kyuki Defer kiya tha)
+        await i.followup.send(embed=embed)
+        
+    except Exception as e:
+        print(f"Error in stats: {e}")
+        await i.followup.send("⚠️ System busy, please try again later.")
+   
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
 import time
