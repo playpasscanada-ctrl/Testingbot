@@ -3,575 +3,607 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>/// UNDERGROUND_ACCESS ///</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <title>⚡ NEXUS MARKETPLACE ⚡</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;800&family=Syncopate:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --neon-green: #0f0;
-            --neon-red: #ff003c;
-            --neon-blue: #00f3ff;
-            --neon-gold: #ffd700;
-            --purple: #bc13fe;
-            --bg-dark: #050505;
-            --glass: rgba(10, 10, 10, 0.8);
-            --border: 1px solid rgba(255, 255, 255, 0.1);
+            --primary: #6366f1;
+            --secondary: #ec4899;
+            --accent: #8b5cf6;
+            --gold: #fbbf24;
+            --dark: #0f172a;
+            --glass: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: none; /* Custom Cursor logic niche hai */ }
+
         body {
-            background-color: var(--bg-dark);
-            color: var(--neon-green);
-            font-family: 'Share Tech Mono', monospace;
+            background: #000;
+            color: white;
+            font-family: 'Outfit', sans-serif;
             overflow-x: hidden;
             min-height: 100vh;
         }
 
-        /* --- BACKGROUND FX --- */
-        #matrix-canvas {
+        /* --- CUSTOM CURSOR --- */
+        #cursor {
+            width: 20px; height: 20px;
+            border: 2px solid white;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transition: transform 0.1s;
+            mix-blend-mode: difference;
+        }
+        #cursor-dot {
+            width: 8px; height: 8px;
+            background: white;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* --- BACKGROUND UNIVERSE --- */
+        #universe {
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            z-index: -2;
-            opacity: 0.15;
-        }
-
-        .scanlines {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
-            background-size: 100% 4px;
-            z-index: 100;
-            pointer-events: none;
-            opacity: 0.6;
-        }
-
-        .vignette {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: radial-gradient(circle, transparent 50%, black 150%);
-            z-index: 99;
-            pointer-events: none;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, #1a1b26 0%, #000 100%);
         }
 
         /* --- LAYOUT --- */
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
-            padding: 20px;
-            position: relative;
-            z-index: 2;
-        }
-
-        /* --- HEADER & HUD --- */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            border-bottom: 2px solid var(--neon-green);
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(10px);
-            margin-bottom: 40px;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
-        }
-
-        h1 {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 2.5rem;
-            text-transform: uppercase;
-            letter-spacing: 4px;
-            color: #fff;
-            text-shadow: 0 0 10px var(--neon-green);
-            position: relative;
-        }
-        
-        h1::before {
-            content: "SECURE CONNECTION ESTABLISHED";
-            position: absolute;
-            top: -15px; left: 0;
-            font-size: 0.7rem;
-            color: var(--neon-green);
-            font-family: 'Share Tech Mono', monospace;
-        }
-
-        .user-hud {
-            text-align: right;
-        }
-        .hud-row {
-            font-size: 1.2rem;
-            margin-bottom: 5px;
-        }
-        .balance-glow {
-            color: var(--neon-gold);
-            font-weight: bold;
-            text-shadow: 0 0 10px var(--neon-gold);
-            font-size: 1.5rem;
-        }
-
-        /* --- FILTERS --- */
-        .cyber-controls {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 50px;
-        }
-
-        .cyber-btn {
-            background: transparent;
-            border: 1px solid var(--neon-green);
-            color: var(--neon-green);
-            padding: 10px 30px;
-            font-family: 'Orbitron', sans-serif;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            position: relative;
-            overflow: hidden;
-            transition: 0.3s;
-            clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
-        }
-
-        .cyber-btn:hover, .cyber-btn.active {
-            background: var(--neon-green);
-            color: #000;
-            box-shadow: 0 0 30px var(--neon-green);
-            transform: scale(1.05);
-        }
-
-        .cyber-btn::before {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%;
-            width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
-            transition: 0.5s;
-        }
-        .cyber-btn:hover::before { left: 100%; }
-
-        /* --- GRID SYSTEM --- */
-        .market-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 30px;
-            padding-bottom: 50px;
-        }
-
-        /* --- HOLOGRAPHIC CARDS --- */
-        .card {
-            background: rgba(10, 15, 10, 0.7);
-            border: 1px solid rgba(0, 255, 0, 0.3);
-            position: relative;
-            padding: 20px;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(5px);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            min-height: 250px;
-            overflow: hidden;
-        }
-
-        /* Corner accents */
-        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 10px; height: 10px; border-top: 2px solid var(--neon-green); border-left: 2px solid var(--neon-green); }
-        .card::after { content: ''; position: absolute; bottom: 0; right: 0; width: 10px; height: 10px; border-bottom: 2px solid var(--neon-green); border-right: 2px solid var(--neon-green); }
-
-        .card:hover {
-            transform: translateY(-10px);
-            border-color: var(--neon-green);
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2), inset 0 0 20px rgba(0, 255, 0, 0.1);
-            background: rgba(0, 30, 0, 0.8);
-        }
-
-        /* Type specific colors */
-        .card.vip { border-color: var(--neon-gold); }
-        .card.vip::before, .card.vip::after { border-color: var(--neon-gold); }
-        .card.vip:hover { box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
-        .card.vip .card-price { color: var(--neon-gold); }
-
-        .card.special { border-color: var(--neon-red); }
-        .card.special::before, .card.special::after { border-color: var(--neon-red); }
-        .card.special:hover { box-shadow: 0 0 20px rgba(255, 0, 60, 0.3); }
-        .card.special .card-price { color: var(--neon-red); }
-
-        .card.role { border-color: var(--neon-blue); }
-        .card.role::before, .card.role::after { border-color: var(--neon-blue); }
-        .card.role .card-price { color: var(--neon-blue); }
-        
-        .card.verification { border-color: #fff; }
-        .card.verification .card-price { color: #fff; }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 15px;
-        }
-
-        .card-type {
-            font-size: 0.7rem;
-            background: rgba(255,255,255,0.1);
-            padding: 2px 8px;
-            border-radius: 2px;
-            letter-spacing: 1px;
-        }
-
-        .card-title {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1.3rem;
-            line-height: 1.2;
-            margin-bottom: 20px;
-            font-weight: 700;
-        }
-
-        .card-price {
-            font-size: 1.6rem;
-            text-align: right;
-            font-weight: bold;
-            margin-bottom: 20px;
-            text-shadow: 0 0 5px currentColor;
-        }
-
-        .purchase-btn {
-            width: 100%;
-            background: transparent;
-            border: 1px solid currentColor;
-            color: currentColor;
-            padding: 12px;
-            font-family: 'Orbitron', sans-serif;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.2s;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            position: relative;
-            z-index: 2;
-        }
-
-        .card.special .purchase-btn { color: var(--neon-red); border-color: var(--neon-red); }
-        .card.vip .purchase-btn { color: var(--neon-gold); border-color: var(--neon-gold); }
-        .card.role .purchase-btn { color: var(--neon-blue); border-color: var(--neon-blue); }
-
-        .purchase-btn:hover {
-            background: currentColor;
-            color: #000 !important;
-            box-shadow: 0 0 15px currentColor;
-        }
-        
-        .purchase-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            filter: grayscale(1);
-        }
-
-        /* --- LOGIN SCREEN --- */
-        .login-wrap {
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
+            padding: 40px 20px;
             position: relative;
             z-index: 10;
         }
 
-        .lock-icon {
-            font-size: 5rem;
-            color: var(--neon-red);
-            margin-bottom: 20px;
-            animation: glitch 1s infinite;
+        /* --- HEADER --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 60px;
+            padding: 20px 40px;
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            animation: slideDown 1s ease forwards;
         }
 
-        .login-btn-main {
-            padding: 20px 60px;
+        .logo {
+            font-family: 'Syncopate', sans-serif;
+            font-size: 2.5rem;
+            background: linear-gradient(to right, #fff, #6366f1, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+            letter-spacing: -2px;
+            position: relative;
+        }
+
+        .user-info {
+            text-align: right;
+        }
+        .balance {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--gold);
+            text-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+        }
+
+        /* --- FILTERS --- */
+        .filter-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 60px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 12px 30px;
+            border-radius: 50px;
+            border: 1px solid var(--border);
+            background: var(--glass);
+            color: #aaa;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(10px);
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: white;
+            color: black;
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(255,255,255,0.3);
+        }
+
+        /* --- GRID SYSTEM --- */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 40px;
+            perspective: 1000px;
+        }
+
+        /* --- 3D CARDS --- */
+        .card {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 24px;
+            padding: 30px;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.1s, box-shadow 0.3s;
+            transform-style: preserve-3d;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 380px;
+        }
+
+        /* Card Sheen Effect */
+        .card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -150%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: skewX(-25deg);
+            transition: 0.5s;
+        }
+        .card:hover::after { left: 150%; transition: 0.7s; }
+
+        .card:hover {
+            border-color: rgba(255,255,255,0.3);
+            transform: translateY(-10px) scale(1.02);
+            z-index: 5;
+        }
+
+        /* Dynamic Glows based on Type */
+        .card.special:hover { box-shadow: 0 0 50px rgba(236, 72, 153, 0.4); border-color: var(--secondary); }
+        .card.vip:hover { box-shadow: 0 0 50px rgba(251, 191, 36, 0.4); border-color: var(--gold); }
+        .card.role:hover { box-shadow: 0 0 50px rgba(99, 102, 241, 0.4); border-color: var(--primary); }
+        .card.verification:hover { box-shadow: 0 0 50px rgba(255, 255, 255, 0.4); border-color: white; }
+        .card.lotto:hover { box-shadow: 0 0 50px rgba(168, 85, 247, 0.4); border-color: var(--lotto); }
+
+        /* Card Content */
+        .card-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            transform: translateZ(30px); /* 3D pop */
+            width: 70px; height: 70px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 15px;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .card.special .card-icon { color: var(--secondary); box-shadow: 0 0 20px rgba(236, 72, 153, 0.2); }
+        .card.vip .card-icon { color: var(--gold); box-shadow: 0 0 20px rgba(251, 191, 36, 0.2); }
+        .card.role .card-icon { color: var(--primary); box-shadow: 0 0 20px rgba(99, 102, 241, 0.2); }
+        .card.lotto .card-icon { color: var(--lotto); box-shadow: 0 0 20px rgba(168, 85, 247, 0.2); }
+
+        .card-title {
             font-size: 1.5rem;
-            background: var(--neon-blue);
-            color: #000;
+            font-weight: 700;
+            margin-bottom: 10px;
+            transform: translateZ(20px);
+            line-height: 1.2;
+        }
+
+        .card-price {
+            font-family: 'Syncopate', sans-serif;
+            font-size: 1.4rem;
+            margin-top: auto;
+            margin-bottom: 20px;
+            font-weight: 700;
+            transform: translateZ(20px);
+            color: rgba(255,255,255,0.9);
+        }
+
+        /* Buy Button */
+        .buy-btn {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
             border: none;
-            font-family: 'Orbitron';
-            font-weight: 900;
+            background: white;
+            color: black;
+            font-weight: 800;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transform: translateZ(40px);
+            transition: 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .buy-btn:hover {
+            transform: translateZ(50px) scale(1.05);
+            box-shadow: 0 0 30px white;
+        }
+
+        /* Type Badges */
+        .badge {
+            position: absolute;
+            top: 20px; right: 20px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transform: translateZ(20px);
+        }
+        .special .badge { background: rgba(236, 72, 153, 0.2); color: var(--secondary); }
+        .vip .badge { background: rgba(251, 191, 36, 0.2); color: var(--gold); }
+        .role .badge { background: rgba(99, 102, 241, 0.2); color: var(--primary); }
+        .verification .badge { background: rgba(255,255,255, 0.2); color: white; }
+        .lotto .badge { background: rgba(168, 85, 247, 0.2); color: var(--lotto); }
+
+        /* --- CLICK PARTICLE ANIMATION --- */
+        .click-particle {
+            position: fixed;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: explode 0.8s ease-out forwards;
+        }
+        @keyframes explode {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        @keyframes slideDown { from { transform: translateY(-100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeInUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* --- LOGIN SCREEN --- */
+        .login-wrapper {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: black;
+            position: relative;
+            z-index: 20;
+        }
+        .login-card {
+            background: rgba(255,255,255,0.05);
+            padding: 60px;
+            border-radius: 30px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            box-shadow: 0 0 100px rgba(99, 102, 241, 0.3);
+        }
+        .login-btn-main {
+            padding: 20px 50px;
+            background: white;
+            color: black;
             text-decoration: none;
-            clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+            font-weight: 900;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            display: inline-block;
+            margin-top: 30px;
             transition: 0.3s;
         }
         .login-btn-main:hover {
+            box-shadow: 0 0 50px white;
             transform: scale(1.1);
-            box-shadow: 0 0 50px var(--neon-blue);
         }
 
-        /* --- ANIMATIONS --- */
-        @keyframes glitch {
-            0% { text-shadow: 2px 2px var(--neon-red), -2px -2px var(--neon-blue); }
-            25% { text-shadow: -2px 2px var(--neon-red), 2px -2px var(--neon-blue); }
-            50% { text-shadow: 2px -2px var(--neon-red), -2px 2px var(--neon-blue); }
-            75% { text-shadow: -2px -2px var(--neon-red), 2px 2px var(--neon-blue); }
-            100% { text-shadow: 2px 2px var(--neon-red), -2px -2px var(--neon-blue); }
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #000; }
-        ::-webkit-scrollbar-thumb { background: var(--neon-green); }
-
-        @media (max-width: 768px) {
-            h1 { font-size: 1.5rem; }
-            .market-grid { grid-template-columns: 1fr; }
-        }
     </style>
 </head>
 <body>
 
-    <canvas id="matrix-canvas"></canvas>
-    <div class="scanlines"></div>
-    <div class="vignette"></div>
+    <div id="cursor"></div>
+    <div id="cursor-dot"></div>
+
+    <canvas id="universe"></canvas>
 
     {% if user %}
-        <div class="container">
-            <header>
-                <div>
-                    <h1>BLACK_MARKET_V2</h1>
-                    <div style="color: #666; font-size: 0.8rem; letter-spacing: 2px;">/// ENCRYPTED SESSION: {{ cid }}</div>
-                </div>
-                <div class="user-hud">
-                    <div class="hud-row">AGENT: <span style="color: #fff">{{ user.username }}</span></div>
-                    <div class="hud-row">FUNDS: <span class="balance-glow">${{ "{:,.0f}".format(user.balance) }}</span></div>
-                </div>
-            </header>
-
-            <div class="cyber-controls">
-                <button class="cyber-btn active" onclick="filterItems('all')">All Data</button>
-                <button class="cyber-btn" onclick="filterItems('special')">Gadgets</button>
-                <button class="cyber-btn" onclick="filterItems('vip')">VIP Pass</button>
-                <button class="cyber-btn" onclick="filterItems('verification')">Verify</button>
-                <button class="cyber-btn" onclick="filterItems('role')">Identity</button>
-                <button class="cyber-btn" onclick="filterItems('lotto')">Jackpot</button>
+    <div class="container">
+        <header>
+            <div>
+                <div class="logo">NEXUS PRIME</div>
+                <div style="opacity: 0.6; font-size: 0.9rem;">CONNECTED: SECURE NODE</div>
             </div>
+            <div class="user-info">
+                <div style="opacity: 0.7; font-size: 0.9rem;">WELCOME, {{ user.username }}</div>
+                <div class="balance">${{ "{:,.0f}".format(user.balance) }}</div>
+            </div>
+        </header>
 
-            <div class="market-grid" id="container">
-                </div>
+        <div class="filter-container">
+            <button class="filter-btn active" onclick="filterItems('all')">ALL ASSETS</button>
+            <button class="filter-btn" onclick="filterItems('special')">GADGETS</button>
+            <button class="filter-btn" onclick="filterItems('vip')">VIP PASSES</button>
+            <button class="filter-btn" onclick="filterItems('role')">IDENTITIES</button>
+            <button class="filter-btn" onclick="filterItems('verification')">VERIFIED</button>
         </div>
 
-        <script>
-            // --- MATRIX EFFECT ---
-            const canvas = document.getElementById('matrix-canvas');
+        <div class="grid" id="grid-container">
+            </div>
+    </div>
+    {% else %}
+    <div class="login-wrapper">
+        <div class="login-card">
+            <h1 style="font-family: 'Syncopate'; margin-bottom: 20px;">ACCESS REQUIRED</h1>
+            <p style="opacity: 0.6;">Connect to the Nexus Network to trade.</p>
+            <a href="{{ login_url }}" class="login-btn-main">ENTER MARKET</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <script>
+        // --- 1. CURSOR LOGIC ---
+        const cursor = document.getElementById('cursor');
+        const cursorDot = document.getElementById('cursor-dot');
+
+        document.addEventListener('mousemove', (e) => {
+            cursorDot.style.left = e.clientX + 'px';
+            cursorDot.style.top = e.clientY + 'px';
+            
+            // Smooth follow
+            cursor.animate({
+                left: e.clientX + 'px',
+                top: e.clientY + 'px'
+            }, { duration: 500, fill: "forwards" });
+        });
+
+        // --- 2. CLICK SPARKLE EFFECT (Pataakha) ---
+        document.addEventListener('click', (e) => {
+            const colors = ['#6366f1', '#ec4899', '#fbbf24', '#ffffff'];
+            
+            for(let i=0; i<12; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('click-particle');
+                document.body.appendChild(particle);
+
+                const size = Math.random() * 8 + 2;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.left = `${e.clientX}px`;
+                particle.style.top = `${e.clientY}px`;
+                
+                // Random explosion direction
+                const destX = (Math.random() - 0.5) * 200;
+                const destY = (Math.random() - 0.5) * 200;
+
+                particle.animate([
+                    { transform: 'translate(0,0) scale(1)', opacity: 1 },
+                    { transform: `translate(${destX}px, ${destY}px) scale(0)`, opacity: 0 }
+                ], {
+                    duration: 800 + Math.random() * 200,
+                    easing: 'cubic-bezier(0, .9, .57, 1)',
+                    fill: 'forwards'
+                });
+
+                setTimeout(() => particle.remove(), 1000);
+            }
+        });
+
+        // --- 3. BACKGROUND UNIVERSE (Moving Stars) ---
+        const canvas = document.getElementById('universe');
+        if(canvas) {
             const ctx = canvas.getContext('2d');
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            const letters = "010101XYZA B C D E F G H I J K L M N O P Q R S T U V W X Y Z";
-            const fontSize = 14;
-            const columns = canvas.width / fontSize;
-            const drops = Array(Math.floor(columns)).fill(1);
 
-            function drawMatrix() {
-                ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = "#0F0";
-                ctx.font = fontSize + "px monospace";
-                for(let i = 0; i < drops.length; i++) {
-                    const text = letters[Math.floor(Math.random() * letters.length)];
-                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-                    if(drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-                    drops[i]++;
-                }
-            }
-            setInterval(drawMatrix, 33);
-            window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+            let stars = [];
+            const numStars = 200;
 
-            // --- MARKET LOGIC ---
-            const urlParams = new URLSearchParams(window.location.search);
-            const cid = "{{ cid }}" || urlParams.get('state') || ""; 
-            const uid = "{{ user.id }}";
-
-            // 📦 FULL INVENTORY (No missing items)
-            const items = [
-                // Special
-                {id: 'izzat', name: '🧼 Izzat Wapasi', price: 150000, type: 'special'},
-                {id: 'landmine', name: '💣 Landmine', price: 50000, type: 'special'},
-                {id: 'life', name: '💖 Extra Life', price: 75000, type: 'special'},
-                {id: 'cctv', name: '📹 CCTV Camera', price: 9000000, type: 'special'},
-                {id: 'knife', name: '🔪 Combat Knife', price: 50000, type: 'special'},
-                {id: 'armor', name: '🛡️ Kevlar Vest', price: 80000, type: 'special'},
-                {id: 'steroids', name: '💉 Steroids', price: 20000, type: 'special'},
-                {id: 'master_key', name: '🗝️ Master Key', price: 5000000, type: 'special'},
-                {id: 'guard_dog', name: '🐕 Guard Dog', price: 10000000, type: 'special'},
-                {id: 'nuclear_bomb', name: '☢️ Nuclear Bomb', price: 50000000, type: 'special'},
-
-                // Verification
-                {id: 'verify_1d', name: '✅ Verify (1 Day)', price: 50000000, type: 'verification'},
-                {id: 'verify_3d', name: '✅ Verify (3 Days)', price: 150000000, type: 'verification'},
-                {id: 'verify_5d', name: '✅ Verify (5 Days)', price: 500000000, type: 'verification'},
-                {id: 'verify_1w', name: '✅ Verify (1 Week)', price: 1000000000, type: 'verification'},
-                {id: 'verify_10d', name: '✅ Verify (10 Days)', price: 1500000000, type: 'verification'},
-                {id: 'verify_15d', name: '✅ Verify (15 Days)', price: 3000000000, type: 'verification'},
-                {id: 'verify_1m', name: '✅ Verify (1 Month)', price: 10000000000000, type: 'verification'},
-                {id: 'verify_perm', name: '♾️ Verify (Lifetime)', price: 100000000000000, type: 'verification'},
-
-                // VIP
-                {id: 'vip_10m', name: '⚡ 10 Mins Escape', price: 200000, type: 'vip'},
-                {id: 'vip_1h', name: '👑 1 Hour VIP', price: 10000000, type: 'vip'},
-                {id: 'vip_6h', name: '🛡️ 6 Hours VIP', price: 30000000, type: 'vip'},
-                {id: 'vip_1d', name: '💎 1 Day VIP', price: 50000000, type: 'vip'},
-                {id: 'vip_3d', name: '🗓️ 3 Days VIP', price: 120000000, type: 'vip'},
-                {id: 'vip_1w', name: '🔥 1 Week VIP', price: 250000000, type: 'vip'},
-                {id: 'vip_life', name: '♾️ Lifetime VIP', price: 700000000000, type: 'vip'},
-
-                // Roles
-                {id: 'hitman', name: '🗡️ Hitman', price: 50000000, type: 'role'},
-                {id: 'hacker', name: '💻 Hacker', price: 100000000, type: 'role'},
-                {id: 'gambler', name: '🎲 Gambler', price: 200000000, type: 'role'},
-                {id: 'peaky', name: '🚬 Peaky Blinders', price: 300000000, type: 'role'},
-                {id: 'shadow', name: '👻 Shadow', price: 400000000, type: 'role'},
-                {id: 'yakuza', name: '👺 Yakuza', price: 500000000, type: 'role'},
-                {id: 'mafia', name: '🕶️ Mafia Boss', price: 1000000000, type: 'role'},
-                {id: 'king', name: '👑 Kingpin', price: 5000000000, type: 'role'},
-                {id: 'oil', name: '🛢️ Oil Prince', price: 100000000000, type: 'role'},
-                {id: 'god', name: '🛐 Server God', price: 10000000000000, type: 'role'},
-                {id: 'immortal', name: '🧟 Immortal', price: 5000000000000, type: 'role'},
-
-                // Lotto
-                {id: 'lotto_10k', name: '🎟️ 20k Ticket', price: 20000, type: 'lotto'},
-                {id: 'lotto_50k', name: '🎟️ 100k Ticket', price: 100000, type: 'lotto'},
-                {id: 'lotto_100k', name: '🎟️ 150k Ticket', price: 150000, type: 'lotto'},
-                {id: 'lotto_mega', name: '🎫 MEGA JACKPOT', price: 5000000, type: 'lotto'},
-                {id: 'lotto_god', name: '🎰 GOD TICKET', price: 100000000, type: 'lotto'}
-            ];
-
-            const container = document.getElementById('container');
-
-            function renderItems(filter = 'all') {
-                container.innerHTML = '';
-                let delay = 0;
-
-                items.forEach(item => {
-                    if (filter === 'all' || item.type === filter) {
-                        const card = document.createElement('div');
-                        card.className = `card ${item.type}`;
-                        // Animation Stagger
-                        card.style.animation = `fadeIn 0.5s ease forwards ${delay}s`;
-                        card.style.opacity = '0';
-                        
-                        card.innerHTML = `
-                            <div class="card-header">
-                                <span class="card-type">TYPE: ${item.type.toUpperCase()}</span>
-                                <span style="font-size:0.8rem; opacity:0.6">#${item.id.toUpperCase()}</span>
-                            </div>
-                            <div class="card-title">${item.name}</div>
-                            <div class="card-price">$${item.price.toLocaleString()}</div>
-                            <button class="purchase-btn" onclick="buy('${item.id}', this)">INITIATE TRANSFER</button>
-                        `;
-                        container.appendChild(card);
-                        delay += 0.05; // 50ms delay per card
-                    }
+            for(let i=0; i<numStars; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 2,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5
                 });
             }
 
-            function filterItems(category) {
-                document.querySelectorAll('.cyber-btn').forEach(btn => btn.classList.remove('active'));
-                event.target.classList.add('active');
-                renderItems(category);
-            }
-
-            async function buy(itemId, btn) {
-                const originalText = btn.innerText;
-                btn.innerText = "PROCESSING...";
-                btn.disabled = true;
-                btn.style.cursor = "wait";
-
-                try {
-                    const res = await fetch('/buy', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ uid: uid, cid: cid, item_id: itemId })
-                    });
-                    const data = await res.json();
-
-                    if (data.status === 'success') {
-                        btn.innerText = "ACCESS GRANTED";
-                        btn.style.background = "var(--neon-green)";
-                        btn.style.color = "black";
-                        btn.style.borderColor = "var(--neon-green)";
-                        
-                        // Sound effect logic can go here
-                        setTimeout(() => {
-                            alert(`💸 TRANSACTION SUCCESSFUL!\nItem: ${itemId}\nStatus: Delivered to Inventory`);
-                            location.reload();
-                        }, 500);
-                    } else {
-                        btn.innerText = "DECLINED";
-                        btn.style.background = "var(--neon-red)";
-                        btn.style.color = "black";
-                        btn.style.borderColor = "var(--neon-red)";
-                        alert(`🚫 TRANSACTION FAILED: ${data.msg}`);
-                    }
-                } catch (err) {
-                    btn.innerText = "NET_ERR";
-                    alert("⚠️ CRITICAL ERROR: Dark Web Connection Lost.");
-                }
-
-                setTimeout(() => {
-                    btn.disabled = false;
-                    btn.innerText = originalText;
-                    btn.style.background = "transparent";
-                    if(btn.parentElement.classList.contains('special')) btn.style.color = "var(--neon-red)";
-                    else if(btn.parentElement.classList.contains('vip')) btn.style.color = "var(--neon-gold)";
-                    else if(btn.parentElement.classList.contains('role')) btn.style.color = "var(--neon-blue)";
-                    else btn.style.color = "white";
+            function animateStars() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white";
+                
+                stars.forEach(star => {
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                    ctx.fill();
                     
-                    btn.style.borderColor = "currentColor";
-                    btn.style.cursor = "pointer";
-                }, 2000);
+                    star.x += star.vx;
+                    star.y += star.vy;
+
+                    // Reappear on other side
+                    if(star.x < 0) star.x = canvas.width;
+                    if(star.x > canvas.width) star.x = 0;
+                    if(star.y < 0) star.y = canvas.height;
+                    if(star.y > canvas.height) star.y = 0;
+                });
+                requestAnimationFrame(animateStars);
             }
+            animateStars();
+        }
 
-            // Init
-            renderItems();
-        </script>
+        // --- 4. DATA & LOGIC ---
+        // Same logical part
+        const urlParams = new URLSearchParams(window.location.search);
+        const cid = "{{ cid }}" || urlParams.get('state') || ""; 
+        const uid = "{{ user.id }}";
 
-    {% else %}
-        <div class="login-wrap">
-            <div class="lock-icon">🔒</div>
-            <h1 style="color: var(--neon-red); text-shadow: 0 0 20px var(--neon-red); margin-bottom: 20px;">ACCESS DENIED</h1>
-            <p style="font-size: 1.2rem; margin-bottom: 40px; color: #888;">SECURE CREDENTIALS REQUIRED FOR ENTRY</p>
-            <a href="{{ login_url }}" class="login-btn-main">
-                CONNECT VIA DISCORD
-            </a>
-            <div style="margin-top: 50px; font-size: 0.8rem; opacity: 0.5;">
-                IP: TRACED // PROXY: OFF // STATUS: WAITING
-            </div>
-        </div>
-        <script>
-            // Matrix effect for login screen too
-            const canvas = document.getElementById('matrix-canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            const letters = "01";
-            const fontSize = 14;
-            const columns = canvas.width / fontSize;
-            const drops = Array(Math.floor(columns)).fill(1);
-            function drawMatrix() {
-                ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = "#ff003c"; // Red rain for login
-                ctx.font = fontSize + "px monospace";
-                for(let i = 0; i < drops.length; i++) {
-                    const text = letters[Math.floor(Math.random() * letters.length)];
-                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-                    if(drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
-                    drops[i]++;
+        const items = [
+            // --- 🛠️ SPECIAL GADGETS ---
+            {id: 'izzat', name: 'Izzat Wapasi', price: 150000, type: 'special', icon: 'fa-soap'},
+            {id: 'landmine', name: 'Landmine', price: 50000, type: 'special', icon: 'fa-bomb'},
+            {id: 'life', name: 'Extra Life', price: 75000, type: 'special', icon: 'fa-heart-pulse'},
+            {id: 'cctv', name: 'CCTV Camera', price: 9000000, type: 'special', icon: 'fa-video'},
+            {id: 'knife', name: 'Combat Knife', price: 50000, type: 'special', icon: 'fa-khanda'},
+            {id: 'armor', name: 'Kevlar Vest', price: 80000, type: 'special', icon: 'fa-shield-halved'},
+            {id: 'steroids', name: 'Steroids', price: 20000, type: 'special', icon: 'fa-syringe'},
+            {id: 'master_key', name: 'Master Key', price: 5000000, type: 'special', icon: 'fa-key'},
+            {id: 'guard_dog', name: 'Guard Dog', price: 10000000, type: 'special', icon: 'fa-dog'},
+            {id: 'nuclear_bomb', name: 'Nuclear Bomb', price: 50000000, type: 'special', icon: 'fa-radiation'},
+
+            // --- 👑 VIP PASSES ---
+            {id: 'vip_10m', name: '10 Mins Escape', price: 200000, type: 'vip', icon: 'fa-stopwatch'},
+            {id: 'vip_1h', name: '1 Hour VIP', price: 10000000, type: 'vip', icon: 'fa-hourglass-start'},
+            {id: 'vip_6h', name: '6 Hours VIP', price: 30000000, type: 'vip', icon: 'fa-hourglass-half'},
+            {id: 'vip_1d', name: '1 Day VIP', price: 50000000, type: 'vip', icon: 'fa-calendar-day'},
+            {id: 'vip_3d', name: '3 Days VIP', price: 120000000, type: 'vip', icon: 'fa-calendar-week'},
+            {id: 'vip_1w', name: '1 Week VIP', price: 250000000, type: 'vip', icon: 'fa-calendar-check'},
+            {id: 'vip_life', name: 'Lifetime VIP', price: 700000000000, type: 'vip', icon: 'fa-crown'},
+
+            // --- 🎭 ROLES & ID ---
+            {id: 'hitman', name: 'Hitman', price: 50000000, type: 'role', icon: 'fa-crosshairs'},
+            {id: 'hacker', name: 'Hacker', price: 100000000, type: 'role', icon: 'fa-laptop-code'},
+            {id: 'gambler', name: 'Gambler', price: 200000000, type: 'role', icon: 'fa-dice'},
+            {id: 'peaky', name: 'Peaky Blinders', price: 300000000, type: 'role', icon: 'fa-user-tie'},
+            {id: 'shadow', name: 'Shadow', price: 400000000, type: 'role', icon: 'fa-ghost'},
+            {id: 'yakuza', name: 'Yakuza', price: 500000000, type: 'role', icon: 'fa-dragon'},
+            {id: 'mafia', name: 'Mafia Boss', price: 1000000000, type: 'role', icon: 'fa-user-secret'},
+            {id: 'king', name: 'Kingpin', price: 5000000000, type: 'role', icon: 'fa-chess-king'},
+            {id: 'oil', name: 'Oil Prince', price: 100000000000, type: 'role', icon: 'fa-oil-well'},
+            {id: 'god', name: 'Server God', price: 10000000000000, type: 'role', icon: 'fa-bolt'},
+            {id: 'immortal', name: 'Immortal', price: 5000000000000, type: 'role', icon: 'fa-skull'},
+
+            // --- ✅ VERIFICATION ---
+            {id: 'verify_1d', name: 'Verify (1 Day)', price: 50000000, type: 'verification', icon: 'fa-check'},
+            {id: 'verify_3d', name: 'Verify (3 Days)', price: 150000000, type: 'verification', icon: 'fa-check-double'},
+            {id: 'verify_5d', name: 'Verify (5 Days)', price: 500000000, type: 'verification', icon: 'fa-file-shield'},
+            {id: 'verify_1w', name: 'Verify (1 Week)', price: 1000000000, type: 'verification', icon: 'fa-certificate'},
+            {id: 'verify_10d', name: 'Verify (10 Days)', price: 1500000000, type: 'verification', icon: 'fa-award'},
+            {id: 'verify_15d', name: 'Verify (15 Days)', price: 3000000000, type: 'verification', icon: 'fa-medal'},
+            {id: 'verify_1m', name: 'Verify (1 Month)', price: 10000000000000, type: 'verification', icon: 'fa-star'},
+            {id: 'verify_perm', name: 'Lifetime Verify', price: 100000000000000, type: 'verification', icon: 'fa-circle-check'},
+
+            // --- 🎰 LOTTERY (Add kiya hai) ---
+            {id: 'lotto_10k', name: '20k Ticket', price: 20000, type: 'lotto', icon: 'fa-ticket'},
+            {id: 'lotto_50k', name: '100k Ticket', price: 100000, type: 'lotto', icon: 'fa-ticket-simple'},
+            {id: 'lotto_100k', name: '150k Ticket', price: 150000, type: 'lotto', icon: 'fa-receipt'},
+            {id: 'lotto_mega', name: 'MEGA JACKPOT', price: 5000000, type: 'lotto', icon: 'fa-money-bill-wave'},
+            {id: 'lotto_god', name: 'GOD TICKET', price: 100000000, type: 'lotto', icon: 'fa-sack-dollar'}
+        
+        ];
+
+        const container = document.getElementById('grid-container');
+
+        function renderItems(filter = 'all') {
+            if(!container) return;
+            container.innerHTML = '';
+            
+            items.forEach((item, index) => {
+                if (filter === 'all' || item.type === filter) {
+                    const card = document.createElement('div');
+                    card.className = `card ${item.type}`;
+                    
+                    // Add Stagger Animation
+                    card.style.animation = `fadeInUp 0.6s ease forwards ${index * 0.05}s`;
+                    card.style.opacity = '0'; // start hidden
+
+                    // 3D Tilt Logic
+                    card.addEventListener('mousemove', (e) => {
+                        const rect = card.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        
+                        const centerX = rect.width / 2;
+                        const centerY = rect.height / 2;
+                        
+                        const rotateX = ((y - centerY) / centerY) * -10; // Max 10deg rotation
+                        const rotateY = ((x - centerX) / centerX) * 10;
+
+                        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
+                    });
+
+                    card.addEventListener('mouseleave', () => {
+                        card.style.transform = `perspective(1000px) rotateX(0) rotateY(0) scale(1)`;
+                    });
+
+                    card.innerHTML = `
+                        <div class="badge">${item.type}</div>
+                        <div class="card-icon"><i class="fa-solid ${item.icon}"></i></div>
+                        <div class="card-title">${item.name}</div>
+                        <div class="card-price">$${item.price.toLocaleString()}</div>
+                        <button class="buy-btn" onclick="buy('${item.id}', this)">
+                            PURCHASE
+                        </button>
+                    `;
+                    container.appendChild(card);
                 }
-            }
-            setInterval(drawMatrix, 33);
-        </script>
-    {% endif %}
+            });
+        }
 
+        // --- FILTER FUNCTION ---
+        window.filterItems = function(category) {
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderItems(category);
+        }
+
+        // --- BUY LOGIC (UNCHANGED) ---
+        window.buy = async function(itemId, btn) {
+            // Sparkle effect on button
+            const rect = btn.getBoundingClientRect();
+            // Optional: Add specific button click effect here
+
+            const originalText = btn.innerText;
+            btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> PROCESSING";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/buy', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ uid: uid, cid: cid, item_id: itemId })
+                });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    btn.innerText = "SUCCESS";
+                    btn.style.background = "#22c55e"; // Green
+                    btn.style.color = "white";
+                    
+                    // Trigger massive confetti or global animation? 
+                    // Keeping it simple for now to not break flow
+                    setTimeout(() => {
+                        alert(`✨ PURCHASE SUCCESSFUL!\nItem: ${item.name}`);
+                        location.reload();
+                    }, 500);
+                } else {
+                    btn.innerText = "FAILED";
+                    btn.style.background = "#ef4444"; // Red
+                    btn.style.color = "white";
+                    alert(`❌ ERROR: ${data.msg}`);
+                }
+            } catch (err) {
+                btn.innerText = "ERROR";
+            }
+
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerText = originalText;
+                btn.style.background = "white";
+                btn.style.color = "black";
+            }, 2000);
+        }
+
+        // Init
+        renderItems();
+
+    </script>
 </body>
 </html>
