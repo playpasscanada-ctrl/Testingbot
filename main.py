@@ -194,7 +194,7 @@ async def update_staff_roles(guild):
                 try:
                     await member.add_roles(staff_role)
                     # Name Change: [STAFF] Name
-                    new_nick = f"[STAFF] {member.name[:25]}" 
+                    new_nick = f"[BOT STAFF] {member.name[:25]}" 
                     await member.edit(nick=new_nick)
                     
                     # DM Congratulation
