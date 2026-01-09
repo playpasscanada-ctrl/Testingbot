@@ -16436,6 +16436,274 @@ async def dalgona_duel(interaction: discord.Interaction, opponent: discord.Membe
     view = DuelInviteView(interaction.user, opponent, amount)
     await interaction.response.send_message(f"🔔 {opponent.mention}, challenge accept karoge?", embed=embed, view=view)
 
+import discord
+from discord import app_commands
+import datetime
+from datetime import datetime, timedelta
+import random
+
+# --- ⚙️ BUSINESS CONFIG ---
+BUSINESS_TYPES = {
+    "nightclub": {"name": "Nightclub 🕺", "cost": 2000000, "income_per_hr": 100000, "decay_rate": 10}, 
+    "bunker":    {"name": "Bunker 🔫",    "cost": 1500000, "income_per_hr": 80000,  "decay_rate": 8},
+    "crypto":    {"name": "Crypto Farm 💻", "cost": 5000000, "income_per_hr": 250000, "decay_rate": 15}
+}
+
+RESUPPLY_COST = 50000 # $50k cost
+
+# --- 🛠️ HELPER FUNCTIONS ---
+def get_progress_bar(percent):
+    bar_len = 10
+    filled = int((percent / 100) * bar_len)
+    if percent > 60: color = "🟩"
+    elif percent > 30: color = "🟨"
+    else: color = "🟥"
+    return f"[{color * filled}{'⬛' * (bar_len - filled)}] {int(percent)}%"
+
+def calculate_stock(last_supply_time, decay_rate):
+    if isinstance(last_supply_time, str):
+        last_supply_time = datetime.fromisoformat(last_supply_time)
+    
+    # Calculate Hours Passed
+    now = datetime.now(datetime.timezone.utc)
+    supply_time = last_supply_time.replace(tzinfo=datetime.timezone.utc)
+    
+    hours_passed = (now - supply_time).total_seconds() / 3600
+    
+    # Stock Calculation
+    current_stock = max(0, 100 - (hours_passed * decay_rate))
+    return current_stock, hours_passed
+
+
+# --- 🛒 BUY BUSINESS VIEW ---
+class BuyBusinessView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=60)
+        self.user = user
+
+    async def buy(self, interaction, biz_type):
+        if interaction.user.id != self.user.id: return
+        await interaction.response.defer()
+
+        cost = BUSINESS_TYPES[biz_type]["cost"]
+        
+        # 1. Check Balance
+        data = supabase.table("economy").select("balance").eq("user_id", str(self.user.id)).execute().data
+        if not data or data[0]['balance'] < cost:
+            return await interaction.followup.send(f"❌ **Funds Low!** You need `${cost:,}`", ephemeral=True)
+
+        # 2. Deduct Money
+        new_bal = data[0]['balance'] - cost
+        supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(self.user.id)).execute()
+
+        # 3. Create Business
+        supabase.table("business").insert({
+            "user_id": str(self.user.id),
+            "type": biz_type,
+            "last_supply": datetime.now().isoformat()
+        }).execute()
+
+        await interaction.followup.send(f"✅ **Congrats!** You bought a **{BUSINESS_TYPES[biz_type]['name']}**!")
+
+    @discord.ui.button(label="Buy Nightclub ($2M)", style=discord.ButtonStyle.primary)
+    async def b_nc(self, i, b): await self.buy(i, "nightclub")
+
+    @discord.ui.button(label="Buy Bunker ($1.5M)", style=discord.ButtonStyle.secondary)
+    async def b_bn(self, i, b): await self.buy(i, "bunker")
+
+
+# --- 🏭 MANAGER DASHBOARD VIEW ---
+class BusinessView(discord.ui.View):
+    def __init__(self, user, biz_type, last_supply, investor_id=None, invest_amt=0):
+        super().__init__(timeout=120)
+        self.user = user
+        self.biz_type = biz_type
+        self.config = BUSINESS_TYPES[biz_type]
+        self.last_supply = last_supply
+        self.investor_id = investor_id
+        self.invest_amt = invest_amt
+
+    async def update_embed(self, interaction):
+        stock_level, hrs = calculate_stock(self.last_supply, self.config['decay_rate'])
+        
+        # Income Math
+        efficiency = stock_level / 100
+        generated_cash = int(self.config['income_per_hr'] * hrs * efficiency)
+
+        embed = discord.Embed(title=f"🏢 {self.config['name']} Manager", color=0x9B59B6)
+        embed.description = (
+            f"👤 **CEO:** {self.user.mention}\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"📊 **Stock Level:**\n"
+            f"{get_progress_bar(stock_level)}\n\n"
+            f"💵 **Pending Cash:** `${generated_cash:,}`\n"
+            f"📉 **Efficiency:** `{int(efficiency*100)}%`\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"🤝 **Investor:** {f'<@{self.investor_id}>' if self.investor_id else 'None'}\n"
+        )
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2640/2640742.png")
+        
+        if stock_level < 20:
+            embed.set_footer(text="⚠️ LOW STOCK! Resupply ($50k) to keep earning!")
+            embed.color = 0xFF0000
+        else:
+            embed.set_footer(text=f"Resupply Cost: ${RESUPPLY_COST:,}")
+
+        await interaction.edit_original_response(embed=embed, view=self)
+        return stock_level, generated_cash
+
+    # --- 🚛 RESUPPLY ($50k) ---
+    @discord.ui.button(label="🚛 RESUPPLY ($50k)", style=discord.ButtonStyle.primary)
+    async def resupply(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user.id: return
+        await interaction.response.defer()
+
+        # 1. Check Money
+        data = supabase.table("economy").select("balance").eq("user_id", str(self.user.id)).execute().data
+        if not data or data[0]['balance'] < RESUPPLY_COST:
+            return await interaction.followup.send("❌ **Funds Low!** You need $50,000 cash.", ephemeral=True)
+
+        # 2. Cut Money
+        new_bal = data[0]['balance'] - RESUPPLY_COST
+        supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(self.user.id)).execute()
+
+        # 3. Reset Stock (Update Time)
+        self.last_supply = datetime.now().isoformat()
+        supabase.table("business").update({"last_supply": self.last_supply}).eq("user_id", str(self.user.id)).execute()
+
+        await interaction.followup.send("✅ **Supplies Arrived!** Stock restored to 100%.", ephemeral=True)
+        await self.update_embed(interaction)
+
+    # --- 💵 SELL STOCK (Collect Money) ---
+    @discord.ui.button(label="💵 SELL STOCK", style=discord.ButtonStyle.success)
+    async def collect(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user.id: return
+        await interaction.response.defer()
+        
+        stock, cash = await self.update_embed(interaction)
+        
+        if cash < 5000:
+            return await interaction.followup.send("❌ **Too little cash!** Let the business run for a while.", ephemeral=True)
+
+        # 1. Handle Investor Split
+        payout = cash
+        investor_msg = ""
+        
+        if self.investor_id:
+            investor_cut = int(cash * 0.20) # 20% to investor
+            payout -= investor_cut
+            
+            # Pay Investor
+            inv_data = supabase.table("economy").select("balance").eq("user_id", str(self.investor_id)).execute().data
+            if inv_data:
+                inv_bal = inv_data[0]['balance'] + investor_cut
+                supabase.table("economy").update({"balance": inv_bal}).eq("user_id", str(self.investor_id)).execute()
+                investor_msg = f"\n🤝 **Investor Paid:** <@{self.investor_id}> got `${investor_cut:,}`"
+            
+            # Remove Investor (Contract Done)
+            self.investor_id = None
+            supabase.table("business").update({"investor_id": None, "invest_amount": 0}).eq("user_id", str(self.user.id)).execute()
+
+        # 2. Pay Owner (REAL MONEY UPDATE)
+        owner_data = supabase.table("economy").select("balance").eq("user_id", str(self.user.id)).execute().data
+        current_bal = owner_data[0]['balance'] if owner_data else 0
+        
+        new_bal = current_bal + payout
+        supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(self.user.id)).execute()
+
+        # 3. Reset Timer (Stock Sold)
+        self.last_supply = datetime.now().isoformat()
+        supabase.table("business").update({"last_supply": self.last_supply}).eq("user_id", str(self.user.id)).execute()
+
+        # 4. Success Message
+        embed = discord.Embed(title="🤑 SHIPMENT SOLD!", color=0x2ECC71)
+        embed.description = (
+            f"🚛 Shipment successfully sold to buyers.\n"
+            f"💰 **Total Profit:** `${cash:,}`\n"
+            f"👤 **Your Cut:** `${payout:,}`\n"
+            f"{investor_msg}"
+        )
+        await interaction.followup.send(embed=embed)
+
+
+# --- 💻 COMMANDS ---
+@bot.tree.command(name="business", description="🏢 Manage your GTA Business Empire")
+async def business(interaction: discord.Interaction):
+    user_id = str(interaction.user.id)
+    
+    # 1. Fetch Data
+    res = supabase.table("business").select("*").eq("user_id", user_id).execute()
+    
+    if not res.data:
+        # Show Buy Menu
+        embed = discord.Embed(title="🏢 OPEN A BUSINESS", description="Start your criminal empire today!", color=0x3498DB)
+        view = BuyBusinessView(interaction.user)
+        return await interaction.response.send_message(embed=embed, view=view)
+
+    biz = res.data[0]
+    
+    # 2. Check for SCAM/Collapse (Stock 0% & Investor Exists)
+    current_stock, _ = calculate_stock(biz['last_supply'], BUSINESS_TYPES[biz['type']]['decay_rate'])
+    
+    if current_stock <= 0 and biz.get('investor_id'):
+        # Investor Lost everything. Owner keeps money.
+        supabase.table("business").update({"investor_id": None, "invest_amount": 0}).eq("user_id", user_id).execute()
+        return await interaction.response.send_message(f"💀 **BUSINESS COLLAPSED!**\nStock hit 0%. Investor lost their money. You kept the investment. 😈")
+
+    # 3. Show Dashboard
+    view = BusinessView(
+        interaction.user, 
+        biz['type'], 
+        biz['last_supply'], 
+        biz.get('investor_id'), 
+        biz.get('invest_amount')
+    )
+    
+    embed = discord.Embed(title="🏢 Loading...", color=0x9B59B6)
+    await interaction.response.send_message(embed=embed, view=view)
+    await view.update_embed(interaction)
+
+
+@bot.tree.command(name="invest", description="🤝 Invest in a player's business")
+async def invest(interaction: discord.Interaction, target: discord.Member, amount: int):
+    if target.id == interaction.user.id:
+        return await interaction.response.send_message("❌ Khud par invest nahi kar sakte.", ephemeral=True)
+    
+    if amount < 100000:
+        return await interaction.response.send_message("❌ Minimum Investment: $100,000", ephemeral=True)
+
+    # 1. Check Target Business
+    biz_res = supabase.table("business").select("*").eq("user_id", str(target.id)).execute()
+    if not biz_res.data:
+        return await interaction.response.send_message("❌ Iske paas koi Business nahi hai.", ephemeral=True)
+    
+    if biz_res.data[0]['investor_id']:
+        return await interaction.response.send_message("❌ Already ek investor hai wahan.", ephemeral=True)
+
+    # 2. Check Investor Balance
+    inv_res = supabase.table("economy").select("balance").eq("user_id", str(interaction.user.id)).execute()
+    if not inv_res.data or inv_res.data[0]['balance'] < amount:
+        return await interaction.response.send_message("❌ Paisa nahi hai tere paas!", ephemeral=True)
+
+    # 3. TRANSACTION (Deduct from Investor -> Add to Target)
+    # Deduct Investor
+    new_inv_bal = inv_res.data[0]['balance'] - amount
+    supabase.table("economy").update({"balance": new_inv_bal}).eq("user_id", str(interaction.user.id)).execute()
+    
+    # Add to Target (Owner gets the cash immediately to use)
+    target_res = supabase.table("economy").select("balance").eq("user_id", str(target.id)).execute()
+    new_target_bal = target_res.data[0]['balance'] + amount
+    supabase.table("economy").update({"balance": new_target_bal}).eq("user_id", str(target.id)).execute()
+
+    # 4. Update Business Table
+    supabase.table("business").update({
+        "investor_id": str(interaction.user.id),
+        "invest_amount": amount
+    }).eq("user_id", str(target.id)).execute()
+
+    await interaction.response.send_message(f"✅ **INVESTMENT SUCCESSFUL!**\nTumne **{target.name}** ko `${amount:,}` diye.\nAgar wo profit banayega, to tumhe **20% cut** milega.\nAgar wo bhaag gaya (Stock 0%), to paisa gaya! 💀")
+  
+    
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
 import time
