@@ -10,3 +10,4 @@ gTTS
 ffmpeg-python
 edge-tts
 Pillow
+pytz
