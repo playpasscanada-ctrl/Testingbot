@@ -14807,29 +14807,39 @@ async def tictactoe(interaction: discord.Interaction, opponent: discord.Member, 
     view = TTTRequestView(interaction.user, opponent, amount)
     await interaction.response.send_message(f"🔔 {opponent.mention}, game accept karo!", embed=embed, view=view)
                 
-# --- MINEFIELD SETTINGS ---
-# Level Configurations: (Rows, Cols, Total Diamonds)
+# ================== MINE FIELD ================
+import discord
+from discord import app_commands
+import random
+import asyncio
+import datetime as dt
+
+# --- ⚙️ CONFIGURATION ---
+# Level 1-3: Easy/Medium
+# Level 4-5: Hard (Only 3 Diamonds, rest BOMBS)
+# Grid adjusted to prevent discord 25 button limit crash.
 LEVEL_CONFIG = {
-    1: {"grid": (2, 2), "diamonds": 1, "multiplier": 1.5},  # 2x2, 1 Dia, Easy
-    2: {"grid": (2, 3), "diamonds": 2, "multiplier": 2.0},  # 2x3, 2 Dia
-    3: {"grid": (3, 4), "diamonds": 3, "multiplier": 3.0},  # 3x4, 3 Dia
-    4: {"grid": (4, 5), "diamonds": 3, "multiplier": 5.0},  # 4x5, 3 Dia (Hard)
-    5: {"grid": (5, 5), "diamonds": 3, "multiplier": 10.0}  # 5x5, 3 Dia (Hell)
+    1: {"grid": (2, 2), "diamonds": 1, "multiplier": 1.2, "name": "🟢 Baby Mode"},  
+    2: {"grid": (3, 3), "diamonds": 2, "multiplier": 1.8, "name": "🟡 Easy"},      
+    3: {"grid": (4, 3), "diamonds": 3, "multiplier": 2.5, "name": "🟠 Medium"},    
+    4: {"grid": (4, 4), "diamonds": 3, "multiplier": 5.0, "name": "🔴 Hard (Role Chance)"},      
+    5: {"grid": (5, 4), "diamonds": 3, "multiplier": 10.0, "name": "💀 HELL (Role Chance)"} 
 }
 
-# --- CASHOUT BUTTON ---
+# --- 💰 CASHOUT BUTTON ---
 class CashoutButton(discord.ui.Button):
     def __init__(self):
-        super().__init__(style=discord.ButtonStyle.success, label="💰 Cashout Now", row=4)
+        super().__init__(style=discord.ButtonStyle.success, label="💰 CASHOUT", emoji="🏃‍♂️", row=4, disabled=True)
 
     async def callback(self, interaction: discord.Interaction):
         view: MinefieldGameView = self.view
         if interaction.user.id != view.player.id:
             return await interaction.response.send_message("❌ Tera game nahi hai!", ephemeral=True)
         
+        await interaction.response.defer()
         await view.end_game(interaction, "cashout")
 
-# --- MINE BUTTON ---
+# --- 💣 MINE BUTTON ---
 class MineButton(discord.ui.Button):
     def __init__(self, x, y, is_diamond):
         super().__init__(style=discord.ButtonStyle.secondary, label="\u200b", row=y)
@@ -14842,6 +14852,8 @@ class MineButton(discord.ui.Button):
         if interaction.user.id != view.player.id:
             return await interaction.response.send_message("❌ Tera game nahi hai!", ephemeral=True)
 
+        await interaction.response.defer()
+
         if self.is_diamond:
             # 💎 DIAMOND FOUND
             self.style = discord.ButtonStyle.primary
@@ -14849,26 +14861,28 @@ class MineButton(discord.ui.Button):
             self.disabled = True
             view.found_diamonds += 1
             
-            # Check Win Condition
+            # Enable Cashout
+            for child in view.children:
+                if isinstance(child, CashoutButton):
+                    child.disabled = False
+            
+            # Check Win (Jackpot)
             total_diamonds = LEVEL_CONFIG[view.level]["diamonds"]
             
             if view.found_diamonds == total_diamonds:
-                # ALL DIAMONDS FOUND!
                 await view.end_game(interaction, "jackpot")
             else:
-                # Continue Game
-                await interaction.response.defer()
-                await view.update_board(interaction, f"💎 **Diamond Found!** ({view.found_diamonds}/{total_diamonds})")
+                await view.update_board(interaction)
         
         else:
             # 💣 BOMB BLAST
             self.style = discord.ButtonStyle.danger
-            self.emoji = "💣"
+            self.emoji = "💥"
             self.disabled = True
             await view.end_game(interaction, "blast")
 
 
-# --- GAME VIEW ---
+# --- 🎮 MAIN GAME VIEW ---
 class MinefieldGameView(discord.ui.View):
     def __init__(self, player, bet, level):
         super().__init__(timeout=120)
@@ -14877,13 +14891,14 @@ class MinefieldGameView(discord.ui.View):
         self.level = level
         self.found_diamonds = 0
         self.config = LEVEL_CONFIG[level]
+        self.game_over = False
         
         # Grid Generation
         rows, cols = self.config["grid"]
         total_slots = rows * cols
         num_diamonds = self.config["diamonds"]
         
-        # Create Layout (0 = Bomb, 1 = Diamond)
+        # Layout: 1 = Diamond, 0 = Bomb
         layout = [0] * (total_slots - num_diamonds) + [1] * num_diamonds
         random.shuffle(layout)
         
@@ -14895,195 +14910,216 @@ class MinefieldGameView(discord.ui.View):
                 self.add_item(MineButton(c, r, is_diamond))
                 index += 1
         
-        # Add Cashout Button (Only if diamonds > 1, taaki pehle click pe na bhaage)
-        if num_diamonds > 1:
-            self.add_item(CashoutButton())
+        self.add_item(CashoutButton())
 
-    async def update_board(self, interaction, status):
+    async def update_board(self, interaction):
+        current_mult = 1.0 + (self.found_diamonds * (self.config["multiplier"] / 3)) 
+        potential_win = int(self.bet * current_mult)
+        
         embed = interaction.message.embeds[0]
+        embed.color = 0x3498DB
         embed.description = (
-            f"💣 **Level {self.level}** | Bet: ${self.bet:,}\n"
-            f"{status}\n\n"
-            f"⚠️ **Warning:** 1 Bomb = Game Over + Timeout!"
+            f"💣 **{self.config['name']}**\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"💎 **Found:** `{self.found_diamonds}/{self.config['diamonds']}`\n"
+            f"📈 **Current Multiplier:** `{current_mult:.2f}x`\n"
+            f"💵 **Potential Win:** `${potential_win:,}`\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"👉 *Click a box to dig... or Cashout!*"
         )
         await interaction.edit_original_response(embed=embed, view=self)
 
     async def end_game(self, interaction, result):
-        # Disable all
+        if self.game_over: return
+        self.game_over = True
+
+        # Reveal Board
         for child in self.children:
             child.disabled = True
-            if isinstance(child, MineButton) and child.is_diamond and child.style != discord.ButtonStyle.primary:
-                child.style = discord.ButtonStyle.success # Reveal hidden diamonds
-                child.emoji = "💎"
-            elif isinstance(child, MineButton) and not child.is_diamond and result == "blast":
-                if child.style != discord.ButtonStyle.danger:
-                     child.emoji = "💣" # Show bombs
+            if isinstance(child, MineButton):
+                if child.is_diamond:
+                    child.style = discord.ButtonStyle.success
+                    child.emoji = "💎"
+                elif result == "blast" and not child.is_diamond:
+                    if child.emoji != "💥": 
+                        child.style = discord.ButtonStyle.secondary
+                        child.emoji = "💣"
 
         if result == "blast":
-            # --- PUNISHMENT LOGIC ---
+            # --- 💀 LOSS LOGIC ---
             punishment_msg = ""
-            is_safe = False
             try:
-                # Check Inventory for VIP/Life
-                inv_res = supabase.table("economy").select("inventory").eq("user_id", self.player.id).execute()
+                inv_res = supabase.table("economy").select("inventory").eq("user_id", str(self.player.id)).execute()
                 inventory = inv_res.data[0].get('inventory') or {}
                 
-                if "vip" in inventory:
-                    is_safe = True
-                    punishment_msg = "\n💎 **VIP Saved:** No Timeout."
+                if "vip" in inventory: 
+                    punishment_msg = "🛡️ **VIP Protection:** No Timeout."
                 elif inventory.get("life", 0) > 0:
                     inventory["life"] -= 1
-                    supabase.table("economy").update({"inventory": inventory}).eq("user_id", self.player.id).execute()
-                    is_safe = True
-                    punishment_msg = "\n💖 **Extra Life Used:** Timeout Dodged."
-                
-                if not is_safe:
-                    await self.player.timeout(dt.timedelta(seconds=30), reason="Minefield Blast")
-                    punishment_msg = "\n🔇 **BOOM!** 30s Timeout applied."
-            except:
-                punishment_msg = "\n(Timeout Failed: Permissions Missing)"
-
-            embed = discord.Embed(title="💥 BOMB BLAST!", color=discord.Color.red())
-            embed.description = f"💣 **GAME OVER!**\n💸 **Lost:** ${self.bet:,} (Bet) + $10,000 (Entry)\n{punishment_msg}"
-            await interaction.response.edit_message(embed=embed, view=self)
-
-        elif result == "cashout":
-            # Partial Win Logic
-            multiplier = 1.0 + (self.found_diamonds * 0.5) # Thoda sa profit
-            winnings = int(self.bet * multiplier)
-            
-            # DB Update
-            try:
-                res = supabase.table("economy").select("balance").eq("user_id", self.player.id).execute()
-                new_bal = res.data[0]['balance'] + winnings
-                supabase.table("economy").update({"balance": new_bal}).eq("user_id", self.player.id).execute()
+                    supabase.table("economy").update({"inventory": inventory}).eq("user_id", str(self.player.id)).execute()
+                    punishment_msg = "💖 **Extra Life Used:** Timeout Dodged."
+                else:
+                    try:
+                        await self.player.timeout(dt.timedelta(seconds=60), reason="Mines Blast")
+                        punishment_msg = "🔇 **Penalty:** 60s Mute applied!"
+                    except: punishment_msg = "(Mute Permission Missing)"
             except: pass
 
-            embed = discord.Embed(title="💰 CASHOUT SUCCESSFUL", color=discord.Color.gold())
-            embed.description = f"✅ Tum **${winnings:,}** lekar bhaag gaye!\n💎 Diamonds Found: {self.found_diamonds}"
-            await interaction.response.edit_message(embed=embed, view=self)
+            embed = discord.Embed(title="💥 BOMB BLAST!", color=0xFF0000)
+            embed.set_thumbnail(url=self.player.display_avatar.url)
+            embed.description = (
+                f"### 💀 YOU DIED!\n"
+                f"💸 **Loss:** `${self.bet + 10000:,}`\n"
+                f"{punishment_msg}"
+            )
+            embed.set_image(url="https://media.tenor.com/2s_0Hi-j1OAAAAAC/bomb-explode.gif")
+
+        elif result == "cashout":
+            # --- 💰 CASHOUT LOGIC ---
+            base_math = 1.0 + (self.found_diamonds * (self.config["multiplier"] / self.config["diamonds"]))
+            winnings = int(self.bet * base_math)
+
+            try:
+                res = supabase.table("economy").select("balance").eq("user_id", str(self.player.id)).execute()
+                new_bal = res.data[0]['balance'] + winnings
+                supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(self.player.id)).execute()
+            except: pass
+
+            embed = discord.Embed(title="💰 CASHOUT SUCCESSFUL!", color=0xF1C40F)
+            embed.description = (
+                f"### 🏃‍♂️ SMART MOVE!\n"
+                f"💎 **Diamonds:** {self.found_diamonds}\n"
+                f"💸 **Winnings:** `${winnings:,}`"
+            )
 
         elif result == "jackpot":
-            # FULL WIN Logic
-            multiplier = self.config["multiplier"]
-            winnings = int(self.bet * multiplier)
+            # --- 💎 JACKPOT LOGIC ---
+            winnings = int(self.bet * self.config["multiplier"])
             
-            # ROLE REWARD (Level 4 & 5 Only)
+            # --- 👑 AUTO ROLE REWARD (Level 4 & 5) ---
             role_msg = ""
             if self.level >= 4:
                 try:
-                    # Role ID ya Name se dhoondo
-                    role_name = "💎 Mine Lord"
-                    role = discord.utils.get(interaction.guild.roles, name=role_name)
-                    if not role:
-                        # Create Role if not exists
-                        role = await interaction.guild.create_role(name=role_name, color=discord.Color.purple(), hoist=True)
+                    guild = interaction.guild
+                    # Stylish Name
+                    role_name = "💎 𝐌𝐢𝐧𝐞 𝐆𝐨𝐝 👑" 
+                    role = discord.utils.get(guild.roles, name=role_name)
                     
+                    # Create Role if not exists
+                    if not role:
+                        role = await guild.create_role(
+                            name=role_name, 
+                            color=discord.Color.gold(), # Golden Color
+                            hoist=True, # Show separately in member list
+                            reason="Mines Jackpot Reward"
+                        )
+                    
+                    # Assign Role
                     if role not in self.player.roles:
                         await self.player.add_roles(role)
-                        role_msg = f"\n👑 **NEW ROLE:** You unlocked {role.mention}!"
+                        role_msg = f"\n👑 **LEGENDARY REWARD:** You unlocked the {role.mention} Role!"
+                except discord.Forbidden:
+                    role_msg = "\n(Role Reward Failed: Bot needs 'Manage Roles' permission)"
                 except Exception as e:
                     print(f"Role Error: {e}")
 
-            # DB Update
+            # Update Balance
             try:
-                res = supabase.table("economy").select("balance").eq("user_id", self.player.id).execute()
+                res = supabase.table("economy").select("balance").eq("user_id", str(self.player.id)).execute()
                 new_bal = res.data[0]['balance'] + winnings
-                supabase.table("economy").update({"balance": new_bal}).eq("user_id", self.player.id).execute()
+                supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(self.player.id)).execute()
             except: pass
 
-            embed = discord.Embed(title="💎 JACKPOT HIT!", color=discord.Color.purple())
+            embed = discord.Embed(title="💎 JACKPOT - ALL CLEARED!", color=0x9B59B6)
             embed.description = (
-                f"🎉 **MISSION COMPLETE!**\n"
-                f"✅ Saare Diamonds mil gaye!\n"
-                f"💸 **Winnings:** ${winnings:,} ({multiplier}x)\n"
+                f"### 🎉 INSANE VICTORY!\n"
+                f"🚀 **Multiplier:** {self.config['multiplier']}x\n"
+                f"💸 **JACKPOT:** `${winnings:,}`\n"
                 f"{role_msg}"
             )
             embed.set_image(url="https://media.tenor.com/M22Qp4iF_lkAAAAC/diamonds.gif")
-            await interaction.response.edit_message(embed=embed, view=self)
+
+        await interaction.edit_original_response(embed=embed, view=self)
 
 
-# --- LEVEL SELECTION VIEW ---
+# --- 🏢 LEVEL SELECTION VIEW ---
 class MineLevelSelect(discord.ui.View):
     def __init__(self, player, bet):
         super().__init__(timeout=60)
         self.player = player
         self.bet = bet
 
-    async def start_level(self, interaction, level):
+    async def start(self, interaction, level):
         if interaction.user.id != self.player.id:
-            return await interaction.response.send_message("❌ Apna command use kar!", ephemeral=True)
-
-        # Start Game View
-        embed = discord.Embed(title=f"💣 MINEFIELD: LEVEL {level}", color=0x2B2D31)
-        grid_size = LEVEL_CONFIG[level]["grid"]
-        diamonds = LEVEL_CONFIG[level]["diamonds"]
+            return await interaction.response.send_message("❌ Apna game start karo!", ephemeral=True)
+        
+        await interaction.response.defer()
+        
+        cfg = LEVEL_CONFIG[level]
+        embed = discord.Embed(title=f"💣 MINEFIELD: {cfg['name']}", color=0x2B2D31)
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/10000/10000808.png")
         embed.description = (
-            f"💵 **Entry Fee Paid:** $10,000 (Burned)\n"
-            f"🎲 **Bet at Risk:** ${self.bet:,}\n"
-            f"🕸️ **Grid:** {grid_size[0]}x{grid_size[1]}\n"
-            f"💎 **Diamonds:** {diamonds} (Find ALL to Win Big!)\n\n"
-            f"👇 **Ek bhi Bomb fata to Khel Khatam!**"
+            f"💵 **Bet Locked:** `${self.bet:,}`\n"
+            f"🕸️ **Grid:** {cfg['grid'][0]}x{cfg['grid'][1]}\n"
+            f"💎 **Diamonds:** {cfg['diamonds']}\n"
+            f"🚀 **Max Multiplier:** {cfg['multiplier']}x\n"
+            f"🏆 **Role Reward:** {'Yes (If cleared)' if level >= 4 else 'No'}\n\n"
+            f"👇 **Loading Grid...**"
         )
-        await interaction.response.edit_message(embed=embed, view=MinefieldGameView(self.player, self.bet, level))
+        
+        await interaction.edit_original_response(embed=embed, view=MinefieldGameView(self.player, self.bet, level))
 
-    @discord.ui.button(label="Lvl 1 (2x2)", style=discord.ButtonStyle.success)
-    async def l1(self, interaction, button): await self.start_level(interaction, 1)
+    @discord.ui.button(label="Lvl 1 (1 Dia)", style=discord.ButtonStyle.success, row=0)
+    async def l1(self, i, b): await self.start(i, 1)
 
-    @discord.ui.button(label="Lvl 2 (2x3)", style=discord.ButtonStyle.primary)
-    async def l2(self, interaction, button): await self.start_level(interaction, 2)
+    @discord.ui.button(label="Lvl 2 (2 Dia)", style=discord.ButtonStyle.primary, row=0)
+    async def l2(self, i, b): await self.start(i, 2)
 
-    @discord.ui.button(label="Lvl 3 (3x4)", style=discord.ButtonStyle.secondary)
-    async def l3(self, interaction, button): await self.start_level(interaction, 3)
+    @discord.ui.button(label="Lvl 3 (3 Dia)", style=discord.ButtonStyle.secondary, row=1)
+    async def l3(self, i, b): await self.start(i, 3)
 
-    @discord.ui.button(label="Lvl 4 (4x5) 💀", style=discord.ButtonStyle.danger)
-    async def l4(self, interaction, button): await self.start_level(interaction, 4)
+    @discord.ui.button(label="Lvl 4 (3 Dia) 🔴", style=discord.ButtonStyle.danger, row=1)
+    async def l4(self, i, b): await self.start(i, 4)
 
-    @discord.ui.button(label="Lvl 5 (5x5) 👹", style=discord.ButtonStyle.danger)
-    async def l5(self, interaction, button): await self.start_level(interaction, 5)
+    @discord.ui.button(label="Lvl 5 (3 Dia) 💀", style=discord.ButtonStyle.danger, row=2)
+    async def l5(self, i, b): await self.start(i, 5)
 
 
-# --- SLASH COMMAND ---
-@bot.tree.command(name="mines", description="💣 Minefield: Entry Fee 10k. Find diamonds, avoid bombs!")
-@app_commands.describe(bet_amount="Jo amount multiply karna hai (Entry fee 10k alag hai)")
+# --- 💻 SLASH COMMAND ---
+@bot.tree.command(name="mines", description="💣 Minefield: Entry 10k. Find diamonds!")
+@app_commands.describe(bet_amount="Bet Amount")
 @check_seized()
 async def mines(interaction: discord.Interaction, bet_amount: int):
-    
     if bet_amount < 100:
-        return await interaction.response.send_message("❌ Bet amount kam se kam $100 hona chahiye.", ephemeral=True)
+        return await interaction.response.send_message("❌ Minimum Bet: $100", ephemeral=True)
 
     ENTRY_FEE = 10000
-    total_needed = bet_amount + ENTRY_FEE
+    total_cost = bet_amount + ENTRY_FEE
 
-    # 1. BALANCE CHECK & DEDUCTION
+    # Balance Check
     try:
-        res = supabase.table("economy").select("balance").eq("user_id", interaction.user.id).execute()
-        
-        if not res.data or res.data[0]['balance'] < total_needed:
+        res = supabase.table("economy").select("balance").eq("user_id", str(interaction.user.id)).execute()
+        if not res.data or res.data[0]['balance'] < total_cost:
             return await interaction.response.send_message(
-                f"❌ **Funds Kam Hain!**\n"
-                f"Entry Fee: **$10,000**\n"
-                f"Bet Amount: **${bet_amount:,}**\n"
-                f"Total Needed: **${total_needed:,}**", ephemeral=True)
+                f"❌ **Insufficient Funds!**\nNeed: `${total_cost:,}` (Bet + 10k Entry)", ephemeral=True
+            )
         
-        # Paisa kaato (Entry Fee + Bet donon gaye abhi ke liye)
-        new_bal = res.data[0]['balance'] - total_needed
-        supabase.table("economy").update({"balance": new_bal}).eq("user_id", interaction.user.id).execute()
+        new_bal = res.data[0]['balance'] - total_cost
+        supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(interaction.user.id)).execute()
 
-    except Exception as e:
-        return await interaction.response.send_message("❌ Database Error!", ephemeral=True)
+    except:
+        return await interaction.response.send_message("❌ Database Error.", ephemeral=True)
 
-    # 2. SHOW LEVEL SELECTION
-    embed = discord.Embed(title="💣 WELCOME TO MINEFIELD", color=0x000000)
+    embed = discord.Embed(title="💣 WELCOME TO MINES", color=0x000000)
     embed.description = (
-        f"🎟️ **Entry Fee:** $10,000 (Cut & Burned 🔥)\n"
-        f"💵 **Bet Amount:** ${bet_amount:,} (This will multiply)\n\n"
-        f"**Choose Your Difficulty:**\n"
-        f"🟢 **Lvl 1:** 2x2 Grid (Safe)\n"
-        f"🟡 **Lvl 2:** 2x3 Grid\n"
-        f"🟠 **Lvl 3:** 3x4 Grid\n"
-        f"🔴 **Lvl 4:** 4x5 Grid (Only 3 Diamonds) 🏆 Role Chance\n"
-        f"⚫ **Lvl 5:** 5x5 Grid (22 Bombs!) 👹 Role Chance"
+        f"🎟️ **Entry Fee Paid:** $10,000\n"
+        f"💵 **Bet Placed:** `${bet_amount:,}`\n\n"
+        f"**Difficulty & Rewards:**\n"
+        f"🟢 **Lvl 1:** 1 Diamond\n"
+        f"🟡 **Lvl 2:** 2 Diamonds\n"
+        f"🟠 **Lvl 3:** 3 Diamonds\n"
+        f"🔴 **Lvl 4:** 3 Diamonds + 👑 Role Chance\n"
+        f"💀 **Lvl 5:** 3 Diamonds + 👑 Role Chance (High Risk)"
     )
     embed.set_image(url="https://media.tenor.com/2s_0Hi-j1OAAAAAC/bomb-explode.gif")
     
