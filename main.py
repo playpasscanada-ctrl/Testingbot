@@ -131,49 +131,47 @@ SHOP_ITEMS = {
     "lotto_god":  {"name": "🎰 GOD TICKET", "price": 100000000, "type": "lotto", "win": 50000000000, "chance": 1},
 }
 
-import discord
-from discord.ext import tasks
+import asyncio
 import pytz
-from datetime import time, datetime, timedelta
+from datetime import datetime, time
+from discord.ext import tasks
 
-# --- ⚙️ SYSTEM CONFIGURATION ---
-OWNER_ID = 804687084249284618   # Owner ID (Not counted)
+# --- CONFIG ---
+OWNER_ID = 804687084249284618   # Owner ID
 STAFF_ROLE_ID = 1459074209191039049  # Staff Role ID
 GUILD_ID = 1257403231127076915       # Server ID
-SALARY_LOG_CHANNEL_ID = 1457066104819028089 # 👈 Yahan Channel ID dalein jahan message aayega
+SALARY_LOG_CHANNEL_ID = 1457066104819028089 # Log Channel
 STAFF_SALARY = 50000000          # $50 Million
 
 # --- 🧠 SMART STAFF SYSTEM MEMORY ---
-xp_cooldowns = {} # User ID : Last Point Time
+xp_cooldowns = {} 
 
-# Is function ko replace karein (Purana wala hata dein)
+# 1. TRACK COMMAND USAGE
 async def track_command_usage(user_id):
     if user_id == OWNER_ID: return 
     
     current_time = datetime.now()
     
-    # 🚫 ANTI-SPAM CHECK (Smart Filter)
+    # 🚫 ANTI-SPAM CHECK
     if user_id in xp_cooldowns:
         last_time = xp_cooldowns[user_id]
-        # Agar 30 Second se pehle dobara command use kiya, to POINT MAT DO
         time_diff = (current_time - last_time).total_seconds()
         if time_diff < 30: 
-            return # Spammer detected, ignore karo!
+            return # Spammer detected
             
-    # ✅ Agar banda aaram se khel raha hai, tabhi point do
-    xp_cooldowns[user_id] = current_time # Time note kar lo
+    # ✅ Count Point
+    xp_cooldowns[user_id] = current_time 
     
-    # Database Update (+1 Score)
+    # Database Update
     res = supabase.table("economy").select("command_count").eq("user_id", str(user_id)).execute()
     
     if res.data:
         current = res.data[0].get('command_count', 0) or 0
-        # Point Badhao
         supabase.table("economy").update({"command_count": current + 1}).eq("user_id", str(user_id)).execute()
     else:
         supabase.table("economy").insert({"user_id": str(user_id), "balance": 0, "command_count": 1}).execute()
 
-# --- 👑 2. AUTOMATED STAFF MANAGER (Role & Name Update) ---
+# --- 👑 2. AUTOMATED STAFF MANAGER (Fixed Lag) ---
 async def update_staff_roles(guild):
     # Top 3 Users fetch karein
     data = supabase.table("economy").select("user_id, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
@@ -186,6 +184,9 @@ async def update_staff_roles(guild):
 
     # Server ke har member ko check karo
     for member in guild.members:
+        # 🟢 FIX: Ye line bot ko freeze hone se bachayegi (Warning Hat Jayegi)
+        await asyncio.sleep(0) 
+
         if member.bot or member.id == OWNER_ID: continue
         
         # --- PROMOTE LOGIC ---
@@ -193,7 +194,7 @@ async def update_staff_roles(guild):
             if staff_role not in member.roles:
                 try:
                     await member.add_roles(staff_role)
-                    # Name Change: [STAFF] Name
+                    # Name Change
                     new_nick = f"[BOT STAFF] {member.name[:25]}" 
                     await member.edit(nick=new_nick)
                     
@@ -240,7 +241,7 @@ async def pay_staff_salary():
         timestamp=datetime.now()
     )
     
-    top_member_avatar = None # Isme Rank 1 ka photo store karenge
+    top_member_avatar = None 
 
     # Payment Loop
     for idx, user in enumerate(data):
@@ -259,7 +260,7 @@ async def pay_staff_salary():
         rank_emoji = ["🥇", "🥈", "🥉"][idx] if idx < 3 else "🏅"
         user_mention = member.mention if member else f"`User {uid}`"
         
-        # Store Rank 1 Avatar for Thumbnail
+        # Store Rank 1 Avatar
         if idx == 0 and member:
             top_member_avatar = member.display_avatar.url
         
@@ -273,7 +274,6 @@ async def pay_staff_salary():
     # Finishing Touches
     embed.set_footer(text="Automated Payroll System • Next Payout in 24h")
     
-    # Thumbnail: Rank 1 ka photo (Agar hai), warna Server Icon
     if top_member_avatar:
         embed.set_thumbnail(url=top_member_avatar)
     else:
@@ -283,12 +283,13 @@ async def pay_staff_salary():
     if channel:
         await channel.send(embed=embed)
         
-    # Roles Refresh karo (Ensure list is updated)
+    # Roles Refresh (Fixed Lag)
     await update_staff_roles(guild)
 
 @pay_staff_salary.before_loop
 async def before_salary():
     await bot.wait_until_ready()
+
 
 # 🛡️ SYSTEM SAVER: Sirf 2 translation threads allow honge (Crash Fix)
 roast_executor = ThreadPoolExecutor(max_workers=2)
