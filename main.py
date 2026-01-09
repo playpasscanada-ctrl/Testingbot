@@ -131,10 +131,9 @@ SHOP_ITEMS = {
     "lotto_god":  {"name": "🎰 GOD TICKET", "price": 100000000, "type": "lotto", "win": 50000000000, "chance": 1},
 }
 
-import discord
+# --- IMPORTS SECTION (Updated) ---
 from discord.ext import tasks
-import pytz
-from datetime import time, datetime, timedelta
+from datetime import time, datetime, timedelta, timezone # ✅ pytz hata kar 'timezone' joda hai
 
 # --- ⚙️ SYSTEM CONFIGURATION ---
 OWNER_ID = 804687084249284618   # Owner ID (Not counted)
@@ -199,12 +198,13 @@ async def update_staff_roles(guild):
                 await member.send(embed=embed)
             except: pass
 
-# --- 💰 3. PREMIUM SALARY SYSTEM (12:00 AM IST) ---
-india_tz = pytz.timezone("Asia/Kolkata")
+# --- 💰 3. PREMIUM SALARY SYSTEM (Updated - No pytz required) ---
+india_tz = timezone(timedelta(hours=5, minutes=30))
 salary_time = time(hour=0, minute=0, tzinfo=india_tz) 
 
 @tasks.loop(time=salary_time)
 async def pay_staff_salary():
+    
     guild = bot.get_guild(GUILD_ID)
     channel = bot.get_channel(SALARY_LOG_CHANNEL_ID)
     
