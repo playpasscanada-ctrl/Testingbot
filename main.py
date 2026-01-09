@@ -68,7 +68,7 @@ SHOP_ITEMS = {
     "izzat":      {"name": "🧼 Izzat Wapasi", "price": 150000, "type": "special"},
     "landmine":   {"name": "💣 Landmine", "price": 50000, "type": "item"},
     "life":       {"name": "💖 Extra Life", "price": 75000, "type": "item"},
-    "cctv":       {"name": "📹 CCTV Camera", "price": 150000, "type": "item"},
+    "cctv":       {"name": "📹 CCTV Camera", "price": 9000000, "type": "item"},
         # --- 🔥 NEW HEIST ITEMS ---
     "master_key":   {"name": "🗝️ Master Key", "price": 5000000, "type": "item"},
     "guard_dog":    {"name": "🐕 Guard Dog", "price": 10000000, "type": "item"},
