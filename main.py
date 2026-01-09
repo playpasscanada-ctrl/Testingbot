@@ -15623,7 +15623,7 @@ async def fix_name(i: discord.Interaction, member: discord.Member):
         
         # Naam lamba ho to cut karke 20 words ka rakhega
         clean_name = real_name[:20]
-        new_nick = f"[STAFF] {clean_name}"
+        new_nick = f"[BOT STAFF] {clean_name}"
         
         await member.edit(nick=new_nick)
         
