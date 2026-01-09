@@ -16976,7 +16976,7 @@ async def sell_items(i: discord.Interaction):
     view = SellCartView(data[0]['inventory'], i.user.id)
     
     embed = discord.Embed(title="🏪 SELL CART", description="Select an item from dropdown to add to cart.", color=0x2b2d31)
-    await i.response.send_message(embed=embed, view=view, ephemeral=True)
+    await i.response.send_message(embed=embed, view=view)
     
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
