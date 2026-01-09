@@ -3,251 +3,395 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Underground Black Market</title>
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <title>/// UNDERGROUND_ACCESS ///</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
-            --gold: #FFD700;
-            --dark: #0a0a0a;
-            --card-bg: #111;
-            --border: #333;
-            --neon-red: #ff3333;
-            --neon-green: #00ff00;
-            --neon-blue: #00ccff;
+            --neon-green: #0f0;
+            --neon-red: #ff003c;
+            --neon-blue: #00f3ff;
+            --neon-gold: #ffd700;
+            --purple: #bc13fe;
+            --bg-dark: #050505;
+            --glass: rgba(10, 10, 10, 0.8);
+            --border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        /* --- Global Animations --- */
-        @keyframes glow {
-            0% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.2); }
-            50% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); }
-            100% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.2); }
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        
         body {
-            background-color: var(--dark);
-            background-image: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #000 100%);
-            color: white;
-            font-family: 'Rajdhani', sans-serif;
-            padding: 20px;
-            text-align: center;
+            background-color: var(--bg-dark);
+            color: var(--neon-green);
+            font-family: 'Share Tech Mono', monospace;
+            overflow-x: hidden;
             min-height: 100vh;
         }
 
-        /* --- Header --- */
-        h1 {
-            font-size: 2.8rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            background: linear-gradient(90deg, #fff, var(--gold), #fff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 5px;
-            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.3));
+        /* --- BACKGROUND FX --- */
+        #matrix-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -2;
+            opacity: 0.15;
         }
 
-        .subtitle { color: #888; font-size: 1rem; margin-bottom: 20px; letter-spacing: 1px; }
-
-        /* --- Status Bar --- */
-        #status-bar {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border);
-            padding: 10px 20px;
-            border-radius: 50px;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 30px;
-            font-size: 1.1rem;
-            backdrop-filter: blur(5px);
-            animation: glow 3s infinite;
-        }
-        .status-dot { height: 10px; width: 10px; background: red; border-radius: 50%; box-shadow: 0 0 10px red; }
-        .connected .status-dot { background: var(--neon-green); box-shadow: 0 0 10px var(--neon-green); }
-
-        /* --- Filters --- */
-        .filters { margin-bottom: 30px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
-        .filter-btn {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: #888;
-            padding: 8px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-family: 'Rajdhani', sans-serif;
-            font-weight: 700;
-            text-transform: uppercase;
-            transition: 0.3s;
-        }
-        .filter-btn.active, .filter-btn:hover {
-            border-color: var(--gold);
-            color: var(--gold);
-            background: rgba(255, 215, 0, 0.1);
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0.6;
         }
 
-        /* --- Grid --- */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 20px;
-            max-width: 1200px;
+        .vignette {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 50%, black 150%);
+            z-index: 99;
+            pointer-events: none;
+        }
+
+        /* --- LAYOUT --- */
+        .container {
+            max-width: 1400px;
             margin: 0 auto;
-        }
-
-        /* --- Card Design --- */
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
             padding: 20px;
             position: relative;
+            z-index: 2;
+        }
+
+        /* --- HEADER & HUD --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 2px solid var(--neon-green);
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            margin-bottom: 40px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: #fff;
+            text-shadow: 0 0 10px var(--neon-green);
+            position: relative;
+        }
+        
+        h1::before {
+            content: "SECURE CONNECTION ESTABLISHED";
+            position: absolute;
+            top: -15px; left: 0;
+            font-size: 0.7rem;
+            color: var(--neon-green);
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .user-hud {
+            text-align: right;
+        }
+        .hud-row {
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+        .balance-glow {
+            color: var(--neon-gold);
+            font-weight: bold;
+            text-shadow: 0 0 10px var(--neon-gold);
+            font-size: 1.5rem;
+        }
+
+        /* --- FILTERS --- */
+        .cyber-controls {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 50px;
+        }
+
+        .cyber-btn {
+            background: transparent;
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+            padding: 10px 30px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
             overflow: hidden;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: 0.3s;
+            clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+        }
+
+        .cyber-btn:hover, .cyber-btn.active {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 30px var(--neon-green);
+            transform: scale(1.05);
+        }
+
+        .cyber-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+            transition: 0.5s;
+        }
+        .cyber-btn:hover::before { left: 100%; }
+
+        /* --- GRID SYSTEM --- */
+        .market-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+            padding-bottom: 50px;
+        }
+
+        /* --- HOLOGRAPHIC CARDS --- */
+        .card {
+            background: rgba(10, 15, 10, 0.7);
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            position: relative;
+            padding: 20px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            height: 100%;
+            min-height: 250px;
+            overflow: hidden;
         }
 
-        .card::before {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
-        }
-        
-        .card.special::before { background: var(--neon-red); box-shadow: 0 0 10px var(--neon-red); }
-        .card.vip::before { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
-        .card.role::before { background: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); }
-        .card.lotto::before { background: var(--neon-green); box-shadow: 0 0 10px var(--neon-green); }
-        .card.verification::before { background: #ffffff; box-shadow: 0 0 10px #ffffff; }
+        /* Corner accents */
+        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 10px; height: 10px; border-top: 2px solid var(--neon-green); border-left: 2px solid var(--neon-green); }
+        .card::after { content: ''; position: absolute; bottom: 0; right: 0; width: 10px; height: 10px; border-bottom: 2px solid var(--neon-green); border-right: 2px solid var(--neon-green); }
 
         .card:hover {
-            transform: translateY(-10px) scale(1.02);
-            border-color: #777;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.7);
+            transform: translateY(-10px);
+            border-color: var(--neon-green);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2), inset 0 0 20px rgba(0, 255, 0, 0.1);
+            background: rgba(0, 30, 0, 0.8);
+        }
+
+        /* Type specific colors */
+        .card.vip { border-color: var(--neon-gold); }
+        .card.vip::before, .card.vip::after { border-color: var(--neon-gold); }
+        .card.vip:hover { box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
+        .card.vip .card-price { color: var(--neon-gold); }
+
+        .card.special { border-color: var(--neon-red); }
+        .card.special::before, .card.special::after { border-color: var(--neon-red); }
+        .card.special:hover { box-shadow: 0 0 20px rgba(255, 0, 60, 0.3); }
+        .card.special .card-price { color: var(--neon-red); }
+
+        .card.role { border-color: var(--neon-blue); }
+        .card.role::before, .card.role::after { border-color: var(--neon-blue); }
+        .card.role .card-price { color: var(--neon-blue); }
+        
+        .card.verification { border-color: #fff; }
+        .card.verification .card-price { color: #fff; }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
         }
 
         .card-type {
             font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: #555;
-            margin-bottom: 10px;
-            text-align: left;
+            background: rgba(255,255,255,0.1);
+            padding: 2px 8px;
+            border-radius: 2px;
+            letter-spacing: 1px;
         }
 
-        .card-name {
-            font-size: 1.4rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-            text-align: left;
+        .card-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
             line-height: 1.2;
+            margin-bottom: 20px;
+            font-weight: 700;
         }
 
         .card-price {
-            font-size: 1.5rem;
-            color: var(--gold);
-            font-weight: 600;
+            font-size: 1.6rem;
             text-align: right;
-            margin: 15px 0;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 0 5px currentColor;
         }
 
-        button.buy-btn {
+        .purchase-btn {
             width: 100%;
+            background: transparent;
+            border: 1px solid currentColor;
+            color: currentColor;
             padding: 12px;
-            background: linear-gradient(45deg, #b8860b, var(--gold));
-            border: none;
-            color: black;
-            font-weight: 800;
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 1rem;
-            border-radius: 6px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
             cursor: pointer;
-            text-transform: uppercase;
             transition: 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            z-index: 2;
         }
 
-        button.buy-btn:hover {
-            filter: brightness(1.2);
-            box-shadow: 0 0 15px var(--gold);
-        }
+        .card.special .purchase-btn { color: var(--neon-red); border-color: var(--neon-red); }
+        .card.vip .purchase-btn { color: var(--neon-gold); border-color: var(--neon-gold); }
+        .card.role .purchase-btn { color: var(--neon-blue); border-color: var(--neon-blue); }
 
-        button.buy-btn:disabled {
-            background: #333;
-            color: #666;
-            cursor: not-allowed;
-            box-shadow: none;
+        .purchase-btn:hover {
+            background: currentColor;
+            color: #000 !important;
+            box-shadow: 0 0 15px currentColor;
         }
         
-        /* Login Container */
-        .login-container {
-            margin-top: 100px;
-            padding: 60px;
-            background: rgba(17, 17, 17, 0.8);
-            border: 1px solid #333;
-            border-radius: 20px;
-            display: inline-block;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 0 50px rgba(255, 0, 0, 0.1);
-        }
-        .login-btn {
-            background: #5865F2;
-            color: white;
-            padding: 18px 40px;
-            text-decoration: none;
-            font-size: 1.3rem;
-            font-weight: bold;
-            border-radius: 12px;
-            display: inline-block;
-            margin-top: 30px;
-            transition: 0.3s;
-            box-shadow: 0 4px 15px rgba(88, 101, 242, 0.4);
-        }
-        .login-btn:hover { 
-            background: #4752c4; 
-            transform: scale(1.05);
-            box-shadow: 0 6px 25px rgba(88, 101, 242, 0.6);
+        .purchase-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(1);
         }
 
-        @media (max-width: 600px) {
-            h1 { font-size: 2rem; }
-            .grid { grid-template-columns: 1fr; }
+        /* --- LOGIN SCREEN --- */
+        .login-wrap {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            position: relative;
+            z-index: 10;
+        }
+
+        .lock-icon {
+            font-size: 5rem;
+            color: var(--neon-red);
+            margin-bottom: 20px;
+            animation: glitch 1s infinite;
+        }
+
+        .login-btn-main {
+            padding: 20px 60px;
+            font-size: 1.5rem;
+            background: var(--neon-blue);
+            color: #000;
+            border: none;
+            font-family: 'Orbitron';
+            font-weight: 900;
+            text-decoration: none;
+            clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+            transition: 0.3s;
+        }
+        .login-btn-main:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 50px var(--neon-blue);
+        }
+
+        /* --- ANIMATIONS --- */
+        @keyframes glitch {
+            0% { text-shadow: 2px 2px var(--neon-red), -2px -2px var(--neon-blue); }
+            25% { text-shadow: -2px 2px var(--neon-red), 2px -2px var(--neon-blue); }
+            50% { text-shadow: 2px -2px var(--neon-red), -2px 2px var(--neon-blue); }
+            75% { text-shadow: -2px -2px var(--neon-red), 2px 2px var(--neon-blue); }
+            100% { text-shadow: 2px 2px var(--neon-red), -2px -2px var(--neon-blue); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: var(--neon-green); }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 1.5rem; }
+            .market-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
+    <canvas id="matrix-canvas"></canvas>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+
     {% if user %}
-        <h1>Global Black Market</h1>
-        <div class="subtitle">SECURE • ANONYMOUS • INSTANT</div>
+        <div class="container">
+            <header>
+                <div>
+                    <h1>BLACK_MARKET_V2</h1>
+                    <div style="color: #666; font-size: 0.8rem; letter-spacing: 2px;">/// ENCRYPTED SESSION: {{ cid }}</div>
+                </div>
+                <div class="user-hud">
+                    <div class="hud-row">AGENT: <span style="color: #fff">{{ user.username }}</span></div>
+                    <div class="hud-row">FUNDS: <span class="balance-glow">${{ "{:,.0f}".format(user.balance) }}</span></div>
+                </div>
+            </header>
 
-        <div id="status-bar" class="connected">
-            <div class="status-dot"></div>
-            <span id="status-text">
-                Welcome, <span style="color:var(--gold)">{{ user.username }}</span> 
-                | Balance: <span style="color:var(--neon-green)">${{ "{:,.0f}".format(user.balance) }}</span>
-            </span>
+            <div class="cyber-controls">
+                <button class="cyber-btn active" onclick="filterItems('all')">All Data</button>
+                <button class="cyber-btn" onclick="filterItems('special')">Gadgets</button>
+                <button class="cyber-btn" onclick="filterItems('vip')">VIP Pass</button>
+                <button class="cyber-btn" onclick="filterItems('verification')">Verify</button>
+                <button class="cyber-btn" onclick="filterItems('role')">Identity</button>
+                <button class="cyber-btn" onclick="filterItems('lotto')">Jackpot</button>
+            </div>
+
+            <div class="market-grid" id="container">
+                </div>
         </div>
-
-        <div class="filters">
-            <button class="filter-btn active" onclick="filterItems('all')">All</button>
-            <button class="filter-btn" onclick="filterItems('special')">Items</button>
-            <button class="filter-btn" onclick="filterItems('vip')">VIP Access</button>
-            <button class="filter-btn" onclick="filterItems('verification')">VERIFICATION</button>
-            <button class="filter-btn" onclick="filterItems('role')">Roles</button>
-            <button class="filter-btn" onclick="filterItems('lotto')">Lottery</button>
-        </div>
-
-        <div class="grid" id="container"></div>
 
         <script>
-            // ✅ CHANNEL ID TRACKING (Fixed Logic)
+            // --- MATRIX EFFECT ---
+            const canvas = document.getElementById('matrix-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            const letters = "010101XYZA B C D E F G H I J K L M N O P Q R S T U V W X Y Z";
+            const fontSize = 14;
+            const columns = canvas.width / fontSize;
+            const drops = Array(Math.floor(columns)).fill(1);
+
+            function drawMatrix() {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#0F0";
+                ctx.font = fontSize + "px monospace";
+                for(let i = 0; i < drops.length; i++) {
+                    const text = letters[Math.floor(Math.random() * letters.length)];
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    if(drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                    drops[i]++;
+                }
+            }
+            setInterval(drawMatrix, 33);
+            window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+
+            // --- MARKET LOGIC ---
             const urlParams = new URLSearchParams(window.location.search);
             const cid = "{{ cid }}" || urlParams.get('state') || ""; 
             const uid = "{{ user.id }}";
 
-            // 📦 100% Items Protected (No deletion)
+            // 📦 FULL INVENTORY (No missing items)
             const items = [
                 // Special
                 {id: 'izzat', name: '🧼 Izzat Wapasi', price: 150000, type: 'special'},
@@ -257,8 +401,6 @@
                 {id: 'knife', name: '🔪 Combat Knife', price: 50000, type: 'special'},
                 {id: 'armor', name: '🛡️ Kevlar Vest', price: 80000, type: 'special'},
                 {id: 'steroids', name: '💉 Steroids', price: 20000, type: 'special'},
-
-                // --- ☠️ HEIST ITEMS (Added) ---
                 {id: 'master_key', name: '🗝️ Master Key', price: 5000000, type: 'special'},
                 {id: 'guard_dog', name: '🐕 Guard Dog', price: 10000000, type: 'special'},
                 {id: 'nuclear_bomb', name: '☢️ Nuclear Bomb', price: 50000000, type: 'special'},
@@ -307,75 +449,129 @@
 
             function renderItems(filter = 'all') {
                 container.innerHTML = '';
+                let delay = 0;
+
                 items.forEach(item => {
                     if (filter === 'all' || item.type === filter) {
                         const card = document.createElement('div');
                         card.className = `card ${item.type}`;
+                        // Animation Stagger
+                        card.style.animation = `fadeIn 0.5s ease forwards ${delay}s`;
+                        card.style.opacity = '0';
+                        
                         card.innerHTML = `
-                            <div class="card-type">${item.type.toUpperCase()}</div>
-                            <div class="card-name">${item.name}</div>
+                            <div class="card-header">
+                                <span class="card-type">TYPE: ${item.type.toUpperCase()}</span>
+                                <span style="font-size:0.8rem; opacity:0.6">#${item.id.toUpperCase()}</span>
+                            </div>
+                            <div class="card-title">${item.name}</div>
                             <div class="card-price">$${item.price.toLocaleString()}</div>
-                            <button class="buy-btn" onclick="buy('${item.id}', this)">PURCHASE</button>
+                            <button class="purchase-btn" onclick="buy('${item.id}', this)">INITIATE TRANSFER</button>
                         `;
                         container.appendChild(card);
+                        delay += 0.05; // 50ms delay per card
                     }
                 });
             }
 
             function filterItems(category) {
-                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.cyber-btn').forEach(btn => btn.classList.remove('active'));
                 event.target.classList.add('active');
                 renderItems(category);
             }
 
-            // 🛒 BUY LOGIC WITH RECEIPT TRACKING
             async function buy(itemId, btn) {
                 const originalText = btn.innerText;
-                btn.innerText = "VERIFYING...";
+                btn.innerText = "PROCESSING...";
                 btn.disabled = true;
+                btn.style.cursor = "wait";
 
                 try {
                     const res = await fetch('/buy', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        // Sending cid (Channel ID) to Python for Receipt
                         body: JSON.stringify({ uid: uid, cid: cid, item_id: itemId })
                     });
                     const data = await res.json();
 
                     if (data.status === 'success') {
-                        btn.innerText = "PURCHASED";
+                        btn.innerText = "ACCESS GRANTED";
                         btn.style.background = "var(--neon-green)";
-                        alert(`💸 SUCCESS!\n${data.msg}\nReceipt sent to Discord.`);
-                        location.reload(); // Refresh balance
+                        btn.style.color = "black";
+                        btn.style.borderColor = "var(--neon-green)";
+                        
+                        // Sound effect logic can go here
+                        setTimeout(() => {
+                            alert(`💸 TRANSACTION SUCCESSFUL!\nItem: ${itemId}\nStatus: Delivered to Inventory`);
+                            location.reload();
+                        }, 500);
                     } else {
-                        btn.innerText = "DENIED";
+                        btn.innerText = "DECLINED";
                         btn.style.background = "var(--neon-red)";
-                        alert(`❌ ERROR: ${data.msg}`);
+                        btn.style.color = "black";
+                        btn.style.borderColor = "var(--neon-red)";
+                        alert(`🚫 TRANSACTION FAILED: ${data.msg}`);
                     }
                 } catch (err) {
-                    alert("⚠️ Connection Failed. Market is offline.");
+                    btn.innerText = "NET_ERR";
+                    alert("⚠️ CRITICAL ERROR: Dark Web Connection Lost.");
                 }
 
                 setTimeout(() => {
                     btn.disabled = false;
                     btn.innerText = originalText;
-                    btn.style.background = "";
+                    btn.style.background = "transparent";
+                    if(btn.parentElement.classList.contains('special')) btn.style.color = "var(--neon-red)";
+                    else if(btn.parentElement.classList.contains('vip')) btn.style.color = "var(--neon-gold)";
+                    else if(btn.parentElement.classList.contains('role')) btn.style.color = "var(--neon-blue)";
+                    else btn.style.color = "white";
+                    
+                    btn.style.borderColor = "currentColor";
+                    btn.style.cursor = "pointer";
                 }, 2000);
             }
 
+            // Init
             renderItems();
         </script>
+
     {% else %}
-        <div class="login-container">
-            <h1 style="color:var(--neon-red); font-size: 3.5rem;">🔒 RESTRICTED</h1>
-            <p style="color:#888; font-size:1.2rem; letter-spacing: 1px;">
-                AUTHORIZATION REQUIRED FOR MARKET ENTRY
-            </p>
-            <a href="{{ login_url }}" class="login-btn">
-                📡 ESTABLISH CONNECTION
+        <div class="login-wrap">
+            <div class="lock-icon">🔒</div>
+            <h1 style="color: var(--neon-red); text-shadow: 0 0 20px var(--neon-red); margin-bottom: 20px;">ACCESS DENIED</h1>
+            <p style="font-size: 1.2rem; margin-bottom: 40px; color: #888;">SECURE CREDENTIALS REQUIRED FOR ENTRY</p>
+            <a href="{{ login_url }}" class="login-btn-main">
+                CONNECT VIA DISCORD
             </a>
+            <div style="margin-top: 50px; font-size: 0.8rem; opacity: 0.5;">
+                IP: TRACED // PROXY: OFF // STATUS: WAITING
+            </div>
         </div>
+        <script>
+            // Matrix effect for login screen too
+            const canvas = document.getElementById('matrix-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            const letters = "01";
+            const fontSize = 14;
+            const columns = canvas.width / fontSize;
+            const drops = Array(Math.floor(columns)).fill(1);
+            function drawMatrix() {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#ff003c"; // Red rain for login
+                ctx.font = fontSize + "px monospace";
+                for(let i = 0; i < drops.length; i++) {
+                    const text = letters[Math.floor(Math.random() * letters.length)];
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    if(drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                    drops[i]++;
+                }
+            }
+            setInterval(drawMatrix, 33);
+        </script>
     {% endif %}
+
 </body>
 </html>
