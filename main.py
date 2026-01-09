@@ -6167,7 +6167,7 @@ class WesternDuelGameView(discord.ui.View):
         await interaction.response.edit_message(embed=embed, view=None)
 
 
-# --- 📜 CHALLENGE REQUEST VIEW (Approval System) ---
+# --- 📜 CHALLENGE REQUEST VIEW (Fixed Approval System) ---
 class DuelRequestView(discord.ui.View):
     def __init__(self, challenger, opponent):
         super().__init__(timeout=60)
@@ -6177,14 +6177,33 @@ class DuelRequestView(discord.ui.View):
 
     @discord.ui.button(label="✅ Accept Duel", style=discord.ButtonStyle.success)
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # 1. User Check
         if interaction.user.id != self.opponent.id:
             return await interaction.response.send_message("❌ Ye challenge tumhare liye nahi hai!", ephemeral=True)
         
+        # 2. DEFER IMMEDIATELY (Interaction Failed Fix)
+        await interaction.response.defer()
+
+        # 3. Balance Check (Database) - Optional but Good for Safety
+        try:
+            # Check if both have $10,000 for the duel prize logic (if applicable)
+            r1 = supabase.table("economy").select("balance").eq("user_id", str(self.challenger.id)).execute()
+            r2 = supabase.table("economy").select("balance").eq("user_id", str(self.opponent.id)).execute()
+            
+            if not r1.data or not r2.data:
+                return await interaction.followup.send("❌ Database Error: User data not found.", ephemeral=True)
+            
+            # Agar entry fee logic hai to yahan check kar sakte ho
+            # if r1.data[0]['balance'] < 10000: ... 
+
+        except Exception as e:
+            print(f"DB Error: {e}")
+            return await interaction.followup.send("❌ System Error during check.", ephemeral=True)
+
         self.accepted = True
-        self.stop() # Stop this view
+        self.stop() 
         
         # --- START GAME ---
-        # Edit request message to show game starting
         embed = discord.Embed(title="🤠 DUEL ACCEPTED!", color=0xE67E22)
         embed.description = (
             f"### 👁️ EYES ON THE BUTTON!\n"
@@ -6196,7 +6215,9 @@ class DuelRequestView(discord.ui.View):
         
         # Create Game View
         game_view = WesternDuelGameView(self.challenger, self.opponent, interaction)
-        await interaction.response.edit_message(embed=embed, view=game_view)
+        
+        # 4. EDIT ORIGINAL MESSAGE (With Defer Fix)
+        await interaction.edit_original_response(embed=embed, view=game_view)
         
         # Start Background Task
         await game_view.start_game_logic()
@@ -6208,17 +6229,16 @@ class DuelRequestView(discord.ui.View):
             
         self.stop()
         embed = discord.Embed(description=f"🏃‍♂️ **{self.opponent.mention}** dar ke bhaag gaya!", color=0x95a5a6)
+        
+        # Decline par message update kar do
         await interaction.response.edit_message(embed=embed, view=None)
 
     async def on_timeout(self):
         if not self.accepted:
             # Disable buttons if time runs out
             for child in self.children: child.disabled = True
-            try: 
-                # Hum message edit nahi kar sakte bina interaction ke easily, 
-                # so usually we assume the prompt expired visually
-                pass 
-            except: pass
+            # Hum edit nahi kar sakte bina interaction ke easily yahan
+            pass 
 
 
 # --- 🔫 MAIN COMMAND ---
@@ -6574,175 +6594,233 @@ async def devil_slots(i: discord.Interaction):
 
 
 # ================== 🍪 SQUID GAME: DALGONA COOKIE (ECONOMY + VIP) ==================
-
-class DalgonaGameView(discord.ui.View):
+# --- 🍪 PREMIUM DALGONA GAME VIEW ---
+class PremiumDalgonaView(discord.ui.View):
     def __init__(self, user, difficulty):
-        super().__init__(timeout=60) # 1 Minute Timer
+        super().__init__(timeout=60) # 60 Seconds Timer
         self.user = user
         self.difficulty = difficulty
-        self.progress = 0 # 0 to 100 needed
-        self.durability = 100 # Cookie Health
+        self.progress = 0   # 0 to 100%
+        self.durability = 100 # Cookie Health (Starts at 100)
         self.game_over = False
         
-        # Difficulty Settings
+        # ⚙️ DIFFICULTY SETTINGS (Risk vs Reward)
         self.settings = {
-            "TRIANGLE": {"break_chance": 10, "lick_gain": 8, "crack_gain": 25, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
-            "CIRCLE":   {"break_chance": 30, "lick_gain": 6, "crack_gain": 20, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
-            "UMBRELLA": {"break_chance": 60, "lick_gain": 4, "crack_gain": 15, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"}
+            "TRIANGLE": {
+                "break_chance": 10, "lick_gain": 8, "crack_gain": 25, 
+                "reward": 10000, "color": 0x00FF00,
+                "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"
+            },
+            "CIRCLE": {
+                "break_chance": 25, "lick_gain": 6, "crack_gain": 20, 
+                "reward": 25000, "color": 0xF1C40F,
+                "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"
+            },
+            "STAR": { # 🌟 NEW SHAPE
+                "break_chance": 45, "lick_gain": 5, "crack_gain": 18, 
+                "reward": 40000, "color": 0x9B59B6,
+                "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"
+            },
+            "UMBRELLA": {
+                "break_chance": 65, "lick_gain": 4, "crack_gain": 15, 
+                "reward": 75000, "color": 0xE74C3C,
+                "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"
+            }
         }
-        
-        self.current_setting = self.settings[difficulty]
+        self.config = self.settings[difficulty]
 
+    # --- 📊 PROGRESS BAR GENERATOR ---
     def get_progress_bar(self):
         bar_len = 10
         filled = int((self.progress / 100) * bar_len)
-        bar = "🟩" * filled + "⬜" * (bar_len - filled)
-        return bar
-
-    async def get_embed(self, status="PLAYING"):
-        color = 0xFFA500 # Orange
+        empty = bar_len - filled
         
+        # Color Logic based on durability
+        if self.durability > 70: fill_char = "🟩"
+        elif self.durability > 30: fill_char = "🟨"
+        else: fill_char = "🟥"
+        
+        return f"[{fill_char * filled}{'⬛' * empty}]"
+
+    # --- 🎨 DYNAMIC EMBED ---
+    async def get_embed(self, status="PLAYING", reason=None):
         if status == "WON":
-            title = "🎉 PASSED!"
-            desc = f"**{self.user.mention}** ne **{self.difficulty}** complete kar liya!\n\n🍪 **Cookie:** Perfect Shape!\n🏆 **Status:** SURVIVOR"
+            title = f"🏆 PASSED: {self.difficulty}"
+            desc = (
+                f"### 🎉 CONGRATULATIONS!\n"
+                f"**{self.user.mention}** ne **{self.difficulty}** shape safalta se nikal liya!\n"
+                f"🍪 **Cookie:** Perfect!\n"
+                f"💰 **Won:** `${self.config['reward']:,}`"
+            )
+            color = 0x2ECC71
             img = "https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif"
-            color = 0x00FF00
+        
         elif status == "DIED":
-            title = "💀 CRACKED!"
-            desc = f"**{self.user.mention}** ne jaldbaazi mein cookie tod di!\n\n🍪 **Cookie:** DESTROYED"
-            img = "https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif"
+            title = f"💀 ELIMINATED: {self.difficulty}"
+            desc = (
+                f"### 💔 CRACKED!\n"
+                f"**{self.user.mention}** ki cookie toot gayi!\n\n"
+                f"📉 **Reason:** {reason}\n"
+                f"🔇 **Penalty:** 1 Hour Mute"
+            )
             color = 0xFF0000
-        else:
+            img = "https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif"
+        
+        else: # PLAYING
             title = f"🍪 DALGONA: {self.difficulty}"
             desc = (
-                f"**Shape:** {self.difficulty}\n"
-                f"**Integrity:** `{self.durability}%`\n"
-                f"**Progress:** `{self.progress}%`\n"
-                f"{self.get_progress_bar()}\n\n"
-                f"👇 **Action lo:**\n"
-                f"👅 **Lick:** Safe, Slow.\n"
-                f"🔨 **Crack:** Risky, Fast (+Risk of Break)."
+                f"**Player:** {self.user.mention}\n"
+                f"**Reward:** `${self.config['reward']:,}`\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"🛡️ **Integrity:** `{self.durability}%`\n"
+                f"📊 **Progress:** `{self.progress}%`\n"
+                f"{self.get_progress_bar()}\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"👇 **Choose Strategy:**\n"
+                f"👅 **Lick:** Slow but Safe.\n"
+                f"🔨 **Crack:** Fast but High Risk!"
             )
-            img = self.current_setting["img"]
-        
+            color = self.config["color"]
+            img = self.config["img"]
+
         embed = discord.Embed(title=title, description=desc, color=color)
-        embed.set_thumbnail(url=self.user.display_avatar.url)
+        embed.set_thumbnail(url=self.user.display_avatar.url) # Player Profile Pic
         embed.set_image(url=img)
         
         if status == "PLAYING":
-            embed.set_footer(text="Timer: 60 Seconds | Don't break it!")
+            embed.set_footer(text="Squid Game • 60 Seconds Timer", icon_url="https://cdn-icons-png.flaticon.com/512/805/805273.png")
             
         return embed
 
-    async def check_game_state(self, interaction):
+    # --- 🎮 GAME STATE LOGIC ---
+    async def update_game(self, interaction):
         # 1. Check Win
         if self.progress >= 100:
             self.game_over = True
-            
-            # --- 💰 REWARD LOGIC ---
-            rewards = {"TRIANGLE": 10000, "CIRCLE": 25000, "UMBRELLA": 50000}
-            prize = rewards.get(self.difficulty, 10000)
-            
-            await update_balance(self.user.id, prize)
-
             for child in self.children: child.disabled = True
             
-            embed = await self.get_embed("WON")
-            embed.description += f"\n💰 **Reward:** ${prize:,}"
+            # Payout
+            await update_balance(self.user.id, self.config['reward'])
             
-            await interaction.response.edit_message(embed=embed, view=self)
+            embed = await self.get_embed("WON")
+            await interaction.edit_original_response(embed=embed, view=self)
             return
 
-        # 2. Check Loss (Durability 0)
+        # 2. Check Death (Durability 0)
         if self.durability <= 0:
             await self.trigger_death(interaction, "Cookie choora ho gayi!")
             return
 
-        # 3. Continue
-        await interaction.response.edit_message(embed=await self.get_embed("PLAYING"), view=self)
-
+        # 3. Continue Game
+        embed = await self.get_embed("PLAYING")
+        await interaction.edit_original_response(embed=embed, view=self)
 
     async def trigger_death(self, interaction, reason):
         self.game_over = True
         for child in self.children: child.disabled = True
         
-        # --- 🛡️ SMART PUNISHMENT (VIP CHECK) ---
-        # 1 Hour Mute (3600 Seconds)
-        punish_msg = await smart_timeout(interaction, self.user, 3600, "Dalgona Failed")
+        # Punishment: 1 Hour Mute
+        try:
+            punish_msg = await smart_timeout(interaction, self.user, 3600, "Dalgona Failed")
+        except:
+            punish_msg = "(Mute Failed)"
 
-        embed = await self.get_embed("DIED")
-        embed.description += f"\n\n**Reason:** {reason}\n{punish_msg}"
+        embed = await self.get_embed("DIED", reason)
+        embed.description += f"\n{punish_msg}"
         
-        await interaction.response.edit_message(embed=embed, view=self)
+        await interaction.edit_original_response(embed=embed, view=self)
 
-
-    @discord.ui.button(label="👅 LICK (Safe)", style=discord.ButtonStyle.success)
-    async def lick_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.user.id: return
+    # --- 🔘 BUTTONS ---
+    @discord.ui.button(label="👅 LICK", style=discord.ButtonStyle.success)
+    async def lick(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user.id: 
+            return await interaction.response.send_message("❌ Apna game khelo!", ephemeral=True)
         
-        gain = self.current_setting["lick_gain"] + random.randint(-2, 2)
-        self.progress += gain
-        self.durability -= random.randint(1, 3) 
+        await interaction.response.defer() # Fix Interaction Failed
         
-        await self.check_game_state(interaction)
+        # Lick Logic: Low gain, low damage
+        self.progress += self.config["lick_gain"] + random.randint(0, 3)
+        self.durability -= random.randint(1, 4)
+        await self.update_game(interaction)
 
-
-    @discord.ui.button(label="🔨 CRACK (Risky)", style=discord.ButtonStyle.danger)
-    async def crack_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.user.id: return
+    @discord.ui.button(label="🔨 CRACK", style=discord.ButtonStyle.danger)
+    async def crack(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user.id: 
+            return await interaction.response.send_message("❌ Apna game khelo!", ephemeral=True)
         
-        # Risk Check
-        fail_chance = self.current_setting["break_chance"]
+        await interaction.response.defer() # Fix Interaction Failed
+        
+        # Risk Calculation
+        fail_chance = self.config["break_chance"]
         roll = random.randint(1, 100)
         
         if roll <= fail_chance:
-            # INSTANT DEATH
             await self.trigger_death(interaction, "Hathoda zor se lag gaya!")
             return
 
-        gain = self.current_setting["crack_gain"] + random.randint(-5, 5)
-        self.progress += gain
-        self.durability -= random.randint(5, 15) 
-        
-        await self.check_game_state(interaction)
+        # Crack Logic: High gain, high damage
+        self.progress += self.config["crack_gain"] + random.randint(0, 5)
+        self.durability -= random.randint(8, 15)
+        await self.update_game(interaction)
 
 
-# --- SHAPE SELECTION VIEW ---
+# --- 🏢 LOBBY VIEW (Shape Selection) ---
 class DalgonaLobbyView(discord.ui.View):
     def __init__(self, user):
         super().__init__(timeout=60)
         self.user = user
 
-    async def start_game(self, interaction, shape):
-        if interaction.user.id != self.user.id: return
+    async def start(self, interaction, shape):
+        if interaction.user.id != self.user.id:
+            return await interaction.response.send_message("❌ Ye tumhara game nahi hai!", ephemeral=True)
         
-        view = DalgonaGameView(self.user, shape)
-        await interaction.response.edit_message(embed=await view.get_embed(), view=view)
+        # Defer to prevent crash
+        await interaction.response.defer()
+        
+        view = PremiumDalgonaView(self.user, shape)
+        embed = await view.get_embed()
+        
+        await interaction.edit_original_response(embed=embed, view=view)
 
-    @discord.ui.button(label="🔺 TRIANGLE (Easy)", style=discord.ButtonStyle.secondary)
-    async def tri_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.start_game(interaction, "TRIANGLE")
+    @discord.ui.button(label="🔺 Triangle", style=discord.ButtonStyle.success, row=0)
+    async def tri(self, interaction, button): await self.start(interaction, "TRIANGLE")
 
-    @discord.ui.button(label="⭕ CIRCLE (Medium)", style=discord.ButtonStyle.primary)
-    async def cir_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.start_game(interaction, "CIRCLE")
+    @discord.ui.button(label="⭕ Circle", style=discord.ButtonStyle.primary, row=0)
+    async def cir(self, interaction, button): await self.start(interaction, "CIRCLE")
 
-    @discord.ui.button(label="☂️ UMBRELLA (Hard)", style=discord.ButtonStyle.danger)
-    async def umb_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.start_game(interaction, "UMBRELLA")
+    @discord.ui.button(label="⭐ Star", style=discord.ButtonStyle.secondary, row=1)
+    async def star(self, interaction, button): await self.start(interaction, "STAR")
+
+    @discord.ui.button(label="☂️ Umbrella", style=discord.ButtonStyle.danger, row=1)
+    async def umb(self, interaction, button): await self.start(interaction, "UMBRELLA")
 
 
-@bot.tree.command(name="dalgona", description="🍪 Squid Game: Honeycomb Challenge")
+# --- 💻 MAIN COMMAND ---
+@bot.tree.command(name="dalgona", description="🍪 Squid Game: Honeycomb Challenge (Premium)")
 @check_seized()
 async def dalgona(i: discord.Interaction):
+    # Permission Check
     if not i.guild.me.guild_permissions.moderate_members:
-        return await i.response.send_message("❌ Mute Permission Missing!", ephemeral=True)
+        return await i.response.send_message("❌ **Error:** Mere paas 'Timeout' permission nahi hai!", ephemeral=True)
         
-    embed = discord.Embed(title="🍪 DALGONA CHALLENGE", description="Apna Shape choose karo!\n\n🔺 **Triangle:** $10,000 (Low Risk)\n⭕ **Circle:** $25,000 (Medium)\n☂️ **Umbrella:** $50,000 (High Risk)", color=0xFFA500)
-    embed.set_image(url="https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif")
+    embed = discord.Embed(title="🍪 SQUID GAME: DALGONA", color=0xE91E63)
+    embed.set_author(name=f"Player: {i.user.name}", icon_url=i.user.display_avatar.url)
+    embed.set_thumbnail(url="https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif")
+    
+    embed.description = (
+        "**Choose your Difficulty:**\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "🔺 **Triangle** • `$10,000` • Easy\n"
+        "⭕ **Circle** • `$25,000` • Medium\n"
+        "⭐ **Star** • `$40,000` • Hard\n"
+        "☂️ **Umbrella** • `$75,000` • Extreme\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "⚠️ **Warning:** Failing results in **1 Hour Mute!**"
+    )
     
     view = DalgonaLobbyView(i.user)
     await i.response.send_message(embed=embed, view=view)
+
 
 # ================== 🪢 PREMIUM TUG OF WAR (FIXED) ==================
 
@@ -14362,7 +14440,7 @@ class RPSGameView(discord.ui.View):
         await interaction.message.edit(embed=embed, view=None)
 
 
-# --- 2. REQUEST VIEW (Approval System) ---
+# --- 2. REQUEST VIEW (Fixed Approval System) ---
 class RPSRequestView(discord.ui.View):
     def __init__(self, challenger, opponent, bet):
         super().__init__(timeout=60)
@@ -14372,20 +14450,29 @@ class RPSRequestView(discord.ui.View):
 
     @discord.ui.button(label="✅ Accept Challenge", style=discord.ButtonStyle.success)
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # 1. User Check
         if interaction.user.id != self.opponent.id:
             return await interaction.response.send_message("❌ Ye game aapke liye nahi hai!", ephemeral=True)
 
-        # Re-check Balances (Safety Check)
+        # 2. DEFER IMMEDIATELY (Ye line 'Interaction Failed' rokti hai)
+        await interaction.response.defer()
+
+        # 3. Safety Balance Check (Database)
         try:
             r1 = supabase.table("economy").select("balance").eq("user_id", str(self.challenger.id)).execute()
             r2 = supabase.table("economy").select("balance").eq("user_id", str(self.opponent.id)).execute()
             
-            if r1.data[0]['balance'] < self.bet or r2.data[0]['balance'] < self.bet:
-                return await interaction.response.send_message("❌ **Error:** Challenge accept karne se pehle kisi ke paise khatam ho gaye!", ephemeral=True)
-        except:
-            pass
+            # Check Data Existence
+            if not r1.data or not r2.data:
+                 return await interaction.followup.send("❌ Database Error: User data not found.", ephemeral=True)
 
-        # Start Game
+            if r1.data[0]['balance'] < self.bet or r2.data[0]['balance'] < self.bet:
+                return await interaction.followup.send("❌ **Error:** Challenge accept karne se pehle kisi ke paise khatam ho gaye!", ephemeral=True)
+        except Exception as e:
+            print(f"DB Error: {e}")
+            return await interaction.followup.send("❌ System Error during balance check.", ephemeral=True)
+
+        # 4. Start Game Setup
         embed = discord.Embed(title="🔥 ROCK PAPER SCISSORS", color=0xE67E22)
         embed.set_author(name=f"{self.challenger.name} VS {self.opponent.name}", icon_url=self.challenger.display_avatar.url)
         embed.set_thumbnail(url=self.opponent.display_avatar.url)
@@ -14396,7 +14483,9 @@ class RPSRequestView(discord.ui.View):
         )
         
         view = RPSGameView(self.challenger, self.opponent, self.bet)
-        await interaction.response.edit_message(embed=embed, view=view)
+        
+        # 5. EDIT ORIGINAL MESSAGE (Kyunki humne Defer kiya tha, ab edit_original_response use karenge)
+        await interaction.edit_original_response(embed=embed, view=view)
 
     @discord.ui.button(label="🚫 Decline", style=discord.ButtonStyle.danger)
     async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -14406,6 +14495,7 @@ class RPSRequestView(discord.ui.View):
         self.stop()
         embed = discord.Embed(description=f"🏃‍♂️ **{self.opponent.mention}** ne dar ke maare challenge reject kar diya!", color=0x95a5a6)
         await interaction.response.edit_message(embed=embed, view=None)
+
 
 
 # --- 3. MAIN COMMAND ---
@@ -14617,7 +14707,7 @@ class TicTacToeGameView(discord.ui.View):
         await interaction.response.edit_message(embed=embed, view=None)
 
 
-# --- 3. REQUEST VIEW (Approval System) ---
+# --- 3. REQUEST VIEW (Fixed Approval System) ---
 class TTTRequestView(discord.ui.View):
     def __init__(self, challenger, opponent, bet):
         super().__init__(timeout=60)
@@ -14627,20 +14717,29 @@ class TTTRequestView(discord.ui.View):
 
     @discord.ui.button(label="✅ Accept Challenge", style=discord.ButtonStyle.success)
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # 1. User Check
         if interaction.user.id != self.opponent.id:
             return await interaction.response.send_message("❌ Ye game tere liye nahi hai!", ephemeral=True)
 
-        # Re-check Balances (Safety)
+        # 2. DEFER IMMEDIATELY (Ye line crash rokti hai)
+        await interaction.response.defer()
+
+        # 3. Safety Balance Check (Database)
         try:
             r1 = supabase.table("economy").select("balance").eq("user_id", str(self.challenger.id)).execute()
             r2 = supabase.table("economy").select("balance").eq("user_id", str(self.opponent.id)).execute()
             
-            if r1.data[0]['balance'] < self.bet or r2.data[0]['balance'] < self.bet:
-                return await interaction.response.send_message("❌ **Error:** Kisi ek ke paas paise khatam ho gaye!", ephemeral=True)
-        except:
-            return await interaction.response.send_message("❌ DB Error during check.", ephemeral=True)
+            # Check Data Existence
+            if not r1.data or not r2.data:
+                return await interaction.followup.send("❌ Database Error: User data not found.", ephemeral=True)
 
-        # Start Game
+            if r1.data[0]['balance'] < self.bet or r2.data[0]['balance'] < self.bet:
+                return await interaction.followup.send("❌ **Error:** Challenge accept karne se pehle kisi ke paise khatam ho gaye!", ephemeral=True)
+        except Exception as e:
+            print(f"DB Error: {e}")
+            return await interaction.followup.send("❌ System Error during balance check.", ephemeral=True)
+
+        # 4. Start Game Setup
         embed = discord.Embed(title="⚔️ TIC TAC TOE", color=0x2ECC71)
         embed.description = (
             f"💰 **Pot:** `${self.bet * 2:,}`\n"
@@ -14651,7 +14750,9 @@ class TTTRequestView(discord.ui.View):
         embed.set_thumbnail(url=self.challenger.display_avatar.url)
         
         game_view = TicTacToeGameView(self.challenger, self.opponent, self.bet)
-        await interaction.response.edit_message(embed=embed, view=game_view)
+        
+        # 5. EDIT ORIGINAL MESSAGE (Kyunki humne Defer kiya tha)
+        await interaction.edit_original_response(embed=embed, view=game_view)
 
     @discord.ui.button(label="🚫 Decline", style=discord.ButtonStyle.danger)
     async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -16091,7 +16192,7 @@ class DalgonaShapeView(discord.ui.View):
     async def umb(self, interaction, button): await self.start_game(interaction, "umbrella")
 
 
-# --- 3. APPROVAL VIEW ---
+# --- 3. APPROVAL VIEW (Fixed) ---
 class DalgonaRequestView(discord.ui.View):
     def __init__(self, challenger, opponent, bet):
         super().__init__(timeout=60)
@@ -16101,22 +16202,46 @@ class DalgonaRequestView(discord.ui.View):
 
     @discord.ui.button(label="✅ Accept (Lick Cookie)", style=discord.ButtonStyle.success)
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.opponent.id: return
+        # 1. User Check
+        if interaction.user.id != self.opponent.id:
+            return await interaction.response.send_message("❌ Ye game tere liye nahi hai!", ephemeral=True)
         
-        # Balance Check Logic Here (Same as before)
+        # 2. DEFER IMMEDIATELY (Interaction Failed Fix)
+        await interaction.response.defer()
+
+        # 3. Balance Check (Database)
+        try:
+            r1 = supabase.table("economy").select("balance").eq("user_id", str(self.challenger.id)).execute()
+            r2 = supabase.table("economy").select("balance").eq("user_id", str(self.opponent.id)).execute()
+            
+            # Data Validation
+            if not r1.data or not r2.data:
+                return await interaction.followup.send("❌ Database Error: User data not found.", ephemeral=True)
+
+            if r1.data[0]['balance'] < self.bet or r2.data[0]['balance'] < self.bet:
+                return await interaction.followup.send("❌ **Error:** Game start hone se pehle kisi ke paise khatam ho gaye!", ephemeral=True)
+        except Exception as e:
+            print(f"DB Error: {e}")
+            return await interaction.followup.send("❌ System Error during balance check.", ephemeral=True)
         
+        # 4. Show Shape Selection Screen
         embed = discord.Embed(title="🍪 CHOOSE YOUR SHAPE", color=0x95a5a6)
-        embed.description = f"{self.challenger.mention}, shape select karo! (Harder shape = More Risk)"
+        embed.description = f"**{self.challenger.mention}**, ab tum shape select karo!\n*(Harder shape = More Risk but Faster Win)*"
+        embed.set_thumbnail(url="https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif")
         
         view = DalgonaShapeView(self.challenger, self.opponent, self.bet)
-        await interaction.response.edit_message(embed=embed, view=view)
+        
+        # 5. EDIT ORIGINAL MESSAGE (With Defer Fix)
+        await interaction.edit_original_response(embed=embed, view=view)
 
     @discord.ui.button(label="🚫 Decline", style=discord.ButtonStyle.danger)
     async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.opponent.id: return
+        if interaction.user.id != self.opponent.id:
+            return await interaction.response.send_message("❌ Chup chap baith!", ephemeral=True)
+        
         self.stop()
+        # Decline par message delete kar dete hain taaki gandagi na ho
         await interaction.message.delete()
-
 
 # --- 4. MAIN COMMAND ---
 @bot.tree.command(name="dalgona_duel", description="🍪 Squid Game: Cut the cookie or die!")
