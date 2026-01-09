@@ -16818,7 +16818,165 @@ async def invest(interaction: discord.Interaction, target: discord.Member, amoun
     }).eq("user_id", str(target.id)).eq("type", target_biz['type']).execute()
 
     biz_name = BUSINESS_TYPES[target_biz['type']]['name']
-    await interaction.followup.send(f"✅ Invested `${amount:,}` in **{target.name}**'s **{biz_name}**!")                   
+    await interaction.followup.send(f"✅ Invested `${amount:,}` in **{target.name}**'s **{biz_name}**!")       
+
+# =========================== 🛒 ADVANCED SELL CART SYSTEM ===========================
+
+# 1. QUANTITY MODAL (Cart me add karne ke liye)
+class AddToCartModal(discord.ui.Modal, title="Add to Sell List"):
+    def __init__(self, item_id, item_name, max_qty, parent_view):
+        super().__init__()
+        self.item_id = item_id
+        self.item_name = item_name
+        self.max_qty = max_qty
+        self.parent_view = parent_view # View ko yaad rakhenge taaki update kar sakein
+        
+        self.qty_input = discord.ui.TextInput(
+            label=f"Sell Quantity for {item_name}",
+            placeholder=f"Max you have: {max_qty}",
+            min_length=1, max_length=5, required=True
+        )
+        self.add_item(self.qty_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            qty = int(self.qty_input.value)
+        except ValueError:
+            return await interaction.response.send_message("❌ Number likho!", ephemeral=True)
+
+        if qty <= 0 or qty > self.max_qty:
+            return await interaction.response.send_message(f"❌ Invalid Qty! Max: {self.max_qty}", ephemeral=True)
+
+        # ✅ CART UPDATE LOGIC
+        # Agar pehle se cart me hai to update karo, warna naya daalo
+        self.parent_view.cart[self.item_id] = qty
+        
+        # Message update karo (List dikhao)
+        await self.parent_view.update_message(interaction)
+
+
+# 2. SELECT MENU (Item Chunne ke liye)
+class CartSelect(discord.ui.Select):
+    def __init__(self, inventory):
+        options = []
+        # Sirf wo items dikhao jo shop me exist karte hain
+        for item_id, qty in list(inventory.items())[:25]:
+            if item_id in SHOP_ITEMS:
+                item = SHOP_ITEMS[item_id]
+                options.append(discord.SelectOption(
+                    label=f"{item['name']} (x{qty})", 
+                    value=item_id,
+                    description=f"Orig Price: ${item['price']:,}",
+                    emoji="📦"
+                ))
+
+        super().__init__(placeholder="Select item to add to Cart...", options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        # Jaise hi item select kare, Modal kholo
+        item_id = self.values[0]
+        # Inventory quantity fetch karo view se
+        max_qty = self.view.inventory.get(item_id, 0)
+        item_name = SHOP_ITEMS[item_id]['name']
+        
+        modal = AddToCartModal(item_id, item_name, max_qty, self.view)
+        await interaction.response.send_modal(modal)
+
+
+# 3. MAIN VIEW (Cart Manager)
+class SellCartView(discord.ui.View):
+    def __init__(self, inventory, user_id):
+        super().__init__(timeout=120)
+        self.inventory = inventory
+        self.user_id = user_id
+        self.cart = {} # Format: {'item_id': qty, 'item_id2': qty}
+        
+        # Dropdown Add karo
+        self.add_item(CartSelect(inventory))
+
+    # Message ko refresh karne ka function
+    async def update_message(self, interaction: discord.Interaction):
+        # 1. Cart ka Total calculate karo
+        total_payout = 0
+        desc_lines = []
+        
+        if not self.cart:
+            desc_lines.append("📭 **Cart is Empty!** Select items below.")
+        else:
+            desc_lines.append("🛒 **ITEMS TO SELL:**")
+            for i_id, q in self.cart.items():
+                name = SHOP_ITEMS[i_id]['name']
+                price = SHOP_ITEMS[i_id]['price']
+                refund = int(price * 0.70) * q
+                total_payout += refund
+                desc_lines.append(f"• **{name}** x{q} ➝ `${refund:,}`")
+            
+            desc_lines.append(f"\n💰 **Total Refund:** `${total_payout:,}`")
+
+        embed = discord.Embed(title="🏪 SELL CART SYSTEM", description="\n".join(desc_lines), color=0xFFD700)
+        embed.set_footer(text="Select items one by one -> Click Confirm Sell")
+        
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    # BUTONS
+    @discord.ui.button(label="✅ CONFIRM SELL", style=discord.ButtonStyle.green, row=2)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self.cart:
+            return await interaction.response.send_message("❌ Cart khali hai bhai!", ephemeral=True)
+            
+        # --- FINAL DATABASE UPDATE ---
+        uid = str(self.user_id)
+        
+        # Latest data fetch (Race condition avoid karne ke liye)
+        data = supabase.table("economy").select("balance, inventory").eq("user_id", uid).execute().data
+        curr_inv = data[0]['inventory']
+        curr_bal = data[0]['balance']
+        
+        total_profit = 0
+        sold_log = []
+        
+        for i_id, qty_to_sell in self.cart.items():
+            if i_id in curr_inv and curr_inv[i_id] >= qty_to_sell:
+                # Price logic
+                price = SHOP_ITEMS[i_id]['price']
+                profit = int(price * 0.70) * qty_to_sell
+                total_profit += profit
+                
+                # Inventory minus
+                curr_inv[i_id] -= qty_to_sell
+                if curr_inv[i_id] <= 0:
+                    del curr_inv[i_id]
+                    
+                sold_log.append(f"{SHOP_ITEMS[i_id]['name']} x{qty_to_sell}")
+        
+        # Save
+        supabase.table("economy").update({
+            "balance": curr_bal + total_profit,
+            "inventory": curr_inv
+        }).eq("user_id", uid).execute()
+        
+        # Final Receipt
+        embed = discord.Embed(title="🤝 SOLD SUCCESSFULLY", color=0x00FF00)
+        embed.description = f"**Sold:** {', '.join(sold_log)}\n**Earned:** `${total_profit:,}`"
+        
+        await interaction.response.edit_message(embed=embed, view=None)
+
+    @discord.ui.button(label="🗑️ CLEAR CART", style=discord.ButtonStyle.red, row=2)
+    async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.cart = {} # Empty kar do
+        await self.update_message(interaction)
+
+# 4. COMMAND
+@bot.tree.command(name="sell", description="🛒 Add multiple items to cart and sell at once")
+async def sell_items(i: discord.Interaction):
+    data = supabase.table("economy").select("inventory").eq("user_id", str(i.user.id)).execute().data
+    if not data or not data[0].get('inventory') or len(data[0]['inventory']) == 0:
+        return await i.response.send_message("❌ Jeb khali hai!", ephemeral=True)
+        
+    view = SellCartView(data[0]['inventory'], i.user.id)
+    
+    embed = discord.Embed(title="🏪 SELL CART", description="Select an item from dropdown to add to cart.", color=0x2b2d31)
+    await i.response.send_message(embed=embed, view=view, ephemeral=True)
     
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
