@@ -16439,7 +16439,7 @@ async def dalgona_duel(interaction: discord.Interaction, opponent: discord.Membe
 import discord
 from discord import app_commands
 import datetime
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone 
 import random
 
 # --- ⚙️ ULTRA BUSINESS CONFIG ---
@@ -16459,7 +16459,7 @@ BUSINESS_TYPES = {
     "oil":        {"name": "Oil Company 🛢️",       "cost": 200000000, "income_per_hr": 670000, "decay_rate": 5,  "desc": "Black gold. Max profit."}
 }
 
-# --- 🛠️ HELPER FUNCTIONS ---
+# --- 🛠️ HELPER FUNCTIONS (FIXED) ---
 def get_progress_bar(percent):
     bar_len = 15 
     filled = int((percent / 100) * bar_len)
@@ -16471,12 +16471,22 @@ def get_progress_bar(percent):
     return f"{color * filled}{'⬛' * (bar_len - filled)} **{int(percent)}%**"
 
 def calculate_stock(last_supply_time, decay_rate):
+    # 1. String ko Time Object banao
     if isinstance(last_supply_time, str):
-        last_supply_time = datetime.fromisoformat(last_supply_time)
+        # Supabase se "T" ya space wala time aa sakta hai, dono handle karein
+        try:
+            last_supply_time = datetime.fromisoformat(last_supply_time)
+        except ValueError:
+            # Fallback agar format alag ho
+            last_supply_time = datetime.now(timezone.utc)
+
+    # 2. Timezone Fix (Ye line crash rokegi)
+    if last_supply_time.tzinfo is None:
+        last_supply_time = last_supply_time.replace(tzinfo=timezone.utc)
     
-    now = datetime.now(datetime.timezone.utc)
-    supply_time = last_supply_time.replace(tzinfo=datetime.timezone.utc)
-    hours_passed = (now - supply_time).total_seconds() / 3600
+    # 3. Calculation
+    now = datetime.now(timezone.utc)
+    hours_passed = (now - last_supply_time).total_seconds() / 3600
     
     current_stock = max(0, 100 - (hours_passed * decay_rate))
     return current_stock, hours_passed
@@ -16491,23 +16501,38 @@ class OwnedBusinessSelect(discord.ui.Select):
             b_type = biz['type']
             info = BUSINESS_TYPES.get(b_type)
             if info:
-                stock, _ = calculate_stock(biz['last_supply'], info['decay_rate'])
-                status_emoji = "🟢" if stock > 50 else "🔴"
-                
+                # Calculate Status using Fixed Function
+                try:
+                    stock, _ = calculate_stock(biz['last_supply'], info['decay_rate'])
+                    status_emoji = "🟢" if stock > 50 else "🔴"
+                    desc_text = f"Stock: {int(stock)}% | Click to Manage"
+                except Exception as e:
+                    print(f"Stock Error: {e}")
+                    stock = 0
+                    status_emoji = "⚠️"
+                    desc_text = "Data Error (Click to Fix)"
+
                 options.append(discord.SelectOption(
                     label=info['name'], 
                     value=b_type, 
-                    description=f"Stock: {int(stock)}% | Click to Manage",
+                    description=desc_text,
                     emoji=status_emoji
                 ))
         
+        if not options:
+            # Agar options empty hain (Error ki wajah se), to fallback option
+            options.append(discord.SelectOption(label="No Data", value="error", description="Contact Admin"))
+
         super().__init__(placeholder="Select a Business to Manage...", min_values=1, max_values=1, options=options)
         self.user = user
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != self.user.id: 
             return await interaction.response.send_message("❌ Apna business dekho!", ephemeral=True)
-            
+        
+        if self.values[0] == "error":
+            return await interaction.response.send_message("❌ Data Error. Try buying a new business.", ephemeral=True)
+
         selected_type = self.values[0]
         selected_biz = next((item for item in self.owned_data if item["type"] == selected_type), None)
         
