@@ -30,23 +30,34 @@ MAX_LOAN = 10000000      # 10 Million Limit
 INTEREST_LIMIT = 300000  # 300k se upar interest lagega
 LOAN_DURATION = 24       # 24 Hours time limit
 
-# --- GLOBAL CHECK: ACCOUNT SEIZED ---
+# --- 🔒 GLOBAL CHECK: ACCOUNT SEIZED (Updated) ---
 def check_seized():
     async def predicate(interaction: discord.Interaction) -> bool:
-        # Supabase check
+        user_id = str(interaction.user.id)
+
+        # 🛡️ 1. STAFF IMMUNITY (Ye Naya Code Hai)
+        # Agar helper function bolta hai ki ye Staff (Top 3) hai, toh bina check kiye jane do
+        if is_user_staff(user_id):
+            return True 
+
+        # 🛑 2. SUPABASE CHECK (Purana Code)
         try:
-            res = supabase.table("economy").select("is_seized").eq("user_id", interaction.user.id).execute()
+            # Database check karo
+            res = supabase.table("economy").select("is_seized").eq("user_id", user_id).execute()
             
-            # Agar user data hai aur 'is_seized' True hai
+            # Agar data mila aur 'is_seized' True hai
             if res.data and res.data[0].get('is_seized', False):
-                # Yahan hum Custom Error raise karenge taaki Error Handler pakad sake
+                # Error raise karo taaki Global Error Handler isse pakad sake
                 raise app_commands.CheckFailure("seized_account")
                 
             return True # Sab theek hai, aage badho
+
+        except app_commands.CheckFailure:
+            # Agar humne upar khud error raise kiya hai, toh usse aage jane do
+            raise
         except Exception as e:
-            # Agar DB error aaye, tab bhi rok do safety ke liye
-            if "seized_account" in str(e):
-                raise app_commands.CheckFailure("seized_account")
+            # Agar Database error aaye, toh safe side user ko allow kar do (Block mat karo)
+            print(f"⚠️ DB Check Error: {e}")
             return True 
             
     return app_commands.check(predicate)
@@ -119,6 +130,151 @@ SHOP_ITEMS = {
     "lotto_mega": {"name": "🎫 MEGA JACKPOT", "price": 5000000, "type": "lotto", "win": 100000000, "chance": 2},
     "lotto_god":  {"name": "🎰 GOD TICKET", "price": 100000000, "type": "lotto", "win": 50000000000, "chance": 1},
 }
+
+import discord
+from discord.ext import tasks
+import pytz
+from datetime import time, datetime, timedelta
+
+# --- ⚙️ SYSTEM CONFIGURATION ---
+OWNER_ID = 804687084249284618   # Owner ID (Not counted)
+STAFF_ROLE_ID = 1459074209191039049  # Staff Role ID
+GUILD_ID = 1257403231127076915       # Server ID
+SALARY_LOG_CHANNEL_ID = 1457066104819028089 # 👈 Yahan Channel ID dalein jahan message aayega
+STAFF_SALARY = 50000000          # $50 Million
+
+# --- 🔄 1. COMMAND TRACKER (Har command pe chalega) ---
+async def track_command_usage(user_id):
+    if user_id == OWNER_ID: return 
+    
+    # Simple Increment Logic
+    res = supabase.table("economy").select("command_count").eq("user_id", str(user_id)).execute()
+    
+    if res.data:
+        current = res.data[0].get('command_count', 0) or 0
+        supabase.table("economy").update({"command_count": current + 1}).eq("user_id", str(user_id)).execute()
+    else:
+        supabase.table("economy").insert({"user_id": str(user_id), "balance": 0, "command_count": 1}).execute()
+
+# --- 👑 2. AUTOMATED STAFF MANAGER (Role & Name Update) ---
+async def update_staff_roles(guild):
+    # Top 3 Users fetch karein
+    data = supabase.table("economy").select("user_id, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
+    
+    if not data: return
+    top_3_ids = [int(u['user_id']) for u in data]
+    
+    staff_role = guild.get_role(STAFF_ROLE_ID)
+    if not staff_role: return
+
+    # Server ke har member ko check karo
+    for member in guild.members:
+        if member.bot or member.id == OWNER_ID: continue
+        
+        # --- PROMOTE LOGIC ---
+        if member.id in top_3_ids:
+            if staff_role not in member.roles:
+                try:
+                    await member.add_roles(staff_role)
+                    # Name Change: [STAFF] Name
+                    new_nick = f"[STAFF] {member.name[:25]}" 
+                    await member.edit(nick=new_nick)
+                    
+                    # DM Congratulation
+                    embed = discord.Embed(title="🎉 PROMOTION ALERT!", color=0x00FF00)
+                    embed.description = f"Congrats **{member.name}**! Aap Top 3 active players mein hain.\nAapko **{staff_role.name}** bana diya gaya hai."
+                    await member.send(embed=embed)
+                except: pass
+        
+        # --- DEMOTE LOGIC ---
+        elif staff_role in member.roles:
+            try:
+                await member.remove_roles(staff_role)
+                # Name Reset
+                await member.edit(nick=None) 
+                
+                # DM Demotion
+                embed = discord.Embed(title="📉 DEMOTION ALERT", color=0xFF0000)
+                embed.description = "Aap Top 3 list se bahar ho gaye hain. Staff role hata diya gaya hai."
+                await member.send(embed=embed)
+            except: pass
+
+# --- 💰 3. PREMIUM SALARY SYSTEM (12:00 AM IST) ---
+india_tz = pytz.timezone("Asia/Kolkata")
+salary_time = time(hour=0, minute=0, tzinfo=india_tz) 
+
+@tasks.loop(time=salary_time)
+async def pay_staff_salary():
+    guild = bot.get_guild(GUILD_ID)
+    channel = bot.get_channel(SALARY_LOG_CHANNEL_ID)
+    
+    if not guild: return
+
+    # Top 3 Data Fetch
+    data = supabase.table("economy").select("user_id, balance, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
+    
+    if not data: return
+
+    # --- PREMIUM EMBED BUILDER ---
+    embed = discord.Embed(
+        title="💸 DAILY STAFF PAYROLL PROCESSED",
+        description="The following **Top 3 Active Agents** have received their daily salary based on command usage.",
+        color=0xFFD700, # Gold Color
+        timestamp=datetime.now()
+    )
+    
+    top_member_avatar = None # Isme Rank 1 ka photo store karenge
+
+    # Payment Loop
+    for idx, user in enumerate(data):
+        uid = int(user['user_id'])
+        old_bal = user['balance']
+        cmds = user['command_count']
+        
+        # Pay Salary
+        new_bal = old_bal + STAFF_SALARY
+        supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(uid)).execute()
+        
+        # Discord Info Fetch
+        member = guild.get_member(uid)
+        
+        # Formatting
+        rank_emoji = ["🥇", "🥈", "🥉"][idx] if idx < 3 else "🏅"
+        user_mention = member.mention if member else f"`User {uid}`"
+        
+        # Store Rank 1 Avatar for Thumbnail
+        if idx == 0 and member:
+            top_member_avatar = member.display_avatar.url
+        
+        # Add Field
+        embed.add_field(
+            name=f"{rank_emoji} Rank #{idx+1} — {user_mention}",
+            value=f"📜 **Cmds:** `{cmds}`\n💰 **Paid:** `$50,000,000`\n💳 **New Bal:** `${new_bal:,}`",
+            inline=False
+        )
+
+    # Finishing Touches
+    embed.set_footer(text="Automated Payroll System • Next Payout in 24h")
+    
+    # Thumbnail: Rank 1 ka photo (Agar hai), warna Server Icon
+    if top_member_avatar:
+        embed.set_thumbnail(url=top_member_avatar)
+    else:
+        embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
+
+    # Log Channel me bhejo
+    if channel:
+        await channel.send(embed=embed)
+        
+    # Roles Refresh karo (Ensure list is updated)
+    await update_staff_roles(guild)
+
+@pay_staff_salary.before_loop
+async def before_salary():
+    await bot.wait_until_ready()
+
+pay_staff_salary.start()
+
 
 # 🛡️ SYSTEM SAVER: Sirf 2 translation threads allow honge (Crash Fix)
 roast_executor = ThreadPoolExecutor(max_workers=2)
@@ -1017,6 +1173,32 @@ async def on_ready():
     await load_bypass_users()
     await load_crush_users()
     await bot.tree.sync()
+
+# --- 📊 COMMAND TRACKING EVENT ---
+# Ise main.py me lagayein (Events section ke paas)
+
+@bot.event
+async def on_app_command_completion(interaction: discord.Interaction, command: discord.app_commands.Command):
+    # Har command complete hone par +1 count karega
+    await track_command_usage(interaction.user.id)
+
+# --- 🛡️ STAFF CHECKER (Helper Function) ---
+# Ye check karega ki banda Top 3 me hai ya nahi
+def is_user_staff(user_id):
+    try:
+        # Database se Top 3 active players nikaalo (Owner ko chhod kar)
+        data = supabase.table("economy").select("user_id").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
+        
+        # Unke IDs ki list banao
+        staff_ids = [str(u['user_id']) for u in data]
+        
+        # Check karo: Kya user_id is list me hai?
+        if str(user_id) in staff_ids:
+            return True  # Haan, ye Staff hai
+        else:
+            return False # Nahi, ye Aam Aadmi hai
+    except:
+        return False
     
 # ================== SAFE SEND ==================
 async def safe_send(i, embed):
@@ -15324,6 +15506,54 @@ async def wipeout(i: discord.Interaction, victim: discord.Member):
         )
         embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/9290/9290469.png")
         return await i.response.send_message(embed=embed)
+
+@bot.tree.command(name="staff_stats", description="👑 Check Top 3 Candidates for Staff Role")
+async def staff_stats(i: discord.Interaction):
+    # Live update (Roles check kar lo pehle)
+    guild = i.guild
+    await update_staff_roles(guild)
+    
+    # Data Fetch
+    data = supabase.table("economy").select("*").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(10).execute().data
+    
+    if not data:
+        return await i.response.send_message("❌ Abhi kisi ne command use nahi kiya.", ephemeral=True)
+
+    embed = discord.Embed(title="👑 STAFF RECRUITMENT LEADERBOARD", color=0xFFD700)
+    embed.description = (
+        f"**Daily Salary:** $50,000,000 💸\n"
+        f"**Requirement:** Be in Top 3 Active Players\n"
+        f"**Benefit:** Auto 'Staff' Role + Protection\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━"
+    )
+
+    rank_text = ""
+    for idx, user in enumerate(data):
+        uid = user['user_id']
+        cmds = user.get('command_count', 0)
+        
+        # Rank Icons
+        if idx == 0: icon = "🥇 **GOD**"
+        elif idx == 1: icon = "🥈 **ELITE**"
+        elif idx == 2: icon = "🥉 **PRO**"
+        else: icon = f"#{idx+1}"
+        
+        # Staff Indicator
+        is_staff = "✅ [STAFF]" if idx < 3 else ""
+        
+        rank_text += f"{icon} <@{uid}> — **{cmds} Cmds** {is_staff}\n"
+
+    embed.add_field(name="🏆 ACTIVE AGENTS", value=rank_text, inline=False)
+    
+    # Current User Rank Logic
+    my_cmds = 0
+    for u in data:
+        if u['user_id'] == str(i.user.id):
+            my_cmds = u.get('command_count', 0)
+            break
+            
+    embed.set_footer(text=f"Your Commands: {my_cmds} | Grind to reach Top 3!")
+    await i.response.send_message(embed=embed)
      
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
