@@ -6038,93 +6038,104 @@ async def heist_cmd(i: discord.Interaction):
     view = HeistLobbyView(i.user)
     await i.response.send_message(embed=view.update_embed(), view=view)
 
-# ================== 🤠 WESTERN DUEL (REACTION TEST) ==================
-
-class WesternDuelView(discord.ui.View):
-    def __init__(self, p1, p2):
+# --- 🤠 ACTUAL GAME VIEW (Reaction Test) ---
+class WesternDuelGameView(discord.ui.View):
+    def __init__(self, p1, p2, interaction_to_edit):
         super().__init__(timeout=60)
-        self.p1 = p1
-        self.p2 = p2
-        self.signal_given = False
+        self.p1 = p1 # Challenger
+        self.p2 = p2 # Opponent
+        self.interaction_to_edit = interaction_to_edit # To edit the message later
         self.winner = None
+        self.signal_given = False
         self.start_time = None
         
-        # Initial Button (Red - Suicide Trap)
-        btn = discord.ui.Button(label="🛑 WAIT...", style=discord.ButtonStyle.danger, custom_id="shoot_btn")
-        btn.callback = self.shoot_callback
-        self.add_item(btn)
+        # 🛑 INITIAL BUTTON (Danger/Red)
+        self.shoot_btn = discord.ui.Button(
+            label="🛑 HOLD YOUR FIRE...", 
+            style=discord.ButtonStyle.danger, 
+            custom_id="shoot_btn",
+            disabled=True # Pehle disabled rahega for 1 sec effect
+        )
+        self.shoot_btn.callback = self.shoot_callback
+        self.add_item(self.shoot_btn)
 
-    async def start_game_logic(self, interaction):
-        # 1. Suspense Phase (Random Delay)
+    async def start_game_logic(self):
+        # 1. Warmup (Enable button)
+        await asyncio.sleep(1)
+        self.shoot_btn.disabled = False
+        self.shoot_btn.label = "🛑 STEADY..."
+        try:
+            await self.interaction_to_edit.edit_original_response(view=self)
+        except: pass
+
+        # 2. Suspense Phase (Random Delay 3s to 8s)
         delay = random.uniform(3, 8)
         await asyncio.sleep(delay)
         
-        if self.winner: return 
+        if self.winner: return # Agar kisi ne pehle hi galti kar di ho
 
-        # 2. FIRE SIGNAL!
+        # 3. 🔥 FIRE SIGNAL!
         self.signal_given = True
         self.start_time = dt.datetime.now().timestamp()
         
         # Update Button to GREEN
-        self.children[0].label = "🔥 SHOOT NOW!"
-        self.children[0].style = discord.ButtonStyle.success 
+        self.shoot_btn.label = "🔥 SHOOT NOW!"
+        self.shoot_btn.style = discord.ButtonStyle.success 
+        self.shoot_btn.emoji = "🔫"
         
-        # Update Embed to GREEN signal
-        new_embed = discord.Embed(color=0x00FF00)
-        new_embed.set_author(name=f"{self.p1.name} (Ready)", icon_url=self.p1.display_avatar.url)
-        new_embed.set_thumbnail(url=self.p2.display_avatar.url)
-        
-        new_embed.description = (
-            f"# 🔫 FIRE! FIRE! FIRE!\n"
-            f"# 👇 **BUTTON DABAO!** 👇\n"
-            f"**-----------------------------**"
+        # Premium Embed Update (Green Signal)
+        embed = discord.Embed(color=0x00FF00) # Bright Green
+        embed.set_author(name="🔥 DRAW! DRAW! DRAW!", icon_url="https://cdn-icons-png.flaticon.com/512/1546/1546090.png")
+        embed.description = (
+            f"# 👇 **CLICK FAST!** 👇\n"
+            f"**{self.p1.mention} 🆚 {self.p2.mention}**\n\n"
+            f"⚡ **Jo pehle dabayega, wo jitega!**"
         )
-        new_embed.set_image(url="https://media.tenor.com/E5J0kC1yTzAAAAAC/the-good-the-bad-and-the-ugly-clint-eastwood.gif")
+        embed.set_image(url="https://media.tenor.com/E5J0kC1yTzAAAAAC/the-good-the-bad-and-the-ugly-clint-eastwood.gif")
         
         try:
-            await interaction.edit_original_response(embed=new_embed, view=self)
-        except:
-            pass
+            await self.interaction_to_edit.edit_original_response(embed=embed, view=self)
+        except: pass
 
     async def shoot_callback(self, interaction: discord.Interaction):
+        # Check Player
         if interaction.user.id not in [self.p1.id, self.p2.id]:
-            return await interaction.response.send_message("❌ Audience door rahein!", ephemeral=True)
+            return await interaction.response.send_message("❌ **Get back!** Ye ladai tumhari nahi hai.", ephemeral=True)
             
         if self.winner:
-            return await interaction.response.send_message("⚰️ Tum mar chuke ho. Late ho gaye.", ephemeral=True)
+            return await interaction.response.send_message("⚰️ **Too late!** Lash thandi pad chuki hai.", ephemeral=True)
 
-        # --- LOGIC START ---
+        # --- GAME LOGIC ---
         
-        # CASE A: EARLY FIRE (Disqualified / Suicide)
+        # CASE A: EARLY FIRE (Suicide/Misfire)
         if not self.signal_given:
-            # Current user loses, Opponent wins
             loser = interaction.user
             winner = self.p1 if loser.id == self.p2.id else self.p2
             self.winner = winner 
             self.stop()
             
-            # ECONOMY: Give Money to Winner
+            # --- PUNISHMENT & REWARD ---
             prize = 10000
             await update_balance(winner.id, prize)
-            
-            # VIP: Punish Loser (Smart Timeout)
-            punish_msg = await smart_timeout(interaction, loser, 30, "Duel Suicide") # 30s Mute
+            await smart_timeout(interaction, loser, 30, "Duel Suicide (Misfire)")
 
-            embed = discord.Embed(title="💀 MISFIRE! (Suicide)", color=0x000000)
-            embed.set_author(name=winner.name + " WINS!", icon_url=winner.display_avatar.url)
-            embed.set_thumbnail(url=loser.display_avatar.url)
-            
+            # Suicide Embed
+            embed = discord.Embed(title="💀 MISFIRE! (Disqualified)", color=0x2f3136)
+            embed.set_author(name=f"{loser.name} Panicked!", icon_url=loser.display_avatar.url)
             embed.description = (
-                f"### 🤦‍♂️ {loser.mention} ne ghabra ke khud ko uda liya!\n"
-                f"**Winner:** {winner.mention} (+$10,000)\n\n"
-                f"{punish_msg}"
+                f"### 🤦‍♂️ Ghabrahat mein khud ko uda liya!\n"
+                f"**{loser.mention}** ne signal se pehle trigger daba diya.\n"
+                f"-----------------------------\n"
+                f"🏆 **Winner:** {winner.mention} (+$10,000)\n"
+                f"🤕 **Loser:** 30s Timeout applied."
             )
+            embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/463/463067.png")
             embed.set_image(url="https://media.tenor.com/12s3s2v1b4cAAAAC/gun-fail.gif")
             
             await interaction.response.edit_message(embed=embed, view=None)
             return
 
-        # CASE B: PERFECT SHOT (Win)
+        # CASE B: PERFECT SHOT (Victory)
         reaction_time = round(dt.datetime.now().timestamp() - self.start_time, 3)
         self.winner = interaction.user
         self.stop()
@@ -6132,65 +6143,110 @@ class WesternDuelView(discord.ui.View):
         winner = interaction.user
         loser = self.p1 if winner.id == self.p2.id else self.p2
         
-        # ECONOMY: Give Money to Winner
+        # --- REWARD & PUNISHMENT ---
         prize = 10000
         await update_balance(winner.id, prize)
+        await smart_timeout(interaction, loser, 30, "Lost Western Duel")
         
-        # VIP: Punish Loser
-        punish_msg = await smart_timeout(interaction, loser, 30, "Lost Duel") # 30s Mute
-        
-        embed = discord.Embed(title="🤠 VICTORY!", color=0xFFD700)
-        embed.set_author(name=f"🏆 {winner.name}", icon_url=winner.display_avatar.url)
+        # Victory Embed
+        embed = discord.Embed(color=0xFFD700) # Gold
+        embed.set_author(name=f"🏆 FASTEST HAND IN THE WEST: {winner.name}", icon_url=winner.display_avatar.url)
         embed.set_thumbnail(url=loser.display_avatar.url)
         
         embed.description = (
-            f"# 💥 BANG!\n"
-            f"**{winner.mention}** ne **{reaction_time}s** mein trigger dabaya!\n\n"
-            f"💰 **Won:** ${prize:,}\n"
-            f"🪦 **R.I.P:** {loser.mention}\n"
-            f"{punish_msg}"
+            f"# 💥 HEADSHOT!\n"
+            f"⚡ **Reaction Time:** `{reaction_time}s`\n"
+            f"-----------------------------\n"
+            f"🔫 **Shooter:** {winner.mention}\n"
+            f"🪦 **Victim:** {loser.mention}\n"
+            f"💰 **Loot:** ${prize:,}\n"
         )
+        embed.set_footer(text="The dust settles...")
         embed.set_image(url="https://media.tenor.com/w9yv4p2y3QAAAAAC/tumbleweed.gif")
         
         await interaction.response.edit_message(embed=embed, view=None)
 
 
-@bot.tree.command(name="duel", description="🤠 Face-Off Duel (Reaction Test)")
+# --- 📜 CHALLENGE REQUEST VIEW (Approval System) ---
+class DuelRequestView(discord.ui.View):
+    def __init__(self, challenger, opponent):
+        super().__init__(timeout=60)
+        self.challenger = challenger
+        self.opponent = opponent
+        self.accepted = False
+
+    @discord.ui.button(label="✅ Accept Duel", style=discord.ButtonStyle.success)
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.opponent.id:
+            return await interaction.response.send_message("❌ Ye challenge tumhare liye nahi hai!", ephemeral=True)
+        
+        self.accepted = True
+        self.stop() # Stop this view
+        
+        # --- START GAME ---
+        # Edit request message to show game starting
+        embed = discord.Embed(title="🤠 DUEL ACCEPTED!", color=0xE67E22)
+        embed.description = (
+            f"### 👁️ EYES ON THE BUTTON!\n"
+            f"**{self.challenger.mention} 🆚 {self.opponent.mention}**\n\n"
+            f"Wait for the button to turn **GREEN**.\n"
+            f"*(Jaldi dabaya to maut, late kiya to maut)*"
+        )
+        embed.set_image(url="https://media.tenor.com/h5T27d4s5ogAAAAC/the-good-the-bad-and-the-ugly-clint-eastwood.gif")
+        
+        # Create Game View
+        game_view = WesternDuelGameView(self.challenger, self.opponent, interaction)
+        await interaction.response.edit_message(embed=embed, view=game_view)
+        
+        # Start Background Task
+        await game_view.start_game_logic()
+
+    @discord.ui.button(label="🏃‍♂️ Decline (Run Away)", style=discord.ButtonStyle.secondary)
+    async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.opponent.id:
+            return await interaction.response.send_message("❌ Chup chap baitho!", ephemeral=True)
+            
+        self.stop()
+        embed = discord.Embed(description=f"🏃‍♂️ **{self.opponent.mention}** dar ke bhaag gaya!", color=0x95a5a6)
+        await interaction.response.edit_message(embed=embed, view=None)
+
+    async def on_timeout(self):
+        if not self.accepted:
+            # Disable buttons if time runs out
+            for child in self.children: child.disabled = True
+            try: 
+                # Hum message edit nahi kar sakte bina interaction ke easily, 
+                # so usually we assume the prompt expired visually
+                pass 
+            except: pass
+
+
+# --- 🔫 MAIN COMMAND ---
+@bot.tree.command(name="duel", description="🤠 Challenge someone to a Western Standoff!")
 @check_seized()
 async def western_duel(i: discord.Interaction, opponent: discord.Member):
+    # 1. Basic Checks
     if not i.guild.me.guild_permissions.moderate_members:
         return await i.response.send_message("❌ Mere paas 'Timeout' power nahi hai!", ephemeral=True)
-        
     if opponent.id == i.user.id or opponent.bot:
         return await i.response.send_message("❌ Khud se ya Bot se nahi lad sakte.", ephemeral=True)
 
-    # --- 🎭 THE FACE-OFF EMBED ---
-    embed = discord.Embed(color=0xB8860B) # Gold/Brown Style
-    
-    # Left Side: Challenger (Author)
-    embed.set_author(name=f"{i.user.name} 🔫", icon_url=i.user.display_avatar.url)
-    
-    # Right Side: Opponent (Thumbnail)
+    # 2. Challenge Embed
+    embed = discord.Embed(title="📜 DUEL CHALLENGE", color=0xB8860B) # Dark Gold
+    embed.set_author(name=f"{i.user.name} demands satisfaction!", icon_url=i.user.display_avatar.url)
     embed.set_thumbnail(url=opponent.display_avatar.url)
     
-    # Center: The VS Sign
     embed.description = (
-        f"# ⚡ {i.user.mention} 🆚 {opponent.mention} ⚡\n"
+        f"# 🤠 {i.user.mention} ⚔️ {opponent.mention}\n"
         f"**-----------------------------**\n"
-        f"### 👁️ NAZAR BUTTON PE RAKHO!\n"
-        f"Jab button **GREEN** ho jaye, tabhi dabana.\n"
-        f"*(Jaldi kiya to Maut, Late kiya to Maut)*\n\n"
-        f"💰 **Prize:** $10,000"
+        f"**Prize:** `$10,000`\n"
+        f"**Punishment:** `30s Timeout`\n\n"
+        f"👇 **{opponent.mention}, do you accept?**"
     )
     
-    # Image: Tumbleweed
-    embed.set_image(url="https://media.tenor.com/w9yv4p2y3QAAAAAC/tumbleweed.gif")
-    
-    view = WesternDuelView(i.user, opponent)
+    view = DuelRequestView(i.user, opponent)
     await i.response.send_message(embed=embed, view=view)
-    
-    # Start Logic in Background
-    asyncio.create_task(view.start_game_logic(i))
+        
 
 # ================== 💣 HOT POTATO BOMB GAME (PREMIUM) ==================
 
@@ -14199,6 +14255,160 @@ class RPSView(discord.ui.View):
 
 
 # --- SLASH COMMAND ---
+import discord
+from discord import app_commands
+
+# --- 1. GAME VIEW (The Loop Logic) ---
+class RPSGameView(discord.ui.View):
+    def __init__(self, p1, p2, bet):
+        super().__init__(timeout=300)
+        self.p1 = p1
+        self.p2 = p2
+        self.bet = bet
+        self.moves = {} # Store moves: {user_id: "rock"}
+    
+    # --- HELPER: Handle Button Clicks ---
+    async def process_move(self, interaction: discord.Interaction, move: str):
+        if interaction.user.id not in [self.p1.id, self.p2.id]:
+            return await interaction.response.send_message("❌ Audience door rahein!", ephemeral=True)
+        
+        if interaction.user.id in self.moves:
+            return await interaction.response.send_message("✅ Aap move chal chuke hain, opponent ka wait karein.", ephemeral=True)
+
+        # Save Move
+        self.moves[interaction.user.id] = move
+        await interaction.response.send_message(f"You chose **{move.upper()}**! 🤫", ephemeral=True)
+
+        # Check if BOTH played
+        if len(self.moves) == 2:
+            await self.resolve_round(interaction)
+
+    # --- BUTTONS ---
+    @discord.ui.button(emoji="🪨", label="Rock", style=discord.ButtonStyle.secondary)
+    async def rock(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.process_move(interaction, "rock")
+
+    @discord.ui.button(emoji="📄", label="Paper", style=discord.ButtonStyle.secondary)
+    async def paper(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.process_move(interaction, "paper")
+
+    @discord.ui.button(emoji="✂️", label="Scissors", style=discord.ButtonStyle.secondary)
+    async def scissors(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.process_move(interaction, "scissors")
+
+    # --- LOGIC: RESOLVE ROUND ---
+    async def resolve_round(self, interaction):
+        m1 = self.moves[self.p1.id]
+        m2 = self.moves[self.p2.id]
+        
+        # Winning Logic
+        winner = None
+        if m1 == m2:
+            winner = "draw"
+        elif (m1 == "rock" and m2 == "scissors") or \
+             (m1 == "paper" and m2 == "rock") or \
+             (m1 == "scissors" and m2 == "paper"):
+            winner = self.p1
+        else:
+            winner = self.p2
+
+        # --- SCENARIO A: DRAW (Loop) ---
+        if winner == "draw":
+            self.moves = {} # Reset moves
+            
+            embed = interaction.message.embeds[0]
+            embed.color = 0xF1C40F # Yellow for Warning
+            embed.description = (
+                f"### ⚠️ IT'S A DRAW!\n"
+                f"{self.p1.mention}: **{m1.upper()}** 🆚 {self.p2.mention}: **{m2.upper()}**\n\n"
+                f"🔄 **Round Restarting...**\n"
+                f"💰 Pot abhi bhi table par hai! Dobara choose karein!"
+            )
+            # Edit message to show draw, but keep buttons active
+            await interaction.message.edit(embed=embed, view=self)
+            return # Function exit, view stays active
+
+        # --- SCENARIO B: SOMEONE WON (End Game) ---
+        loser = self.p2 if winner == self.p1 else self.p1
+        
+        # Disable Buttons
+        for child in self.children: child.disabled = True
+        self.stop()
+
+        # Database Update
+        try:
+            # Add to Winner
+            w_res = supabase.table("economy").select("balance").eq("user_id", str(winner.id)).execute()
+            new_w_bal = w_res.data[0]['balance'] + self.bet
+            supabase.table("economy").update({"balance": new_w_bal}).eq("user_id", str(winner.id)).execute()
+
+            # Deduct from Loser
+            l_res = supabase.table("economy").select("balance").eq("user_id", str(loser.id)).execute()
+            new_l_bal = l_res.data[0]['balance'] - self.bet
+            supabase.table("economy").update({"balance": new_l_bal}).eq("user_id", str(loser.id)).execute()
+        except Exception as e:
+            print(f"RPS DB Error: {e}")
+
+        # Victory Embed
+        embed = discord.Embed(title="🏆 VICTORY!", color=0x2ECC71) # Green
+        embed.set_thumbnail(url=winner.display_avatar.url)
+        embed.description = (
+            f"### 🎉 {winner.mention} WON!\n"
+            f"Move: **{self.moves[winner.id].upper()}** 🆚 **{self.moves[loser.id].upper()}**\n\n"
+            f"💸 **Winnings:** `${self.bet:,}`\n"
+            f"💀 **Loser:** {loser.mention}"
+        )
+        
+        await interaction.message.edit(embed=embed, view=None)
+
+
+# --- 2. REQUEST VIEW (Approval System) ---
+class RPSRequestView(discord.ui.View):
+    def __init__(self, challenger, opponent, bet):
+        super().__init__(timeout=60)
+        self.challenger = challenger
+        self.opponent = opponent
+        self.bet = bet
+
+    @discord.ui.button(label="✅ Accept Challenge", style=discord.ButtonStyle.success)
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.opponent.id:
+            return await interaction.response.send_message("❌ Ye game aapke liye nahi hai!", ephemeral=True)
+
+        # Re-check Balances (Safety Check)
+        try:
+            r1 = supabase.table("economy").select("balance").eq("user_id", str(self.challenger.id)).execute()
+            r2 = supabase.table("economy").select("balance").eq("user_id", str(self.opponent.id)).execute()
+            
+            if r1.data[0]['balance'] < self.bet or r2.data[0]['balance'] < self.bet:
+                return await interaction.response.send_message("❌ **Error:** Challenge accept karne se pehle kisi ke paise khatam ho gaye!", ephemeral=True)
+        except:
+            pass
+
+        # Start Game
+        embed = discord.Embed(title="🔥 ROCK PAPER SCISSORS", color=0xE67E22)
+        embed.set_author(name=f"{self.challenger.name} VS {self.opponent.name}", icon_url=self.challenger.display_avatar.url)
+        embed.set_thumbnail(url=self.opponent.display_avatar.url)
+        embed.description = (
+            f"💰 **Bet Amount:** `${self.bet:,}`\n"
+            f"🏟️ **Round 1:** Fight!\n\n"
+            f"👇 **Apna hathiyar chunein:**"
+        )
+        
+        view = RPSGameView(self.challenger, self.opponent, self.bet)
+        await interaction.response.edit_message(embed=embed, view=view)
+
+    @discord.ui.button(label="🚫 Decline", style=discord.ButtonStyle.danger)
+    async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.opponent.id:
+            return await interaction.response.send_message("❌ Chup chap baitho!", ephemeral=True)
+        
+        self.stop()
+        embed = discord.Embed(description=f"🏃‍♂️ **{self.opponent.mention}** ne dar ke maare challenge reject kar diya!", color=0x95a5a6)
+        await interaction.response.edit_message(embed=embed, view=None)
+
+
+# --- 3. MAIN COMMAND ---
 @bot.tree.command(name="rps", description="🎰 Bet money on Rock Paper Scissors")
 @app_commands.describe(opponent="Kisse ladna hai?", amount="Kitne ka satta?")
 @check_seized()
@@ -14207,22 +14417,20 @@ async def rps(interaction: discord.Interaction, opponent: discord.Member, amount
     # 1. BASIC CHECKS
     if opponent.id == interaction.user.id:
         return await interaction.response.send_message("❌ Khud se nahi khel sakta pagle!", ephemeral=True)
-    
     if opponent.bot:
         return await interaction.response.send_message("❌ Bot se nahi, asli insaan se lad!", ephemeral=True)
-        
     if amount < 100:
         return await interaction.response.send_message("❌ Gareebi mat dikha, kam se kam **$100** ki bet laga.", ephemeral=True)
 
     # 2. BALANCE CHECK (DATABASE)
     try:
         # Check User 1
-        res1 = supabase.table("economy").select("balance").eq("user_id", interaction.user.id).execute()
+        res1 = supabase.table("economy").select("balance").eq("user_id", str(interaction.user.id)).execute()
         if not res1.data or res1.data[0]['balance'] < amount:
             return await interaction.response.send_message(f"❌ Tere paas itne paise nahi hain! Balance check kar.", ephemeral=True)
 
         # Check User 2 (Opponent)
-        res2 = supabase.table("economy").select("balance").eq("user_id", opponent.id).execute()
+        res2 = supabase.table("economy").select("balance").eq("user_id", str(opponent.id)).execute()
         if not res2.data or res2.data[0]['balance'] < amount:
             return await interaction.response.send_message(f"❌ **{opponent.name}** gareeb hai! Uske paas itne paise nahi hain.", ephemeral=True)
             
@@ -14230,230 +14438,274 @@ async def rps(interaction: discord.Interaction, opponent: discord.Member, amount
         print(f"RPS Check Error: {e}")
         return await interaction.response.send_message("❌ Database Error!", ephemeral=True)
 
-    # 3. START GAME EMBED
-    embed = discord.Embed(title="🔥 ROCK PAPER SCISSORS DUEL", color=0xFFA500)
-    
-    # Premium Header: P1 as Author, P2 as Thumbnail (Dono ki photo dikhegi)
-    embed.set_author(name=f"{interaction.user.name} VS {opponent.name}", icon_url=interaction.user.display_avatar.url)
-    embed.set_thumbnail(url=opponent.display_avatar.url)
+    # 3. SEND CHALLENGE REQUEST
+    embed = discord.Embed(title="📜 RPS CHALLENGE", color=0xFFA500)
+    embed.set_author(name=f"{interaction.user.name} lalkaar raha hai!", icon_url=interaction.user.display_avatar.url)
+    embed.set_thumbnail(url="https://media.tenor.com/JUPQeN4jXzAAAAAC/rock-paper-scissors.gif")
     
     embed.description = (
-        f"💰 **Bet Amount:** ${amount:,}\n"
-        f"🏟️ **Status:** Waiting for moves...\n\n"
-        f"🔘 **Neeche buttons daba kar apna move chuno!**\n"
-        f"*(Dono players ko select karna padega)*"
+        f"⚔️ **Challenger:** {interaction.user.mention}\n"
+        f"🛡️ **Opponent:** {opponent.mention}\n"
+        f"💰 **Bet Amount:** `${amount:,}`\n\n"
+        f"👇 **{opponent.mention}, kya tum taiyaar ho?**"
     )
     
-    view = RPSView(interaction.user, opponent, amount)
-    await interaction.response.send_message(f"{interaction.user.mention} ⚔️ {opponent.mention}", embed=embed, view=view)
+    view = RPSRequestView(interaction.user, opponent, amount)
+    await interaction.response.send_message(f"🔔 {opponent.mention}, challenge aaya hai!", embed=embed, view=view)
 
 # --- TIC TAC TOE BUTTON ---
 import discord
 from discord import app_commands
-import datetime as dt # Ensure this is imported for timeout
+import datetime as dt
 
-# --- 1. THE BUTTON CLASS (Fixed Grid) ---
+# --- 1. THE BUTTON CLASS (Grid Cell) ---
 class TTTButton(discord.ui.Button):
     def __init__(self, x, y):
-        # Row calculate karke button ko sahi jagah place karenge
         super().__init__(style=discord.ButtonStyle.secondary, label="\u200b", row=y)
         self.x = x
         self.y = y
 
     async def callback(self, interaction: discord.Interaction):
-        view: TicTacToeView = self.view
+        view: TicTacToeGameView = self.view
         
-        # Turn Validation
-        if view.winner is not None: return # Game over ho chuka hai
+        # 1. Turn Validation
+        if view.winner is not None: return
         if interaction.user.id != view.current_turn.id:
-            return await interaction.response.send_message("❌ **Ruk ja bhai!** Teri baari nahi hai.", ephemeral=True)
+            return await interaction.response.send_message("❌ **Wait your turn!** Abhi teri baari nahi hai.", ephemeral=True)
         
-        # Logic Update
-        player_symbol = "❌" if view.current_turn == view.p1 else "⭕"
-        
-        # Button Visual Update
-        self.style = discord.ButtonStyle.danger if view.current_turn == view.p1 else discord.ButtonStyle.success
-        self.label = player_symbol
-        self.disabled = True # Button lock kar diya
-        
-        # Board Data Update
+        # 2. Update Internal Board State
         view.board[self.y * 3 + self.x] = view.current_turn.id
         
-        # Check Win/Draw
+        # 3. Update Button Visuals
+        self.style = discord.ButtonStyle.danger if view.current_turn == view.p1 else discord.ButtonStyle.success
+        self.label = "❌" if view.current_turn == view.p1 else "⭕"
+        self.disabled = True
+        
+        # 4. Check Game Status
         winner = view.check_winner()
         
         if winner:
             view.winner = winner
             await view.game_over(interaction, winner)
-        elif 0 not in view.board: # Board full = Draw
-            await view.game_over(interaction, None)
+        elif 0 not in view.board: 
+            # --- 🔄 DRAW LOGIC (AUTO RESTART) ---
+            await view.handle_draw(interaction)
         else:
-            # Turn Switch
-            view.current_turn = view.p2 if view.current_turn == view.p1 else view.p1
+            # --- NEXT TURN ---
+            view.switch_turn()
             await view.update_message(interaction)
 
 
-# --- 2. THE VIEW CLASS (Game Engine) ---
-class TicTacToeView(discord.ui.View):
+# --- 2. THE GAME VIEW (Logic Engine) ---
+class TicTacToeGameView(discord.ui.View):
     def __init__(self, p1, p2, bet):
         super().__init__(timeout=300)
         self.p1 = p1
         self.p2 = p2
         self.bet = bet
-        self.current_turn = p1
+        self.current_turn = p1 # Challenger starts
         self.board = [0] * 9
         self.winner = None
+        self.draw_count = 0
 
-        # --- GRID BANANA ZAROORI HAI ---
-        # 3x3 Buttons Add Kar Rahe Hain
+        # Generate 3x3 Grid
         for y in range(3):
             for x in range(3):
                 self.add_item(TTTButton(x, y))
 
     def check_winner(self):
-        # Winning Combinations (Rows, Cols, Diagonals)
+        # All winning combinations
         wins = [
-            (0,1,2), (3,4,5), (6,7,8), # Rows
-            (0,3,6), (1,4,7), (2,5,8), # Cols
-            (0,4,8), (2,4,6)           # Diagonals
+            (0,1,2), (3,4,5), (6,7,8), # Horizontal
+            (0,3,6), (1,4,7), (2,5,8), # Vertical
+            (0,4,8), (2,4,6)           # Diagonal
         ]
         for a, b, c in wins:
             if self.board[a] == self.board[b] == self.board[c] and self.board[a] != 0:
                 return self.p1 if self.board[a] == self.p1.id else self.p2
         return None
 
-    async def update_message(self, interaction):
+    def switch_turn(self):
+        self.current_turn = self.p2 if self.current_turn == self.p1 else self.p1
+
+    async def update_message(self, interaction, custom_msg=None):
         embed = interaction.message.embeds[0]
         
-        # Visual Turn Indicator
-        turn_msg = f"👉 **{self.current_turn.name}** ki baari hai! ({'❌' if self.current_turn == self.p1 else '⭕'})"
+        # Dynamic Status Bar
+        symbol = "❌" if self.current_turn == self.p1 else "⭕"
+        status = custom_msg if custom_msg else f"👉 **{self.current_turn.name}'s Turn** ({symbol})"
         
         embed.description = (
-            f"💰 **Table Money:** `${self.bet * 2:,}`\n"
-            f"⚔️ **Match:** {self.p1.mention} 🆚 {self.p2.mention}\n\n"
-            f"{turn_msg}"
+            f"💰 **Pot:** `${self.bet * 2:,}` | 🔄 **Draws:** {self.draw_count}\n"
+            f"⚔️ **{self.p1.name}** (❌) 🆚 **{self.p2.name}** (⭕)\n"
+            f"**----------------------------------**\n"
+            f"{status}"
         )
-        # Update Thumbnail to current player
-        embed.set_thumbnail(url=self.current_turn.display_avatar.url)
+        embed.color = 0xE67E22 if self.current_turn == self.p1 else 0x2ECC71
         
         await interaction.response.edit_message(embed=embed, view=self)
+
+    async def handle_draw(self, interaction):
+        # Reset Board Logic
+        self.board = [0] * 9
+        self.draw_count += 1
+        
+        # Reset Buttons
+        for child in self.children:
+            child.label = "\u200b"
+            child.style = discord.ButtonStyle.secondary
+            child.disabled = False
+        
+        # Draw animation/notification
+        await self.update_message(interaction, custom_msg="⚠️ **DRAW!** Board resetting... Keep fighting!")
 
     async def game_over(self, interaction, winner):
-        for child in self.children: child.disabled = True # Disable all
+        for child in self.children: child.disabled = True # Lock board
 
-        if winner:
-            loser = self.p2 if winner == self.p1 else self.p1
-            
-            # --- MONEY TRANSFER ---
-            try:
-                # Winner +
-                w_data = supabase.table("economy").select("balance").eq("user_id", winner.id).execute()
-                new_w = w_data.data[0]['balance'] + self.bet
-                supabase.table("economy").update({"balance": new_w}).eq("user_id", winner.id).execute()
-
-                # Loser -
-                l_data = supabase.table("economy").select("balance").eq("user_id", loser.id).execute()
-                new_l = l_data.data[0]['balance'] - self.bet
-                supabase.table("economy").update({"balance": new_l}).eq("user_id", loser.id).execute()
-            except Exception as e:
-                print(f"Economy Error: {e}")
-
-            # --- PUNISHMENT SYSTEM (VIP/LIFE) ---
-            status_msg = ""
-            is_saved = False
-            
-            try:
-                # Check Inventory
-                res = supabase.table("economy").select("inventory").eq("user_id", loser.id).execute()
-                inv = res.data[0].get('inventory', {}) or {} # Empty dict fallback
-
-                # 1. VIP Check
-                # (Assuming 'vip' key or date check logic here)
-                # Simple check: if inv.get("vip"): is_saved = True 
-                
-                # 2. Extra Life Check
-                if not is_saved and inv.get("life", 0) > 0:
-                    inv["life"] -= 1
-                    supabase.table("economy").update({"inventory": inv}).eq("user_id", loser.id).execute()
-                    is_saved = True
-                    status_msg = "\n💖 **Extra Life Used!** (Timeout cancelled)"
-
-                # 3. Apply Timeout
-                if not is_saved:
-                    try:
-                        await loser.timeout(dt.timedelta(seconds=20), reason="Lost Tic Tac Toe")
-                        status_msg = f"\n🔇 **PUNISHED:** {loser.mention} muted for 20s!"
-                    except:
-                        status_msg = "\n(Admin Perms Missing: Timeout Failed)"
-
-            except Exception as e:
-                status_msg = f"\n(System Error: {e})"
-
-            # WINNER EMBED
-            embed = discord.Embed(title="🏆 VICTORY!", color=0xFFD700)
-            embed.description = (
-                f"### 🎉 {winner.mention} WON!\n"
-                f"💸 **Earned:** `${self.bet:,}`\n"
-                f"💀 **Loser:** {loser.mention}\n"
-                f"{status_msg}"
-            )
-            embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
-            embed.set_thumbnail(url=winner.display_avatar.url)
+        loser = self.p2 if winner == self.p1 else self.p1
         
-        else:
-            # DRAW EMBED
-            embed = discord.Embed(title="🤝 DRAW MATCH!", color=0x95A5A6)
-            embed.description = "**Koi nahi jeeta!**\nPaise wapis wallet mein."
-            embed.set_thumbnail(url="https://media.tenor.com/Im_hFj0FpQUAAAAC/handshake.gif")
+        # --- ECONOMY TRANSACTION ---
+        status_msg = ""
+        try:
+            # Add to Winner
+            w_data = supabase.table("economy").select("balance").eq("user_id", str(winner.id)).execute()
+            new_w = w_data.data[0]['balance'] + self.bet
+            supabase.table("economy").update({"balance": new_w}).eq("user_id", str(winner.id).strip()).execute()
 
-        await interaction.response.edit_message(embed=embed, view=self)
+            # Deduct from Loser
+            l_data = supabase.table("economy").select("balance").eq("user_id", str(loser.id)).execute()
+            new_l = l_data.data[0]['balance'] - self.bet
+            supabase.table("economy").update({"balance": new_l}).eq("user_id", str(loser.id).strip()).execute()
+        except Exception as e:
+            print(f"DB Error: {e}")
+
+        # --- PUNISHMENT LOGIC ---
+        try:
+            # Check Inventory for Extra Life
+            res = supabase.table("economy").select("inventory").eq("user_id", str(loser.id)).execute()
+            inv = res.data[0].get('inventory', {}) or {}
+            
+            # VIP Check (Optional - add your VIP logic here)
+            is_vip = False 
+
+            if not is_vip and inv.get("life", 0) > 0:
+                inv["life"] -= 1
+                supabase.table("economy").update({"inventory": inv}).eq("user_id", str(loser.id)).execute()
+                status_msg = "\n💖 **Extra Life Used!** (Money lost, but saved from Mute)"
+            elif not is_vip:
+                # Timeout User
+                try:
+                    await loser.timeout(dt.timedelta(seconds=20), reason="Lost Tic Tac Toe")
+                    status_msg = f"\n🔇 **PUNISHMENT:** {loser.mention} muted for 20s!"
+                except:
+                    status_msg = "\n(Admin Missing Permissions to Timeout)"
+        except Exception as e:
+            print(f"Punish Error: {e}")
+
+        # --- WINNER EMBED ---
+        embed = discord.Embed(title="👑 VICTORY ROYALE", color=0xFFD700)
+        embed.set_thumbnail(url=winner.display_avatar.url)
+        embed.description = (
+            f"### 🎉 {winner.mention} WINS!\n"
+            f"**----------------------------------**\n"
+            f"💸 **Won:** `${self.bet:,}`\n"
+            f"💀 **Loser:** {loser.mention}\n"
+            f"{status_msg}"
+        )
+        embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
+        
+        await interaction.response.edit_message(embed=embed, view=None)
 
 
-# --- SLASH COMMAND ---
+# --- 3. REQUEST VIEW (Approval System) ---
+class TTTRequestView(discord.ui.View):
+    def __init__(self, challenger, opponent, bet):
+        super().__init__(timeout=60)
+        self.challenger = challenger
+        self.opponent = opponent
+        self.bet = bet
+
+    @discord.ui.button(label="✅ Accept Challenge", style=discord.ButtonStyle.success)
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.opponent.id:
+            return await interaction.response.send_message("❌ Ye game tere liye nahi hai!", ephemeral=True)
+
+        # Re-check Balances (Safety)
+        try:
+            r1 = supabase.table("economy").select("balance").eq("user_id", str(self.challenger.id)).execute()
+            r2 = supabase.table("economy").select("balance").eq("user_id", str(self.opponent.id)).execute()
+            
+            if r1.data[0]['balance'] < self.bet or r2.data[0]['balance'] < self.bet:
+                return await interaction.response.send_message("❌ **Error:** Kisi ek ke paas paise khatam ho gaye!", ephemeral=True)
+        except:
+            return await interaction.response.send_message("❌ DB Error during check.", ephemeral=True)
+
+        # Start Game
+        embed = discord.Embed(title="⚔️ TIC TAC TOE", color=0x2ECC71)
+        embed.description = (
+            f"💰 **Pot:** `${self.bet * 2:,}`\n"
+            f"⚔️ **{self.challenger.name}** (❌) 🆚 **{self.opponent.name}** (⭕)\n"
+            f"**----------------------------------**\n"
+            f"👉 **{self.challenger.name}'s Turn** (❌)"
+        )
+        embed.set_thumbnail(url=self.challenger.display_avatar.url)
+        
+        game_view = TicTacToeGameView(self.challenger, self.opponent, self.bet)
+        await interaction.response.edit_message(embed=embed, view=game_view)
+
+    @discord.ui.button(label="🚫 Decline", style=discord.ButtonStyle.danger)
+    async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.opponent.id:
+            return await interaction.response.send_message("❌ Chup chap baith!", ephemeral=True)
+        
+        self.stop()
+        embed = discord.Embed(description=f"🚫 **{self.opponent.mention}** ne dar ke challenge reject kar diya.", color=0xE74C3C)
+        await interaction.response.edit_message(embed=embed, view=None)
+
+
+# --- 4. MAIN COMMAND ---
 @bot.tree.command(name="tictactoe", description="❌⭕ High Stakes: Loser gets Muted!")
-@app_commands.describe(opponent="Challenge kisko karna hai?", amount="Bet Amount ($)")
+@app_commands.describe(opponent="Kis ko harana hai?", amount="Bet Amount ($)")
 async def tictactoe(interaction: discord.Interaction, opponent: discord.Member, amount: int):
     
-    # Validations
+    # Basic Validations
     if opponent.id == interaction.user.id:
-        return await interaction.response.send_message("❌ **Error:** Khud se nahi khel sakte!", ephemeral=True)
+        return await interaction.response.send_message("❌ **Error:** Khud se nahi khel sakte.", ephemeral=True)
     if opponent.bot:
-        return await interaction.response.send_message("❌ **Error:** Bot se nahi jeet paoge!", ephemeral=True)
+        return await interaction.response.send_message("❌ **Error:** Bots allowed nahi hain.", ephemeral=True)
     if amount < 100:
         return await interaction.response.send_message("❌ **Error:** Minimum bet $100 hai.", ephemeral=True)
 
     # Balance Check
     try:
-        # Check User
-        r1 = supabase.table("economy").select("balance").eq("user_id", interaction.user.id).execute()
+        r1 = supabase.table("economy").select("balance").eq("user_id", str(interaction.user.id)).execute()
         if not r1.data or r1.data[0]['balance'] < amount:
             return await interaction.response.send_message(f"❌ **Bhai!** Tere paas ${amount} nahi hain.", ephemeral=True)
 
-        # Check Opponent
-        r2 = supabase.table("economy").select("balance").eq("user_id", opponent.id).execute()
+        r2 = supabase.table("economy").select("balance").eq("user_id", str(opponent.id)).execute()
         if not r2.data or r2.data[0]['balance'] < amount:
-            return await interaction.response.send_message(f"❌ **{opponent.name}** gareeb hai! Uske paas paise nahi hain.", ephemeral=True)
-            
-    except:
-        return await interaction.response.send_message("❌ Database connect nahi ho raha.", ephemeral=True)
+            return await interaction.response.send_message(f"❌ **Error:** {opponent.name} ke paas paise nahi hain.", ephemeral=True)
+    except Exception as e:
+        print(e)
+        return await interaction.response.send_message("❌ Database Error.", ephemeral=True)
 
-    # Game Embed
-    embed = discord.Embed(title="⚔️ TIC TAC TOE DUEL", color=0x2ECC71)
-    embed.add_field(name="Challenger (❌)", value=interaction.user.mention, inline=True)
-    embed.add_field(name="Opponent (⭕)", value=opponent.mention, inline=True)
-    embed.add_field(name="💰 Bet Amount", value=f"${amount:,}", inline=False)
+    # Send Approval Request
+    embed = discord.Embed(title="📜 TIC TAC TOE CHALLENGE", color=0xF1C40F)
+    embed.set_thumbnail(url="https://media.tenor.com/84j7q3u2vSAAAAAi/tic-tac-toe.gif")
+    embed.add_field(name="Challenger", value=interaction.user.mention, inline=True)
+    embed.add_field(name="Opponent", value=opponent.mention, inline=True)
+    embed.add_field(name="💰 Stakes", value=f"${amount:,}", inline=False)
     
     embed.description = (
         "**RULES:**\n"
-        "1. 3 symbols line me lao (Row/Col/Diagonal).\n"
-        "2. **Loser** ke paise katenge + **20s Mute** (agar VIP nahi hai).\n"
-        "3. Game Draw hone par paise safe."
+        "1. **Winner takes all** (`Pot: $" + str(amount*2) + "`)\n"
+        "2. **Loser gets Muted** for 20s (unless they have Extra Life).\n"
+        "3. **Draw = Rematch** (Board resets automatically)."
     )
-    embed.set_footer(text="Game Started! Pehli baari Challenger ki.")
     
-    view = TicTacToeView(interaction.user, opponent, amount)
+    view = TTTRequestView(interaction.user, opponent, amount)
     await interaction.response.send_message(f"🔔 {opponent.mention}, game accept karo!", embed=embed, view=view)
-
+                
 # --- MINEFIELD SETTINGS ---
 # Level Configurations: (Rows, Cols, Total Diamonds)
 LEVEL_CONFIG = {
@@ -15634,6 +15886,261 @@ async def fix_name(i: discord.Interaction, member: discord.Member):
         
     except Exception as e:
         await i.response.send_message(f"⚠️ Error: Permissions check karein.\nLog: {e}", ephemeral=True)
+
+import discord
+from discord import app_commands
+import asyncio
+import random
+
+# --- CONFIG: SHAPES & DIFFICULTY ---
+SHAPES = {
+    "triangle": {
+        "name": "Triangle (🔺)", 
+        "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif", 
+        "steps": 4, 
+        "time": 6.0
+    },
+    "circle": {
+        "name": "Circle (🟠)", 
+        "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif", 
+        "steps": 6, 
+        "time": 5.0
+    },
+    "star": {
+        "name": "Star (⭐)", 
+        "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif", 
+        "steps": 8, 
+        "time": 4.5
+    },
+    "umbrella": {
+        "name": "Umbrella (☂️)", 
+        "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif", 
+        "steps": 10, 
+        "time": 4.0 # Impossible speed
+    }
+}
+
+DIRECTIONS = ["⬆️", "⬇️", "⬅️", "➡️"]
+
+# --- 1. THE GAME VIEW (Tracing Logic) ---
+class DalgonaGameView(discord.ui.View):
+    def __init__(self, p1, p2, bet, shape_key):
+        super().__init__(timeout=60)
+        self.p1 = p1
+        self.p2 = p2
+        self.bet = bet
+        self.shape = SHAPES[shape_key]
+        
+        # Game State
+        self.pattern = [random.choice(DIRECTIONS) for _ in range(self.shape['steps'])]
+        self.p1_progress = 0
+        self.p2_progress = 0
+        self.winner = None
+        self.loser = None
+
+        # Add Directional Buttons
+        self.add_item(DalgonaButton("⬆️", 0))
+        self.add_item(DalgonaButton("⬇️", 0))
+        self.add_item(DalgonaButton("⬅️", 1))
+        self.add_item(DalgonaButton("➡️", 1))
+
+    async def update_board(self, interaction, status_msg=None):
+        if self.winner: return # Game over
+
+        # Progress Bars (Visual Tracing)
+        p1_bar = "🟩" * self.p1_progress + "⬛" * (self.shape['steps'] - self.p1_progress)
+        p2_bar = "🟩" * self.p2_progress + "⬛" * (self.shape['steps'] - self.p2_progress)
+
+        # Get Current Target Direction
+        p1_target = self.pattern[self.p1_progress] if self.p1_progress < len(self.pattern) else "✅"
+        p2_target = self.pattern[self.p2_progress] if self.p2_progress < len(self.pattern) else "✅"
+
+        embed = interaction.message.embeds[0]
+        embed.description = (
+            f"### 📍 TRACE THE LINE!\n"
+            f"Needle (सुई) ko sahi direction mein chalao!\n\n"
+            f"**{self.p1.name}:** {p1_target}\n`{p1_bar}`\n\n"
+            f"**{self.p2.name}:** {p2_target}\n`{p2_bar}`\n\n"
+            f"⚠️ **Pattern:** Follow the arrow shown above your name!"
+        )
+        if status_msg: embed.set_footer(text=status_msg)
+        
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    async def game_over(self, interaction, winner, reason):
+        self.winner = winner
+        self.loser = self.p1 if winner == self.p2 else self.p2
+        
+        # Disable Buttons
+        for child in self.children: child.disabled = True
+        
+        # --- ECONOMY UPDATE ---
+        try:
+            # Winner +
+            w_res = supabase.table("economy").select("balance").eq("user_id", str(winner.id)).execute()
+            new_w = w_res.data[0]['balance'] + self.bet
+            supabase.table("economy").update({"balance": new_w}).eq("user_id", str(winner.id)).execute()
+
+            # Loser -
+            l_res = supabase.table("economy").select("balance").eq("user_id", str(self.loser.id)).execute()
+            new_l = l_res.data[0]['balance'] - self.bet
+            supabase.table("economy").update({"balance": new_l}).eq("user_id", str(self.loser.id)).execute()
+        except:
+            print("DB Error")
+
+        # Result Embed
+        embed = discord.Embed(title="🍪 DALGONA RESULT", color=0xE91E63) # Squid Game Pink
+        
+        if reason == "crack":
+            embed.description = (
+                f"### 💔 CRACK! COOKIE BROKE!\n"
+                f"**{self.loser.mention}** ka hath kaamp gaya aur cookie toot gayi!\n\n"
+                f"🏆 **Survivor:** {winner.mention}\n"
+                f"💰 **Won:** `${self.bet:,}`"
+            )
+            embed.set_image(url="https://media.tenor.com/N43o8t3NnMQAAAAC/squid-game-dalgona.gif") # Broken gif placeholder
+        else:
+            embed.description = (
+                f"### ✅ SUCCESSFUL CUT!\n"
+                f"**{winner.mention}** ne sabse pehle shape nikal liya!\n\n"
+                f"🥈 **Too Slow:** {self.loser.mention}\n"
+                f"💰 **Won:** `${self.bet:,}`"
+            )
+            embed.set_image(url="https://media.tenor.com/images/3f6b4d3f5e5e4d2b2b2b/tenor.gif") # Success placeholder
+
+        await interaction.response.edit_message(embed=embed, view=None)
+
+
+class DalgonaButton(discord.ui.Button):
+    def __init__(self, emoji, row):
+        super().__init__(style=discord.ButtonStyle.secondary, emoji=emoji, row=row)
+
+    async def callback(self, interaction: discord.Interaction):
+        view: DalgonaGameView = self.view
+        
+        # Turn Check
+        if interaction.user.id == view.p1.id:
+            current_idx = view.p1_progress
+            target_arr = view.p1_progress
+        elif interaction.user.id == view.p2.id:
+            current_idx = view.p2_progress
+            target_arr = view.p2_progress
+        else:
+            return await interaction.response.send_message("❌ Audience door rahein!", ephemeral=True)
+
+        # Get Expected Move
+        if current_idx >= len(view.pattern): return # Already done
+        expected_move = view.pattern[current_idx]
+
+        # LOGIC: Check Input
+        if str(self.emoji) == expected_move:
+            # Correct Move
+            if interaction.user.id == view.p1.id:
+                view.p1_progress += 1
+                if view.p1_progress == len(view.pattern):
+                    return await view.game_over(interaction, view.p1, "win")
+            else:
+                view.p2_progress += 1
+                if view.p2_progress == len(view.pattern):
+                    return await view.game_over(interaction, view.p2, "win")
+            
+            await view.update_board(interaction)
+            await interaction.response.defer() # Silent update
+        else:
+            # WRONG MOVE -> CRACK!
+            loser = interaction.user
+            winner = view.p2 if loser == view.p1 else view.p1
+            await view.game_over(interaction, winner, "crack")
+
+
+# --- 2. SHAPE SELECTION VIEW ---
+class DalgonaShapeView(discord.ui.View):
+    def __init__(self, p1, p2, bet):
+        super().__init__(timeout=30)
+        self.p1 = p1
+        self.p2 = p2
+        self.bet = bet
+
+    async def start_game(self, interaction, shape_key):
+        if interaction.user.id != self.p1.id:
+            return await interaction.response.send_message("❌ Sirf Challenger shape select kar sakta hai!", ephemeral=True)
+            
+        shape = SHAPES[shape_key]
+        
+        embed = discord.Embed(title=f"🍪 DALGONA: {shape['name']}", color=0xF1C40F)
+        embed.set_image(url=shape['img'])
+        embed.description = (
+            f"### ⏳ GAME STARTING!\n"
+            f"**Instructions:**\n"
+            f"1. Apne naam ke upar **Arrow** dekho.\n"
+            f"2. Wahi button dabao jo arrow dikha raha hai.\n"
+            f"3. **Galti ki toh CRACK!** (Direct Loss).\n"
+            f"4. **Shape:** {shape['name']} ({shape['steps']} Steps)"
+        )
+        
+        view = DalgonaGameView(self.p1, self.p2, self.bet, shape_key)
+        await interaction.response.edit_message(embed=embed, view=view)
+
+    @discord.ui.button(label="Triangle (Easy)", style=discord.ButtonStyle.success)
+    async def tri(self, interaction, button): await self.start_game(interaction, "triangle")
+
+    @discord.ui.button(label="Circle (Medium)", style=discord.ButtonStyle.primary)
+    async def cir(self, interaction, button): await self.start_game(interaction, "circle")
+
+    @discord.ui.button(label="Umbrella (EXTREME)", style=discord.ButtonStyle.danger)
+    async def umb(self, interaction, button): await self.start_game(interaction, "umbrella")
+
+
+# --- 3. APPROVAL VIEW ---
+class DalgonaRequestView(discord.ui.View):
+    def __init__(self, challenger, opponent, bet):
+        super().__init__(timeout=60)
+        self.challenger = challenger
+        self.opponent = opponent
+        self.bet = bet
+
+    @discord.ui.button(label="✅ Accept (Lick Cookie)", style=discord.ButtonStyle.success)
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.opponent.id: return
+        
+        # Balance Check Logic Here (Same as before)
+        
+        embed = discord.Embed(title="🍪 CHOOSE YOUR SHAPE", color=0x95a5a6)
+        embed.description = f"{self.challenger.mention}, shape select karo! (Harder shape = More Risk)"
+        
+        view = DalgonaShapeView(self.challenger, self.opponent, self.bet)
+        await interaction.response.edit_message(embed=embed, view=view)
+
+    @discord.ui.button(label="🚫 Decline", style=discord.ButtonStyle.danger)
+    async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.opponent.id: return
+        self.stop()
+        await interaction.message.delete()
+
+
+# --- 4. MAIN COMMAND ---
+@bot.tree.command(name="dalgona", description="🍪 Squid Game: Cut the cookie or die!")
+@app_commands.describe(opponent="Opponent", amount="Bet Amount")
+@check_seized()
+async def dalgona(interaction: discord.Interaction, opponent: discord.Member, amount: int):
+    
+    if opponent.bot or opponent.id == interaction.user.id:
+        return await interaction.response.send_message("❌ Invalid Opponent.", ephemeral=True)
+        
+    # Balance Check Code (Copy from previous commands)
+    
+    embed = discord.Embed(title="🦑 SQUID GAME: DALGONA", color=0xE91E63)
+    embed.set_thumbnail(url="https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif")
+    embed.description = (
+        f"**{interaction.user.mention} 🆚 {opponent.mention}**\n\n"
+        f"💰 **Bet:** `${amount:,}`\n"
+        f"🍪 **Task:** Cookie shape ko bina tode nikalna hai.\n"
+        f"👉 **Mechanic:** Jo Arrow dikhega, wahi button dabana hai.\n\n"
+        f"Accept karne ke liye neeche click karein."
+    )
+    
+    view = DalgonaRequestView(interaction.user, opponent, amount)
+    await interaction.response.send_message(f"🔔 {opponent.mention}, do you want to play?", embed=embed, view=view)
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
