@@ -2,74 +2,192 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Select Game</title>
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Game Zone</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Rajdhani:wght@600&display=swap" rel="stylesheet">
     <style>
         body {
-            background: #050505; color: white; margin: 0; font-family: 'Rajdhani', sans-serif;
-            padding: 20px; min-height: 100vh;
-        }
-        .header {
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;
-        }
-        .back-btn {
-            background: rgba(255,255,255,0.1); border: none; color: white; padding: 10px 20px;
-            border-radius: 30px; text-decoration: none; font-size: 14px;
+            background: #020205; color: white; margin: 0; font-family: 'Rajdhani', sans-serif;
+            overflow: hidden; height: 100vh;
         }
         
-        .game-grid { display: flex; flex-direction: column; gap: 20px; }
-
-        .game-tile {
-            position: relative; height: 160px; border-radius: 20px; overflow: hidden;
-            text-decoration: none; color: white; display: flex; align-items: flex-end; padding: 20px;
-            background-size: cover; background-position: center;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);
-            transition: transform 0.2s;
-            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-            opacity: 0; transform: scale(0.9);
-        }
-        /* Stagger animations */
-        .game-tile:nth-child(1) { animation-delay: 0.1s; background-image: linear-gradient(to top, black, transparent), url('https://i.imgur.com/e5R8XzL.jpeg'); } /* Slots Image Placeholder */
-        .game-tile:nth-child(2) { animation-delay: 0.2s; background-image: linear-gradient(to top, black, transparent), url('https://i.imgur.com/7Jk9qWc.png'); filter: grayscale(100%); pointer-events: none; }
-
-        .game-tile:active { transform: scale(0.98); }
-
-        .tile-content h2 { margin: 0; font-size: 30px; text-shadow: 0 0 10px black; }
-        .tile-content p { margin: 0; color: #00f3ff; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; }
-
-        .status {
-            position: absolute; top: 15px; right: 15px; background: #00f3ff; color: black;
-            padding: 5px 10px; border-radius: 5px; font-size: 10px; font-weight: bold;
+        /* --- BACKGROUND PARTICLES (CANVAS) --- */
+        #bgCanvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; pointer-events: none;
         }
 
-        @keyframes popIn { to { opacity: 1; transform: scale(1); } }
+        .header { padding: 20px; display: flex; justify-content: space-between; align-items: center; z-index: 10; position: relative; }
+        .back-btn { 
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); 
+            color: white; padding: 10px 20px; border-radius: 30px; text-decoration: none; 
+            backdrop-filter: blur(5px); transition: 0.3s;
+        }
+        .back-btn:hover { background: white; color: black; box-shadow: 0 0 20px white; }
+
+        .container {
+            padding: 20px; display: flex; flex-direction: column; gap: 30px;
+            height: 80vh; overflow-y: auto; z-index: 5; position: relative;
+        }
+
+        /* --- GAME CARD DESIGN (NO IMAGES NEEDED) --- */
+        .game-card {
+            position: relative; height: 180px; border-radius: 25px;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            border: 2px solid rgba(255,255,255,0.1);
+            display: flex; align-items: center; justify-content: space-between; padding: 0 30px;
+            text-decoration: none; overflow: hidden; transition: 0.4s;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        .game-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1), transparent 70%);
+            opacity: 0; transition: 0.4s;
+        }
+        .game-card:hover { transform: translateY(-5px) scale(1.02); border-color: #00f3ff; box-shadow: 0 0 30px rgba(0, 243, 255, 0.3); }
+        .game-card:hover::before { opacity: 1; }
+
+        /* Left Side Text */
+        .card-info h2 { 
+            margin: 0; font-size: 32px; font-family: 'Orbitron'; 
+            background: linear-gradient(to right, #fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .card-info p { color: #00f3ff; margin: 5px 0 0; letter-spacing: 2px; font-weight: bold; }
+        
+        /* Right Side Icon (Emoji/CSS Art) */
+        .card-icon { font-size: 60px; filter: drop-shadow(0 0 20px rgba(255,255,255,0.5)); transition: 0.4s; }
+        .game-card:hover .card-icon { transform: rotate(10deg) scale(1.2); }
+
+        .status-badge {
+            position: absolute; top: 15px; right: 15px; padding: 5px 12px;
+            border-radius: 20px; font-size: 10px; font-weight: 900; letter-spacing: 1px;
+        }
+        .live { background: #00f3ff; color: black; box-shadow: 0 0 10px #00f3ff; }
+        .soon { background: #333; color: gray; border: 1px solid #555; }
+
     </style>
 </head>
 <body>
+
+    <canvas id="bgCanvas"></canvas>
+
     <div class="header">
-        <a href="/" class="back-btn">← Back</a>
-        <div style="color:#00f3ff;">${{ balance }}</div>
+        <a href="/" class="back-btn">← DASHBOARD</a>
+        <div style="font-family:'Orbitron'; color:#ffd700; text-shadow:0 0 10px #ffd700;">${{ balance }}</div>
     </div>
 
-    <h1>CHOOSE GAME</h1>
-
-    <div class="game-grid">
-        <a href="/games/casino" class="game-tile">
-            <div class="status">LIVE</div>
-            <div class="tile-content">
-                <p>JACKPOT 10M</p>
+    <div class="container">
+        <a href="/games/casino" class="game-card" style="border-color: #ff00de;">
+            <div class="status-badge live">ONLINE</div>
+            <div class="card-info">
                 <h2>NEON SLOTS</h2>
+                <p>WIN JACKPOT 10M</p>
             </div>
+            <div class="card-icon">🎰</div>
         </a>
 
-        <div class="game-tile">
-            <div class="status" style="background:gray;">SOON</div>
-            <div class="tile-content">
-                <p>COMING SOON</p>
-                <h2>DICE ROLL</h2>
+        <a href="/games/casino" class="game-card" style="border-color: #ff0000;">
+            <div class="status-badge live" style="background:red; color:white; box-shadow:0 0 10px red;">HOT</div>
+            <div class="card-info">
+                <h2 style="background: linear-gradient(to right, #ff4d4d, #ff0000); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">DEATH ROLL</h2>
+                <p style="color: #ff4d4d;">HIGH RISK • 10x WIN</p>
             </div>
+            <div class="card-icon">💀</div>
+        </a>
+
+        <div class="game-card" style="filter: grayscale(1); opacity: 0.6; cursor: not-allowed;">
+            <div class="status-badge soon">SOON</div>
+            <div class="card-info">
+                <h2>LUCKY DICE</h2>
+                <p>UNDER DEVELOPMENT</p>
+            </div>
+            <div class="card-icon">🎲</div>
         </div>
     </div>
+
+    <script>
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let particles = [];
+        let touchParticles = [];
+
+        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        // 1. FALLING SPARKLES
+        class Sparkle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 2;
+                this.speed = Math.random() * 0.5 + 0.2;
+                this.opacity = Math.random();
+            }
+            update() {
+                this.y += this.speed;
+                if (this.y > height) this.y = 0;
+                this.opacity += Math.random() * 0.02 - 0.01;
+                if (this.opacity < 0) this.opacity = 0;
+                if (this.opacity > 1) this.opacity = 1;
+            }
+            draw() {
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+
+        // 2. TOUCH TRAIL PARTICLES
+        class Trail {
+            constructor(x, y) {
+                this.x = x; this.y = y;
+                this.size = Math.random() * 5 + 2;
+                this.speedX = Math.random() * 2 - 1;
+                this.speedY = Math.random() * 2 - 1;
+                this.life = 1;
+                this.color = `hsl(${Math.random()*360}, 100%, 50%)`;
+            }
+            update() {
+                this.x += this.speedX; this.y += this.speedY;
+                this.life -= 0.03;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.life;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // Initialize Background Sparkles
+        for(let i=0; i<50; i++) particles.push(new Sparkle());
+
+        // Handle Touch/Mouse Move
+        function addTrail(x, y) {
+            for(let i=0; i<3; i++) touchParticles.push(new Trail(x, y));
+        }
+        window.addEventListener('mousemove', e => addTrail(e.clientX, e.clientY));
+        window.addEventListener('touchmove', e => addTrail(e.touches[0].clientX, e.touches[0].clientY));
+
+        // Animation Loop
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw Background Sparkles
+            particles.forEach(p => { p.update(); p.draw(); });
+
+            // Draw Touch Trail
+            for (let i = 0; i < touchParticles.length; i++) {
+                touchParticles[i].update();
+                touchParticles[i].draw();
+                if (touchParticles[i].life <= 0) {
+                    touchParticles.splice(i, 1); i--;
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
 </body>
 </html>
