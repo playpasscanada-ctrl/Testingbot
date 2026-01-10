@@ -8762,7 +8762,7 @@ class IQTestView(discord.ui.View):
                 
                 if self.score >= self.max_score:
                     # 🎉 WINNER (20/20)
-                    await update_balance(self.user.id, 500000)
+                    await update_balance(self.user.id, 100000)
                     embed = discord.Embed(title="🧠 EINSTEIN LEVEL GENIUS!", color=0x00FF00)
                     embed.description = f"### 🏆 YOU WON!\nTumne saare **20 Sawal** sahi diye!\n💰 **Prize:** $500,000 (Added to Balance)"
                     embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
@@ -8825,7 +8825,7 @@ async def iq_test(i: discord.Interaction):
     embed.description = (
         "**Rules:**\n"
         "1. Lagatar **20 Sawal** sahi dene hain.\n"
-        "2. Prize: **$500,000** 💰\n"
+        "2. Prize: **$100,000** 💰\n"
         "3. Ek bhi galti hui to... **Game Over + Ganda Nickname!** 🤡\n\n"
         "**Kya tum taiyaar ho?**"
     )
