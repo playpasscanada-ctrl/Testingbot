@@ -146,127 +146,104 @@ def satta():
 import time
 from business_config import BUSINESSES
 
-# --- BUSINESS ROUTES ---
-
+# --- 8. BUSINESS DASHBOARD & DELIVERY CHECK ---
 @app.route('/business')
 def business_dashboard():
     if 'user_info' not in session: return redirect('/')
-    
     user_id = session['user_info']['id']
     
-    # DB se Data lo
     data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
-    if not data: return "Error loading data"
+    if not data: return "Error loading data."
     
     balance = data[0]['balance']
     owned_businesses = data[0]['businesses'] or {}
-
-    # --- PASSIVE INCOME CALCULATION (On Load) ---
     current_time = int(time.time())
-    total_generated = 0
-    
-    for biz_id, biz_data in owned_businesses.items():
-        last_check = biz_data.get('last_check', current_time)
+
+    # --- DELIVERY & PASSIVE INCOME LOGIC ---
+    for biz_id, biz in owned_businesses.items():
+        # 1. Check Pending Delivery (3 Hours System)
+        if 'delivery_time' in biz and biz['delivery_time'] > 0:
+            if current_time >= biz['delivery_time']:
+                # Delivery Arrived!
+                biz['supplies'] = 100
+                biz['delivery_time'] = 0 # Reset
+        
+        # 2. Passive Income Calculation
+        last_check = biz.get('last_check', current_time)
         hours_passed = (current_time - last_check) / 3600
         
         if hours_passed > 0:
-            # Stats update logic
             rate = BUSINESSES[biz_id]['income_per_hr']
-            supplies = biz_data.get('supplies', 0)
-            popularity = biz_data.get('popularity', 100)
+            supplies = biz.get('supplies', 0)
             
-            # Agar supplies hain tabhi production hoga
             if supplies > 0:
-                production_efficiency = (popularity / 100)
-                produced_stock = int(rate * hours_passed * production_efficiency)
-                
-                # Update Stock (Max cap check)
+                # Production based on Popularity
+                production = int(rate * hours_passed * (biz.get('popularity', 100)/100))
                 max_st = BUSINESSES[biz_id]['max_stock']
-                new_stock = min(biz_data.get('stock', 0) + produced_stock, max_st)
+                biz['stock'] = min(biz.get('stock', 0) + production, max_st)
                 
-                # Supplies Kam karo
-                supplies_used = int(hours_passed * 10) # 10 supplies per hour
-                new_supplies = max(0, supplies - supplies_used)
-                
-                # Popularity thodi girao
-                new_popularity = max(0, int(popularity - (hours_passed * 2)))
-                
-                # Save changes locally
-                owned_businesses[biz_id]['stock'] = new_stock
-                owned_businesses[biz_id]['supplies'] = new_supplies
-                owned_businesses[biz_id]['popularity'] = new_popularity
-                owned_businesses[biz_id]['last_check'] = current_time
+                # Consumption
+                biz['supplies'] = max(0, supplies - int(hours_passed * 10))
+                biz['popularity'] = max(0, int(biz.get('popularity', 100) - hours_passed))
+                biz['last_check'] = current_time
 
-    # DB Update karo naye stats ke saath
     db.supabase.table("economy").update({"businesses": owned_businesses}).eq("user_id", user_id).execute()
 
-    return render_template('business.html', 
-                         user=session['user_info'], 
-                         balance=balance, 
-                         owned=owned_businesses, 
-                         all_biz=BUSINESSES)
+    return render_template('business.html', user=session['user_info'], balance=balance, owned=owned_businesses, all_biz=BUSINESSES, now=current_time)
 
-# --- API: BUY BUSINESS ---
-@app.route('/api/business/buy', methods=['POST'])
-def buy_business():
+
+# --- 9. API: ORDER SUPPLIES (3 HOURS DELAY) ---
+@app.route('/api/business/order', methods=['POST'])
+def order_supplies():
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
     user_id = session['user_info']['id']
     biz_id = request.json.get('biz_id')
     
     data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
-    balance = data[0]['balance']
-    owned = data[0]['businesses'] or {}
+    bal = data[0]['balance']
+    owned = data[0]['businesses']
     
-    if biz_id in owned:
-        return jsonify({"status": "error", "msg": "You already own this!"})
+    if biz_id not in owned: return jsonify({"status":"error", "msg":"Not Owned"})
     
-    cost = BUSINESSES[biz_id]['price']
-    if balance < cost:
-        return jsonify({"status": "error", "msg": "Too expensive!"})
-    
-    # Buy Logic
-    owned[biz_id] = {
-        "stock": 0, "supplies": 100, "popularity": 100, 
-        "level": 1, "last_check": int(time.time())
-    }
-    
-    db.supabase.table("economy").update({
-        "balance": balance - cost,
-        "businesses": owned
-    }).eq("user_id", user_id).execute()
-    
-    return jsonify({"status": "success", "msg": f"Purchased {BUSINESSES[biz_id]['name']}!"})
+    # Check if already delivering
+    if owned[biz_id].get('delivery_time', 0) > time.time():
+         return jsonify({"status":"error", "msg":"Supply truck already on the way!"})
 
-# --- API: RESUPPLY / PROMOTE / SELL ---
+    cost = 75000
+    if bal < cost: return jsonify({"status":"error", "msg":"Need $75k"})
+    
+    # 3 HOURS DELAY (3 * 3600 seconds)
+    arrival_time = int(time.time()) + (3 * 3600)
+    
+    owned[biz_id]['delivery_time'] = arrival_time
+    
+    db.supabase.table("economy").update({"balance": bal - cost, "businesses": owned}).eq("user_id", user_id).execute()
+    return jsonify({"status":"success", "msg": "Supplies ordered! Arriving in 3 Hours."})
+
+
+# --- 10. API: BUSINESS ACTIONS (SELL/PROMOTE + PROFIT SPLIT) ---
 @app.route('/api/business/action', methods=['POST'])
 def biz_action():
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+
     user_id = session['user_info']['id']
     req = request.json
-    action = req.get('action') # 'resupply', 'promote', 'sell_stock'
+    action = req.get('action') 
     biz_id = req.get('biz_id')
     
     data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
     balance = data[0]['balance']
     owned = data[0]['businesses']
     
-    if biz_id not in owned: return jsonify({"status": "error", "msg": "Not owned"})
+    if biz_id not in owned: return jsonify({"status": "error", "msg": "You don't own this!"})
     
     biz = owned[biz_id]
     msg = ""
     
-    if action == 'resupply':
-        cost = 75000
-        if balance < cost: return jsonify({"status":"error", "msg":"Need $75k"})
-        if biz['supplies'] >= 100: return jsonify({"status":"error", "msg":"Supplies Full"})
-        
-        balance -= cost
-        biz['supplies'] = 100
-        msg = "Supplies Restocked!"
-        
-    elif action == 'promote':
+    if action == 'promote':
         cost = 10000
         if balance < cost: return jsonify({"status":"error", "msg":"Need $10k"})
-        if biz['popularity'] >= 100: return jsonify({"status":"error", "msg":"Popularity Max"})
-        
+        if biz['popularity'] >= 100: return jsonify({"status":"error", "msg":"Popularity Maxed!"})
         balance -= cost
         biz['popularity'] = 100
         msg = "Popularity Boosted!"
@@ -275,9 +252,23 @@ def biz_action():
         stock_val = biz['stock']
         if stock_val <= 0: return jsonify({"status":"error", "msg":"No Stock to sell"})
         
-        balance += stock_val
+        # --- INVESTMENT PROFIT SPLIT LOGIC ---
+        final_profit = stock_val
+        
+        # Agar Investor hai, to 20% usko bhejo
+        if biz.get('has_investor') and biz.get('investor_id'):
+            investor_share = int(stock_val * 0.20) # 20% Share
+            investor_id = biz['investor_id']
+            final_profit = stock_val - investor_share # Owner gets 80%
+            
+            # Investor ko paisa bhejo (Using helper function)
+            db.update_balance(investor_id, investor_share)
+            msg = f"Stock Sold! You kept ${final_profit:,} (Partner took ${investor_share:,})"
+        else:
+            msg = f"Stock Sold! Earned ${final_profit:,}"
+            
+        balance += final_profit
         biz['stock'] = 0
-        msg = f"Sold Stock for ${stock_val:,}!"
 
     # Save
     db.supabase.table("economy").update({
@@ -286,33 +277,166 @@ def biz_action():
     
     return jsonify({"status": "success", "msg": msg, "new_bal": balance})
 
-# --- API: RAID (ATTACK OTHERS) ---
-@app.route('/api/business/raid', methods=['POST'])
-def raid_business():
-    attacker_id = session['user_info']['id']
-    bet = int(request.json.get('bet', 100000))
+
+# --- 11. API: BUY SECURITY ---
+@app.route('/api/business/security', methods=['POST'])
+def buy_security():
+    user_id = session['user_info']['id']
+    biz_id = request.json.get('biz_id')
     
-    # Fetch Attacker Balance
-    data = db.supabase.table("economy").select("balance").eq("user_id", attacker_id).execute().data
-    if data[0]['balance'] < bet:
-        return jsonify({"status": "error", "msg": "Not enough cash to fund this raid!"})
+    data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
+    bal = data[0]['balance']
+    owned = data[0]['businesses']
     
-    # RNG Logic (50-50 Chance)
-    import random
-    success = random.random() < 0.5
+    current_sec = owned[biz_id].get('security', 1)
+    if current_sec >= 5: return jsonify({"status":"error", "msg":"Max Security Reached!"})
     
-    if success:
-        # Win: Get 2x Bet
-        winnings = bet * 2
-        db.update_balance(attacker_id, winnings - bet) # Profit add
-        return jsonify({"status": "win", "msg": f"Raid Successful! You stole ${winnings:,}!", "amount": winnings})
-    else:
-        # Lose: Money Deducted (Technically 'transferred' to system owner/void)
-        # User said: "loss hua toh wo saare loss ke ammount tumhara pass" 
-        # Here we just deduct from attacker. To implement transfer to specific user, we need Target ID.
-        # For now, simpler: Risk vs System.
-        db.update_balance(attacker_id, -bet)
-        return jsonify({"status": "lose", "msg": f"Raid Failed! You lost ${bet:,} to security.", "amount": -bet})
+    cost = 500000 * current_sec # Cost increases with level
+    if bal < cost: return jsonify({"status":"error", "msg":f"Need ${cost:,} for upgrade"})
+    
+    owned[biz_id]['security'] = current_sec + 1
+    db.supabase.table("economy").update({"balance": bal - cost, "businesses": owned}).eq("user_id", user_id).execute()
+    
+    return jsonify({"status":"success", "msg": "Security Upgraded! Hackers will struggle."})
+
+
+# --- 12. API: GET HACKING TARGETS (ALSO USED FOR INVESTMENT LISTING) ---
+@app.route('/api/business/targets', methods=['GET'])
+def get_targets():
+    all_users = db.supabase.table("economy").select("user_id, businesses").neq("businesses", "{}").limit(20).execute().data
+    targets = []
+    my_id = session['user_info']['id']
+    
+    for u in all_users:
+        if u['user_id'] == my_id: continue 
+        
+        for b_id, b_data in u['businesses'].items():
+            targets.append({
+                "user_id": u['user_id'],
+                "biz_name": BUSINESSES[b_id]['name'],
+                "biz_id": b_id,
+                "security": b_data.get('security', 1),
+                "stock": b_data.get('stock', 0),
+                "investment_open": b_data.get('investment_open', False),
+                "has_investor": b_data.get('has_investor', False)
+            })
+            
+    return jsonify(targets)
+
+
+# --- 13. API: HEIST EXECUTION (THE 4 STEPS RESULT) ---
+@app.route('/api/business/heist', methods=['POST'])
+def execute_heist():
+    hacker_id = session['user_info']['id']
+    req = request.json
+    target_id = req.get('target_id')
+    biz_id = req.get('biz_id')
+    step_success = req.get('success') 
+    
+    # 1. Check Hacker Balance (Entry Fee)
+    hacker_data = db.supabase.table("economy").select("balance, businesses").eq("user_id", hacker_id).execute().data
+    if hacker_data[0]['balance'] < 100000000: 
+        return jsonify({"status":"error", "msg":"Insufficient Funds for Heist Kit ($100M required)"})
+
+    # Deduct 100M Entry Fee
+    new_hacker_bal = hacker_data[0]['balance'] - 100000000
+    
+    if not step_success:
+        db.supabase.table("economy").update({"balance": new_hacker_bal}).eq("user_id", hacker_id).execute()
+        return jsonify({"status":"fail", "msg":"HACK FAILED! You lost $100M."})
+
+    # 2. Fetch Target
+    target_data = db.supabase.table("economy").select("businesses").eq("user_id", target_id).execute().data
+    target_biz = target_data[0]['businesses']
+    
+    # 3. Security Check (Final RNG Layer)
+    security_lvl = target_biz[biz_id].get('security', 1)
+    win_chance = 1.0 - (security_lvl * 0.15) 
+    
+    if random.random() > win_chance:
+        db.supabase.table("economy").update({"balance": new_hacker_bal}).eq("user_id", hacker_id).execute()
+        return jsonify({"status":"fail", "msg": f"Target Security Level {security_lvl} blocked your breach!"})
+    
+    # 4. SUCCESS: TRANSFER OWNERSHIP
+    stolen_biz_data = target_biz.pop(biz_id)
+    # Reset investment status on theft (Optional rule)
+    stolen_biz_data['has_investor'] = False 
+    stolen_biz_data['investment_open'] = False
+    
+    db.supabase.table("economy").update({"businesses": target_biz}).eq("user_id", target_id).execute()
+    
+    hacker_biz = hacker_data[0]['businesses'] or {}
+    hacker_biz[biz_id] = stolen_biz_data 
+    
+    db.supabase.table("economy").update({
+        "balance": new_hacker_bal, "businesses": hacker_biz
+    }).eq("user_id", hacker_id).execute()
+    
+    return jsonify({"status":"success", "msg":"SYSTEM BREACHED! Ownership transferred to you."})
+
+
+# --- 14. API: LIST FOR INVESTMENT (NEW) ---
+@app.route('/api/business/open_investment', methods=['POST'])
+def open_investment():
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+    user_id = session['user_info']['id']
+    biz_id = request.json.get('biz_id')
+    
+    data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
+    owned = data[0]['businesses']
+    
+    if owned[biz_id].get('has_investor', False):
+         return jsonify({"status":"error", "msg":"Already has an investor!"})
+
+    # Price = 50% of original business price
+    invest_price = int(BUSINESSES[biz_id]['price'] * 0.5)
+    owned[biz_id]['investment_open'] = True
+    owned[biz_id]['invest_price'] = invest_price
+    
+    db.supabase.table("economy").update({"businesses": owned}).eq("user_id", user_id).execute()
+    return jsonify({"status":"success", "msg": f"Listed for Investment! Price: ${invest_price:,}"})
+
+
+# --- 15. API: INVEST NOW (NEW) ---
+@app.route('/api/business/invest_now', methods=['POST'])
+def invest_now():
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+    investor_id = session['user_info']['id']
+    req = request.json
+    target_id = req.get('target_id')
+    biz_id = req.get('biz_id')
+    
+    if investor_id == target_id: return jsonify({"status":"error", "msg":"Cannot invest in yourself!"})
+
+    # Fetch Data
+    investor_data = db.supabase.table("economy").select("balance").eq("user_id", investor_id).execute().data
+    target_data = db.supabase.table("economy").select("balance, businesses").eq("user_id", target_id).execute().data
+    
+    target_biz = target_data[0]['businesses']
+    biz = target_biz.get(biz_id)
+    
+    if not biz or not biz.get('investment_open'):
+        return jsonify({"status":"error", "msg":"Investment closed."})
+        
+    cost = biz['invest_price']
+    
+    if investor_data[0]['balance'] < cost:
+        return jsonify({"status":"error", "msg":"Insufficient Funds to Invest!"})
+
+    # Transaction: Investor pays, Owner gets cash
+    new_inv_bal = investor_data[0]['balance'] - cost
+    new_owner_bal = target_data[0]['balance'] + cost
+    
+    biz['investment_open'] = False
+    biz['has_investor'] = True
+    biz['investor_id'] = investor_id
+    biz['equity'] = 0.20
+    
+    db.supabase.table("economy").update({"balance": new_inv_bal}).eq("user_id", investor_id).execute()
+    db.supabase.table("economy").update({"balance": new_owner_bal, "businesses": target_biz}).eq("user_id", target_id).execute()
+    
+    return jsonify({"status":"success", "msg": f"Investment Successful! You own 20% of this business."})
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
