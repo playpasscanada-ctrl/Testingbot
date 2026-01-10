@@ -15948,80 +15948,76 @@ class WipeoutConfirmView(discord.ui.View):
 from discord import app_commands
 import discord
 
-# --- 🛠️ READY-TO-USE SLASH COMMAND ---
-@bot.tree.command(name="fix_name", description="Top 3 staff ka nickname fix karein (Display Name logic)")
-async def fix_name_final(interaction: discord.Interaction):
-    # 1. Database se Top 3 Active Staff fetch karein
+# --- 🛠️ ULTRA FIXED SLASH COMMAND (GLOBAL NAME LOGIC) ---
+@bot.tree.command(name="fix_name", description="Staff members ka global display name fix karein")
+async def fix_name_global(interaction: discord.Interaction):
+    # 1. Database से Top 3 Active Staff fetch करें
     res = supabase.table("economy").select("user_id, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute()
     data = res.data
     
     if not data:
-        return await interaction.response.send_message("❌ Database में कोई स्टाफ नहीं मिला।", ephemeral=True)
+        return await interaction.response.send_message("❌ डेटाबेस में कोई स्टाफ डेटा नहीं मिला।", ephemeral=True)
 
     top_3_ids = [int(u['user_id']) for u in data]
     
-    # Check: Kya user Owner hai ya Top 3 Staff mein?
+    # Check: क्या यूजर Owner है या Top 3 Staff में?
     is_owner = interaction.user.id == OWNER_ID
     is_staff = interaction.user.id in top_3_ids
 
     if not is_owner and not is_staff:
         return await interaction.response.send_message("🚫 आपके पास इस कमांड का एक्सेस नहीं है।", ephemeral=True)
 
-    # 2. Choice Menu (Select Box) taiyar karein
+    # 2. Choice Menu taiyar karein
     options = []
     for uid in top_3_ids:
         member = interaction.guild.get_member(uid)
-        # Agar member server mein hai toh uska Display Name dikhao
         if member:
-            label_name = member.display_name[:25] # Dropdown limit
-            options.append(discord.SelectOption(label=label_name, value=str(uid), description=f"ID: {uid}"))
-        else:
-            options.append(discord.SelectOption(label=f"Unknown ({uid})", value=str(uid)))
+            # यहाँ 'global_name' इस्तेमाल किया है जो आपकी प्रोफाइल वाला असली नाम है
+            # अगर global_name नहीं है (पुराने अकाउंट्स), तो 'name' (username) उठाएगा
+            label_name = member.global_name if member.global_name else member.name
+            options.append(discord.SelectOption(label=label_name[:25], value=str(uid), description=f"ID: {uid}"))
 
     if not options:
-        return await interaction.response.send_message("❌ कोई वैध स्टाफ मेंबर नहीं मिला।", ephemeral=True)
+        return await interaction.response.send_message("❌ कोई वैध सदस्य नहीं मिला।", ephemeral=True)
 
-    # UI View Class for Select Menu
+    # UI View Class
     class FixNameView(discord.ui.View):
         def __init__(self):
             super().__init__(timeout=60)
 
-        @discord.ui.select(placeholder="किसका नाम फिक्स करना है?", options=options)
+        @discord.ui.select(placeholder="स्टाफ सदस्य चुनें...", options=options)
         async def select_callback(self, select_interaction: discord.Interaction, select):
             target_id = int(select.values[0])
             target_member = interaction.guild.get_member(target_id)
 
             if not target_member:
-                return await select_interaction.response.send_message("❌ मेंबर सर्वर में नहीं है।", ephemeral=True)
+                return await select_interaction.response.send_message("❌ सदस्य सर्वर में नहीं मिला।", ephemeral=True)
 
             try:
-                # 🔥 PHOTO LOGIC: Picking exactly what's in the Display Name field
-                # Example: "! S a k s h a m"
-                display_name = target_member.display_name 
+                # 🔥 असली लॉजिक यहाँ है:
+                # member.global_name = ! S a k s h a m (आपकी प्रोफाइल वाला असली नाम)
+                # यह सर्वर निकनेम को पूरी तरह नजरअंदाज कर देगा।
+                real_name = target_member.global_name if target_member.global_name else target_member.name
                 
-                # Nickname Format: [BOT STAFF] DisplayName (Limit to 32 total)
-                # "[BOT STAFF] " = 12 characters including space
-                new_nick = f"[BOT STAFF] {display_name[:20]}"
+                # Nickname set: [BOT STAFF] + Real Name (Max 32 characters total)
+                new_nick = f"[BOT STAFF] {real_name[:20]}"
                 
                 await target_member.edit(nick=new_nick)
                 
                 embed = discord.Embed(title="✅ NICKNAME FIXED", color=0x00FF00)
-                embed.description = f"**Target:** {target_member.mention}\n**New Nickname:** `{new_nick}`"
-                embed.set_footer(text="Logic: Display Name Priority")
+                embed.description = f"**Target:** {target_member.mention}\n**New Nickname:** `{new_nick}`\n\n*Note: प्रोफाइल वाला असली नाम इस्तेमाल किया गया है।*"
                 
                 await select_interaction.response.send_message(embed=embed)
             except discord.Forbidden:
-                await select_interaction.response.send_message("❌ परमिशन एरर: बॉट का रोल स्टाफ के रोल से ऊपर होना चाहिए।", ephemeral=True)
+                await select_interaction.response.send_message("❌ बॉट का रोल स्टाफ के रोल से ऊपर होना चाहिए।", ephemeral=True)
             except Exception as e:
                 await select_interaction.response.send_message(f"❌ एरर: {e}", ephemeral=True)
 
-    # Owner ko sab dikhega, Staff ko sirf khud ka option
+    # सुरक्षा: स्टाफ मेंबर सिर्फ अपना नाम फिक्स कर पाए
     if not is_owner:
-        # Staff member sirf khud ko hi select kar paye (Security)
         options = [opt for opt in options if int(opt.value) == interaction.user.id]
 
-    await interaction.response.send_message("स्टाफ लिस्ट में से चयन करें:", view=FixNameView(), ephemeral=True)
-
+    await interaction.response.send_message("स्टाफ की लिस्ट:", view=FixNameView(), ephemeral=True)
 
 # --- 2. MAIN COMMAND ---
 @bot.tree.command(name="wipeout", description="☠️ 100M RISK: Steal EVERYTHING (Wallet + Bank + Items)")
