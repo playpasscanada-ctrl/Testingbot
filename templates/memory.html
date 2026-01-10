@@ -3,151 +3,239 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber Memory: Flip & Survive</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Rajdhani:wght@600&display=swap" rel="stylesheet">
+    <title>Neural Link: Memory Breach</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
-        :root { --neon: #00f3ff; --bomb: #ff0044; --card-bg: #1a1a2e; --bg: #050505; }
+        :root { 
+            --neon-blue: #00f3ff; 
+            --neon-purple: #bc13fe; 
+            --neon-red: #ff0044; 
+            --gold: #ffd700;
+            --bg: #020205; 
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+        
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
         
         body { 
-            background: var(--bg); color: white; margin: 0; font-family: 'Rajdhani', sans-serif;
-            overflow-x: hidden; height: 100vh; display: flex; flex-direction: column;
+            background: var(--bg); color: white; margin: 0; 
+            font-family: 'Share Tech Mono', monospace;
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
         }
 
-        /* --- BACKGROUND ANIMATION --- */
-        .cyber-grid {
-            position: fixed; top: 0; left: 0; width: 200%; height: 200%;
-            background: linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
-            background-size: 40px 40px; transform: perspective(500px) rotateX(60deg);
-            animation: gridMove 20s linear infinite; z-index: -1;
-        }
-        @keyframes gridMove { 0% { transform: perspective(500px) rotateX(60deg) translateY(0); } 100% { transform: perspective(500px) rotateX(60deg) translateY(40px); } }
+        /* --- ADVANCED BACKGROUND --- */
+        #bgCanvas, #trailCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        #bgCanvas { z-index: -2; opacity: 0.4; }
+        #trailCanvas { z-index: -1; }
 
         /* --- HEADER --- */
         .header { 
-            padding: 15px 20px; background: rgba(0,0,0,0.9); border-bottom: 2px solid #333; 
+            padding: 15px 25px; 
+            background: linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%);
             display: flex; justify-content: space-between; align-items: center; z-index: 50;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.2);
         }
-        .back-btn { text-decoration: none; color: white; font-family: 'Orbitron'; font-size: 14px; border: 1px solid #333; padding: 5px 15px; border-radius: 20px; }
-        .player-info { text-align: right; }
-        .balance { color: #ffd700; font-family: 'Orbitron'; font-size: 18px; text-shadow: 0 0 10px #ffd700; }
-
-        /* --- SCREENS --- */
-        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        .screen.active { display: flex; }
-
-        /* --- LEVEL SELECTOR --- */
-        .level-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 100%; max-width: 500px; }
-        .lvl-btn {
-            background: rgba(255,255,255,0.05); border: 1px solid var(--neon); color: white;
-            padding: 20px; font-family: 'Orbitron'; font-size: 18px; border-radius: 10px;
-            cursor: pointer; transition: 0.3s; text-align: center; position: relative; overflow: hidden;
+        .user-badge { display: flex; flex-direction: column; align-items: flex-end; }
+        .username { color: var(--neon-blue); font-family: 'Orbitron'; font-size: 12px; letter-spacing: 1px; }
+        .balance { font-size: 20px; color: var(--gold); text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); font-weight: bold; }
+        .exit-btn {
+            background: rgba(255, 0, 68, 0.1); border: 1px solid var(--neon-red); color: var(--neon-red);
+            padding: 8px 20px; border-radius: 4px; font-family: 'Orbitron'; cursor: pointer;
+            transition: 0.3s; text-decoration: none; font-size: 12px;
         }
-        .lvl-btn:hover { background: var(--neon); color: black; box-shadow: 0 0 20px var(--neon); }
-        .lvl-btn.danger { border-color: var(--bomb); color: var(--bomb); }
-        .lvl-btn.danger:hover { background: var(--bomb); color: white; box-shadow: 0 0 20px var(--bomb); }
-        .lvl-tag { font-size: 10px; display: block; margin-top: 5px; opacity: 0.7; }
+        .exit-btn:hover { background: var(--neon-red); color: white; box-shadow: 0 0 15px var(--neon-red); }
 
-        /* --- GAME BOARD --- */
-        .game-header { margin-bottom: 10px; display: flex; justify-content: space-between; width: 100%; max-width: 600px; font-size: 20px; font-weight: bold; }
+        /* --- SCREEN MANAGEMENT --- */
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; padding: 20px; overflow-y: auto; }
+        .screen.active { display: flex; animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+
+        /* --- LEVEL LIST (PREMIUM) --- */
+        .level-container {
+            display: flex; flex-direction: column; gap: 15px; 
+            width: 100%; max-width: 600px; margin: 0 auto; padding-bottom: 50px;
+        }
         
-        .grid-container {
-            display: grid; gap: 8px; perspective: 1000px; margin: 0 auto;
-            width: 100%; max-width: 600px; max-height: 80vh; overflow-y: auto;
+        .mission-card {
+            background: linear-gradient(90deg, rgba(20,20,30,0.8), rgba(10,10,15,0.6));
+            border-left: 4px solid var(--neon-blue);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 20px; border-radius: 0 15px 15px 0;
+            position: relative; overflow: hidden; transition: 0.3s; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        
+        .mission-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.1), transparent);
+            transform: translateX(-100%); transition: 0.5s;
+        }
+        
+        .mission-card:hover { transform: translateX(10px); box-shadow: 0 0 20px rgba(0, 243, 255, 0.2); }
+        .mission-card:hover::before { transform: translateX(100%); }
+
+        /* Danger Levels */
+        .mission-card.danger { border-left-color: var(--neon-red); }
+        .mission-card.danger:hover { box-shadow: 0 0 20px rgba(255, 0, 68, 0.3); }
+        .mission-card.danger .lvl-num { color: var(--neon-red); }
+
+        .lvl-info h2 { margin: 0; font-family: 'Orbitron'; font-size: 24px; color: white; }
+        .lvl-info p { margin: 5px 0 0; font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+        .lvl-prize { font-size: 18px; color: var(--gold); font-weight: bold; text-align: right; }
+        .lvl-tag { font-size: 10px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; margin-left: 5px; }
+
+        /* --- GAME HUD --- */
+        .game-hud {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0, 20, 40, 0.6); border: 1px solid var(--neon-blue);
+            padding: 15px; border-radius: 10px; margin-bottom: 20px;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+            width: 100%; max-width: 700px; margin-left: auto; margin-right: auto;
+        }
+        .hud-item { text-align: center; }
+        .hud-label { font-size: 10px; color: var(--neon-blue); letter-spacing: 1px; }
+        .hud-value { font-size: 20px; font-family: 'Orbitron'; color: white; }
+        .hud-value.danger { color: var(--neon-red); animation: pulse 1s infinite; }
+
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+
+        /* --- GRID --- */
+        .grid-wrapper { flex-grow: 1; display: flex; justify-content: center; align-items: flex-start; overflow-y: auto; }
+        .game-grid {
+            display: grid; gap: 10px; perspective: 1000px; 
+            width: 100%; max-width: 700px; padding-bottom: 40px;
         }
 
+        /* --- CARD STYLING (AESTHETIC) --- */
         .card {
-            background-color: transparent; aspect-ratio: 1; cursor: pointer;
-            perspective: 1000px; position: relative;
+            aspect-ratio: 1; position: relative; cursor: pointer;
+            transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
         }
-        
-        .card-inner {
-            position: relative; width: 100%; height: 100%; text-align: center;
-            transition: transform 0.6s; transform-style: preserve-3d;
-        }
-        
-        .card.flipped .card-inner { transform: rotateY(180deg); }
-        .card.matched .card-inner { opacity: 0; transition: opacity 0.5s; cursor: default; }
+        .card.flipped { transform: rotateY(180deg); }
+        .card.matched { visibility: hidden; opacity: 0; transition: opacity 0.5s; }
 
-        .card-front, .card-back {
-            position: absolute; width: 100%; height: 100%;
-            backface-visibility: hidden; border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 24px; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        .face {
+            position: absolute; width: 100%; height: 100%; border-radius: 8px;
+            backface-visibility: hidden; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5); font-size: 28px;
         }
 
-        .card-front { 
-            background: #111; border: 2px solid var(--neon); color: var(--neon); 
-            font-family: 'Orbitron'; font-weight: bold;
+        .front {
+            background: rgba(10, 10, 20, 0.9);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.2);
         }
-        .card-front::after { content: '?'; }
+        .front::after { 
+            content: '💠'; font-size: 18px; opacity: 0.5; animation: spin 4s linear infinite; 
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        .card-back { 
-            background: white; color: black; transform: rotateY(180deg); 
-            border: 2px solid white; font-size: 28px;
+        .back {
+            background: linear-gradient(135deg, #1a1a2e, #000);
+            border: 1px solid white; transform: rotateY(180deg);
+            text-shadow: 0 0 10px rgba(255,255,255,0.8);
         }
-        .card.bomb .card-back { background: var(--bomb); border-color: var(--bomb); color: white; }
+        .back.bomb {
+            background: rgba(50, 0, 0, 0.9); border-color: var(--neon-red);
+            box-shadow: inset 0 0 20px var(--neon-red);
+        }
 
         /* --- MODALS --- */
         .modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 100; display: none;
-            flex-direction: column; align-items: center; justify-content: center; text-align: center;
+            flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(10px);
         }
-        .modal h1 { font-family: 'Orbitron'; font-size: 40px; margin-bottom: 10px; }
-        .btn-action {
-            background: white; color: black; padding: 15px 40px; font-size: 20px; font-weight: bold;
-            border: none; border-radius: 50px; margin-top: 20px; cursor: pointer;
-            font-family: 'Rajdhani'; box-shadow: 0 0 20px white;
+        .modal-content {
+            background: rgba(10,10,10,0.8); border: 2px solid var(--neon-blue);
+            padding: 40px; border-radius: 20px; text-align: center;
+            box-shadow: 0 0 50px rgba(0, 243, 255, 0.2); position: relative;
         }
-
-        /* --- PARTICLES --- */
-        #particle-canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 99; }
+        .modal h1 { font-family: 'Orbitron'; font-size: 40px; margin: 0 0 20px 0; }
+        .btn-main {
+            background: white; color: black; border: none; padding: 15px 40px;
+            font-family: 'Orbitron'; font-size: 18px; cursor: pointer;
+            clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+            transition: 0.3s; margin-top: 20px;
+        }
+        .btn-main:hover { background: var(--neon-blue); box-shadow: 0 0 20px var(--neon-blue); }
 
     </style>
 </head>
 <body>
 
-    <div class="cyber-grid"></div>
-    <canvas id="particle-canvas"></canvas>
+    <canvas id="bgCanvas"></canvas>
+    <canvas id="trailCanvas"></canvas>
 
     <div class="header">
-        <a href="javascript:showLevels()" class="back-btn" id="nav-btn">← EXIT</a>
-        <div class="player-info">
-            <div style="font-size:12px; opacity:0.7;">{{ user.username }}</div>
-            <div class="balance" id="bal-display">${{ "{:,}".format(balance) }}</div>
+        <a href="javascript:showLevels()" id="nav-btn" class="exit-btn">← EXIT SYSTEM</a>
+        <div class="user-badge">
+            <span class="username">OPERATOR: {{ user.username }}</span>
+            <span class="balance" id="bal-display">${{ "{:,}".format(balance) }}</span>
         </div>
     </div>
 
     <div id="level-screen" class="screen active">
-        <h1 style="font-family:'Orbitron'; color:var(--neon); text-shadow:0 0 20px var(--neon);">SELECT CLEARANCE</h1>
-        <div class="level-grid">
+        <h1 style="text-align:center; font-family:'Orbitron'; margin-bottom:30px; color:white; text-shadow:0 0 20px white;">AVAILABLE MISSIONS</h1>
+        <div class="level-container" id="level-list">
             </div>
     </div>
 
     <div id="game-screen" class="screen">
-        <div class="game-header">
-            <span id="lvl-display">LEVEL 1</span>
-            <span style="color:var(--bomb)" id="bomb-warning"></span>
+        <div class="game-hud">
+            <div class="hud-item">
+                <div class="hud-label">MISSION</div>
+                <div class="hud-value" style="color:var(--neon-blue)" id="hud-level">LVL 01</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">GRID SIZE</div>
+                <div class="hud-value" id="hud-grid">2x2</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">THREAT</div>
+                <div class="hud-value" id="hud-bombs">NONE</div>
+            </div>
         </div>
-        <div class="grid-container" id="grid"></div>
+
+        <div class="grid-wrapper">
+            <div class="game-grid" id="grid"></div>
+        </div>
     </div>
 
     <div id="win-modal" class="modal">
-        <h1 style="color:#0f0; text-shadow:0 0 30px #0f0;">CLEARED!</h1>
-        <p style="font-size:20px; color:white;" id="win-msg"></p>
-        <button class="btn-action" onclick="showLevels()">CONTINUE</button>
+        <div class="modal-content" style="border-color:#0f0;">
+            <h1 style="color:#0f0; text-shadow:0 0 20px #0f0;">MISSION COMPLETE</h1>
+            <p style="color:#aaa; font-size:18px;">REWARD SECURED</p>
+            <h2 id="win-msg" style="color:white; font-size:24px; margin:20px 0;"></h2>
+            <button class="btn-main" onclick="showLevels()">NEXT MISSION</button>
+        </div>
     </div>
 
     <div id="lose-modal" class="modal">
-        <h1 style="color:var(--bomb); text-shadow:0 0 30px var(--bomb);">BOOM!</h1>
-        <p style="font-size:20px; color:white;">SYSTEM DESTROYED</p>
-        <button class="btn-action" style="background:var(--bomb); color:white; box-shadow:0 0 20px var(--bomb);" onclick="showLevels()">RETRY</button>
+        <div class="modal-content" style="border-color:var(--neon-red);">
+            <h1 style="color:var(--neon-red); text-shadow:0 0 20px red;">SYSTEM FAILURE</h1>
+            <p style="color:#aaa; font-size:18px;">EXPLOSIVE DEVICE TRIGGERED</p>
+            <div style="font-size:50px; margin:20px 0;">💥</div>
+            <button class="btn-main" style="background:var(--neon-red); color:white;" onclick="showLevels()">ABORT</button>
+        </div>
     </div>
 
     <script>
-        // CONFIG
+        // --- CONFIGURATION ---
+        // NEW: FRUIT & VEGETABLE EMOJIS (Massive List for No Repetition)
+        const aesthetics = [
+            "🍎", "🍐", "🍊", "🍋", "🍌", "🍉", "🍇", "🍓", "🫐", "🍈", 
+            "🍒", "🍑", "🥭", "🍍", "🥥", "🥝", "🍅", "🍆", "🥑", "🥦", 
+            "🥬", "🥒", "🌶️", "🫑", "🌽", "🥕", "🫒", "🧄", "🧅", "🥔", 
+            "🍠", "🍯", "🥜", "🌰", "🥐", "🥯", "🍞", "🥖", "🥨", "🧀", 
+            "🍗", "🥩", "🥓", "🍔", "🍟", "🍕", "🌭", "🥪", "🌮", "🌯",
+            "🍏", "🍄", "🦞", "🦀", "🦑", "🐙", "🦐", "🐠", "🐟", "🐡"
+        ];
+
         const levels = [
             { lvl: 1,  rows: 2, cols: 2, bombs: 0, prize: 500 },
             { lvl: 2,  rows: 2, cols: 3, bombs: 0, prize: 1000 },
@@ -160,222 +248,228 @@
             { lvl: 9,  rows: 7, cols: 8, bombs: 0, prize: 150000 },
             { lvl: 10, rows: 8, cols: 8, bombs: 4, prize: 500000 }, // + ROLE
             { lvl: 11, rows: 9, cols: 10, bombs: 4, prize: 1000000 }, // + ROLE
-            { lvl: 12, rows: 12, cols: 12, bombs: 4, prize: 5000000 } // + ROLE (144 cards - 4 = 140/2 = 70 pairs)
+            { lvl: 12, rows: 12, cols: 12, bombs: 4, prize: 5000000 } // + ROLE
         ];
 
-        const emojis = ["🚀","💎","🔥","💀","🤖","👾","🎃","👽","🦄","🐉","⚡","❄️","🍀","🍎","🍔","🍕","🚗","✈️","⌚","📱","💻","💾","💿","🎥","🎱","🎲","🎯","🏆","🥇","👑","💍","🕶️","🧢","🎓","🎒","⛑️","🦋","🕷️","🕸️","🦂","🐍","🦖","🦕","🐙","🦑","🦐","🦞","🦀","🐡","🐠","🐟","🐬","🐳","🐋","🦈","🐊","🐅","🐆","🦓","🦍","🦧","🦣","🐘","🦛","🦏","🐪","🐫","🦒","🦘","🦬","🐃","🐂","🐄","🐎","🐖","🐏","🐑","🦙","🐐","🦌","🐕","🐩","🦮","🐕‍🦺","🐈","🐈‍⬛","🐓","🦃","🦚","🦜","🦢","🦩","🕊️","🐇","🦝","🦨","🦡","🦦","🦥","🐁","🐀","🐿️","🦔"];
-
         let currentLevel = null;
-        let cards = [];
         let flippedCards = [];
         let matchedCount = 0;
         let isLocked = false;
 
-        // --- INIT ---
-        function init() {
-            const grid = document.querySelector('.level-grid');
+        // --- INIT & UI ---
+        function initLevels() {
+            const container = document.getElementById('level-list');
             levels.forEach(l => {
-                let isDanger = l.lvl >= 10;
-                let btn = document.createElement('div');
-                btn.className = `lvl-btn ${isDanger ? 'danger' : ''}`;
-                btn.innerHTML = `LVL ${l.lvl} <span class="lvl-tag">$${l.prize.toLocaleString()}</span>`;
-                if(isDanger) btn.innerHTML += `<span class="lvl-tag" style="color:var(--bomb)">⚠️ 4 BOMBS + ROLE</span>`;
-                btn.onclick = () => startGame(l);
-                grid.appendChild(btn);
+                const isDanger = l.lvl >= 10;
+                const card = document.createElement('div');
+                card.className = `mission-card ${isDanger ? 'danger' : ''}`;
+                
+                let details = `<span class="lvl-tag">${l.rows}x${l.cols}</span>`;
+                if(l.bombs > 0) details += `<span class="lvl-tag" style="color:var(--neon-red); border:1px solid var(--neon-red);">⚠️ ${l.bombs} BOMBS</span>`;
+                if(isDanger) details += `<span class="lvl-tag" style="color:var(--gold);">👑 ROLE</span>`;
+
+                card.innerHTML = `
+                    <div class="lvl-info">
+                        <h2 class="lvl-num">MISSION 0${l.lvl}</h2>
+                        <p>${isDanger ? 'HARDCORE CLEARANCE' : 'STANDARD PROTOCOL'} ${details}</p>
+                    </div>
+                    <div class="lvl-prize">
+                        $${l.prize.toLocaleString()}
+                    </div>
+                `;
+                card.onclick = () => launchGame(l);
+                container.appendChild(card);
             });
         }
-        init();
+        initLevels();
 
         function showLevels() {
             document.getElementById('level-screen').classList.add('active');
             document.getElementById('game-screen').classList.remove('active');
             document.getElementById('win-modal').style.display = 'none';
             document.getElementById('lose-modal').style.display = 'none';
-            document.getElementById('grid').innerHTML = '';
             document.getElementById('nav-btn').onclick = () => window.location.href = '/games';
-            document.getElementById('nav-btn').innerText = "← EXIT";
+            document.getElementById('nav-btn').innerText = "← EXIT SYSTEM";
+            document.getElementById('grid').innerHTML = '';
         }
 
-        function startGame(levelConfig) {
-            currentLevel = levelConfig;
+        function launchGame(config) {
+            currentLevel = config;
             document.getElementById('level-screen').classList.remove('active');
             document.getElementById('game-screen').classList.add('active');
-            document.getElementById('lvl-display').innerText = `LEVEL ${currentLevel.lvl}`;
             document.getElementById('nav-btn').onclick = showLevels;
-            document.getElementById('nav-btn').innerText = "← LEVELS";
+            document.getElementById('nav-btn').innerText = "← ABORT";
+
+            // Update HUD
+            document.getElementById('hud-level').innerText = `LVL ${config.lvl < 10 ? '0'+config.lvl : config.lvl}`;
+            document.getElementById('hud-grid').innerText = `${config.rows}x${config.cols}`;
             
-            if(currentLevel.bombs > 0) {
-                document.getElementById('bomb-warning').innerText = `⚠️ ${currentLevel.bombs} BOMBS HIDDEN`;
+            const bombEl = document.getElementById('hud-bombs');
+            if(config.bombs > 0) {
+                bombEl.innerText = `${config.bombs} ACTIVE`;
+                bombEl.classList.add('danger');
             } else {
-                document.getElementById('bomb-warning').innerText = "";
+                bombEl.innerText = "SAFE";
+                bombEl.classList.remove('danger');
             }
 
-            generateBoard();
+            buildGrid();
         }
 
-        function generateBoard() {
+        function buildGrid() {
             const grid = document.getElementById('grid');
             grid.style.gridTemplateColumns = `repeat(${currentLevel.cols}, 1fr)`;
             
-            let totalSlots = currentLevel.rows * currentLevel.cols;
-            let safeSlots = totalSlots - currentLevel.bombs;
-            let pairsNeeded = safeSlots / 2;
-            
+            const total = currentLevel.rows * currentLevel.cols;
+            const pairs = (total - currentLevel.bombs) / 2;
             let deck = [];
-            
+
             // Add Pairs
-            for(let i=0; i<pairsNeeded; i++) {
-                let emoji = emojis[i % emojis.length];
-                deck.push({ type: 'safe', val: emoji });
-                deck.push({ type: 'safe', val: emoji });
+            for(let i=0; i<pairs; i++) {
+                let symbol = aesthetics[i % aesthetics.length];
+                deck.push({ type: 'safe', val: symbol });
+                deck.push({ type: 'safe', val: symbol });
             }
-            
             // Add Bombs
-            for(let i=0; i<currentLevel.bombs; i++) {
-                deck.push({ type: 'bomb', val: '💣' });
-            }
+            for(let i=0; i<currentLevel.bombs; i++) deck.push({ type: 'bomb', val: '☣️' });
 
             // Shuffle
             deck.sort(() => Math.random() - 0.5);
 
             grid.innerHTML = '';
-            cards = [];
             flippedCards = [];
             matchedCount = 0;
             isLocked = false;
 
-            deck.forEach((item, index) => {
-                let card = document.createElement('div');
-                card.className = `card ${item.type}`;
+            deck.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card';
                 card.innerHTML = `
-                    <div class="card-inner">
-                        <div class="card-front"></div>
-                        <div class="card-back">${item.val}</div>
-                    </div>
+                    <div class="face front"></div>
+                    <div class="face back ${item.type === 'bomb' ? 'bomb' : ''}">${item.val}</div>
                 `;
-                card.onclick = () => flipCard(card, item);
+                card.onclick = () => handleFlip(card, item);
                 grid.appendChild(card);
             });
         }
 
-        function flipCard(card, item) {
+        function handleFlip(card, item) {
             if(isLocked || card.classList.contains('flipped') || card.classList.contains('matched')) return;
 
             card.classList.add('flipped');
-
+            
             if(item.type === 'bomb') {
-                gameOver();
+                isLocked = true;
+                setTimeout(triggerLose, 600);
                 return;
             }
 
             flippedCards.push({ el: card, val: item.val });
-
-            if(flippedCards.length === 2) {
-                checkForMatch();
-            }
+            
+            if(flippedCards.length === 2) checkMatch();
         }
 
-        function checkForMatch() {
+        function checkMatch() {
             isLocked = true;
-            let c1 = flippedCards[0];
-            let c2 = flippedCards[1];
+            const [c1, c2] = flippedCards;
 
             if(c1.val === c2.val) {
-                // Match
                 setTimeout(() => {
                     c1.el.classList.add('matched');
                     c2.el.classList.add('matched');
                     matchedCount += 2;
-                    spawnParticles(c1.el);
-                    spawnParticles(c2.el);
                     flippedCards = [];
                     isLocked = false;
-                    checkWin();
+                    
+                    const safeTotal = (currentLevel.rows * currentLevel.cols) - currentLevel.bombs;
+                    if(matchedCount === safeTotal) triggerWin();
                 }, 500);
             } else {
-                // No Match
                 setTimeout(() => {
                     c1.el.classList.remove('flipped');
                     c2.el.classList.remove('flipped');
                     flippedCards = [];
                     isLocked = false;
-                }, 1000);
+                }, 800);
             }
         }
 
-        function gameOver() {
-            isLocked = true;
-            // Reveal all bombs
-            document.querySelectorAll('.card.bomb').forEach(c => c.classList.add('flipped'));
-            setTimeout(() => {
-                document.getElementById('lose-modal').style.display = 'flex';
-                // Report loss (optional, just to log attempt)
-                fetch('/api/games/memory/complete', {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ level: currentLevel.lvl, won: false })
-                });
-            }, 1000);
-        }
-
-        async function checkWin() {
-            let totalSafe = (currentLevel.rows * currentLevel.cols) - currentLevel.bombs;
-            if(matchedCount === totalSafe) {
-                // WIN!
+        async function triggerWin() {
+            try {
                 const res = await fetch('/api/games/memory/complete', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ level: currentLevel.lvl, won: true })
                 });
                 const data = await res.json();
-                
                 document.getElementById('win-msg').innerText = data.msg;
                 document.getElementById('bal-display').innerText = "$" + data.new_balance.toLocaleString();
-                
-                setTimeout(() => {
-                    document.getElementById('win-modal').style.display = 'flex';
-                }, 500);
-            }
+                document.getElementById('win-modal').style.display = 'flex';
+            } catch(e) { alert("Connection Error"); }
         }
 
-        // --- VISUAL FX ---
-        const pCanvas = document.getElementById('particle-canvas');
-        const pCtx = pCanvas.getContext('2d');
-        let particles = [];
-
-        function resizeCanvas() { pCanvas.width = window.innerWidth; pCanvas.height = window.innerHeight; }
-        window.addEventListener('resize', resizeCanvas); resizeCanvas();
-
-        function spawnParticles(element) {
-            const rect = element.getBoundingClientRect();
-            const x = rect.left + rect.width / 2;
-            const y = rect.top + rect.height / 2;
-            
-            for(let i=0; i<20; i++) {
-                particles.push({
-                    x: x, y: y,
-                    vx: (Math.random() - 0.5) * 10,
-                    vy: (Math.random() - 0.5) * 10,
-                    life: 1,
-                    color: `hsl(${Math.random()*360}, 100%, 50%)`
-                });
-            }
-        }
-
-        function animateParticles() {
-            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-            particles.forEach((p, index) => {
-                p.x += p.vx;
-                p.y += p.vy;
-                p.life -= 0.02;
-                pCtx.globalAlpha = p.life;
-                pCtx.fillStyle = p.color;
-                pCtx.beginPath();
-                pCtx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-                pCtx.fill();
-                if(p.life <= 0) particles.splice(index, 1);
+        function triggerLose() {
+            document.querySelectorAll('.back.bomb').forEach(el => el.parentElement.classList.add('flipped'));
+            fetch('/api/games/memory/complete', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ level: currentLevel.lvl, won: false })
             });
-            requestAnimationFrame(animateParticles);
+            setTimeout(() => {
+                document.getElementById('lose-modal').style.display = 'flex';
+            }, 800);
         }
-        animateParticles();
+
+        // --- BACKGROUND FX (CANVAS) ---
+        const bgCanvas = document.getElementById('bgCanvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        const trailCanvas = document.getElementById('trailCanvas');
+        const trailCtx = trailCanvas.getContext('2d');
+        let width, height;
+        let trail = [];
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            bgCanvas.width = trailCanvas.width = width;
+            bgCanvas.height = trailCanvas.height = height;
+        }
+        window.addEventListener('resize', resize); resize();
+
+        // Matrix Rain / Tech Background
+        let drops = [];
+        for(let i=0; i<50; i++) drops.push({x: Math.random()*width, y: Math.random()*height, s: Math.random()*2+1});
+
+        function animateBg() {
+            bgCtx.clearRect(0,0,width,height);
+            bgCtx.fillStyle = 'rgba(0, 243, 255, 0.2)';
+            drops.forEach(d => {
+                d.y += d.s;
+                if(d.y > height) d.y = 0;
+                bgCtx.fillRect(d.x, d.y, 2, 10);
+            });
+            requestAnimationFrame(animateBg);
+        }
+        animateBg();
+
+        // Touch Trail
+        function addTrail(x, y) { trail.push({x, y, age: 10}); }
+        window.addEventListener('mousemove', e => addTrail(e.clientX, e.clientY));
+        window.addEventListener('touchmove', e => addTrail(e.touches[0].clientX, e.touches[0].clientY));
+
+        function animateTrail() {
+            trailCtx.clearRect(0,0,width,height);
+            trail.forEach((t, i) => {
+                t.age -= 0.5;
+                if(t.age <= 0) trail.splice(i, 1);
+                trailCtx.beginPath();
+                trailCtx.arc(t.x, t.y, t.age, 0, Math.PI*2);
+                trailCtx.fillStyle = `rgba(0, 243, 255, ${t.age/10})`;
+                trailCtx.shadowBlur = 10;
+                trailCtx.shadowColor = 'cyan';
+                trailCtx.fill();
+            });
+            requestAnimationFrame(animateTrail);
+        }
+        animateTrail();
 
     </script>
 </body>
