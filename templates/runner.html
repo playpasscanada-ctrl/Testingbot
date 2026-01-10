@@ -3,65 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Surf</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&display=swap" rel="stylesheet">
+    <title>Neon Surf 3D</title>
+    <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Rajdhani:wght@700&display=swap" rel="stylesheet">
     <style>
-        body {
-            margin: 0; overflow: hidden; background: #050505; color: white;
-            font-family: 'Orbitron', sans-serif; touch-action: none; /* Prevent scroll on mobile */
-        }
-        
-        /* UI OVERLAY */
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
-        
-        .hud { display: flex; justify-content: space-between; padding: 20px; font-size: 20px; text-shadow: 0 0 10px cyan; }
-        .score-box { background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 20px; border: 1px solid cyan; }
+        body { margin: 0; overflow: hidden; background: #1a0b2e; font-family: 'Rajdhani', sans-serif; touch-action: none; }
 
-        /* GAME OVER MODAL */
+        /* UI LAYER */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+
+        /* HUD */
+        .hud { 
+            display: flex; justify-content: space-between; padding: 20px; 
+            font-size: 24px; font-weight: bold; color: white;
+            text-shadow: 0 0 10px #00f3ff;
+        }
+        .score-pill { 
+            background: rgba(0,0,0,0.5); padding: 10px 25px; border-radius: 30px; 
+            border: 2px solid #ff00de; box-shadow: 0 0 15px #ff00de;
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        /* GAME OVER SCREEN */
         #game-over {
             display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9); border: 2px solid cyan; padding: 40px; text-align: center;
-            border-radius: 20px; box-shadow: 0 0 50px cyan; pointer-events: auto; width: 80%; max-width: 400px;
+            background: linear-gradient(135deg, rgba(20,0,20,0.95), rgba(0,0,0,0.95)); 
+            border: 3px solid #ff00de; padding: 40px; text-align: center; width: 85%; max-width: 350px;
+            border-radius: 20px; box-shadow: 0 0 50px rgba(255, 0, 222, 0.5); pointer-events: auto;
         }
         
-        button {
-            background: cyan; border: none; padding: 15px 30px; font-size: 18px; font-family: 'Orbitron';
-            font-weight: bold; cursor: pointer; border-radius: 50px; margin-top: 20px;
-            box-shadow: 0 0 20px cyan; transition: 0.2s;
+        .btn-claim {
+            background: linear-gradient(to right, #00f3ff, #0066ff); border: none; padding: 15px 40px; 
+            font-size: 20px; font-family: 'Black Ops One'; color: white; border-radius: 50px; 
+            margin-top: 20px; cursor: pointer; box-shadow: 0 0 20px #00f3ff; transition: 0.2s;
+            width: 100%;
         }
-        button:active { transform: scale(0.95); }
+        .btn-claim:active { transform: scale(0.95); }
 
-        /* CANVAS */
-        canvas { display: block; width: 100%; height: 100%; }
-        
-        /* TOUCH TRAIL */
-        .trail {
-            position: absolute; width: 10px; height: 10px; background: gold; border-radius: 50%;
-            pointer-events: none; animation: fade 0.5s linear forwards;
+        /* START SCREEN */
+        #start-screen {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); 
+            text-align: center; pointer-events: auto; width: 100%;
         }
-        @keyframes fade { to { opacity: 0; transform: scale(0); } }
+        .title-text { 
+            font-family: 'Black Ops One'; font-size: 50px; 
+            background: linear-gradient(to bottom, #00f3ff, #ff00de); 
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px rgba(0,243,255,0.5));
+        }
+        .pulse-btn {
+            background: white; color: black; border: none; padding: 15px 50px; 
+            font-size: 22px; font-weight: 900; border-radius: 50px; cursor: pointer;
+            animation: pulse 1.5s infinite; font-family: 'Rajdhani';
+        }
+        @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0.7); } 70% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(255,255,255,0); } 100% { transform: scale(1); } }
+
+        canvas { display: block; width: 100%; height: 100%; }
     </style>
 </head>
 <body>
 
     <div id="ui-layer">
-        <div class="hud">
-            <div class="score-box">💰 COINS: <span id="coin-display">0</span></div>
-            <div class="score-box">WALLET: $<span id="bal-display">{{ "{:,}".format(balance) }}</span></div>
+        <div class="hud" id="hud" style="display:none;">
+            <div class="score-pill">🪙 <span id="coin-display">0</span></div>
+            <div class="score-pill">🏦 $<span id="bal-display">{{ "{:,}".format(balance) }}</span></div>
         </div>
         
         <div id="game-over">
-            <h1 style="color:red; margin:0;">CRASHED!</h1>
-            <h2 style="color:gold;">COINS: <span id="final-coins">0</span></h2>
-            <p style="color:cyan;">EARNINGS: $<span id="final-money">0</span></p>
-            <button onclick="claimReward()" id="claim-btn">CLAIM & RESTART</button>
+            <h1 style="color:#ff0044; font-family:'Black Ops One'; margin:0; font-size: 40px;">WIPEOUT!</h1>
+            <div style="margin: 20px 0;">
+                <div style="color:gold; font-size:18px;">COINS COLLECTED</div>
+                <div style="font-size:40px; font-weight:900;" id="final-coins">0</div>
+            </div>
+            <div style="color:#00f3ff; font-size:20px;">VALUE: $<span id="final-money">0</span></div>
+            <button onclick="claimReward()" id="claim-btn" class="btn-claim">CLAIM CASH</button>
             <p id="status-msg" style="font-size:12px; color:gray; margin-top:10px;"></p>
         </div>
         
-        <div id="start-screen" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:auto;">
-            <h1 style="font-size:40px; color:cyan; text-shadow:0 0 20px cyan;">NEON SURF</h1>
-            <p>SWIPE or ARROWS to Move</p>
-            <button onclick="startGame()">TAP TO RUN</button>
+        <div id="start-screen">
+            <div class="title-text">NEON SURF</div>
+            <p style="color:white; font-size:18px; margin-bottom:30px;">
+                👆 SWIPE UP TO JUMP<br>
+                👈 SWIPE LEFT/RIGHT TO DODGE
+            </p>
+            <button class="pulse-btn" onclick="startGame()">TAP TO START</button>
         </div>
     </div>
 
@@ -70,294 +94,331 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
-        // GAME VARIABLES
+
+        // --- CONFIG ---
         let width, height;
-        let running = false;
-        let speed = 5;
-        let score = 0; // Coins
+        let gameActive = false;
         let frame = 0;
+        let score = 0;
+        let speed = 8; // Faster base speed
         
-        // LANES: -1 (Left), 0 (Middle), 1 (Right)
-        let playerLane = 0; 
-        let playerY = 0; // Will be set on resize
-        let laneWidth = 0;
+        // --- PLAYER ---
+        const player = {
+            lane: 0, // -1 (Left), 0 (Middle), 1 (Right)
+            y: 0,    // Jump height (0 = ground)
+            vy: 0,   // Vertical velocity
+            gravity: 1.2,
+            jumpPower: 22,
+            isJumping: false,
+            color: '#00f3ff',
+            animY: 0
+        };
 
-        // ENTITIES
-        let obstacles = [];
-        let coins = [];
-        let particles = [];
+        // --- WORLD ---
+        let objects = []; // Coins & Obstacles
+        const laneWidth = 120; // Virtual width of a lane
+        const horizonY = 0.35; // Where the road disappears (0 to 1)
 
-        // SETUP CANVAS
         function resize() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
-            laneWidth = width / 4; 
-            playerY = height - 150;
         }
         window.addEventListener('resize', resize);
         resize();
 
-        // --- INPUT HANDLING (SWIPE & KEYS) ---
-        let touchStartX = 0;
-        let touchStartY = 0;
+        // --- INPUTS ---
+        let touchX = 0, touchY = 0;
         
         document.addEventListener('keydown', e => {
-            if(!running) return;
-            if(e.key === 'ArrowLeft') changeLane(-1);
-            if(e.key === 'ArrowRight') changeLane(1);
+            if (!gameActive) return;
+            if (e.key === 'ArrowLeft') moveLane(-1);
+            if (e.key === 'ArrowRight') moveLane(1);
+            if ((e.key === 'ArrowUp' || e.key === ' ') && !player.isJumping) jump();
         });
 
         document.addEventListener('touchstart', e => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-            createTouchTrail(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+            touchX = e.changedTouches[0].screenX;
+            touchY = e.changedTouches[0].screenY;
         });
 
         document.addEventListener('touchend', e => {
-            if(!running) return;
-            let touchEndX = e.changedTouches[0].screenX;
-            let touchEndY = e.changedTouches[0].screenY;
-            handleSwipe(touchStartX, touchEndX, touchStartY, touchEndY);
+            if (!gameActive) return;
+            let endX = e.changedTouches[0].screenX;
+            let endY = e.changedTouches[0].screenY;
+            let dx = endX - touchX;
+            let dy = endY - touchY;
+
+            // Priority: Vertical Swipe (Jump) > Horizontal Swipe
+            if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 40 && dy < 0) {
+                if (!player.isJumping) jump();
+            } else if (Math.abs(dx) > 40) {
+                if (dx > 0) moveLane(1);
+                else moveLane(-1);
+            }
         });
 
-        function handleSwipe(x1, x2, y1, y2) {
-            let dx = x2 - x1;
-            let dy = y2 - y1;
-            if(Math.abs(dx) > Math.abs(dy)) {
-                if(Math.abs(dx) > 30) { // Threshold
-                    if(dx > 0) changeLane(1); // Right
-                    else changeLane(-1); // Left
+        function moveLane(dir) {
+            let target = player.lane + dir;
+            if (target >= -1 && target <= 1) player.lane = target;
+        }
+
+        function jump() {
+            player.isJumping = true;
+            player.vy = player.jumpPower;
+        }
+
+        // --- GAME OBJECTS ---
+        class GameObject {
+            constructor() {
+                this.lane = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
+                this.z = 2000; // Start far away
+                // 40% Coin, 60% Obstacle
+                this.type = Math.random() < 0.4 ? 'coin' : 'obstacle'; 
+                
+                if(this.type === 'obstacle') {
+                    // 50% Low Barrier (Jumpable), 50% Tall Wall (Must Dodge)
+                    this.obsType = Math.random() < 0.5 ? 'barrier' : 'wall';
                 }
-            }
-        }
-
-        function changeLane(dir) {
-            let target = playerLane + dir;
-            if(target >= -1 && target <= 1) playerLane = target;
-        }
-
-        function createTouchTrail(x, y) {
-            const div = document.createElement('div');
-            div.className = 'trail';
-            div.style.left = x + 'px';
-            div.style.top = y + 'px';
-            document.body.appendChild(div);
-            setTimeout(() => div.remove(), 500);
-        }
-
-        // --- GAME LOGIC ---
-        
-        class Entity {
-            constructor(type, lane) {
-                this.type = type; // 'obstacle' or 'coin'
-                this.lane = lane;
-                this.z = 0; // Depth (0 to 1000)
                 this.active = true;
             }
-            
+
             update() {
-                this.z += speed;
-                // Collision logic
-                if(this.z > 800 && this.z < 950 && this.active) {
-                    if(this.lane === playerLane) {
-                        if(this.type === 'obstacle') gameOver();
-                        if(this.type === 'coin') collectCoin(this);
+                this.z -= speed;
+                if (this.z < -100) this.active = false;
+
+                // --- COLLISION DETECTION ---
+                // Player is at z ~ 100.
+                if (this.active && Math.abs(this.z - 100) < 50 && this.lane === player.lane) {
+                    
+                    if (this.type === 'coin') {
+                        collectCoin(this);
+                    } else if (this.type === 'obstacle') {
+                        if (this.obsType === 'barrier') {
+                            // Player must be high enough to clear barrier
+                            if (player.y < 40) gameOver(); // Crash if not jumping high
+                        } else {
+                            // Wall cannot be jumped
+                            gameOver();
+                        }
                     }
                 }
-                if(this.z > 1000) this.active = false;
             }
 
             draw() {
-                if(!this.active) return;
+                // PERSPECTIVE MATH
+                // k = Scale factor (Distance fade)
+                const k = 400 / (400 + this.z); 
                 
-                // Perspective Projection
-                // Objects get bigger and move apart as they come closer (z increases)
-                const perspective = this.z / 1000; // 0 to 1
-                const scale = 0.1 + (perspective * 1.5); // Grows as it comes close
+                const x = width / 2 + (this.lane * laneWidth * k * 3);
+                const y = height * horizonY + ((height - height * horizonY) * k * 0.5) + (height * 0.4 * k);
                 
-                // Calculate X position based on lane and perspective
-                // Lanes converge at center top (vanishing point)
-                const centerX = width / 2;
-                const vanishingY = height * 0.3; // Horizon line
-                
-                // Lane spread increases with perspective
-                const spread = (width * 0.8) * perspective; 
-                const entX = centerX + (this.lane * (spread / 2.5));
-                const entY = vanishingY + (perspective * (height - vanishingY));
+                const w = 80 * k;
+                const h = 80 * k;
 
-                const size = 60 * scale;
-
-                if(this.type === 'obstacle') {
-                    // Draw Spike Box
-                    ctx.fillStyle = `rgba(255, 0, 50, ${perspective})`;
-                    ctx.shadowBlur = 20 * perspective;
-                    ctx.shadowColor = 'red';
-                    ctx.fillRect(entX - size/2, entY - size, size, size);
-                } else {
-                    // Draw Coin
-                    ctx.fillStyle = `rgba(255, 215, 0, ${perspective})`;
-                    ctx.shadowBlur = 20 * perspective;
-                    ctx.shadowColor = 'gold';
-                    ctx.beginPath();
-                    ctx.arc(entX, entY - size/2, size/2, 0, Math.PI * 2);
-                    ctx.fill();
+                if (this.type === 'coin') {
+                    // Floating Coin
+                    const floatY = y - (100 * k) - (Math.sin(frame * 0.1) * 10 * k);
+                    ctx.fillStyle = '#ffd700';
+                    ctx.shadowBlur = 20; ctx.shadowColor = 'gold';
+                    ctx.beginPath(); ctx.arc(x, floatY, w/2, 0, Math.PI*2); ctx.fill();
+                    ctx.shadowBlur = 0;
                     
-                    // Inner detail
-                    ctx.fillStyle = '#b8860b';
-                    ctx.font = `${Math.floor(size/1.5)}px Arial`;
-                    ctx.textAlign = 'center';
-                    ctx.fillText('$', entX, entY - size/3);
+                    // Detail
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath(); ctx.arc(x, floatY, w/3, 0, Math.PI*2); ctx.fill();
+                } 
+                else if (this.type === 'obstacle') {
+                    if (this.obsType === 'barrier') {
+                        // LOW BARRIER (Red)
+                        const barH = h * 0.6;
+                        const barY = y - barH;
+                        drawBox(x, barY, w, barH, '#ff3333', '#990000');
+                        // Symbol for Jump
+                        ctx.fillStyle = 'white';
+                        ctx.font = `${20*k}px Arial`; ctx.textAlign = 'center';
+                        ctx.fillText('⬆️', x, barY + barH/2);
+                    } else {
+                        // TALL WALL (Orange)
+                        const wallH = h * 1.5;
+                        const wallY = y - wallH;
+                        drawBox(x, wallY, w, wallH, '#ff8800', '#cc6600');
+                    }
                 }
             }
         }
 
-        function spawn() {
-            if(Math.random() < 0.05) { // 5% chance per frame
-                let lane = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
-                // 30% chance coin, 70% obstacle
-                let type = Math.random() < 0.4 ? 'coin' : 'obstacle';
-                obstacles.push(new Entity(type, lane));
+        // Draw pseudo-3D box
+        function drawBox(x, y, w, h, colorFront, colorTop) {
+            // Front Face
+            ctx.fillStyle = colorFront;
+            ctx.fillRect(x - w/2, y, w, h);
+            
+            // Top Face (Visual Depth)
+            ctx.fillStyle = colorTop;
+            ctx.beginPath();
+            ctx.moveTo(x - w/2, y);
+            ctx.lineTo(x + w/2, y);
+            ctx.lineTo(x + (w/4), y - (h/4));
+            ctx.lineTo(x - (w/4), y - (h/4));
+            ctx.fill();
+        }
+
+        // --- GAME LOOP ---
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('hud').style.display = 'flex';
+            gameActive = true;
+            score = 0;
+            frame = 0;
+            speed = 10;
+            objects = [];
+            
+            // Player reset
+            player.lane = 0;
+            player.y = 0;
+            player.vy = 0;
+            player.isJumping = false;
+            
+            document.getElementById('coin-display').innerText = '0';
+            update();
+        }
+
+        function spawnObjects() {
+            if (frame % 40 === 0) { // Spawn every 40 frames
+                objects.push(new GameObject());
             }
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            // Player Physics (Jump)
+            if (player.isJumping) {
+                player.y += player.vy;
+                player.vy -= player.gravity;
+                if (player.y <= 0) {
+                    player.y = 0;
+                    player.vy = 0;
+                    player.isJumping = false;
+                }
+            }
+
+            // Clean Canvas
+            // Sky Gradient
+            let grd = ctx.createLinearGradient(0, 0, 0, height);
+            grd.addColorStop(0, "#2b0f54"); // Deep Purple
+            grd.addColorStop(1, "#ff00de"); // Neon Pink horizon
+            ctx.fillStyle = grd;
+            ctx.fillRect(0, 0, width, height);
+
+            // Draw Ground (Perspective Grid)
+            drawRoad();
+
+            // Spawn & Update Objects
+            spawnObjects();
+            
+            // Sort by Z (Painters Algorithm - Draw far objects first)
+            objects.sort((a, b) => b.z - a.z);
+            objects.forEach(obj => {
+                obj.update();
+                obj.draw();
+            });
+            objects = objects.filter(o => o.active);
+
+            // Draw Player
+            drawPlayer();
+
+            frame++;
+            speed += 0.002; // Slow acceleration
+            requestAnimationFrame(update);
+        }
+
+        function drawRoad() {
+            const hY = height * horizonY;
+            
+            // Floor
+            let floorGrd = ctx.createLinearGradient(0, hY, 0, height);
+            floorGrd.addColorStop(0, "#000033");
+            floorGrd.addColorStop(1, "#001144");
+            ctx.fillStyle = floorGrd;
+            ctx.fillRect(0, hY, width, height - hY);
+
+            // Lanes (Moving grid)
+            ctx.strokeStyle = "rgba(0, 243, 255, 0.3)";
+            ctx.lineWidth = 2;
+            
+            // Vertical Lines
+            const centerX = width/2;
+            const spread = width * 1.5; // How wide the road gets at bottom
+            
+            for(let i=-1.5; i<=1.5; i++) {
+                ctx.beginPath();
+                ctx.moveTo(centerX, hY);
+                ctx.lineTo(centerX + (i * spread), height);
+                ctx.stroke();
+            }
+
+            // Horizontal Lines (Moving)
+            const speedOffset = (frame * speed * 5) % 100;
+            for(let z=0; z<height; z+=100) {
+                // Perspective spacing log curve
+                let y = hY + Math.pow(z + speedOffset, 1.5) / 100;
+                if(y > height) continue;
+                
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+        }
+
+        function drawPlayer() {
+            // Player visual position calculation
+            // Base X position + Lane Offset + slight sway animation
+            const centerX = width / 2;
+            const laneOffset = player.lane * (width / 3.5); 
+            // Lerp logic would be here, direct mapping for responsiveness
+            const px = centerX + laneOffset;
+            const py = height - 150 - player.y; // Apply Jump Height
+
+            // Shadow (Stays on ground)
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.beginPath();
+            ctx.ellipse(px, height - 120, 30 - (player.y/5), 10 - (player.y/10), 0, 0, Math.PI*2);
+            ctx.fill();
+
+            // Player Character (Robot/Surfer Style)
+            // Body
+            ctx.fillStyle = player.color;
+            ctx.shadowBlur = 20; ctx.shadowColor = player.color;
+            ctx.fillRect(px - 20, py - 60, 40, 60);
+            
+            // Head
+            ctx.fillStyle = 'white';
+            ctx.fillRect(px - 15, py - 90, 30, 25);
+            
+            // Jetpack Flame (If jumping)
+            if(player.isJumping) {
+                ctx.fillStyle = 'orange';
+                ctx.beginPath();
+                ctx.moveTo(px - 10, py);
+                ctx.lineTo(px + 10, py);
+                ctx.lineTo(px, py + 30);
+                ctx.fill();
+            }
+            
+            ctx.shadowBlur = 0;
         }
 
         function collectCoin(coin) {
             coin.active = false;
             score++;
             document.getElementById('coin-display').innerText = score;
-            
-            // Particle Effect
-            for(let i=0; i<10; i++) {
-                particles.push({
-                    x: width/2 + (playerLane * 100), 
-                    y: playerY, 
-                    vx: (Math.random()-0.5)*10, 
-                    vy: (Math.random()-0.5)*10, 
-                    life: 20
-                });
-            }
-        }
-
-        // --- DRAWING ---
-        function drawGrid() {
-            // Pseudo 3D Floor
-            ctx.fillStyle = 'rgba(0, 255, 255, 0.1)';
-            const horizon = height * 0.3;
-            
-            // Vertical Lines (Lanes)
-            ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
-            ctx.lineWidth = 2;
-            
-            ctx.beginPath();
-            // Center Line
-            ctx.moveTo(width/2, horizon); ctx.lineTo(width/2, height);
-            // Left Lane
-            ctx.moveTo(width/2, horizon); ctx.lineTo(0, height);
-            // Right Lane
-            ctx.moveTo(width/2, horizon); ctx.lineTo(width, height);
-            ctx.stroke();
-
-            // Horizontal moving lines
-            let offset = (frame * speed * 2) % 100;
-            for(let i=0; i<height; i+=50) {
-                let y = horizon + i + offset;
-                if(y > height) continue;
-                // Perspective logic for horizontal lines could be complex, keeping simple grid for speed
-                ctx.fillStyle = `rgba(0, 243, 255, ${0.1 + (i/height)*0.2})`;
-                ctx.fillRect(0, y, width, 2);
-            }
-        }
-
-        function drawPlayer() {
-            // Interpolate player X for smooth movement
-            const centerX = width / 2;
-            const targetX = centerX + (playerLane * (width / 4));
-            
-            // Simple Lerp (Linear Interpolation) for smoothness
-            // We just draw at targetX for responsiveness in this version
-            
-            const pSize = 60;
-            const pX = targetX;
-            const pY = playerY;
-
-            // Glow
-            ctx.shadowBlur = 30;
-            ctx.shadowColor = 'cyan';
-            
-            // Body (Cyber Runner)
-            ctx.fillStyle = 'cyan';
-            ctx.beginPath();
-            ctx.arc(pX, pY - 30, 20, 0, Math.PI*2); // Head
-            ctx.fill();
-            
-            ctx.fillStyle = 'white';
-            ctx.fillRect(pX - 15, pY - 10, 30, 40); // Body
-            
-            // Legs animation
-            const legOffset = Math.sin(frame * 0.5) * 10;
-            ctx.fillRect(pX - 15, pY + 30 + legOffset, 10, 30); // Left Leg
-            ctx.fillRect(pX + 5, pY + 30 - legOffset, 10, 30); // Right Leg
-
-            ctx.shadowBlur = 0;
-        }
-
-        function drawParticles() {
-            particles.forEach((p, index) => {
-                p.x += p.vx; p.y += p.vy; p.life--;
-                ctx.fillStyle = `rgba(255, 215, 0, ${p.life/20})`;
-                ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI*2); ctx.fill();
-                if(p.life <= 0) particles.splice(index, 1);
-            });
-        }
-
-        // --- MAIN LOOP ---
-        function loop() {
-            if(!running) return;
-            
-            ctx.clearRect(0, 0, width, height);
-            
-            // Background
-            let bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-            bgGrad.addColorStop(0, '#000');
-            bgGrad.addColorStop(1, '#001a1a');
-            ctx.fillStyle = bgGrad;
-            ctx.fillRect(0, 0, width, height);
-
-            drawGrid();
-            
-            spawn();
-            
-            // Sort obstacles by Z so distant ones draw first
-            obstacles.sort((a, b) => a.z - b.z);
-            obstacles.forEach(o => { o.update(); o.draw(); });
-            
-            // Remove passed objects
-            obstacles = obstacles.filter(o => o.active);
-
-            drawPlayer();
-            drawParticles();
-
-            // Difficulty increase
-            speed += 0.001; 
-            frame++;
-            
-            requestAnimationFrame(loop);
-        }
-
-        function startGame() {
-            document.getElementById('start-screen').style.display = 'none';
-            document.getElementById('ui-layer').style.pointerEvents = 'none';
-            score = 0;
-            speed = 5;
-            obstacles = [];
-            coins = [];
-            running = true;
-            document.getElementById('coin-display').innerText = '0';
-            loop();
         }
 
         function gameOver() {
-            running = false;
+            gameActive = false;
+            document.getElementById('hud').style.display = 'none';
             document.getElementById('game-over').style.display = 'block';
             document.getElementById('final-coins').innerText = score;
             document.getElementById('final-money').innerText = "{:,}".format(score * 10);
@@ -366,8 +427,7 @@
         async function claimReward() {
             const btn = document.getElementById('claim-btn');
             const msg = document.getElementById('status-msg');
-            btn.disabled = true;
-            btn.innerText = "SAVING...";
+            btn.disabled = true; btn.innerText = "SAVING...";
 
             try {
                 const res = await fetch('/api/games/runner/payout', {
@@ -378,18 +438,13 @@
                 const data = await res.json();
                 
                 if(data.status === 'success') {
-                    // Update UI Balance
-                    document.getElementById('bal-display').innerText = data.new_balance;
-                    msg.innerText = data.msg;
-                    msg.style.color = 'lime';
-                    setTimeout(() => location.reload(), 1500);
+                    msg.innerText = "Reward Claimed!"; msg.style.color = 'lime';
+                    setTimeout(() => location.reload(), 1000);
                 } else {
-                    msg.innerText = "Error saving score.";
-                    btn.disabled = false;
+                    msg.innerText = "Error!"; btn.disabled = false;
                 }
             } catch(e) {
-                msg.innerText = "Connection Failed.";
-                btn.disabled = false;
+                msg.innerText = "Offline?"; btn.disabled = false;
             }
         }
     </script>
