@@ -15956,7 +15956,7 @@ async def fix_name_global(interaction: discord.Interaction):
     data = res.data
     
     if not data:
-        return await interaction.response.send_message("❌ डेटाबेस में कोई स्टाफ डेटा नहीं मिला।", ephemeral=True)
+        return await interaction.response.send_message("❌ there is no staff in database", ephemeral=True)
 
     top_3_ids = [int(u['user_id']) for u in data]
     
@@ -15965,7 +15965,7 @@ async def fix_name_global(interaction: discord.Interaction):
     is_staff = interaction.user.id in top_3_ids
 
     if not is_owner and not is_staff:
-        return await interaction.response.send_message("🚫 आपके पास इस कमांड का एक्सेस नहीं है।", ephemeral=True)
+        return await interaction.response.send_message("🚫 Abe bhosdiwale teri aukat nhi ye use krne ki", ephemeral=True)
 
     # 2. Choice Menu taiyar karein
     options = []
@@ -15978,20 +15978,20 @@ async def fix_name_global(interaction: discord.Interaction):
             options.append(discord.SelectOption(label=label_name[:25], value=str(uid), description=f"ID: {uid}"))
 
     if not options:
-        return await interaction.response.send_message("❌ कोई वैध सदस्य नहीं मिला।", ephemeral=True)
+        return await interaction.response.send_message("❌ koi staff nhi hai dusra", ephemeral=True)
 
     # UI View Class
     class FixNameView(discord.ui.View):
         def __init__(self):
             super().__init__(timeout=60)
 
-        @discord.ui.select(placeholder="स्टाफ सदस्य चुनें...", options=options)
+        @discord.ui.select(placeholder="select staff...", options=options)
         async def select_callback(self, select_interaction: discord.Interaction, select):
             target_id = int(select.values[0])
             target_member = interaction.guild.get_member(target_id)
 
             if not target_member:
-                return await select_interaction.response.send_message("❌ सदस्य सर्वर में नहीं मिला।", ephemeral=True)
+                return await select_interaction.response.send_message("❌ ye gandu server me nhi hai", ephemeral=True)
 
             try:
                 # 🔥 असली लॉजिक यहाँ है:
@@ -16005,19 +16005,19 @@ async def fix_name_global(interaction: discord.Interaction):
                 await target_member.edit(nick=new_nick)
                 
                 embed = discord.Embed(title="✅ NICKNAME FIXED", color=0x00FF00)
-                embed.description = f"**Target:** {target_member.mention}\n**New Nickname:** `{new_nick}`\n\n*Note: प्रोफाइल वाला असली नाम इस्तेमाल किया गया है।*"
+                embed.description = f"**Target:** {target_member.mention}\n**New Nickname:** `{new_nick}`\n\n*Note: Madarchod ho tum*"
                 
                 await select_interaction.response.send_message(embed=embed)
             except discord.Forbidden:
-                await select_interaction.response.send_message("❌ बॉट का रोल स्टाफ के रोल से ऊपर होना चाहिए।", ephemeral=True)
+                await select_interaction.response.send_message("❌ abe randika bot ko power de", ephemeral=True)
             except Exception as e:
-                await select_interaction.response.send_message(f"❌ एरर: {e}", ephemeral=True)
+                await select_interaction.response.send_message(f"❌ error: {e}", ephemeral=True)
 
     # सुरक्षा: स्टाफ मेंबर सिर्फ अपना नाम फिक्स कर पाए
     if not is_owner:
         options = [opt for opt in options if int(opt.value) == interaction.user.id]
 
-    await interaction.response.send_message("स्टाफ की लिस्ट:", view=FixNameView(), ephemeral=True)
+    await interaction.response.send_message("Staff list:", view=FixNameView(), ephemeral=True)
 
 # --- 2. MAIN COMMAND ---
 @bot.tree.command(name="wipeout", description="☠️ 100M RISK: Steal EVERYTHING (Wallet + Bank + Items)")
