@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Business Empire</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Rajdhani:wght@600&display=swap" rel="stylesheet">
+    <style>
+        :root { --neon: #00ffcc; --bg: #050505; --card-bg: rgba(20, 20, 20, 0.6); }
+        body {
+            background: var(--bg); color: white; font-family: 'Rajdhani', sans-serif;
+            margin: 0; padding-bottom: 50px; overflow-x: hidden;
+        }
+
+        /* RAINBOW TRAIL CANVAS */
+        #trail-canvas { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9999; }
+
+        /* HEADER */
+        .header {
+            padding: 20px; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
+            border-bottom: 1px solid #333; position: sticky; top: 0; z-index: 100;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .bal { font-size: 20px; color: gold; text-shadow: 0 0 10px gold; font-weight: bold; }
+
+        /* TABS */
+        .tabs { display: flex; justify-content: center; gap: 20px; margin: 20px; }
+        .tab-btn {
+            background: #111; color: gray; border: 1px solid #333; padding: 10px 30px;
+            border-radius: 20px; font-family: 'Orbitron'; cursor: pointer; transition: 0.3s;
+        }
+        .tab-btn.active { background: var(--neon); color: black; box-shadow: 0 0 20px var(--neon); }
+
+        /* GRID */
+        .container { display: none; padding: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .container.active { display: grid; }
+
+        /* CARDS */
+        .card {
+            background: var(--card-bg); border: 1px solid #333; border-radius: 15px; padding: 20px;
+            position: relative; overflow: hidden; backdrop-filter: blur(5px); transition: 0.3s;
+        }
+        .card:hover { transform: translateY(-5px); border-color: var(--neon); box-shadow: 0 0 30px rgba(0, 255, 204, 0.1); }
+        
+        .card h2 { margin: 0; font-family: 'Orbitron'; font-size: 18px; color: white; }
+        .card .price { color: #00ff00; font-size: 18px; margin: 5px 0; }
+        .card .income { color: #aaa; font-size: 12px; }
+
+        .btn {
+            width: 100%; padding: 10px; margin-top: 15px; border: none; border-radius: 5px;
+            font-family: 'Orbitron'; font-weight: bold; cursor: pointer;
+            background: linear-gradient(90deg, #00ffcc, #0099ff); color: black;
+        }
+        .btn:active { transform: scale(0.95); }
+
+        /* OWNED DASHBOARD BARS */
+        .bar-container { background: #222; height: 10px; border-radius: 5px; margin: 10px 0; overflow: hidden; }
+        .bar-fill { height: 100%; transition: width 0.5s; }
+        .bar-stock { background: linear-gradient(90deg, #ff00de, #a200ff); }
+        .bar-supplies { background: linear-gradient(90deg, #ffff00, #ffaa00); }
+        .bar-pop { background: linear-gradient(90deg, #00ff00, #00aa00); }
+
+        .stat-label { font-size: 12px; display: flex; justify-content: space-between; color: #ccc; }
+
+        /* RAID SECTION */
+        .raid-box {
+            grid-column: 1 / -1; background: linear-gradient(45deg, #200, #000); 
+            border: 1px solid red; padding: 30px; text-align: center; border-radius: 20px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="trail-canvas"></canvas>
+
+    <div class="header">
+        <a href="/" style="color:white; text-decoration:none;">🏠 HOME</a>
+        <div class="bal">$<span id="displayBal">{{ "{:,}".format(balance) }}</span></div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('manage')">MY EMPIRE</button>
+        <button class="tab-btn" onclick="switchTab('market')">BLACK MARKET</button>
+        <button class="tab-btn" onclick="switchTab('raid')">RAID OTHERS</button>
+    </div>
+
+    <div id="manage" class="container active">
+        {% if owned|length == 0 %}
+            <div style="grid-column: 1/-1; text-align:center; color:gray;">
+                <h2>You own nothing. Go to Market!</h2>
+            </div>
+        {% endif %}
+
+        {% for id, data in owned.items() %}
+        <div class="card">
+            <h2>{{ all_biz[id].name }}</h2>
+            <div style="font-size: 24px; color: #00ffcc; margin: 10px 0;">Stock: ${{ "{:,}".format(data.stock) }}</div>
+            
+            <div class="stat-label"><span>Supplies</span> <span>{{ data.supplies }}%</span></div>
+            <div class="bar-container"><div class="bar-fill bar-supplies" style="width: {{ data.supplies }}%;"></div></div>
+
+            <div class="stat-label"><span>Popularity</span> <span>{{ data.popularity }}%</span></div>
+            <div class="bar-container"><div class="bar-fill bar-pop" style="width: {{ data.popularity }}%;"></div></div>
+
+            <div style="display:flex; gap:10px;">
+                <button class="btn" style="background:orange;" onclick="action('resupply', '{{ id }}')">Resupply (-$75k)</button>
+                <button class="btn" style="background:#444; color:white;" onclick="action('promote', '{{ id }}')">Promote (-$10k)</button>
+            </div>
+            <button class="btn" onclick="action('sell_stock', '{{ id }}')">SELL STOCK</button>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div id="market" class="container">
+        {% for id, info in all_biz.items() %}
+            {% if id not in owned %}
+            <div class="card">
+                <h2>{{ info.name }}</h2>
+                <div class="price">${{ "{:,}".format(info.price) }}</div>
+                <div class="income">Income: ${{ "{:,}".format(info.income_per_hr) }}/hr</div>
+                <button class="btn" onclick="buy('{{ id }}')">PURCHASE</button>
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <div id="raid" class="container">
+        <div class="raid-box">
+            <h1 style="color: red; font-family: 'Orbitron';">HOSTILE TAKEOVER</h1>
+            <p>Attack other businesses. Risk Money. Take their profits.</p>
+            <input type="number" id="raidBet" placeholder="Bet Amount (Min $100k)" style="padding:15px; font-size:20px; border-radius:10px; border:none; text-align:center; margin:20px;">
+            <br>
+            <button class="btn" style="background:red; color:white; width: 200px;" onclick="raid()">LAUNCH RAID</button>
+        </div>
+    </div>
+
+    <script>
+        // --- RAINBOW TRAIL EFFECT ---
+        const canvas = document.getElementById('trail-canvas');
+        const ctx = canvas.getContext('2d');
+        let points = [];
+        
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        document.addEventListener('mousemove', (e) => addPoint(e.clientX, e.clientY));
+        document.addEventListener('touchmove', (e) => addPoint(e.touches[0].clientX, e.touches[0].clientY));
+
+        function addPoint(x, y) { points.push({x, y, age: 0, hue: Math.random() * 360}); }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            points.forEach((p, i) => {
+                p.age++;
+                p.hue += 5;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 10 - p.age/2, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${p.hue}, 100%, 50%, ${1 - p.age/20})`;
+                ctx.fill();
+            });
+            points = points.filter(p => p.age < 20);
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // --- GAME LOGIC ---
+        function switchTab(id) {
+            document.querySelectorAll('.container').forEach(d => d.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        async function buy(id) {
+            if(!confirm("Confirm Purchase?")) return;
+            const res = await fetch('/api/business/buy', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({biz_id: id})
+            });
+            const data = await res.json();
+            alert(data.msg);
+            if(data.status === 'success') location.reload();
+        }
+
+        async function action(act, id) {
+            const res = await fetch('/api/business/action', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({action: act, biz_id: id})
+            });
+            const data = await res.json();
+            alert(data.msg);
+            if(data.status === 'success') location.reload();
+        }
+
+        async function raid() {
+            const bet = document.getElementById('raidBet').value;
+            const res = await fetch('/api/business/raid', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({bet: bet})
+            });
+            const data = await res.json();
+            alert(data.msg);
+            if(data.status === 'win' || data.status === 'lose') location.reload();
+        }
+    </script>
+</body>
+</html>
