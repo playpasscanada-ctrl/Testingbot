@@ -8764,7 +8764,7 @@ class IQTestView(discord.ui.View):
                     # 🎉 WINNER (20/20)
                     await update_balance(self.user.id, 100000)
                     embed = discord.Embed(title="🧠 EINSTEIN LEVEL GENIUS!", color=0x00FF00)
-                    embed.description = f"### 🏆 YOU WON!\nTumne saare **20 Sawal** sahi diye!\n💰 **Prize:** $500,000 (Added to Balance)"
+                    embed.description = f"### 🏆 YOU WON!\nTumne saare **20 Sawal** sahi diye!\n💰 **Prize:** $100,000 (Added to Balance)"
                     embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
                     await interaction.response.edit_message(embed=embed, view=None)
                 else:
@@ -8815,7 +8815,7 @@ class IQTestView(discord.ui.View):
         await interaction.response.edit_message(embed=embed, view=None)
 
 
-@bot.tree.command(name="iq_test", description="🧠 Answer 20 Questions to win $500k (Risk: Bezzati)")
+@bot.tree.command(name="iq_test", description="🧠 Answer 20 Questions to win $100k (Risk: Bezzati)")
 @check_seized()
 async def iq_test(i: discord.Interaction):
     if not i.guild.me.guild_permissions.manage_nicknames:
