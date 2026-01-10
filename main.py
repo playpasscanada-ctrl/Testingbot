@@ -24,6 +24,7 @@ app = Flask(__name__)
 CLIENT_ID = "1451451135813746700"
 CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 REDIRECT_URI = "https://testingbot-q1jb.onrender.com/callback"
+WEBSITE_URL = "https://your-app-name.onrender.com" 
 
 # --- LOAN SYSTEM SETTINGS ---
 MAX_LOAN = 10000000      # 10 Million Limit
@@ -16977,6 +16978,53 @@ async def sell_items(i: discord.Interaction):
     
     embed = discord.Embed(title="🏪 SELL CART", description="Select an item from dropdown to add to cart.", color=0x2b2d31)
     await i.response.send_message(embed=embed, view=view)
+
+# --- PREMIUM MENU COMMAND ---
+@bot.tree.command(name="menu", description="Open the Ultimate Dashboard")
+async def menu(interaction: discord.Interaction):
+    
+    # 1. Premium Embed Design
+    embed = discord.Embed(
+        title="💎 Luneira Premium Dashboard",
+        description=(
+            "**Welcome to the next generation of economy & gaming!**\n\n"
+            "Manage your inventory, shop for exclusive items, "
+            "and play high-stakes casino games directly from our web dashboard."
+        ),
+        color=0xFFD700  # GOLD Color for Premium look
+    )
+    
+    # 2. Add Fancy Fields
+    embed.add_field(name="🛍️ Shop", value="`Buy Items & Roles`", inline=True)
+    embed.add_field(name="🎰 Casino", value="`Win Jackpot (10M)`", inline=True)
+    embed.add_field(name="💳 Wallet", value="`Check Balance`", inline=True)
+
+    # 3. Aesthetics (Thumbnail & Image)
+    # Agar server ka icon hai to wo lagayega, nahi to bot ka avatar
+    if interaction.guild and interaction.guild.icon:
+        embed.set_thumbnail(url=interaction.guild.icon.url)
+    else:
+        embed.set_thumbnail(url=interaction.client.user.avatar.url)
+    
+    # Footer with user info
+    embed.set_footer(
+        text=f"Requested by {interaction.user.name} • Secure Gateway", 
+        icon_url=interaction.user.avatar.url if interaction.user.avatar else None
+    )
+    embed.set_image(url="https://i.imgur.com/v8p0qK6.png") # Ek patli neon line (divider)
+
+    # 4. Action Button
+    view = discord.ui.View()
+    button = discord.ui.Button(
+        label="ACCESS DASHBOARD", 
+        style=discord.ButtonStyle.link, 
+        url=WEBSITE_URL, 
+        emoji="🚀"
+    )
+    view.add_item(button)
+
+    # 5. Send Message
+    await interaction.response.send_message(embed=embed, view=view)
     
 # ================== OPTIMIZED FLASK BACKEND ==================
 from flask import Flask, jsonify
