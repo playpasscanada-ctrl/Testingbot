@@ -17745,6 +17745,39 @@ def invest_now():
     
     return jsonify({"status":"success", "msg": "Investment Successful! You own 20% of this business."})
 
+# --- 18. RUNNER GAME ROUTE (SUBWAY SURF STYLE) ---
+@app.route('/games/runner')
+def runner_game():
+    if 'user_info' not in session: return redirect('/')
+    user_id = session['user_info']['id']
+    balance = db.get_user_balance(user_id)
+    return render_template('runner.html', balance=balance)
+
+# --- 19. API: RUNNER PAYOUT ---
+@app.route('/api/games/runner/payout', methods=['POST'])
+def runner_payout():
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+    user_id = session['user_info']['id']
+    
+    # User se coins ka data lo
+    coins_collected = int(request.json.get('coins', 0))
+    
+    # Rate: 1 Coin = $10
+    reward = coins_collected * 10
+    
+    # Maximum Cap (Security: Ek baar me $50,000 se zyada nahi)
+    if reward > 50000: reward = 50000 
+    
+    if reward > 0:
+        db.update_balance(user_id, reward)
+        msg = f"Awesome Run! Added ${reward:,} to wallet."
+    else:
+        msg = "No coins collected. Try again!"
+        
+    new_bal = db.get_user_balance(user_id)
+    
+    return jsonify({"status":"success", "msg": msg, "new_balance": new_bal, "earned": reward})
+
 
 # --- 17. LOGOUT & RUN ---
 @app.route('/logout')
