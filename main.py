@@ -17304,44 +17304,82 @@ C_DARK = 0x2B2D31
 # ==========================================
 # 🌐 FINAL READY FLASK BACKEND
 # ==========================================
-from flask import Flask, session, render_template, redirect, request, jsonify
+from flask import Flask, session, render_template, redirect, request, jsonify, url_for
 import os
 import requests
 import urllib.parse
+import random # Casino ke liye zaroori hai
+import db # Jo db.py file humne banayi thi usse connect kar rahe hain
 
 app = Flask(__name__)
 
-# --- ⚙️ CONFIGURATION (Env + Hardcode Backup) ---
-# 1. Secret Key Fix
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "vikas_bhai_super_secure_key_786") #
-
-# 2. Discord Credentials
-CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "1451451135813746700") #
-CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET") # Must be in Render Env
-
-# 3. Redirect URI Fix (Screenshot se bilkul match karta hua)
-#
+# --- ⚙️ CONFIGURATION ---
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "vikas_bhai_super_secure_key_786")
+CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "1451451135813746700")
+CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET") 
 REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "https://testingbot-q1jb.onrender.com/callback")
+API_ENDPOINT = 'https://discord.com/api/v10'
 
+# --- 1. HOME ROUTE (AB YE DASHBOARD KHOLEGA) ---
 @app.route('/')
 def home():
-    # 1. Login URL generate karna (Env Variables ka use karke)
-    # REDIRECT_URI aur CLIENT_ID wahi hain jo humne upar set kiye hain
-    import urllib.parse
+    # Login URL Generate karna
     encoded_redirect = urllib.parse.quote(REDIRECT_URI)
     login_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
 
-    # 2. URL se Channel ID (state) ko pakadna
-    cid_from_url = request.args.get('state')
-
-    # 3. Check karna ki user login hai ya nahi
-    if 'user_info' in session:
-        # User login hai, to use shop dikhao aur cid pass karo
-        return render_template('index.html', user=session['user_info'], cid=cid_from_url)
+    # Agar User Login Nahi Hai -> Login Button Dikhao
+    if 'user_info' not in session:
+        return render_template('dashboard.html', user=None, login_url=login_url)
     
-    # User login nahi hai, to use login button dikhao
-    return render_template('index.html', user=None, login_url=login_url)
+    # Agar User Login Hai -> Dashboard Dikhao
+    user_id = session['user_info']['id']
+    
+    # Balance fresh DB se lo (Session se nahi, taaki update dikhe)
+    current_balance = db.get_user_balance(user_id)
+    
+    # Session update kardo taaki username wagarah sahi rahe
+    session['user_info']['balance'] = current_balance
+    
+    return render_template('dashboard.html', user=session['user_info'], balance=current_balance)
 
+
+# --- 2. SHOP ROUTE (PURANA INDEX.HTML YAHAN AAYEGA) ---
+@app.route('/shop')
+def shop():
+    if 'user_info' not in session:
+        return redirect('/') # Agar login nahi hai to home bhejo
+    
+    user_id = session['user_info']['id']
+    cid_from_url = request.args.get('cid') # Agar koi channel ID pass hui hai
+    
+    # Balance fresh DB se
+    current_balance = db.get_user_balance(user_id)
+    
+    # Yahan 'index.html' (Apki Purani Shop) load hogi
+    return render_template('index.html', user=session['user_info'], balance=current_balance, cid=cid_from_url)
+
+
+# --- 3. GAME LIST ROUTE ---
+@app.route('/games')
+def gamelist():
+    if 'user_info' not in session: return redirect('/')
+    
+    user_id = session['user_info']['id']
+    balance = db.get_user_balance(user_id)
+    return render_template('gamelist.html', balance=balance)
+
+
+# --- 4. CASINO GAME ROUTE ---
+@app.route('/games/casino')
+def casino():
+    if 'user_info' not in session: return redirect('/')
+    
+    user_id = session['user_info']['id']
+    balance = db.get_user_balance(user_id)
+    return render_template('casino.html', username=session['user_info']['username'], balance=balance)
+
+
+# --- 5. CALLBACK (LOGIN SYSTEM) ---
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
@@ -17363,40 +17401,119 @@ def callback():
         token_data = r.json()
         access_token = token_data.get('access_token')
 
-        # Fetch User Profile Info
-        user_req = requests.get('https://discord.com/api/users/@me', 
-                                headers={'Authorization': f'Bearer {access_token}'})
+        # User Info Fetch
+        user_req = requests.get('https://discord.com/api/users/@me', headers={'Authorization': f'Bearer {access_token}'})
         user_data = user_req.json()
         user_id = str(user_data['id'])
 
-        # --- 💰 DATABASE BALANCE FETCH (Supabase) ---
-        user_balance = 0
-        try:
-            #
-            res = supabase.table("economy").select("balance").eq("user_id", user_id).execute()
-            if res.data:
-                user_balance = res.data[0]['balance']
-        except Exception as db_e:
-            print(f"DB Error: {db_e}")
+        # Balance DB se fetch karo (Using db.py)
+        user_balance = db.get_user_balance(user_id)
 
-        # Session Save (Website ko login rakhne ke liye)
+        # Session Save
         session['user_info'] = {
             'id': user_id,
             'username': user_data['username'],
-            'avatar': user_data['avatar'],
+            'avatar': f"https://cdn.discordapp.com/avatars/{user_id}/{user_data['avatar']}.png",
             'balance': user_balance
         }
         
         return redirect('/') 
         
     except Exception as e:
-        #
-        return f"Login Failed: {str(e)} <br> Tip: Check if DISCORD_CLIENT_SECRET is correct in Render."
+        return f"Login Failed: {str(e)} <br> Tip: Check Client Secret in Render."
+
+
+# --- 6. API: SPIN LOGIC (CASINO) ---
+@app.route('/api/spin', methods=['POST'])
+def spin():
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+    
+    user_id = session['user_info']['id']
+    cost = 50000
+    
+    # Check Balance
+    if db.get_user_balance(user_id) < cost:
+        return jsonify({"status":"error", "msg":"Insufficient Funds!"})
+    
+    # Paisa Kato
+    db.update_balance(user_id, -cost)
+    
+    # Game Logic
+    items = ["💎", "🏆", "😈", "🍎", "🥭", "💩"]
+    weights = [1, 3, 2, 12, 12, 70]
+    result = random.choices(items, weights=weights, k=1)[0]
+    
+    win = 0
+    is_jackpot = False
+    slots = [result, result, result]
+    msg = ""
+
+    if result == "💩":
+        slots = random.sample(["🍎", "🥭", "🍇"], 3)
+        msg = "You Lost!"
+    elif result == "💎":
+        win = 10000000; is_jackpot=True; msg="JACKPOT!"
+    elif result == "🏆":
+        win = 500000; msg="Big Win!"
+    elif result == "😈":
+        msg="Devil Unlocked!"
+    elif result == "🍎" or result == "🥭":
+        win = 100000; msg="Won 100k!"
+        
+    if win > 0: db.update_balance(user_id, win)
+    
+    return jsonify({
+        "status":"success", "slots":slots, 
+        "balance": db.get_user_balance(user_id), 
+        "win":win, "jackpot":is_jackpot, "msg":msg
+    })
+
+
+# --- 7. API: SATTA LOGIC ---
+@app.route('/api/satta', methods=['POST'])
+def satta():
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+    
+    user_id = session['user_info']['id']
+    data = request.json
+    bet_amount = int(data.get('amount'))
+    multiplier = int(data.get('multiplier'))
+    
+    if db.get_user_balance(user_id) < bet_amount:
+        return jsonify({"status":"error", "msg":"Garib! Balance nahi hai."})
+    
+    # Paisa Kato
+    db.update_balance(user_id, -bet_amount)
+    
+    chance_map = {2: 10, 3: 7, 5: 5, 10: 1}
+    win_chance = chance_map.get(multiplier, 0)
+    
+    roll = random.randint(1, 100)
+    won = roll <= win_chance
+    
+    msg = ""
+    if won:
+        win_amt = bet_amount * multiplier
+        db.update_balance(user_id, win_amt)
+        msg = f"WON! +{win_amt}"
+    else:
+        msg = f"LOST -{bet_amount}"
+        
+    return jsonify({
+        "status":"success", "won":won, 
+        "balance": db.get_user_balance(user_id), 
+        "msg":msg
+    })
+
 
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect('/')
+
+@app.route('/ping')
+def ping_check():
+    return jsonify({"status": "Alive"})
 
 
 @app.route('/ping')
