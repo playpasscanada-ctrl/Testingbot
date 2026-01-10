@@ -2,206 +2,272 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Neon Casino</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+        :root { --neon: #ff00de; --gold: #ffd700; --bg: #0b0b0f; }
         body {
-            background-color: #020202; color: white; font-family: 'Orbitron', sans-serif;
-            margin: 0; padding-bottom: 50px; text-align: center;
-            background-image: linear-gradient(to right, #0f0c29, #302b63, #24243e);
+            background-color: var(--bg); color: white; font-family: 'Rajdhani', sans-serif;
+            margin: 0; padding-bottom: 80px; text-align: center; overflow-x: hidden;
         }
-        
-        /* UI COMPONENTS */
+
+        /* --- UI HEADER --- */
         .navbar {
-            padding: 20px; display: flex; justify-content: space-between; align-items: center;
-            background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); border-bottom: 1px solid #444;
+            padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
+            background: rgba(20, 20, 20, 0.8); backdrop-filter: blur(10px);
+            position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #333;
         }
-        .balance-box { 
-            font-size: 20px; color: #ffd700; text-shadow: 0 0 10px #ffd700; border: 1px solid #ffd700; 
-            padding: 5px 20px; border-radius: 20px; 
+        .balance-pill {
+            background: rgba(255, 215, 0, 0.1); border: 1px solid var(--gold);
+            padding: 5px 15px; border-radius: 20px; color: var(--gold); font-weight: bold; font-size: 14px;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
         }
+        .home-btn { text-decoration: none; color: #aaa; font-size: 20px; }
 
         /* --- SLOT MACHINE --- */
-        .slot-container {
-            margin: 40px auto; width: 90%; max-width: 500px;
-            background: #111; border: 4px solid #ff00de; border-radius: 30px;
-            padding: 30px; box-shadow: 0 0 60px rgba(255, 0, 222, 0.4);
-            position: relative;
+        .slot-machine {
+            margin: 30px auto; width: 90%; max-width: 450px;
+            background: linear-gradient(180deg, #1a1a1a, #000);
+            border-radius: 30px; padding: 20px;
+            box-shadow: 0 0 50px rgba(255, 0, 222, 0.15), inset 0 0 20px rgba(0,0,0,0.8);
+            border: 2px solid #333; position: relative;
         }
-        .slot-container::before { content: "COST: 50,000"; position: absolute; top: -15px; background: #000; padding: 0 10px; color: #ff00de; }
+        
+        /* Neon Border Animation */
+        .slot-machine::after {
+            content: ''; position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px;
+            border-radius: 35px; background: linear-gradient(45deg, #ff00de, #00dbde, #fc00ff);
+            z-index: -1; filter: blur(10px); opacity: 0.6;
+            animation: borderGlow 3s infinite linear;
+        }
 
-        .reels {
-            display: flex; justify-content: space-around; background: black;
-            padding: 20px; border-radius: 15px; border: 2px solid #333; margin-bottom: 20px;
+        .screen-title { font-family: 'Orbitron'; color: var(--neon); letter-spacing: 2px; margin-bottom: 15px; text-shadow: 0 0 10px var(--neon); }
+        
+        .reels-container {
+            display: flex; justify-content: space-between; gap: 10px;
+            background: #000; padding: 15px; border-radius: 15px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,1); border: 1px solid #333;
         }
         .reel {
-            font-size: 60px; width: 80px; height: 100px;
-            display: flex; align-items: center; justify-content: center;
-            background: #222; border-radius: 10px; text-shadow: 0 0 10px white;
+            width: 30%; height: 90px; background: #151515; border-radius: 10px;
+            font-size: 45px; display: flex; align-items: center; justify-content: center;
+            border: 1px solid #333; text-shadow: 0 0 15px rgba(255,255,255,0.5);
         }
-        
+        /* Blur animation for spinning */
+        .spinning { animation: blurScroll 0.1s infinite; color: transparent; text-shadow: 0 0 0 transparent; }
+        @keyframes blurScroll { 0% { background: #222; } 50% { background: #111; } 100% { background: #222; } }
+
         .spin-btn {
-            width: 100%; padding: 20px; font-size: 24px; font-family: 'Orbitron'; font-weight: bold;
-            background: linear-gradient(90deg, #ff00de, #a200ff); border: none; border-radius: 50px;
-            color: white; cursor: pointer; text-transform: uppercase; letter-spacing: 2px;
-            box-shadow: 0 0 30px #ff00de; transition: 0.2s;
+            width: 100%; margin-top: 25px; padding: 18px; border: none; border-radius: 50px;
+            background: linear-gradient(90deg, #ff00de, #9900ff); color: white;
+            font-family: 'Orbitron'; font-weight: 900; font-size: 18px; letter-spacing: 2px;
+            box-shadow: 0 5px 20px rgba(255, 0, 222, 0.4); cursor: pointer; transition: 0.2s;
         }
-        .spin-btn:active { transform: scale(0.95); box-shadow: 0 0 10px #ff00de; }
-        .spin-btn:disabled { background: #444; box-shadow: none; cursor: not-allowed; }
+        .spin-btn:active { transform: scale(0.95); box-shadow: 0 0 10px rgba(255, 0, 222, 0.4); }
+        .spin-btn:disabled { filter: grayscale(1); cursor: not-allowed; }
 
-        /* --- SATTA SECTION (MULTIPLIER) --- */
-        .satta-section {
-            margin: 40px auto; max-width: 600px; padding: 30px;
-            background: rgba(0,0,0,0.6); border: 2px solid #00ffff; border-radius: 20px;
-            box-shadow: 0 0 40px rgba(0, 255, 255, 0.2);
+        /* --- HIGH STAKES SECTION --- */
+        .satta-zone {
+            margin: 40px 20px; background: rgba(255, 0, 0, 0.05);
+            border: 1px solid rgba(255, 0, 0, 0.3); border-radius: 20px; padding: 25px;
+            position: relative; overflow: hidden;
         }
-        .satta-title { color: #00ffff; font-size: 24px; margin-bottom: 20px; text-shadow: 0 0 10px #00ffff; }
-        
-        .input-group input {
-            padding: 15px; font-size: 18px; background: #111; border: 1px solid #444; color: white;
-            border-radius: 10px; width: 60%; text-align: center; font-family: 'Orbitron';
+        .danger-badge {
+            position: absolute; top: 0; right: 0; background: red; color: black;
+            font-size: 10px; padding: 5px 10px; font-weight: bold; border-bottom-left-radius: 10px;
         }
         
-        .multipliers { display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
-        .mult-btn {
-            padding: 15px 25px; background: #111; border: 1px solid #444; color: gray;
-            border-radius: 10px; cursor: pointer; transition: 0.3s; font-family: 'Orbitron';
+        .input-box {
+            background: transparent; border: 1px solid #555; color: white; font-family: 'Rajdhani';
+            font-size: 20px; padding: 15px; width: 100%; text-align: center; border-radius: 12px;
+            margin: 20px 0; outline: none; transition: 0.3s;
         }
-        .mult-btn:hover { border-color: white; color: white; }
-        
-        .mult-btn.danger { border-color: red; color: red; }
-        .mult-btn.danger:hover { background: red; color: black; box-shadow: 0 0 20px red; }
-        
-        .mult-btn.extreme { border-color: purple; color: purple; }
-        .mult-btn.extreme:hover { background: purple; color: white; box-shadow: 0 0 20px purple; }
+        .input-box:focus { border-color: red; box-shadow: 0 0 15px rgba(255,0,0,0.2); }
 
-        /* ALERTS */
-        .msg-box { min-height: 30px; margin-top: 10px; font-size: 18px; }
+        .multipliers { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        
+        .risk-btn {
+            background: #1a0a0a; border: 1px solid #444; color: #aaa; padding: 15px;
+            border-radius: 12px; font-family: 'Orbitron'; cursor: pointer; transition: 0.3s;
+            position: relative; overflow: hidden;
+        }
+        .risk-btn span { font-size: 12px; display: block; margin-top: 5px; opacity: 0.7; }
+        
+        .risk-btn:hover { border-color: red; color: white; box-shadow: 0 0 20px rgba(255,0,0,0.3); }
+        .risk-btn:active { transform: scale(0.95); }
 
-        /* JACKPOT OVERLAY */
-        .jackpot-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column;
-            align-items: center; justify-content: center;
+        /* --- WINNING OVERLAY (PARTICLES) --- */
+        #canvas-confetti {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 100; display: none;
         }
-        .jackpot-text {
-            font-size: 80px; color: gold; animation: blink 0.2s infinite alternate; text-shadow: 0 0 50px gold;
+        
+        .win-modal {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            background: rgba(0,0,0,0.9); border: 2px solid gold; padding: 40px; border-radius: 30px;
+            z-index: 101; text-align: center; box-shadow: 0 0 100px rgba(255, 215, 0, 0.5);
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        @keyframes blink { from { opacity: 1; } to { opacity: 0.5; } }
+        .win-modal.active { transform: translate(-50%, -50%) scale(1); }
+        .win-amount { font-size: 40px; color: gold; font-family: 'Orbitron'; margin: 10px 0; text-shadow: 0 0 20px gold; }
 
     </style>
 </head>
 <body>
 
+    <canvas id="canvas-confetti"></canvas>
+
     <div class="navbar">
-        <a href="/dashboard" style="color:white; text-decoration:none;">🏠 HOME</a>
-        <div class="balance-box">Wallet: $<span id="bal">{{ balance }}</span></div>
+        <a href="/" class="home-btn">🏠</a>
+        <div class="balance-pill">$<span id="bal">{{ balance }}</span></div>
     </div>
 
-    <div class="slot-container">
-        <h2 style="color: #ff00de; margin: 0 0 20px 0;">NEON SLOTS</h2>
-        <div class="reels">
+    <div class="slot-machine">
+        <div class="screen-title">CYBER SLOTS</div>
+        <div class="reels-container">
             <div class="reel" id="r1">🍒</div>
-            <div class="reel" id="r2">🍒</div>
+            <div class="reel" id="r2">💎</div>
             <div class="reel" id="r3">🍒</div>
         </div>
-        <div class="msg-box" id="slot-msg"></div>
-        <button class="spin-btn" onclick="spin()">SPIN (50k)</button>
+        <p id="slot-status" style="height: 20px; color: #ff00de; font-size: 14px; margin: 10px 0;">COST: 50,000</p>
+        <button class="spin-btn" onclick="spinSlots()">SPIN NOW</button>
     </div>
 
-    <div class="satta-section">
-        <div class="satta-title">⚡ HIGH STAKES MULTIPLIER ⚡</div>
-        <p style="font-size: 12px; color: gray;">WARNING: If you lose, bet amount is GONE.</p>
-        
-        <div class="input-group">
-            <input type="number" id="betAmount" placeholder="Enter Amount to Risk">
-        </div>
+    <div class="satta-zone">
+        <div class="danger-badge">HIGH RISK</div>
+        <h2 style="color: red; margin: 0; font-family: 'Orbitron'; text-shadow: 0 0 10px red;">DEATH ROLL</h2>
+        <p style="color: #888; font-size: 12px;">Lose = Money Gone Forever</p>
+
+        <input type="number" id="betInput" class="input-box" placeholder="Enter Amount">
 
         <div class="multipliers">
-            <button class="mult-btn danger" onclick="playSatta(2)">2x (10% Chance)</button>
-            <button class="mult-btn danger" onclick="playSatta(3)">3x (7% Chance)</button>
-            <button class="mult-btn extreme" onclick="playSatta(5)">5x (5% Chance)</button>
-            <button class="mult-btn extreme" onclick="playSatta(10)">10x (1% Chance)</button>
+            <button class="risk-btn" onclick="playRisk(2)">2x <span>(10% Win)</span></button>
+            <button class="risk-btn" onclick="playRisk(3)">3x <span>(7% Win)</span></button>
+            <button class="risk-btn" onclick="playRisk(5)">5x <span>(5% Win)</span></button>
+            <button class="risk-btn" onclick="playRisk(10)" style="border-color: red; color: red;">10x <span>(1% Win)</span></button>
         </div>
-        <div class="msg-box" id="satta-msg" style="color: #00ffff;"></div>
+        <p id="risk-msg" style="height: 20px; color: red; margin-top: 15px; font-weight: bold;"></p>
     </div>
 
-    <div id="jackpot" class="jackpot-overlay" onclick="this.style.display='none'">
-        <div class="jackpot-text">JACKPOT!</div>
-        <h2 style="color:white;">YOU WON 10 MILLION!</h2>
+    <div id="winModal" class="win-modal">
+        <h1 style="margin:0; color: white;">YOU WON!</h1>
+        <div class="win-amount" id="winAmtDisplay">+0</div>
+        <button onclick="closeModal()" style="background:transparent; border:1px solid gold; color:gold; padding:10px 20px; border-radius:20px; margin-top:20px;">COLLECT</button>
     </div>
 
     <script>
-        // Update Balance UI
-        function updateBal(amount) {
-            document.getElementById('bal').innerText = amount;
+        // --- COIN SHOWER ANIMATION (Simple Particle System) ---
+        const canvas = document.getElementById('canvas-confetti');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = -20;
+                this.size = Math.random() * 10 + 5;
+                this.speedY = Math.random() * 5 + 2;
+                this.color = `hsl(${Math.random()*50 + 40}, 100%, 50%)`; // Gold/Yellow range
+            }
+            update() { this.y += this.speedY; }
+            draw() {
+                ctx.fillStyle = this.color; ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+            }
         }
 
-        // --- SLOTS LOGIC ---
-        async function spin() {
+        function startConfetti() {
+            canvas.style.display = 'block';
+            particles = [];
+            for(let i=0; i<100; i++) particles.push(new Particle());
+            animateConfetti();
+            setTimeout(() => { canvas.style.display = 'none'; }, 3000);
+        }
+
+        function animateConfetti() {
+            if(canvas.style.display === 'none') return;
+            ctx.clearRect(0,0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animateConfetti);
+        }
+
+        // --- GAME LOGIC ---
+        function updateBal(val) { document.getElementById('bal').innerText = val; }
+        
+        function showWin(amount) {
+            document.getElementById('winAmtDisplay').innerText = "+ $" + amount;
+            document.getElementById('winModal').classList.add('active');
+            startConfetti(); // Trigger Animation
+        }
+        function closeModal() { document.getElementById('winModal').classList.remove('active'); }
+
+        async function spinSlots() {
             const btn = document.querySelector('.spin-btn');
             const reels = [document.getElementById('r1'), document.getElementById('r2'), document.getElementById('r3')];
-            const msg = document.getElementById('slot-msg');
+            const status = document.getElementById('slot-status');
 
             btn.disabled = true;
-            msg.innerText = "Spinning...";
-            msg.style.color = "white";
-
-            // Fake Animation
+            status.innerText = "ROLLING...";
+            status.style.color = "white";
+            
+            // Blur Effect
+            reels.forEach(r => r.classList.add('spinning'));
+            
+            // Rapid Symbol Change
             let interval = setInterval(() => {
-                reels.forEach(r => r.innerText = ["💎","🍎","🥭","😈","🏆","💩"][Math.floor(Math.random()*6)]);
-            }, 80);
+                reels.forEach(r => r.innerText = ["💎","🍎","🥭","7️⃣","🏆"][Math.floor(Math.random()*5)]);
+            }, 50);
 
             try {
                 const res = await fetch('/api/spin', { method: 'POST' });
                 const data = await res.json();
-                
+
                 setTimeout(() => {
                     clearInterval(interval);
+                    reels.forEach(r => r.classList.remove('spinning'));
                     btn.disabled = false;
 
-                    if(data.status === "error") {
-                        msg.innerText = data.msg;
-                        msg.style.color = "red";
+                    if(data.status === 'error') {
+                        status.innerText = data.msg; status.style.color = "red";
                     } else {
                         reels[0].innerText = data.slots[0];
                         reels[1].innerText = data.slots[1];
                         reels[2].innerText = data.slots[2];
                         updateBal(data.balance);
+                        status.innerText = data.msg;
                         
-                        msg.innerText = data.msg;
-                        msg.style.color = data.win > 0 ? "#00ff00" : "red";
-                        
-                        if(data.jackpot) document.getElementById('jackpot').style.display = 'flex';
+                        if(data.win > 0) showWin(data.win);
+                        else status.style.color = "gray";
                     }
-                }, 2000);
-            } catch(e) { clearInterval(interval); btn.disabled = false; }
+                }, 1500); // 1.5s spin time
+            } catch(e) { btn.disabled = false; }
         }
 
-        // --- SATTA LOGIC ---
-        async function playSatta(mult) {
-            const amount = document.getElementById('betAmount').value;
-            const msg = document.getElementById('satta-msg');
+        async function playRisk(mult) {
+            const amt = document.getElementById('betInput').value;
+            const msg = document.getElementById('risk-msg');
+            
+            if(!amt || amt < 1) { msg.innerText = "Enter Amount!"; return; }
 
-            if(!amount || amount <= 0) {
-                msg.innerText = "Enter valid amount!";
-                msg.style.color = "red";
-                return;
-            }
-
-            msg.innerText = "Rolling...";
+            msg.innerText = "ROLLING FATE...";
             
             try {
-                const res = await fetch('/api/satta', { 
+                const res = await fetch('/api/satta', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ amount: amount, multiplier: mult })
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ amount: amt, multiplier: mult })
                 });
                 const data = await res.json();
                 
                 updateBal(data.balance);
                 msg.innerText = data.msg;
                 msg.style.color = data.won ? "#00ff00" : "red";
+                
+                if(data.won) showWin(amt * mult);
 
             } catch(e) { msg.innerText = "Error"; }
         }
