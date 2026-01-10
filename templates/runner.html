@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Surf</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0; overflow: hidden; background: #050505; color: white;
+            font-family: 'Orbitron', sans-serif; touch-action: none; /* Prevent scroll on mobile */
+        }
+        
+        /* UI OVERLAY */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        
+        .hud { display: flex; justify-content: space-between; padding: 20px; font-size: 20px; text-shadow: 0 0 10px cyan; }
+        .score-box { background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 20px; border: 1px solid cyan; }
+
+        /* GAME OVER MODAL */
+        #game-over {
+            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9); border: 2px solid cyan; padding: 40px; text-align: center;
+            border-radius: 20px; box-shadow: 0 0 50px cyan; pointer-events: auto; width: 80%; max-width: 400px;
+        }
+        
+        button {
+            background: cyan; border: none; padding: 15px 30px; font-size: 18px; font-family: 'Orbitron';
+            font-weight: bold; cursor: pointer; border-radius: 50px; margin-top: 20px;
+            box-shadow: 0 0 20px cyan; transition: 0.2s;
+        }
+        button:active { transform: scale(0.95); }
+
+        /* CANVAS */
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        /* TOUCH TRAIL */
+        .trail {
+            position: absolute; width: 10px; height: 10px; background: gold; border-radius: 50%;
+            pointer-events: none; animation: fade 0.5s linear forwards;
+        }
+        @keyframes fade { to { opacity: 0; transform: scale(0); } }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div class="hud">
+            <div class="score-box">💰 COINS: <span id="coin-display">0</span></div>
+            <div class="score-box">WALLET: $<span id="bal-display">{{ "{:,}".format(balance) }}</span></div>
+        </div>
+        
+        <div id="game-over">
+            <h1 style="color:red; margin:0;">CRASHED!</h1>
+            <h2 style="color:gold;">COINS: <span id="final-coins">0</span></h2>
+            <p style="color:cyan;">EARNINGS: $<span id="final-money">0</span></p>
+            <button onclick="claimReward()" id="claim-btn">CLAIM & RESTART</button>
+            <p id="status-msg" style="font-size:12px; color:gray; margin-top:10px;"></p>
+        </div>
+        
+        <div id="start-screen" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:auto;">
+            <h1 style="font-size:40px; color:cyan; text-shadow:0 0 20px cyan;">NEON SURF</h1>
+            <p>SWIPE or ARROWS to Move</p>
+            <button onclick="startGame()">TAP TO RUN</button>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // GAME VARIABLES
+        let width, height;
+        let running = false;
+        let speed = 5;
+        let score = 0; // Coins
+        let frame = 0;
+        
+        // LANES: -1 (Left), 0 (Middle), 1 (Right)
+        let playerLane = 0; 
+        let playerY = 0; // Will be set on resize
+        let laneWidth = 0;
+
+        // ENTITIES
+        let obstacles = [];
+        let coins = [];
+        let particles = [];
+
+        // SETUP CANVAS
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            laneWidth = width / 4; 
+            playerY = height - 150;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- INPUT HANDLING (SWIPE & KEYS) ---
+        let touchStartX = 0;
+        let touchStartY = 0;
+        
+        document.addEventListener('keydown', e => {
+            if(!running) return;
+            if(e.key === 'ArrowLeft') changeLane(-1);
+            if(e.key === 'ArrowRight') changeLane(1);
+        });
+
+        document.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+            createTouchTrail(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+        });
+
+        document.addEventListener('touchend', e => {
+            if(!running) return;
+            let touchEndX = e.changedTouches[0].screenX;
+            let touchEndY = e.changedTouches[0].screenY;
+            handleSwipe(touchStartX, touchEndX, touchStartY, touchEndY);
+        });
+
+        function handleSwipe(x1, x2, y1, y2) {
+            let dx = x2 - x1;
+            let dy = y2 - y1;
+            if(Math.abs(dx) > Math.abs(dy)) {
+                if(Math.abs(dx) > 30) { // Threshold
+                    if(dx > 0) changeLane(1); // Right
+                    else changeLane(-1); // Left
+                }
+            }
+        }
+
+        function changeLane(dir) {
+            let target = playerLane + dir;
+            if(target >= -1 && target <= 1) playerLane = target;
+        }
+
+        function createTouchTrail(x, y) {
+            const div = document.createElement('div');
+            div.className = 'trail';
+            div.style.left = x + 'px';
+            div.style.top = y + 'px';
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 500);
+        }
+
+        // --- GAME LOGIC ---
+        
+        class Entity {
+            constructor(type, lane) {
+                this.type = type; // 'obstacle' or 'coin'
+                this.lane = lane;
+                this.z = 0; // Depth (0 to 1000)
+                this.active = true;
+            }
+            
+            update() {
+                this.z += speed;
+                // Collision logic
+                if(this.z > 800 && this.z < 950 && this.active) {
+                    if(this.lane === playerLane) {
+                        if(this.type === 'obstacle') gameOver();
+                        if(this.type === 'coin') collectCoin(this);
+                    }
+                }
+                if(this.z > 1000) this.active = false;
+            }
+
+            draw() {
+                if(!this.active) return;
+                
+                // Perspective Projection
+                // Objects get bigger and move apart as they come closer (z increases)
+                const perspective = this.z / 1000; // 0 to 1
+                const scale = 0.1 + (perspective * 1.5); // Grows as it comes close
+                
+                // Calculate X position based on lane and perspective
+                // Lanes converge at center top (vanishing point)
+                const centerX = width / 2;
+                const vanishingY = height * 0.3; // Horizon line
+                
+                // Lane spread increases with perspective
+                const spread = (width * 0.8) * perspective; 
+                const entX = centerX + (this.lane * (spread / 2.5));
+                const entY = vanishingY + (perspective * (height - vanishingY));
+
+                const size = 60 * scale;
+
+                if(this.type === 'obstacle') {
+                    // Draw Spike Box
+                    ctx.fillStyle = `rgba(255, 0, 50, ${perspective})`;
+                    ctx.shadowBlur = 20 * perspective;
+                    ctx.shadowColor = 'red';
+                    ctx.fillRect(entX - size/2, entY - size, size, size);
+                } else {
+                    // Draw Coin
+                    ctx.fillStyle = `rgba(255, 215, 0, ${perspective})`;
+                    ctx.shadowBlur = 20 * perspective;
+                    ctx.shadowColor = 'gold';
+                    ctx.beginPath();
+                    ctx.arc(entX, entY - size/2, size/2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Inner detail
+                    ctx.fillStyle = '#b8860b';
+                    ctx.font = `${Math.floor(size/1.5)}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('$', entX, entY - size/3);
+                }
+            }
+        }
+
+        function spawn() {
+            if(Math.random() < 0.05) { // 5% chance per frame
+                let lane = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
+                // 30% chance coin, 70% obstacle
+                let type = Math.random() < 0.4 ? 'coin' : 'obstacle';
+                obstacles.push(new Entity(type, lane));
+            }
+        }
+
+        function collectCoin(coin) {
+            coin.active = false;
+            score++;
+            document.getElementById('coin-display').innerText = score;
+            
+            // Particle Effect
+            for(let i=0; i<10; i++) {
+                particles.push({
+                    x: width/2 + (playerLane * 100), 
+                    y: playerY, 
+                    vx: (Math.random()-0.5)*10, 
+                    vy: (Math.random()-0.5)*10, 
+                    life: 20
+                });
+            }
+        }
+
+        // --- DRAWING ---
+        function drawGrid() {
+            // Pseudo 3D Floor
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.1)';
+            const horizon = height * 0.3;
+            
+            // Vertical Lines (Lanes)
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            // Center Line
+            ctx.moveTo(width/2, horizon); ctx.lineTo(width/2, height);
+            // Left Lane
+            ctx.moveTo(width/2, horizon); ctx.lineTo(0, height);
+            // Right Lane
+            ctx.moveTo(width/2, horizon); ctx.lineTo(width, height);
+            ctx.stroke();
+
+            // Horizontal moving lines
+            let offset = (frame * speed * 2) % 100;
+            for(let i=0; i<height; i+=50) {
+                let y = horizon + i + offset;
+                if(y > height) continue;
+                // Perspective logic for horizontal lines could be complex, keeping simple grid for speed
+                ctx.fillStyle = `rgba(0, 243, 255, ${0.1 + (i/height)*0.2})`;
+                ctx.fillRect(0, y, width, 2);
+            }
+        }
+
+        function drawPlayer() {
+            // Interpolate player X for smooth movement
+            const centerX = width / 2;
+            const targetX = centerX + (playerLane * (width / 4));
+            
+            // Simple Lerp (Linear Interpolation) for smoothness
+            // We just draw at targetX for responsiveness in this version
+            
+            const pSize = 60;
+            const pX = targetX;
+            const pY = playerY;
+
+            // Glow
+            ctx.shadowBlur = 30;
+            ctx.shadowColor = 'cyan';
+            
+            // Body (Cyber Runner)
+            ctx.fillStyle = 'cyan';
+            ctx.beginPath();
+            ctx.arc(pX, pY - 30, 20, 0, Math.PI*2); // Head
+            ctx.fill();
+            
+            ctx.fillStyle = 'white';
+            ctx.fillRect(pX - 15, pY - 10, 30, 40); // Body
+            
+            // Legs animation
+            const legOffset = Math.sin(frame * 0.5) * 10;
+            ctx.fillRect(pX - 15, pY + 30 + legOffset, 10, 30); // Left Leg
+            ctx.fillRect(pX + 5, pY + 30 - legOffset, 10, 30); // Right Leg
+
+            ctx.shadowBlur = 0;
+        }
+
+        function drawParticles() {
+            particles.forEach((p, index) => {
+                p.x += p.vx; p.y += p.vy; p.life--;
+                ctx.fillStyle = `rgba(255, 215, 0, ${p.life/20})`;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI*2); ctx.fill();
+                if(p.life <= 0) particles.splice(index, 1);
+            });
+        }
+
+        // --- MAIN LOOP ---
+        function loop() {
+            if(!running) return;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            // Background
+            let bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+            bgGrad.addColorStop(0, '#000');
+            bgGrad.addColorStop(1, '#001a1a');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            drawGrid();
+            
+            spawn();
+            
+            // Sort obstacles by Z so distant ones draw first
+            obstacles.sort((a, b) => a.z - b.z);
+            obstacles.forEach(o => { o.update(); o.draw(); });
+            
+            // Remove passed objects
+            obstacles = obstacles.filter(o => o.active);
+
+            drawPlayer();
+            drawParticles();
+
+            // Difficulty increase
+            speed += 0.001; 
+            frame++;
+            
+            requestAnimationFrame(loop);
+        }
+
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('ui-layer').style.pointerEvents = 'none';
+            score = 0;
+            speed = 5;
+            obstacles = [];
+            coins = [];
+            running = true;
+            document.getElementById('coin-display').innerText = '0';
+            loop();
+        }
+
+        function gameOver() {
+            running = false;
+            document.getElementById('game-over').style.display = 'block';
+            document.getElementById('final-coins').innerText = score;
+            document.getElementById('final-money').innerText = "{:,}".format(score * 10);
+        }
+
+        async function claimReward() {
+            const btn = document.getElementById('claim-btn');
+            const msg = document.getElementById('status-msg');
+            btn.disabled = true;
+            btn.innerText = "SAVING...";
+
+            try {
+                const res = await fetch('/api/games/runner/payout', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ coins: score })
+                });
+                const data = await res.json();
+                
+                if(data.status === 'success') {
+                    // Update UI Balance
+                    document.getElementById('bal-display').innerText = data.new_balance;
+                    msg.innerText = data.msg;
+                    msg.style.color = 'lime';
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    msg.innerText = "Error saving score.";
+                    btn.disabled = false;
+                }
+            } catch(e) {
+                msg.innerText = "Connection Failed.";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
