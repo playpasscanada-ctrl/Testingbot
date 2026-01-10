@@ -16785,8 +16785,7 @@ async def invest(interaction: discord.Interaction, target: discord.Member, amoun
         return await interaction.followup.send("❌ All their businesses already have investors!")
 
     # 3. Check Balance
-    inv_res = supabase.table("economy").select("balance").eq("user_id", str(interaction.user.id)).execute()
-    if not inv_res.data or inv_res.data[0]['balance'] < amount:
+    inv_res = supabase.table("economy").select("balance").eq("user_id", str(interaction.user.id)).execute()    if not inv_res.data or inv_res.data[0]['balance'] < amount:
         return await interaction.followup.send("❌ You are broke!")
 
     # 4. Execute Investment
@@ -16817,7 +16816,7 @@ class AddToCartModal(discord.ui.Modal, title="Add to Sell List"):
         self.item_id = item_id
         self.item_name = item_name
         self.max_qty = max_qty
-        self.parent_view = parent_view # View ko yaad rakhenge taaki update kar sakein
+        self.parent_view = parent_view 
         
         self.qty_input = discord.ui.TextInput(
             label=f"Sell Quantity for {item_name}",
@@ -16836,10 +16835,7 @@ class AddToCartModal(discord.ui.Modal, title="Add to Sell List"):
             return await interaction.response.send_message(f"❌ Invalid Qty! Max: {self.max_qty}", ephemeral=True)
 
         # ✅ CART UPDATE LOGIC
-        # Agar pehle se cart me hai to update karo, warna naya daalo
         self.parent_view.cart[self.item_id] = qty
-        
-        # Message update karo (List dikhao)
         await self.parent_view.update_message(interaction)
 
 
@@ -16857,13 +16853,18 @@ class CartSelect(discord.ui.Select):
                     description=f"Orig Price: ${item['price']:,}",
                     emoji="📦"
                 ))
+        
+        # Agar inventory khali ho ya valid items na ho to handle karna
+        if not options:
+            options.append(discord.SelectOption(label="No sellable items", value="none", description="Empty"))
 
-        super().__init__(placeholder="Select item to add to Cart...", options=options)
+        super().__init__(placeholder="Select item to add to Cart...", options=options, disabled=len(options)==0)
 
     async def callback(self, interaction: discord.Interaction):
-        # Jaise hi item select kare, Modal kholo
+        if self.values[0] == "none":
+            return await interaction.response.send_message("Kuch sell karne layak nahi hai!", ephemeral=True)
+
         item_id = self.values[0]
-        # Inventory quantity fetch karo view se
         max_qty = self.view.inventory.get(item_id, 0)
         item_name = SHOP_ITEMS[item_id]['name']
         
@@ -16871,20 +16872,25 @@ class CartSelect(discord.ui.Select):
         await interaction.response.send_modal(modal)
 
 
-# 3. MAIN VIEW (Cart Manager)
+# 3. MAIN VIEW (Cart Manager + Protection Logic)
 class SellCartView(discord.ui.View):
     def __init__(self, inventory, user_id):
         super().__init__(timeout=120)
         self.inventory = inventory
-        self.user_id = user_id
-        self.cart = {} # Format: {'item_id': qty, 'item_id2': qty}
+        self.user_id = user_id # Command chalane wale ki ID save kar li
+        self.cart = {} 
         
-        # Dropdown Add karo
         self.add_item(CartSelect(inventory))
 
-    # Message ko refresh karne ka function
+    # 🔥 PROTECTION LAYER (Ye naya add kiya hai)
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.user_id:
+            # Agar user ID match nahi hui to ye error dikhega
+            await interaction.response.send_message("⛔ Ye cart tumhari nahi hai! Apna khud ka command use karo `/sell`.", ephemeral=True)
+            return False
+        return True
+
     async def update_message(self, interaction: discord.Interaction):
-        # 1. Cart ka Total calculate karo
         total_payout = 0
         desc_lines = []
         
@@ -16906,17 +16912,21 @@ class SellCartView(discord.ui.View):
         
         await interaction.response.edit_message(embed=embed, view=self)
 
-    # BUTONS
+    # BUTTONS
     @discord.ui.button(label="✅ CONFIRM SELL", style=discord.ButtonStyle.green, row=2)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not self.cart:
             return await interaction.response.send_message("❌ Cart khali hai bhai!", ephemeral=True)
             
-        # --- FINAL DATABASE UPDATE ---
         uid = str(self.user_id)
         
-        # Latest data fetch (Race condition avoid karne ke liye)
+        # Latest data fetch 
         data = supabase.table("economy").select("balance, inventory").eq("user_id", uid).execute().data
+        
+        # Double check agar data exist karta hai
+        if not data:
+            return await interaction.response.send_message("❌ User data not found.", ephemeral=True)
+
         curr_inv = data[0]['inventory']
         curr_bal = data[0]['balance']
         
@@ -16924,13 +16934,12 @@ class SellCartView(discord.ui.View):
         sold_log = []
         
         for i_id, qty_to_sell in self.cart.items():
+            # Check if user still has the item (Race condition check)
             if i_id in curr_inv and curr_inv[i_id] >= qty_to_sell:
-                # Price logic
                 price = SHOP_ITEMS[i_id]['price']
                 profit = int(price * 0.70) * qty_to_sell
                 total_profit += profit
                 
-                # Inventory minus
                 curr_inv[i_id] -= qty_to_sell
                 if curr_inv[i_id] <= 0:
                     del curr_inv[i_id]
@@ -16943,28 +16952,46 @@ class SellCartView(discord.ui.View):
             "inventory": curr_inv
         }).eq("user_id", uid).execute()
         
-        # Final Receipt
         embed = discord.Embed(title="🤝 SOLD SUCCESSFULLY", color=0x00FF00)
-        embed.description = f"**Sold:** {', '.join(sold_log)}\n**Earned:** `${total_profit:,}`"
         
+        if sold_log:
+            embed.description = f"**Sold:** {', '.join(sold_log)}\n**Earned:** `${total_profit:,}`"
+        else:
+            embed.description = "❌ Items inventory se gayab ho gaye ya error aaya."
+
         await interaction.response.edit_message(embed=embed, view=None)
 
     @discord.ui.button(label="🗑️ CLEAR CART", style=discord.ButtonStyle.red, row=2)
     async def clear(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.cart = {} # Empty kar do
+        self.cart = {} 
         await self.update_message(interaction)
 
 # 4. COMMAND
 @bot.tree.command(name="sell", description="🛒 Add multiple items to cart and sell at once")
 async def sell_items(i: discord.Interaction):
+    # Inventory check
     data = supabase.table("economy").select("inventory").eq("user_id", str(i.user.id)).execute().data
+    
+    # Empty Inventory Handling
     if not data or not data[0].get('inventory') or len(data[0]['inventory']) == 0:
-        return await i.response.send_message("❌ Jeb khali hai!", ephemeral=True)
+        return await i.response.send_message("❌ Tumhari inventory khali hai, kya bechoge?", ephemeral=True)
         
-    view = SellCartView(data[0]['inventory'], i.user.id)
+    # Check if user has any items that exist in SHOP_ITEMS (Sellable)
+    user_inv = data[0]['inventory']
+    sellable_found = False
+    for item_id in user_inv:
+        if item_id in SHOP_ITEMS:
+            sellable_found = True
+            break
+            
+    if not sellable_found:
+        return await i.response.send_message("❌ Tumhare paas koi sellable item nahi hai.", ephemeral=True)
+
+    view = SellCartView(user_inv, i.user.id)
     
     embed = discord.Embed(title="🏪 SELL CART", description="Select an item from dropdown to add to cart.", color=0x2b2d31)
     await i.response.send_message(embed=embed, view=view)
+
 
     
 # ================== OPTIMIZED FLASK BACKEND ==================
