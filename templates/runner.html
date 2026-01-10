@@ -3,55 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon City Runner</title>
-    <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
+    <title>Neon Surfers Final</title>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
     <style>
         body { 
-            margin: 0; overflow: hidden; background: #222; 
-            font-family: 'Russo One', sans-serif; touch-action: none; 
+            margin: 0; overflow: hidden; background: #120024; 
+            font-family: 'Anton', sans-serif; touch-action: none; 
         }
 
-        /* --- UI OVERLAY --- */
+        /* --- UI OVERLAYS --- */
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
 
-        /* HUD (Score & Balance) */
-        .hud { 
-            display: flex; justify-content: space-between; padding: 20px; 
-            font-size: 20px; color: white; text-shadow: 2px 2px 0 #000;
-        }
-        .pill { 
-            background: linear-gradient(90deg, #ff00de, #6e00ff); 
-            padding: 10px 20px; border-radius: 50px; 
-            border: 2px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            display: flex; align-items: center; gap: 10px;
-        }
-
-        /* GAME OVER MODAL */
-        #game-over {
-            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(20, 20, 40, 0.95); border: 4px solid #00f3ff; 
-            padding: 30px; text-align: center; border-radius: 20px;
-            box-shadow: 0 0 50px #00f3ff; pointer-events: auto; width: 300px;
+        .hud-bar {
+            display: flex; justify-content: space-between; padding: 20px;
+            color: white; text-shadow: 2px 2px 0 #000; pointer-events: auto;
         }
         
-        .btn-action {
-            background: #ffd700; border: none; padding: 15px 30px; font-size: 20px; 
-            font-family: 'Russo One'; color: black; border-radius: 10px; cursor: pointer;
-            margin-top: 20px; width: 100%; transition: 0.2s; border-bottom: 5px solid #b8860b;
+        .stat-pill {
+            background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 30px;
+            border: 2px solid #00f3ff; font-size: 24px; letter-spacing: 1px;
+            box-shadow: 0 0 15px #00f3ff;
         }
-        .btn-action:active { transform: translateY(3px); border-bottom: 2px solid #b8860b; }
 
-        /* START SCREEN */
-        #start-screen {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); 
-            text-align: center; pointer-events: auto;
+        /* SCREENS */
+        .screen {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            text-align: center; pointer-events: auto; width: 100%;
         }
-        .logo { 
-            font-size: 50px; 
-            background: linear-gradient(to bottom, #ffd700, #ff8800);
+
+        #start-screen h1 {
+            font-size: 60px; line-height: 1; margin: 0; margin-bottom: 20px;
+            background: linear-gradient(to bottom, #00f3ff, #ff00de);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 10px rgba(255,200,0,0.5)); margin-bottom: 20px;
+            filter: drop-shadow(0 0 20px rgba(0,243,255,0.8));
         }
+
+        #game-over {
+            display: none; background: #1a0b2e; border: 4px solid #ff0044;
+            padding: 30px; border-radius: 20px; box-shadow: 0 0 50px #ff0044;
+            width: 300px;
+        }
+
+        /* BUTTONS */
+        .btn {
+            background: white; border: none; padding: 15px 40px; font-size: 24px;
+            font-family: 'Anton'; color: #120024; border-radius: 50px;
+            cursor: pointer; box-shadow: 0 0 20px white; transition: 0.1s;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-red { background: #ff0044; color: white; box-shadow: 0 0 20px #ff0044; }
 
         canvas { display: block; width: 100%; height: 100%; }
     </style>
@@ -59,24 +59,24 @@
 <body>
 
     <div id="ui-layer">
-        <div class="hud" id="hud" style="display:none;">
-            <div class="pill">🪙 <span id="coin-display">0</span></div>
-            <div class="pill">💼 $<span id="bal-display">{{ "{:,}".format(balance) }}</span></div>
+        <div class="hud-bar" id="hud" style="display:none;">
+            <div class="stat-pill">🪙 <span id="score">0</span></div>
+            <div class="stat-pill">💼 {{ "{:,}".format(balance) }}</div>
         </div>
-        
-        <div id="game-over">
-            <h1 style="color:#ff4444; margin:0;">CRASHED!</h1>
-            <p style="color:#aaa; font-size:14px; margin-bottom: 5px;">COLLECTED</p>
-            <div style="font-size:40px; color:gold; margin-bottom: 10px;" id="final-coins">0</div>
-            <div style="font-size:18px; color:#00f3ff;">EARNINGS: $<span id="final-money">0</span></div>
-            <button onclick="claimReward()" id="claim-btn" class="btn-action">SAVE & RESTART</button>
-            <p id="status-msg" style="font-size:12px; color:white; margin-top:10px;"></p>
+
+        <div id="start-screen" class="screen">
+            <h1>NEON<br>SURF</h1>
+            <p style="color:#ccc; font-size:18px; margin-bottom: 30px;">SWIPE TO MOVE • JUMP RED BARRIERS</p>
+            <button class="btn" onclick="startGame()">TAP TO PLAY</button>
         </div>
-        
-        <div id="start-screen">
-            <div class="logo">NEON SURF</div>
-            <p style="color:white; margin-bottom:30px;">SWIPE or ARROWS to Run</p>
-            <button class="btn-action" style="background:#00f3ff; border-color:#0088aa;" onclick="startGame()">PLAY NOW</button>
+
+        <div id="game-over" class="screen">
+            <h1 style="color:#ff0044; margin:0;">CRASHED!</h1>
+            <p style="color:white; margin:10px 0;">COINS COLLECTED</p>
+            <div style="font-size:50px; color:#ffd700;" id="final-score">0</div>
+            <div style="color:#00f3ff; margin-bottom:20px;">EARNINGS: $<span id="earnings">0</span></div>
+            <button class="btn btn-red" id="claim-btn" onclick="claimReward()">SAVE & RESTART</button>
+            <p id="status-msg" style="color:gray; font-size:12px; margin-top:10px;"></p>
         </div>
     </div>
 
@@ -88,26 +88,33 @@
 
         let width, height;
         let gameActive = false;
-        let score = 0;
         let frame = 0;
-        let speed = 12; // Adjusted Speed
+        let score = 0;
+        let speed = 15; // Starting Speed
 
-        // --- PLAYER CONFIG ---
+        // --- MATH CONSTANTS ---
+        // Adjust these to fix the "off-screen" issue
+        const FOV = 400; // Field of View (Camera Distance)
+        const CAMERA_Y = 150; // Camera Height
+        const CAMERA_Z = 0; 
+        const LANE_WIDTH = 180; // Distance between lanes in World Units
+
+        // --- PLAYER ---
         const player = {
-            lane: 0, // -1, 0, 1
+            lane: 0, // -1 (Left), 0 (Middle), 1 (Right)
+            x: 0,    // Current visual X (for smooth sliding)
             y: 0,    // Jump Height
             vy: 0,   // Vertical Velocity
-            gravity: 1.5,
-            jumpPower: 25,
+            gravity: 2,
+            jumpPower: 30,
             isJumping: false,
-            // Animation props
-            runCycle: 0 
+            width: 40,
+            height: 60,
+            color: '#ff9900'
         };
 
-        // --- WORLD ---
-        let objects = [];
-        const laneWidth = 140; 
-        const horizon = 0.35; // Horizon line (35% from top)
+        // --- WORLD OBJECTS ---
+        let objects = []; 
 
         function resize() {
             width = canvas.width = window.innerWidth;
@@ -116,15 +123,12 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // --- CONTROLS ---
+        // --- INPUTS ---
         let touchX = 0, touchY = 0;
 
         document.addEventListener('keydown', e => {
             if(!gameActive) return;
-            // Prevent scrolling with Space/Arrows
-            if(["ArrowUp","ArrowDown","Space"].indexOf(e.code) > -1) {
-                e.preventDefault();
-            }
+            if(["ArrowUp","ArrowDown","Space"].includes(e.code)) e.preventDefault();
 
             if(e.key === 'ArrowLeft') moveLane(-1);
             if(e.key === 'ArrowRight') moveLane(1);
@@ -141,17 +145,17 @@
             let dx = e.changedTouches[0].screenX - touchX;
             let dy = e.changedTouches[0].screenY - touchY;
 
-            if (Math.abs(dy) > Math.abs(dx) && dy < -40) jump(); // Swipe Up
+            if (Math.abs(dy) > Math.abs(dx) && dy < -40) jump();
             else if (Math.abs(dx) > 40) moveLane(dx > 0 ? 1 : -1);
         });
 
         function moveLane(dir) {
             let target = player.lane + dir;
-            if(target >= -1 && target <= 1) player.lane = target;
+            if (target >= -1 && target <= 1) player.lane = target;
         }
 
         function jump() {
-            if(!player.isJumping) {
+            if (!player.isJumping) {
                 player.isJumping = true;
                 player.vy = player.jumpPower;
             }
@@ -160,30 +164,40 @@
         // --- OBJECT CLASS ---
         class GameObject {
             constructor() {
-                this.lane = Math.floor(Math.random() * 3) - 1; 
-                this.z = 2000; // Spawn distance
-                this.type = Math.random() < 0.4 ? 'coin' : 'obstacle';
+                this.lane = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
+                this.worldZ = 3000; // Spawn far away
                 
-                if(this.type === 'obstacle') {
-                    // Type 1: Low Barrier (Jumpable), Type 2: High Wall (Dodge)
-                    this.obsType = Math.random() < 0.5 ? 1 : 2; 
+                // 30% Coin, 70% Obstacle
+                this.type = Math.random() < 0.3 ? 'coin' : 'obstacle';
+                
+                if (this.type === 'obstacle') {
+                    // 50% Barrier (Jumpable), 50% Wall (Dodge)
+                    this.obsType = Math.random() < 0.5 ? 'barrier' : 'wall';
                 }
                 this.active = true;
             }
 
             update() {
-                this.z -= speed;
-                if(this.z < -200) this.active = false;
+                this.worldZ -= speed;
+                if (this.worldZ < -200) this.active = false; // Despawn behind camera
 
-                // Hitbox logic (Simple Z-depth check)
-                if(this.active && this.z < 100 && this.z > -50 && this.lane === player.lane) {
-                    if(this.type === 'coin') {
-                        collectCoin(this);
+                // --- COLLISION DETECTION ---
+                // Player is logically at Z = 200 (fixed distance from camera)
+                // Hitbox Z-range: [150, 250]
+                
+                if (this.active && this.worldZ > 100 && this.worldZ < 250 && this.lane === player.lane) {
+                    
+                    if (this.type === 'coin') {
+                        this.active = false;
+                        score++;
+                        document.getElementById('score').innerText = score;
                     } else {
-                        // Collision with Obstacle
-                        if(this.obsType === 1 && player.y > 50) {
-                            // Successfully jumped over barrier
+                        // OBSTACLE HIT
+                        if (this.obsType === 'barrier') {
+                            // If player is in air (> 50px), safe. Else crash.
+                            if (player.y < 50) gameOver(); 
                         } else {
+                            // Wall hits regardless of jump
                             gameOver();
                         }
                     }
@@ -191,181 +205,205 @@
             }
 
             draw() {
-                // 3D Projection Math
-                const scale = 400 / (400 + this.z); // Perspective scale
-                const x = width/2 + (this.lane * laneWidth * scale * 3);
-                const y = height * horizon + ((height - height * horizon) * scale * 0.5) + (height * 0.4 * scale);
+                // --- 3D PROJECTION FORMULA ---
+                // Project 3D World (X, Y, Z) to 2D Screen (sx, sy)
+                // scale = FOV / (FOV + Z)
+                const scale = FOV / (FOV + this.worldZ);
                 
-                const w = 100 * scale;
-                const h = 100 * scale;
+                // Calculate Lane X position
+                // Lane -1 = -180, 0 = 0, 1 = 180
+                const worldX = this.lane * LANE_WIDTH;
+                
+                // Project to Screen
+                // cx, cy is screen center
+                const cx = width / 2;
+                const cy = height / 2;
 
-                if(this.type === 'coin') {
-                    // Draw Coin
-                    const float = Math.sin(frame * 0.1) * 10 * scale;
+                // Screen X = center + (worldX * scale)
+                const sx = cx + (worldX * scale);
+                // Screen Y = center + ((CameraHeight) * scale)
+                // Note: Objects are on floor (Y=0), camera is at Y=150.
+                const sy = cy + (CAMERA_Y * scale);
+
+                const size = 100 * scale;
+
+                if (this.type === 'coin') {
+                    const float = Math.sin(frame * 0.1) * 20 * scale;
                     ctx.fillStyle = '#ffd700';
-                    ctx.beginPath(); ctx.arc(x, y - float - (h/2), w/3, 0, Math.PI*2); ctx.fill();
-                    ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
-                    // Sparkle
-                    ctx.shadowBlur = 10; ctx.shadowColor = 'gold';
-                } else {
-                    // Draw Obstacle
-                    const obsH = this.obsType === 1 ? h * 0.6 : h * 1.4; // Low or High
-                    const obsY = y - obsH;
-                    
-                    // Main Box
-                    ctx.fillStyle = this.obsType === 1 ? '#ff3333' : '#ff8800';
-                    ctx.shadowBlur = 0;
-                    ctx.fillRect(x - w/2, obsY, w, obsH);
-                    
-                    // Top detail (3D effect)
-                    ctx.fillStyle = this.obsType === 1 ? '#990000' : '#cc6600';
-                    ctx.fillRect(x - w/2, obsY, w, obsH * 0.1);
-
-                    // Warning Sign
-                    ctx.fillStyle = 'black';
-                    ctx.beginPath();
-                    ctx.moveTo(x - 10*scale, obsY + 20*scale);
-                    ctx.lineTo(x + 10*scale, obsY + 20*scale);
-                    ctx.lineTo(x, obsY + 40*scale);
+                    ctx.beginPath(); 
+                    ctx.arc(sx, sy - float - size/2, size/3, 0, Math.PI*2); 
                     ctx.fill();
+                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+                } 
+                else if (this.type === 'obstacle') {
+                    const obsH = this.obsType === 'barrier' ? size * 0.6 : size * 1.5;
+                    const obsY = sy - obsH;
+
+                    // Main Box
+                    ctx.fillStyle = this.obsType === 'barrier' ? '#ff3333' : '#ff8800';
+                    ctx.fillRect(sx - size/2, obsY, size, obsH);
+                    
+                    // Top Cap (3D Look)
+                    ctx.fillStyle = this.obsType === 'barrier' ? '#990000' : '#cc6600';
+                    ctx.fillRect(sx - size/2, obsY, size, size * 0.1);
+
+                    // Warning Symbol
+                    if(this.obsType === 'barrier') {
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(sx - size/6, obsY + size/4, size/3, size/6);
+                    }
                 }
-                ctx.shadowBlur = 0; // Reset
             }
         }
 
-        // --- DRAW FUNCTIONS ---
+        // --- RENDER FUNCTIONS ---
         
         function drawBackground() {
-            // Sunset Sky
+            // Sky
             let grd = ctx.createLinearGradient(0, 0, 0, height);
-            grd.addColorStop(0, "#2b1055"); // Deep Purple
-            grd.addColorStop(horizon, "#7597de"); // Light Blue Horizon
-            grd.addColorStop(horizon, "#220033"); // Dark Floor
-            grd.addColorStop(1, "#110011");
+            grd.addColorStop(0, "#120024");
+            grd.addColorStop(0.5, "#4a1c6e"); // Purple Horizon
+            grd.addColorStop(0.5, "#1a0b2e"); // Dark Floor
+            grd.addColorStop(1, "#000");
             ctx.fillStyle = grd;
             ctx.fillRect(0, 0, width, height);
 
             // Sun
-            ctx.fillStyle = 'rgba(255, 100, 0, 0.8)';
-            ctx.shadowBlur = 40; ctx.shadowColor = 'orange';
-            ctx.beginPath(); ctx.arc(width/2, height*horizon - 20, 60, 0, Math.PI*2); ctx.fill();
+            const sunY = height * 0.4;
+            ctx.fillStyle = '#ffcc00';
+            ctx.shadowBlur = 50; ctx.shadowColor = 'orange';
+            ctx.beginPath(); ctx.arc(width/2, sunY, 80, 0, Math.PI*2); ctx.fill();
             ctx.shadowBlur = 0;
         }
 
-        function drawRoad() {
-            const hY = height * horizon;
+        function drawGrid() {
+            const cx = width / 2;
+            const cy = height / 2;
             
-            // Grid Lines (Moving)
-            ctx.strokeStyle = "rgba(255, 0, 255, 0.3)";
+            ctx.strokeStyle = "rgba(0, 243, 255, 0.3)";
             ctx.lineWidth = 2;
-            
-            // Vertical Lane Lines
-            const cx = width/2;
-            const spread = width * 1.8;
-            
-            for(let i=-1.5; i<=1.5; i++) {
+
+            // DRAW LANES (Fixed Perspective Lines)
+            // Left Line (-1.5), Middle Left (-0.5), Middle Right (0.5), Right Line (1.5)
+            // We draw 4 lines to define 3 lanes
+            for(let i = -1.5; i <= 1.5; i++) {
+                // Project far point (Z=Infinite) -> Screen Center Y
+                // Project near point (Z=0) -> Bottom of screen
+                
+                // Math:
+                // Far X = i * LANE_WIDTH * (FOV / (FOV + 5000))
+                // Near X = i * LANE_WIDTH * (FOV / FOV)
+                
+                // Simply drawing lines from Vanishing Point (cx, cy) downwards
+                // Adjusted spread to match object lanes
+                
+                const spread = (width * 0.6) * i; // Adjust spread factor
+                
                 ctx.beginPath();
-                ctx.moveTo(cx, hY);
-                ctx.lineTo(cx + (i * spread), height);
+                ctx.moveTo(cx, cy); // Horizon
+                ctx.lineTo(cx + (i * 300), height); // Bottom (Spread)
                 ctx.stroke();
             }
 
-            // Horizontal Moving Lines
-            const move = (frame * speed * 4) % 100;
-            for(let z=0; z<height; z+=80) {
-                let y = hY + Math.pow(z + move, 1.4) / 80;
-                if(y > height) continue;
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+            // HORIZONTAL MOVING LINES
+            const move = (frame * speed * 2) % 100;
+            for(let z = 0; z < 500; z+=50) {
+                // Inverse perspective mapping for floor lines
+                // Make them closer together near horizon
+                let y = cy + (z + move) * 1.5; 
+                // Simple exponential spacing visual trick
+                
+                // Better formula: Project Z world lines
+                // We'll use a simpler visual loop for performance
+            }
+            
+            // Re-doing Horizontal Grid properly using Projection
+            for(let z = 0; z < 2000; z+=150) {
+                let actualZ = z - (frame * speed * 2) % 150;
+                if (actualZ < 0) actualZ += 2000; // Loop
+                
+                const scale = FOV / (FOV + actualZ);
+                const sy = cy + (CAMERA_Y * scale);
+                
+                ctx.beginPath();
+                ctx.moveTo(0, sy);
+                ctx.lineTo(width, sy);
+                ctx.stroke();
             }
         }
 
-        function drawCharacter() {
-            // Calculate Position
+        function drawPlayer() {
+            // Smooth X Movement (Lerp)
+            // Target X in World Space
+            const targetX = player.lane * LANE_WIDTH;
+            player.x += (targetX - player.x) * 0.2; // Smooth slide
+
+            // Project Player to Screen
+            // Player is fixed at Z = 200 roughly
+            const scale = FOV / (FOV + 200); 
             const cx = width / 2;
-            const laneOffset = player.lane * (width / 3.5); 
-            // Smooth lane transition (Simple approach)
-            const px = cx + laneOffset;
-            const py = height - 160 - player.y;
+            const cy = height / 2;
 
-            // Character Dimensions
-            const bodyW = 40;
-            const bodyH = 50;
-            
-            // Animation Calculation
-            player.runCycle += 0.2;
-            const limbOffset = player.isJumping ? 0 : Math.sin(player.runCycle) * 15;
+            const sx = cx + (player.x * scale);
+            const sy = cy + ((CAMERA_Y - player.y) * scale); // Apply Jump Y
 
-            // --- DRAWING THE "REAL" PLAYER ---
+            const pW = player.width * scale * 2.5; // Scale up visuals
+            const pH = player.height * scale * 2.5;
+
+            // --- DRAW HUMANOID ---
             
             // 1. Shadow
             ctx.fillStyle = 'rgba(0,0,0,0.5)';
             ctx.beginPath();
-            ctx.ellipse(px, height - 120, 30 - (player.y/5), 10 - (player.y/10), 0, 0, Math.PI*2);
+            ctx.ellipse(sx, cy + (CAMERA_Y * scale), pW/2, pW/4, 0, 0, Math.PI*2);
             ctx.fill();
 
-            // 2. Legs (Moving)
-            ctx.fillStyle = '#333'; // Pants color
-            // Left Leg
-            ctx.beginPath();
-            ctx.moveTo(px - 10, py + bodyH);
-            ctx.lineTo(px - 10, py + bodyH + 30 + limbOffset);
-            ctx.lineWidth = 12; ctx.strokeStyle = '#333'; ctx.stroke();
-            // Right Leg
-            ctx.beginPath();
-            ctx.moveTo(px + 10, py + bodyH);
-            ctx.lineTo(px + 10, py + bodyH + 30 - limbOffset);
+            // 2. Legs (Animation)
+            const legOffset = player.isJumping ? 0 : Math.sin(frame * 0.5) * 10;
+            ctx.strokeStyle = '#222'; ctx.lineWidth = 8;
+            ctx.beginPath(); // Left
+            ctx.moveTo(sx - 5, sy - pH/2);
+            ctx.lineTo(sx - 10, sy + legOffset);
+            ctx.stroke();
+            ctx.beginPath(); // Right
+            ctx.moveTo(sx + 5, sy - pH/2);
+            ctx.lineTo(sx + 10, sy - legOffset);
             ctx.stroke();
 
-            // 3. Body (Neon Vest)
-            ctx.fillStyle = '#ff6600'; // Orange Vest
-            ctx.fillRect(px - bodyW/2, py, bodyW, bodyH);
-            // Vest Reflective Stripe
-            ctx.fillStyle = '#ffff00'; // Yellow Stripe
-            ctx.fillRect(px - bodyW/2 + 10, py, 20, bodyH);
-
-            // 4. Arms (Moving)
-            ctx.fillStyle = '#ffccaa'; // Skin
-            // Left Arm
-            ctx.beginPath();
-            ctx.moveTo(px - 20, py + 10);
-            ctx.lineTo(px - 30, py + 30 - limbOffset);
-            ctx.lineWidth = 10; ctx.strokeStyle = '#ffccaa'; ctx.stroke();
-            // Right Arm
-            ctx.beginPath();
-            ctx.moveTo(px + 20, py + 10);
-            ctx.lineTo(px + 30, py + 30 + limbOffset);
-            ctx.stroke();
-
-            // 5. Head
-            ctx.fillStyle = '#ffccaa'; // Skin
-            ctx.beginPath(); ctx.arc(px, py - 15, 18, 0, Math.PI*2); ctx.fill();
+            // 3. Vest (Body)
+            ctx.fillStyle = player.color;
+            ctx.fillRect(sx - pW/2, sy - pH, pW, pH/1.5);
             
-            // 6. Hair
-            ctx.fillStyle = '#442200'; // Brown Hair
-            ctx.beginPath(); ctx.arc(px, py - 20, 20, Math.PI, 0); ctx.fill();
+            // 4. Head
+            ctx.fillStyle = '#ffccaa';
+            ctx.beginPath(); 
+            ctx.arc(sx, sy - pH - 15, 12, 0, Math.PI*2); 
+            ctx.fill();
 
-            ctx.lineWidth = 1; // Reset
-        }
-
-        function collectCoin(obj) {
-            obj.active = false;
-            score++;
-            document.getElementById('coin-display').innerText = score;
+            // 5. Arms
+            ctx.strokeStyle = '#ffccaa';
+            ctx.beginPath(); // Left Arm
+            ctx.moveTo(sx - pW/2, sy - pH + 5);
+            ctx.lineTo(sx - pW, sy - pH + 20 - legOffset);
+            ctx.stroke();
+            ctx.beginPath(); // Right Arm
+            ctx.moveTo(sx + pW/2, sy - pH + 5);
+            ctx.lineTo(sx + pW, sy - pH + 20 + legOffset);
+            ctx.stroke();
         }
 
         function gameOver() {
             gameActive = false;
-            document.getElementById('game-over').style.display = 'block';
             document.getElementById('hud').style.display = 'none';
-            document.getElementById('final-coins').innerText = score;
-            document.getElementById('final-money').innerText = "{:,}".format(score * 10);
+            document.getElementById('game-over').style.display = 'block';
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('earnings').innerText = "{:,}".format(score * 10);
         }
 
-        // --- MAIN LOOP ---
         function update() {
             if(!gameActive) return;
 
-            // Physics
+            // Gravity Logic
             if(player.isJumping) {
                 player.y += player.vy;
                 player.vy -= player.gravity;
@@ -375,23 +413,28 @@
                 }
             }
 
-            // Draw
+            // Draw Everything
             ctx.clearRect(0, 0, width, height);
             drawBackground();
-            drawRoad();
+            drawGrid();
 
-            // Spawn
-            if(frame % 35 === 0) objects.push(new GameObject());
+            // Spawn Objects
+            if(frame % 40 === 0) objects.push(new GameObject());
 
-            // Objects
-            objects.sort((a,b) => b.z - a.z); // Draw far first
-            objects.forEach(o => { o.update(); o.draw(); });
+            // Update & Draw Objects (Z-Sort: Draw furthest first)
+            objects.sort((a,b) => b.worldZ - a.worldZ);
+            
+            objects.forEach(obj => {
+                obj.update();
+                obj.draw();
+            });
+            // Clean up old objects
             objects = objects.filter(o => o.active);
 
-            drawCharacter();
+            drawPlayer();
 
             frame++;
-            speed += 0.005; // Accel
+            speed += 0.005; // Acceleration
             requestAnimationFrame(update);
         }
 
@@ -401,16 +444,17 @@
             gameActive = true;
             score = 0;
             frame = 0;
-            speed = 12;
+            speed = 15;
             objects = [];
             player.lane = 0;
+            player.x = 0;
             update();
         }
 
         async function claimReward() {
             const btn = document.getElementById('claim-btn');
-            btn.innerText = "SAVING...";
-            btn.disabled = true;
+            const msg = document.getElementById('status-msg');
+            btn.disabled = true; btn.innerText = "SAVING...";
 
             try {
                 const res = await fetch('/api/games/runner/payout', {
@@ -418,15 +462,11 @@
                     body: JSON.stringify({ coins: score })
                 });
                 const data = await res.json();
-                if(data.status === 'success') {
-                    location.reload();
-                } else {
-                    alert("Error saving!");
-                    location.reload();
-                }
+                if(data.status === 'success') location.reload();
+                else msg.innerText = "Error Saving!";
             } catch(e) {
-                alert("Connection failed");
-                location.reload();
+                msg.innerText = "Offline Mode?";
+                setTimeout(() => location.reload(), 2000);
             }
         }
     </script>
