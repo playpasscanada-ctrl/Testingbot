@@ -16785,7 +16785,8 @@ async def invest(interaction: discord.Interaction, target: discord.Member, amoun
         return await interaction.followup.send("❌ All their businesses already have investors!")
 
     # 3. Check Balance
-    inv_res = supabase.table("economy").select("balance").eq("user_id", str(interaction.user.id)).execute()    if not inv_res.data or inv_res.data[0]['balance'] < amount:
+    inv_res = supabase.table("economy").select("balance").eq("user_id", str(interaction.user.id)).execute() 
+    if not inv_res.data or inv_res.data[0]['balance'] < amount:
         return await interaction.followup.send("❌ You are broke!")
 
     # 4. Execute Investment
