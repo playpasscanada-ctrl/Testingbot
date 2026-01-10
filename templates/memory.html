@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber Memory: Flip & Survive</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Rajdhani:wght@600&display=swap" rel="stylesheet">
+    <style>
+        :root { --neon: #00f3ff; --bomb: #ff0044; --card-bg: #1a1a2e; --bg: #050505; }
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background: var(--bg); color: white; margin: 0; font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden; height: 100vh; display: flex; flex-direction: column;
+        }
+
+        /* --- BACKGROUND ANIMATION --- */
+        .cyber-grid {
+            position: fixed; top: 0; left: 0; width: 200%; height: 200%;
+            background: linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px; transform: perspective(500px) rotateX(60deg);
+            animation: gridMove 20s linear infinite; z-index: -1;
+        }
+        @keyframes gridMove { 0% { transform: perspective(500px) rotateX(60deg) translateY(0); } 100% { transform: perspective(500px) rotateX(60deg) translateY(40px); } }
+
+        /* --- HEADER --- */
+        .header { 
+            padding: 15px 20px; background: rgba(0,0,0,0.9); border-bottom: 2px solid #333; 
+            display: flex; justify-content: space-between; align-items: center; z-index: 50;
+        }
+        .back-btn { text-decoration: none; color: white; font-family: 'Orbitron'; font-size: 14px; border: 1px solid #333; padding: 5px 15px; border-radius: 20px; }
+        .player-info { text-align: right; }
+        .balance { color: #ffd700; font-family: 'Orbitron'; font-size: 18px; text-shadow: 0 0 10px #ffd700; }
+
+        /* --- SCREENS --- */
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        .screen.active { display: flex; }
+
+        /* --- LEVEL SELECTOR --- */
+        .level-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 100%; max-width: 500px; }
+        .lvl-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--neon); color: white;
+            padding: 20px; font-family: 'Orbitron'; font-size: 18px; border-radius: 10px;
+            cursor: pointer; transition: 0.3s; text-align: center; position: relative; overflow: hidden;
+        }
+        .lvl-btn:hover { background: var(--neon); color: black; box-shadow: 0 0 20px var(--neon); }
+        .lvl-btn.danger { border-color: var(--bomb); color: var(--bomb); }
+        .lvl-btn.danger:hover { background: var(--bomb); color: white; box-shadow: 0 0 20px var(--bomb); }
+        .lvl-tag { font-size: 10px; display: block; margin-top: 5px; opacity: 0.7; }
+
+        /* --- GAME BOARD --- */
+        .game-header { margin-bottom: 10px; display: flex; justify-content: space-between; width: 100%; max-width: 600px; font-size: 20px; font-weight: bold; }
+        
+        .grid-container {
+            display: grid; gap: 8px; perspective: 1000px; margin: 0 auto;
+            width: 100%; max-width: 600px; max-height: 80vh; overflow-y: auto;
+        }
+
+        .card {
+            background-color: transparent; aspect-ratio: 1; cursor: pointer;
+            perspective: 1000px; position: relative;
+        }
+        
+        .card-inner {
+            position: relative; width: 100%; height: 100%; text-align: center;
+            transition: transform 0.6s; transform-style: preserve-3d;
+        }
+        
+        .card.flipped .card-inner { transform: rotateY(180deg); }
+        .card.matched .card-inner { opacity: 0; transition: opacity 0.5s; cursor: default; }
+
+        .card-front, .card-back {
+            position: absolute; width: 100%; height: 100%;
+            backface-visibility: hidden; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .card-front { 
+            background: #111; border: 2px solid var(--neon); color: var(--neon); 
+            font-family: 'Orbitron'; font-weight: bold;
+        }
+        .card-front::after { content: '?'; }
+
+        .card-back { 
+            background: white; color: black; transform: rotateY(180deg); 
+            border: 2px solid white; font-size: 28px;
+        }
+        .card.bomb .card-back { background: var(--bomb); border-color: var(--bomb); color: white; }
+
+        /* --- MODALS --- */
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 100; display: none;
+            flex-direction: column; align-items: center; justify-content: center; text-align: center;
+        }
+        .modal h1 { font-family: 'Orbitron'; font-size: 40px; margin-bottom: 10px; }
+        .btn-action {
+            background: white; color: black; padding: 15px 40px; font-size: 20px; font-weight: bold;
+            border: none; border-radius: 50px; margin-top: 20px; cursor: pointer;
+            font-family: 'Rajdhani'; box-shadow: 0 0 20px white;
+        }
+
+        /* --- PARTICLES --- */
+        #particle-canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 99; }
+
+    </style>
+</head>
+<body>
+
+    <div class="cyber-grid"></div>
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="header">
+        <a href="javascript:showLevels()" class="back-btn" id="nav-btn">← EXIT</a>
+        <div class="player-info">
+            <div style="font-size:12px; opacity:0.7;">{{ user.username }}</div>
+            <div class="balance" id="bal-display">${{ "{:,}".format(balance) }}</div>
+        </div>
+    </div>
+
+    <div id="level-screen" class="screen active">
+        <h1 style="font-family:'Orbitron'; color:var(--neon); text-shadow:0 0 20px var(--neon);">SELECT CLEARANCE</h1>
+        <div class="level-grid">
+            </div>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <div class="game-header">
+            <span id="lvl-display">LEVEL 1</span>
+            <span style="color:var(--bomb)" id="bomb-warning"></span>
+        </div>
+        <div class="grid-container" id="grid"></div>
+    </div>
+
+    <div id="win-modal" class="modal">
+        <h1 style="color:#0f0; text-shadow:0 0 30px #0f0;">CLEARED!</h1>
+        <p style="font-size:20px; color:white;" id="win-msg"></p>
+        <button class="btn-action" onclick="showLevels()">CONTINUE</button>
+    </div>
+
+    <div id="lose-modal" class="modal">
+        <h1 style="color:var(--bomb); text-shadow:0 0 30px var(--bomb);">BOOM!</h1>
+        <p style="font-size:20px; color:white;">SYSTEM DESTROYED</p>
+        <button class="btn-action" style="background:var(--bomb); color:white; box-shadow:0 0 20px var(--bomb);" onclick="showLevels()">RETRY</button>
+    </div>
+
+    <script>
+        // CONFIG
+        const levels = [
+            { lvl: 1,  rows: 2, cols: 2, bombs: 0, prize: 500 },
+            { lvl: 2,  rows: 2, cols: 3, bombs: 0, prize: 1000 },
+            { lvl: 3,  rows: 3, cols: 4, bombs: 0, prize: 2000 },
+            { lvl: 4,  rows: 4, cols: 4, bombs: 0, prize: 5000 },
+            { lvl: 5,  rows: 4, cols: 5, bombs: 0, prize: 10000 },
+            { lvl: 6,  rows: 5, cols: 6, bombs: 0, prize: 20000 },
+            { lvl: 7,  rows: 6, cols: 6, bombs: 0, prize: 40000 },
+            { lvl: 8,  rows: 6, cols: 7, bombs: 0, prize: 75000 },
+            { lvl: 9,  rows: 7, cols: 8, bombs: 0, prize: 150000 },
+            { lvl: 10, rows: 8, cols: 8, bombs: 4, prize: 500000 }, // + ROLE
+            { lvl: 11, rows: 9, cols: 10, bombs: 4, prize: 1000000 }, // + ROLE
+            { lvl: 12, rows: 12, cols: 12, bombs: 4, prize: 5000000 } // + ROLE (144 cards - 4 = 140/2 = 70 pairs)
+        ];
+
+        const emojis = ["🚀","💎","🔥","💀","🤖","👾","🎃","👽","🦄","🐉","⚡","❄️","🍀","🍎","🍔","🍕","🚗","✈️","⌚","📱","💻","💾","💿","🎥","🎱","🎲","🎯","🏆","🥇","👑","💍","🕶️","🧢","🎓","🎒","⛑️","🦋","🕷️","🕸️","🦂","🐍","🦖","🦕","🐙","🦑","🦐","🦞","🦀","🐡","🐠","🐟","🐬","🐳","🐋","🦈","🐊","🐅","🐆","🦓","🦍","🦧","🦣","🐘","🦛","🦏","🐪","🐫","🦒","🦘","🦬","🐃","🐂","🐄","🐎","🐖","🐏","🐑","🦙","🐐","🦌","🐕","🐩","🦮","🐕‍🦺","🐈","🐈‍⬛","🐓","🦃","🦚","🦜","🦢","🦩","🕊️","🐇","🦝","🦨","🦡","🦦","🦥","🐁","🐀","🐿️","🦔"];
+
+        let currentLevel = null;
+        let cards = [];
+        let flippedCards = [];
+        let matchedCount = 0;
+        let isLocked = false;
+
+        // --- INIT ---
+        function init() {
+            const grid = document.querySelector('.level-grid');
+            levels.forEach(l => {
+                let isDanger = l.lvl >= 10;
+                let btn = document.createElement('div');
+                btn.className = `lvl-btn ${isDanger ? 'danger' : ''}`;
+                btn.innerHTML = `LVL ${l.lvl} <span class="lvl-tag">$${l.prize.toLocaleString()}</span>`;
+                if(isDanger) btn.innerHTML += `<span class="lvl-tag" style="color:var(--bomb)">⚠️ 4 BOMBS + ROLE</span>`;
+                btn.onclick = () => startGame(l);
+                grid.appendChild(btn);
+            });
+        }
+        init();
+
+        function showLevels() {
+            document.getElementById('level-screen').classList.add('active');
+            document.getElementById('game-screen').classList.remove('active');
+            document.getElementById('win-modal').style.display = 'none';
+            document.getElementById('lose-modal').style.display = 'none';
+            document.getElementById('grid').innerHTML = '';
+            document.getElementById('nav-btn').onclick = () => window.location.href = '/games';
+            document.getElementById('nav-btn').innerText = "← EXIT";
+        }
+
+        function startGame(levelConfig) {
+            currentLevel = levelConfig;
+            document.getElementById('level-screen').classList.remove('active');
+            document.getElementById('game-screen').classList.add('active');
+            document.getElementById('lvl-display').innerText = `LEVEL ${currentLevel.lvl}`;
+            document.getElementById('nav-btn').onclick = showLevels;
+            document.getElementById('nav-btn').innerText = "← LEVELS";
+            
+            if(currentLevel.bombs > 0) {
+                document.getElementById('bomb-warning').innerText = `⚠️ ${currentLevel.bombs} BOMBS HIDDEN`;
+            } else {
+                document.getElementById('bomb-warning').innerText = "";
+            }
+
+            generateBoard();
+        }
+
+        function generateBoard() {
+            const grid = document.getElementById('grid');
+            grid.style.gridTemplateColumns = `repeat(${currentLevel.cols}, 1fr)`;
+            
+            let totalSlots = currentLevel.rows * currentLevel.cols;
+            let safeSlots = totalSlots - currentLevel.bombs;
+            let pairsNeeded = safeSlots / 2;
+            
+            let deck = [];
+            
+            // Add Pairs
+            for(let i=0; i<pairsNeeded; i++) {
+                let emoji = emojis[i % emojis.length];
+                deck.push({ type: 'safe', val: emoji });
+                deck.push({ type: 'safe', val: emoji });
+            }
+            
+            // Add Bombs
+            for(let i=0; i<currentLevel.bombs; i++) {
+                deck.push({ type: 'bomb', val: '💣' });
+            }
+
+            // Shuffle
+            deck.sort(() => Math.random() - 0.5);
+
+            grid.innerHTML = '';
+            cards = [];
+            flippedCards = [];
+            matchedCount = 0;
+            isLocked = false;
+
+            deck.forEach((item, index) => {
+                let card = document.createElement('div');
+                card.className = `card ${item.type}`;
+                card.innerHTML = `
+                    <div class="card-inner">
+                        <div class="card-front"></div>
+                        <div class="card-back">${item.val}</div>
+                    </div>
+                `;
+                card.onclick = () => flipCard(card, item);
+                grid.appendChild(card);
+            });
+        }
+
+        function flipCard(card, item) {
+            if(isLocked || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+            card.classList.add('flipped');
+
+            if(item.type === 'bomb') {
+                gameOver();
+                return;
+            }
+
+            flippedCards.push({ el: card, val: item.val });
+
+            if(flippedCards.length === 2) {
+                checkForMatch();
+            }
+        }
+
+        function checkForMatch() {
+            isLocked = true;
+            let c1 = flippedCards[0];
+            let c2 = flippedCards[1];
+
+            if(c1.val === c2.val) {
+                // Match
+                setTimeout(() => {
+                    c1.el.classList.add('matched');
+                    c2.el.classList.add('matched');
+                    matchedCount += 2;
+                    spawnParticles(c1.el);
+                    spawnParticles(c2.el);
+                    flippedCards = [];
+                    isLocked = false;
+                    checkWin();
+                }, 500);
+            } else {
+                // No Match
+                setTimeout(() => {
+                    c1.el.classList.remove('flipped');
+                    c2.el.classList.remove('flipped');
+                    flippedCards = [];
+                    isLocked = false;
+                }, 1000);
+            }
+        }
+
+        function gameOver() {
+            isLocked = true;
+            // Reveal all bombs
+            document.querySelectorAll('.card.bomb').forEach(c => c.classList.add('flipped'));
+            setTimeout(() => {
+                document.getElementById('lose-modal').style.display = 'flex';
+                // Report loss (optional, just to log attempt)
+                fetch('/api/games/memory/complete', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ level: currentLevel.lvl, won: false })
+                });
+            }, 1000);
+        }
+
+        async function checkWin() {
+            let totalSafe = (currentLevel.rows * currentLevel.cols) - currentLevel.bombs;
+            if(matchedCount === totalSafe) {
+                // WIN!
+                const res = await fetch('/api/games/memory/complete', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ level: currentLevel.lvl, won: true })
+                });
+                const data = await res.json();
+                
+                document.getElementById('win-msg').innerText = data.msg;
+                document.getElementById('bal-display').innerText = "$" + data.new_balance.toLocaleString();
+                
+                setTimeout(() => {
+                    document.getElementById('win-modal').style.display = 'flex';
+                }, 500);
+            }
+        }
+
+        // --- VISUAL FX ---
+        const pCanvas = document.getElementById('particle-canvas');
+        const pCtx = pCanvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() { pCanvas.width = window.innerWidth; pCanvas.height = window.innerHeight; }
+        window.addEventListener('resize', resizeCanvas); resizeCanvas();
+
+        function spawnParticles(element) {
+            const rect = element.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            
+            for(let i=0; i<20; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    life: 1,
+                    color: `hsl(${Math.random()*360}, 100%, 50%)`
+                });
+            }
+        }
+
+        function animateParticles() {
+            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+            particles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.02;
+                pCtx.globalAlpha = p.life;
+                pCtx.fillStyle = p.color;
+                pCtx.beginPath();
+                pCtx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                pCtx.fill();
+                if(p.life <= 0) particles.splice(index, 1);
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+    </script>
+</body>
+</html>
