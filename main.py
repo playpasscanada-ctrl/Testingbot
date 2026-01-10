@@ -17515,11 +17515,6 @@ def logout():
 def ping_check():
     return jsonify({"status": "Alive"})
 
-
-@app.route('/ping')
-def ping_check():
-    return jsonify({"status": "Alive"})
-
 @app.route('/buy', methods=['POST'])
 def buy_item():
     try:
