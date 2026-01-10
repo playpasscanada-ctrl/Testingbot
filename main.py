@@ -24,7 +24,7 @@ app = Flask(__name__)
 CLIENT_ID = "1451451135813746700"
 CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 REDIRECT_URI = "https://testingbot-q1jb.onrender.com/callback"
-WEBSITE_URL = "https://your-app-name.onrender.com" 
+WEBSITE_URL = "https://testingbot-q1jb.onrender.com" 
 
 # --- LOAN SYSTEM SETTINGS ---
 MAX_LOAN = 10000000      # 10 Million Limit
