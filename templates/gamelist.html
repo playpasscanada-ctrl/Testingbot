@@ -74,10 +74,11 @@
 
     <div class="header">
         <a href="/" class="back-btn">← DASHBOARD</a>
-        <div style="font-family:'Orbitron'; color:#ffd700; text-shadow:0 0 10px #ffd700;">${{ balance }}</div>
+        <div style="font-family:'Orbitron'; color:#ffd700; text-shadow:0 0 10px #ffd700;">${{ "{:,}".format(balance) }}</div>
     </div>
 
     <div class="container">
+        
         <a href="/games/casino" class="game-card" style="border-color: #ff00de;">
             <div class="status-badge live">ONLINE</div>
             <div class="card-info">
@@ -94,6 +95,15 @@
                 <p style="color: #ff4d4d;">HIGH RISK • 10x WIN</p>
             </div>
             <div class="card-icon">💀</div>
+        </a>
+
+        <a href="/business" class="game-card" style="border-color: #00ff00;">
+            <div class="status-badge live" style="background:#00ff00; color:black; box-shadow:0 0 10px #00ff00;">PASSIVE</div>
+            <div class="card-info">
+                <h2 style="background: linear-gradient(to right, #00ff00, #00aa00); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">GTA BUSINESS</h2>
+                <p style="color: #00ff00;">BUILD EMPIRE • RAID</p>
+            </div>
+            <div class="card-icon">💼</div>
         </a>
 
         <div class="game-card" style="filter: grayscale(1); opacity: 0.6; cursor: not-allowed;">
