@@ -342,10 +342,9 @@
             document.getElementById('hud').style.display = 'none';
             document.getElementById('game-over').style.display = 'block';
             
-            // EARNINGS LOGIC
+            // EARNINGS LOGIC - FIXED
             const earned = score * 10;
             document.getElementById('final-coins').innerText = score;
-            document.getElementById('final-money').innerText = "{:,}".format(earned); // Just simple text replace here won't work in JS, need logic below
             document.getElementById('final-money').innerText = earned.toLocaleString();
         }
 
