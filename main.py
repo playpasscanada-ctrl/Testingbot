@@ -16902,8 +16902,8 @@ class BusinessView(discord.ui.View):
 
 
 # --- 💻 COMMANDS ---
-@bot.tree.command(name="business", description="🏢 Manage your Empire")
-async def business(interaction: discord.Interaction):
+@bot.tree.command(name="businesss", description="🏢 Manage your Empire")
+async def businesss(interaction: discord.Interaction):
     await interaction.response.defer() # 🟢 Fixes "App didn't respond"
     
     user_id = str(interaction.user.id)
