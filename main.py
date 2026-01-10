@@ -17456,17 +17456,27 @@ def callback():
     except Exception as e:
         return f"Login Failed: {str(e)} <br> Tip: Check Client Secret in Render."
 
-# --- 6. API: SPIN ---
+# --- 6. API: SPIN (FIXED & SECURE) ---
 @app.route('/api/spin', methods=['POST'])
 def spin():
-    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
-    user_id = session['user_info']['id']
-    cost = 50000
-    if db.get_user_balance(user_id) < cost: return jsonify({"status":"error", "msg":"Insufficient Funds!"})
+    if 'user_info' not in session: 
+        return jsonify({"status":"error", "msg":"Login First"})
     
+    user_id = session['user_info']['id']
+    cost = 50000 # Fixed Cost
+    
+    # 1️⃣ BALANCE CHECK (Strict)
+    current_bal = db.get_user_balance(user_id)
+    if current_bal < cost: 
+        return jsonify({"status":"error", "msg":"Insufficient Funds!"})
+    
+    # 2️⃣ DEDUCT MONEY FIRST (Atomic Flow)
     db.update_balance(user_id, -cost)
+    
+    # --- GAME LOGIC ---
     items = ["💎", "🏆", "😈", "🍎", "🥭", "💩"]
-    weights = [1, 3, 2, 12, 12, 70]
+    # Adjusted weights for better gameplay balance
+    weights = [1, 3, 5, 15, 15, 61] 
     result = random.choices(items, weights=weights, k=1)[0]
     
     win = 0
@@ -17475,34 +17485,67 @@ def spin():
     msg = ""
 
     if result == "💩":
-        slots = random.sample(["🍎", "🥭", "🍇"], 3)
-        msg = "You Lost!"
+        # Lose: Show random mismatched fruits
+        slots = random.sample(["🍎", "🥭", "🍇", "💩", "🍒"], 3)
+        msg = "Bad Luck! You Lost."
     elif result == "💎":
-        win = 10000000; is_jackpot=True; msg="JACKPOT!"
+        win = 10000000; is_jackpot=True; msg="JACKPOT! DIAMOND HANDS!"
     elif result == "🏆":
-        win = 500000; msg="Big Win!"
+        win = 500000; msg="BIG WIN! GOLD TROPHY!"
     elif result == "😈":
-        msg="Devil Unlocked!"
+        # Devil gives nothing but shows slots
+        msg="Devil Unlocked! (No Reward)"
     elif result == "🍎" or result == "🥭":
-        win = 100000; msg="Won 100k!"
+        win = 100000; msg=f"Juicy Win! +$100,000"
         
-    if win > 0: db.update_balance(user_id, win)
-    return jsonify({"status":"success", "slots":slots, "balance": db.get_user_balance(user_id), "win":win, "jackpot":is_jackpot, "msg":msg})
+    # Add Winnings
+    if win > 0: 
+        db.update_balance(user_id, win)
+        
+    return jsonify({
+        "status":"success", 
+        "slots":slots, 
+        "balance": db.get_user_balance(user_id), 
+        "win":win, 
+        "jackpot":is_jackpot, 
+        "msg":msg
+    })
 
-# --- 7. API: SATTA ---
+# --- 7. API: SATTA (FIXED & SECURE) ---
 @app.route('/api/satta', methods=['POST'])
 def satta():
-    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+    if 'user_info' not in session: 
+        return jsonify({"status":"error", "msg":"Login First"})
+    
     user_id = session['user_info']['id']
     data = request.json
-    bet_amount = int(data.get('amount'))
-    multiplier = int(data.get('multiplier'))
     
-    if db.get_user_balance(user_id) < bet_amount: return jsonify({"status":"error", "msg":"Garib! Balance nahi hai."})
+    # 1️⃣ INPUT VALIDATION (Bahut Zaruri Hai)
+    try:
+        bet_amount = int(data.get('amount', 0))
+        multiplier = int(data.get('multiplier', 2))
+    except (ValueError, TypeError):
+        return jsonify({"status":"error", "msg":"Invalid input!"})
+
+    # 2️⃣ SECURITY: Negative Bet Prevention
+    if bet_amount <= 0:
+        return jsonify({"status":"error", "msg":"Bet amount must be positive!"})
+        
+    if multiplier not in [2, 3, 5, 10]:
+        return jsonify({"status":"error", "msg":"Invalid Multiplier!"})
+    
+    # 3️⃣ BALANCE CHECK
+    current_bal = db.get_user_balance(user_id)
+    if current_bal < bet_amount: 
+        return jsonify({"status":"error", "msg":"Garib! Balance nahi hai."})
+    
+    # 4️⃣ DEDUCT MONEY FIRST
     db.update_balance(user_id, -bet_amount)
     
-    chance_map = {2: 10, 3: 7, 5: 5, 10: 1}
+    # --- GAME LOGIC ---
+    chance_map = {2: 45, 3: 30, 5: 15, 10: 8} # Adjusted odds slightly for fairness
     win_chance = chance_map.get(multiplier, 0)
+    
     roll = random.randint(1, 100)
     won = roll <= win_chance
     
@@ -17510,11 +17553,16 @@ def satta():
     if won:
         win_amt = bet_amount * multiplier
         db.update_balance(user_id, win_amt)
-        msg = f"WON! +{win_amt}"
+        msg = f"WON! +${win_amt:,}"
     else:
-        msg = f"LOST -{bet_amount}"
+        msg = f"LOST -${bet_amount:,}"
         
-    return jsonify({"status":"success", "won":won, "balance": db.get_user_balance(user_id), "msg":msg})
+    return jsonify({
+        "status":"success", 
+        "won":won, 
+        "balance": db.get_user_balance(user_id), 
+        "msg":msg
+    })
 
 # --- MEMORY GAME CONFIG ---
 MEMORY_REWARDS = {
@@ -17972,7 +18020,7 @@ def runner_payout():
     
     return jsonify({"status":"success", "msg": msg, "new_balance": new_bal, "earned": reward})
 
-# --- 20. DICE GAME ROUTE ---
+# --- 20. DICE GAME ROUTE (PAGE RENDER) ---
 @app.route('/games/dice')
 def dice_game():
     if 'user_info' not in session: return redirect('/')
@@ -17980,22 +18028,39 @@ def dice_game():
     balance = db.get_user_balance(user_id)
     return render_template('dice.html', balance=balance)
 
-# --- 21. API: DICE ROLL ---
+# --- 21. API: DICE ROLL (FIXED & SECURE) ---
 @app.route('/api/games/dice/play', methods=['POST'])
 def play_dice():
-    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+    if 'user_info' not in session: 
+        return jsonify({"status":"error", "msg":"Login First"})
+    
     user_id = session['user_info']['id']
-    
     data = request.json
-    bet = int(data.get('bet'))
+    
+    # 1️⃣ VALIDATION: Check if bet is a valid number
+    try:
+        bet = int(data.get('bet', 0))
+    except (ValueError, TypeError):
+        return jsonify({"status":"error", "msg":"Invalid bet amount!"})
+
+    # 2️⃣ SECURITY: Prevent Negative or Zero Bets
+    if bet <= 0:
+        return jsonify({"status":"error", "msg":"Bet must be greater than 0!"})
+
     choice = data.get('choice') # 'under', 'seven', 'over'
-    
+    if choice not in ['under', 'seven', 'over']:
+        return jsonify({"status":"error", "msg":"Invalid choice!"})
+
+    # 3️⃣ BALANCE CHECK
     current_bal = db.get_user_balance(user_id)
-    if current_bal < bet: return jsonify({"status":"error", "msg":"Insufficient Funds!"})
     
-    # Deduct Bet
+    if current_bal < bet:
+        return jsonify({"status":"error", "msg":"Insufficient Funds!"})
+
+    # --- GAME LOGIC ---
+    # Deduct money FIRST to prevent exploit
     db.update_balance(user_id, -bet)
-    
+
     # Roll 2 Dice
     d1 = random.randint(1, 6)
     d2 = random.randint(1, 6)
@@ -18019,14 +18084,21 @@ def play_dice():
         won = True
         msg = f"LUCKY 7! JACKPOT ${winnings:,}"
         
-    if won: db.update_balance(user_id, winnings)
+    # If won, give money back + profit
+    if won: 
+        db.update_balance(user_id, winnings)
     
+    # Get Final Balance
     new_bal = db.get_user_balance(user_id)
     
     return jsonify({
-        "status":"success", "d1":d1, "d2":d2, "total":total, 
-        "won":won, "balance":new_bal, "msg":msg
+        "status":"success", 
+        "d1":d1, "d2":d2, "total":total, 
+        "won":won, 
+        "balance":new_bal, 
+        "msg":msg
     })
+
 
 # --- 17. LOGOUT & RUN ---
 @app.route('/logout')
