@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Neon Casino</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+        body {
+            background-color: #020202; color: white; font-family: 'Orbitron', sans-serif;
+            margin: 0; padding-bottom: 50px; text-align: center;
+            background-image: linear-gradient(to right, #0f0c29, #302b63, #24243e);
+        }
+        
+        /* UI COMPONENTS */
+        .navbar {
+            padding: 20px; display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); border-bottom: 1px solid #444;
+        }
+        .balance-box { 
+            font-size: 20px; color: #ffd700; text-shadow: 0 0 10px #ffd700; border: 1px solid #ffd700; 
+            padding: 5px 20px; border-radius: 20px; 
+        }
+
+        /* --- SLOT MACHINE --- */
+        .slot-container {
+            margin: 40px auto; width: 90%; max-width: 500px;
+            background: #111; border: 4px solid #ff00de; border-radius: 30px;
+            padding: 30px; box-shadow: 0 0 60px rgba(255, 0, 222, 0.4);
+            position: relative;
+        }
+        .slot-container::before { content: "COST: 50,000"; position: absolute; top: -15px; background: #000; padding: 0 10px; color: #ff00de; }
+
+        .reels {
+            display: flex; justify-content: space-around; background: black;
+            padding: 20px; border-radius: 15px; border: 2px solid #333; margin-bottom: 20px;
+        }
+        .reel {
+            font-size: 60px; width: 80px; height: 100px;
+            display: flex; align-items: center; justify-content: center;
+            background: #222; border-radius: 10px; text-shadow: 0 0 10px white;
+        }
+        
+        .spin-btn {
+            width: 100%; padding: 20px; font-size: 24px; font-family: 'Orbitron'; font-weight: bold;
+            background: linear-gradient(90deg, #ff00de, #a200ff); border: none; border-radius: 50px;
+            color: white; cursor: pointer; text-transform: uppercase; letter-spacing: 2px;
+            box-shadow: 0 0 30px #ff00de; transition: 0.2s;
+        }
+        .spin-btn:active { transform: scale(0.95); box-shadow: 0 0 10px #ff00de; }
+        .spin-btn:disabled { background: #444; box-shadow: none; cursor: not-allowed; }
+
+        /* --- SATTA SECTION (MULTIPLIER) --- */
+        .satta-section {
+            margin: 40px auto; max-width: 600px; padding: 30px;
+            background: rgba(0,0,0,0.6); border: 2px solid #00ffff; border-radius: 20px;
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.2);
+        }
+        .satta-title { color: #00ffff; font-size: 24px; margin-bottom: 20px; text-shadow: 0 0 10px #00ffff; }
+        
+        .input-group input {
+            padding: 15px; font-size: 18px; background: #111; border: 1px solid #444; color: white;
+            border-radius: 10px; width: 60%; text-align: center; font-family: 'Orbitron';
+        }
+        
+        .multipliers { display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+        .mult-btn {
+            padding: 15px 25px; background: #111; border: 1px solid #444; color: gray;
+            border-radius: 10px; cursor: pointer; transition: 0.3s; font-family: 'Orbitron';
+        }
+        .mult-btn:hover { border-color: white; color: white; }
+        
+        .mult-btn.danger { border-color: red; color: red; }
+        .mult-btn.danger:hover { background: red; color: black; box-shadow: 0 0 20px red; }
+        
+        .mult-btn.extreme { border-color: purple; color: purple; }
+        .mult-btn.extreme:hover { background: purple; color: white; box-shadow: 0 0 20px purple; }
+
+        /* ALERTS */
+        .msg-box { min-height: 30px; margin-top: 10px; font-size: 18px; }
+
+        /* JACKPOT OVERLAY */
+        .jackpot-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .jackpot-text {
+            font-size: 80px; color: gold; animation: blink 0.2s infinite alternate; text-shadow: 0 0 50px gold;
+        }
+        @keyframes blink { from { opacity: 1; } to { opacity: 0.5; } }
+
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <a href="/dashboard" style="color:white; text-decoration:none;">🏠 HOME</a>
+        <div class="balance-box">Wallet: $<span id="bal">{{ balance }}</span></div>
+    </div>
+
+    <div class="slot-container">
+        <h2 style="color: #ff00de; margin: 0 0 20px 0;">NEON SLOTS</h2>
+        <div class="reels">
+            <div class="reel" id="r1">🍒</div>
+            <div class="reel" id="r2">🍒</div>
+            <div class="reel" id="r3">🍒</div>
+        </div>
+        <div class="msg-box" id="slot-msg"></div>
+        <button class="spin-btn" onclick="spin()">SPIN (50k)</button>
+    </div>
+
+    <div class="satta-section">
+        <div class="satta-title">⚡ HIGH STAKES MULTIPLIER ⚡</div>
+        <p style="font-size: 12px; color: gray;">WARNING: If you lose, bet amount is GONE.</p>
+        
+        <div class="input-group">
+            <input type="number" id="betAmount" placeholder="Enter Amount to Risk">
+        </div>
+
+        <div class="multipliers">
+            <button class="mult-btn danger" onclick="playSatta(2)">2x (10% Chance)</button>
+            <button class="mult-btn danger" onclick="playSatta(3)">3x (7% Chance)</button>
+            <button class="mult-btn extreme" onclick="playSatta(5)">5x (5% Chance)</button>
+            <button class="mult-btn extreme" onclick="playSatta(10)">10x (1% Chance)</button>
+        </div>
+        <div class="msg-box" id="satta-msg" style="color: #00ffff;"></div>
+    </div>
+
+    <div id="jackpot" class="jackpot-overlay" onclick="this.style.display='none'">
+        <div class="jackpot-text">JACKPOT!</div>
+        <h2 style="color:white;">YOU WON 10 MILLION!</h2>
+    </div>
+
+    <script>
+        // Update Balance UI
+        function updateBal(amount) {
+            document.getElementById('bal').innerText = amount;
+        }
+
+        // --- SLOTS LOGIC ---
+        async function spin() {
+            const btn = document.querySelector('.spin-btn');
+            const reels = [document.getElementById('r1'), document.getElementById('r2'), document.getElementById('r3')];
+            const msg = document.getElementById('slot-msg');
+
+            btn.disabled = true;
+            msg.innerText = "Spinning...";
+            msg.style.color = "white";
+
+            // Fake Animation
+            let interval = setInterval(() => {
+                reels.forEach(r => r.innerText = ["💎","🍎","🥭","😈","🏆","💩"][Math.floor(Math.random()*6)]);
+            }, 80);
+
+            try {
+                const res = await fetch('/api/spin', { method: 'POST' });
+                const data = await res.json();
+                
+                setTimeout(() => {
+                    clearInterval(interval);
+                    btn.disabled = false;
+
+                    if(data.status === "error") {
+                        msg.innerText = data.msg;
+                        msg.style.color = "red";
+                    } else {
+                        reels[0].innerText = data.slots[0];
+                        reels[1].innerText = data.slots[1];
+                        reels[2].innerText = data.slots[2];
+                        updateBal(data.balance);
+                        
+                        msg.innerText = data.msg;
+                        msg.style.color = data.win > 0 ? "#00ff00" : "red";
+                        
+                        if(data.jackpot) document.getElementById('jackpot').style.display = 'flex';
+                    }
+                }, 2000);
+            } catch(e) { clearInterval(interval); btn.disabled = false; }
+        }
+
+        // --- SATTA LOGIC ---
+        async function playSatta(mult) {
+            const amount = document.getElementById('betAmount').value;
+            const msg = document.getElementById('satta-msg');
+
+            if(!amount || amount <= 0) {
+                msg.innerText = "Enter valid amount!";
+                msg.style.color = "red";
+                return;
+            }
+
+            msg.innerText = "Rolling...";
+            
+            try {
+                const res = await fetch('/api/satta', { 
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ amount: amount, multiplier: mult })
+                });
+                const data = await res.json();
+                
+                updateBal(data.balance);
+                msg.innerText = data.msg;
+                msg.style.color = data.won ? "#00ff00" : "red";
+
+            } catch(e) { msg.innerText = "Error"; }
+        }
+    </script>
+</body>
+</html>
