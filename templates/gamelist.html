@@ -2,53 +2,72 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Game List</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Select Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-        body { background: #050505; color: white; font-family: 'Orbitron', sans-serif; text-align: center; }
-        .header { padding: 40px; }
-        .back-btn { position: absolute; top: 20px; left: 20px; color: gray; text-decoration: none; font-size: 20px; }
+        body {
+            background: #050505; color: white; margin: 0; font-family: 'Rajdhani', sans-serif;
+            padding: 20px; min-height: 100vh;
+        }
+        .header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;
+        }
+        .back-btn {
+            background: rgba(255,255,255,0.1); border: none; color: white; padding: 10px 20px;
+            border-radius: 30px; text-decoration: none; font-size: 14px;
+        }
         
-        .game-grid {
-            display: flex; justify-content: center; gap: 30px; padding: 50px; flex-wrap: wrap;
-        }
+        .game-grid { display: flex; flex-direction: column; gap: 20px; }
+
         .game-tile {
-            width: 300px; height: 180px;
-            background: linear-gradient(135deg, #111, #222);
-            border-radius: 15px; border: 1px solid #444;
-            display: flex; align-items: center; justify-content: center;
-            text-decoration: none; color: white; position: relative;
-            overflow: hidden; transition: 0.3s;
+            position: relative; height: 160px; border-radius: 20px; overflow: hidden;
+            text-decoration: none; color: white; display: flex; align-items: flex-end; padding: 20px;
+            background-size: cover; background-position: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.2s;
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0; transform: scale(0.9);
         }
-        .game-tile:hover {
-            transform: scale(1.05); border-color: gold;
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+        /* Stagger animations */
+        .game-tile:nth-child(1) { animation-delay: 0.1s; background-image: linear-gradient(to top, black, transparent), url('https://i.imgur.com/e5R8XzL.jpeg'); } /* Slots Image Placeholder */
+        .game-tile:nth-child(2) { animation-delay: 0.2s; background-image: linear-gradient(to top, black, transparent), url('https://i.imgur.com/7Jk9qWc.png'); filter: grayscale(100%); pointer-events: none; }
+
+        .game-tile:active { transform: scale(0.98); }
+
+        .tile-content h2 { margin: 0; font-size: 30px; text-shadow: 0 0 10px black; }
+        .tile-content p { margin: 0; color: #00f3ff; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; }
+
+        .status {
+            position: absolute; top: 15px; right: 15px; background: #00f3ff; color: black;
+            padding: 5px 10px; border-radius: 5px; font-size: 10px; font-weight: bold;
         }
-        .game-info h2 { margin: 0; font-size: 28px; }
-        .game-info p { color: #00ffcc; font-size: 14px; }
-        .status { position: absolute; top: 10px; right: 10px; font-size: 10px; color: #0f0; }
+
+        @keyframes popIn { to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body>
-    <a href="/dashboard" class="back-btn">← Back</a>
     <div class="header">
-        <h1>AVAILABLE GAMES</h1>
-        <p>Your Balance: <span style="color: gold;">${{ balance }}</span></p>
+        <a href="/" class="back-btn">← Back</a>
+        <div style="color:#00f3ff;">${{ balance }}</div>
     </div>
+
+    <h1>CHOOSE GAME</h1>
 
     <div class="game-grid">
         <a href="/games/casino" class="game-tile">
-            <div class="status">● ONLINE</div>
-            <div class="game-info">
-                <h2>🎰 SLOTS</h2>
-                <p>Jackpot: 10 MILLION</p>
+            <div class="status">LIVE</div>
+            <div class="tile-content">
+                <p>JACKPOT 10M</p>
+                <h2>NEON SLOTS</h2>
             </div>
         </a>
-        
-        <div class="game-tile" style="opacity: 0.5; cursor: not-allowed;">
-            <div class="game-info">
-                <h2>🎲 DICE</h2>
-                <p>Coming Soon...</p>
+
+        <div class="game-tile">
+            <div class="status" style="background:gray;">SOON</div>
+            <div class="tile-content">
+                <p>COMING SOON</p>
+                <h2>DICE ROLL</h2>
             </div>
         </div>
     </div>
