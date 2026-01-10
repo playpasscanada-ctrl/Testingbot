@@ -3,126 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Casino Royale</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+    <title>Cyber Casino</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
-        :root { --neon-pink: #ff00de; --neon-red: #ff3333; --bg: #0b0b0f; --card-bg: #13131a; }
-        body {
-            background-color: var(--bg); color: white; font-family: 'Rajdhani', sans-serif;
-            margin: 0; padding-bottom: 100px; text-align: center; overflow-x: hidden;
+        :root { 
+            --neon-purple: #bc13fe; 
+            --neon-cyan: #00f3ff; 
+            --neon-red: #ff0044; 
+            --gold: #ffd700;
+            --bg: #020205; 
+            --glass: rgba(20, 20, 30, 0.6);
+        }
+        
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background: var(--bg); color: white; margin: 0; 
+            font-family: 'Share Tech Mono', monospace;
+            min-height: 100vh; overflow-x: hidden;
+            display: flex; flex-direction: column;
         }
 
-        /* --- BACKGROUND --- */
+        /* --- ANIMATED BACKGROUND --- */
         #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
 
-        /* --- NAVBAR --- */
+        /* --- HEADER --- */
         .navbar {
             padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
-            background: rgba(19, 19, 26, 0.95); backdrop-filter: blur(10px);
-            position: sticky; top: 0; z-index: 50; border-bottom: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
+            position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.1);
         }
-        .back-btn { text-decoration: none; color: #ccc; font-size: 20px; font-weight: bold; }
-        .balance-box {
-            background: linear-gradient(45deg, #ffd700, #ffa500); color: black;
-            padding: 5px 15px; border-radius: 20px; font-weight: bold; font-family: 'Orbitron';
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+        .back-btn { 
+            text-decoration: none; color: var(--neon-cyan); font-family: 'Orbitron'; font-size: 14px; 
+            border: 1px solid var(--neon-cyan); padding: 5px 15px; border-radius: 20px; transition: 0.3s;
+        }
+        .back-btn:hover { background: var(--neon-cyan); color: black; box-shadow: 0 0 15px var(--neon-cyan); }
+        
+        .balance-container { text-align: right; }
+        .balance-label { font-size: 10px; color: #888; display: block; }
+        .balance-val { font-size: 20px; color: var(--gold); font-family: 'Orbitron'; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
+
+        /* --- MAIN CONTAINER --- */
+        .main-container {
+            width: 100%; max-width: 600px; margin: 0 auto; padding: 20px;
+            display: flex; flex-direction: column; gap: 40px;
         }
 
-        /* --- SECTION DIVIDER --- */
-        .divider {
-            margin: 40px auto 20px; width: 90%; max-width: 500px; text-align: center; position: relative;
+        /* --- GAME CARD STYLES --- */
+        .game-panel {
+            background: var(--glass); border-radius: 20px; padding: 25px;
+            border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            position: relative; overflow: hidden; backdrop-filter: blur(15px);
+            transition: transform 0.3s;
         }
-        .divider::before {
-            content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 1px;
-            background: linear-gradient(90deg, transparent, #333, transparent); z-index: -1;
-        }
-        .divider span {
-            background: var(--bg); padding: 0 15px; color: #666; font-size: 12px; letter-spacing: 2px;
-            text-transform: uppercase; font-family: 'Orbitron'; border: 1px solid #333; border-radius: 20px;
-        }
-
-        /* --- GAME CARD SHARED STYLES --- */
-        .game-card {
-            margin: 0 auto 40px; width: 92%; max-width: 500px;
-            background: var(--card-bg); border-radius: 20px; padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05);
-            position: relative; overflow: hidden;
+        .game-panel::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px;
+            background: linear-gradient(90deg, transparent, currentColor, transparent);
         }
 
-        /* --- SLOT MACHINE SPECIFIC --- */
-        .slot-card { border-top: 3px solid var(--neon-pink); }
-        .slot-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .slot-title { font-family: 'Orbitron'; font-size: 24px; color: var(--neon-pink); text-shadow: 0 0 10px rgba(255, 0, 222, 0.5); margin: 0; }
-        .jackpot-badge { background: rgba(255, 0, 222, 0.1); color: var(--neon-pink); padding: 4px 8px; border-radius: 5px; font-size: 10px; border: 1px solid var(--neon-pink); }
+        /* --- SLOTS --- */
+        .panel-slots { color: var(--neon-purple); }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .game-title { font-family: 'Orbitron'; font-size: 24px; color: white; text-shadow: 0 0 10px currentColor; margin: 0; }
+        .game-tag { font-size: 10px; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid currentColor; color: currentColor; }
 
-        .reels-box {
-            display: flex; justify-content: space-between; gap: 8px;
-            background: #050508; padding: 10px; border-radius: 15px;
-            border: 1px solid #333; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        .slot-machine-frame {
+            background: #000; border: 2px solid #333; border-radius: 15px; padding: 10px;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.8); margin-bottom: 20px;
         }
+        .reels-container { display: flex; justify-content: space-between; gap: 5px; }
         .reel {
-            flex: 1; height: 100px; background: #1a1a20; border-radius: 10px;
-            font-size: 50px; display: flex; align-items: center; justify-content: center;
-            border: 1px solid rgba(255,255,255,0.05);
+            flex: 1; height: 100px; background: #111; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center; font-size: 45px;
+            border: 1px solid #222; overflow: hidden; position: relative;
         }
-        .spinning { animation: blurSpin 0.1s infinite; filter: blur(3px); }
-        @keyframes blurSpin { 0% { transform: translateY(-2px); } 50% { transform: translateY(2px); } 100% { transform: translateY(-2px); } }
-
-        .spin-btn {
-            width: 100%; margin-top: 20px; padding: 15px; border: none; border-radius: 12px;
-            background: linear-gradient(90deg, #ff00de, #9900ff); color: white;
-            font-family: 'Orbitron'; font-weight: 900; font-size: 18px; letter-spacing: 1px;
-            box-shadow: 0 5px 20px rgba(153, 0, 255, 0.3); cursor: pointer; transition: 0.2s;
+        .reel::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8), transparent 40%, transparent 60%, rgba(0,0,0,0.8));
+            pointer-events: none;
         }
-        .spin-btn:active { transform: scale(0.98); }
-        .spin-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
-
-        /* --- DEATH ROLL SPECIFIC --- */
-        .death-card { border-top: 3px solid var(--neon-red); background: linear-gradient(180deg, #13131a 0%, #1a0a0a 100%); }
-        .death-title { font-family: 'Orbitron'; font-size: 24px; color: var(--neon-red); text-shadow: 0 0 10px rgba(255, 51, 51, 0.5); margin: 0; }
         
+        .spinning { animation: blurAnim 0.1s infinite; filter: blur(4px); }
+        @keyframes blurAnim { 0% { transform: translateY(-2px); } 50% { transform: translateY(2px); } 100% { transform: translateY(-2px); } }
+
+        .action-btn {
+            width: 100%; padding: 16px; border: none; border-radius: 10px;
+            font-family: 'Orbitron'; font-size: 18px; font-weight: bold;
+            cursor: pointer; transition: 0.3s; color: white; text-transform: uppercase;
+            letter-spacing: 1px; position: relative; overflow: hidden;
+        }
+        .btn-purple { background: linear-gradient(45deg, #8900ff, #ff00de); box-shadow: 0 5px 20px rgba(188, 19, 254, 0.3); }
+        .btn-purple:hover { box-shadow: 0 0 30px rgba(188, 19, 254, 0.6); }
+        .btn-red { background: linear-gradient(45deg, #ff0000, #ff4444); box-shadow: 0 5px 20px rgba(255, 0, 68, 0.3); }
+        .btn-red:hover { box-shadow: 0 0 30px rgba(255, 0, 68, 0.6); }
+        
+        .action-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+
+        /* --- DEATH ROLL --- */
+        .panel-death { color: var(--neon-red); }
+        
+        .bet-input-container { position: relative; margin: 25px 0; }
+        .bet-label { position: absolute; top: -10px; left: 15px; background: #13131a; padding: 0 5px; color: #888; font-size: 10px; }
         .bet-input {
-            width: 100%; background: rgba(0,0,0,0.3); border: 1px solid #333; color: white;
-            padding: 15px; border-radius: 12px; font-size: 22px; text-align: center;
-            font-family: 'Orbitron'; outline: none; margin: 20px 0; transition: 0.3s;
+            width: 100%; background: transparent; border: 1px solid #444; color: white;
+            padding: 15px; border-radius: 8px; font-family: 'Orbitron'; font-size: 20px;
+            text-align: center; outline: none; transition: 0.3s;
         }
-        .bet-input:focus { border-color: var(--neon-red); box-shadow: 0 0 15px rgba(255, 51, 51, 0.2); }
+        .bet-input:focus { border-color: var(--neon-red); box-shadow: 0 0 15px rgba(255, 0, 68, 0.2); }
 
-        .risk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .risk-option {
-            background: rgba(255,255,255,0.03); border: 1px solid #333; padding: 15px;
-            border-radius: 10px; cursor: pointer; transition: 0.2s; position: relative; overflow: hidden;
+        .risk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 25px; }
+        .risk-card {
+            background: rgba(255,255,255,0.03); border: 1px solid #333; padding: 15px 10px;
+            border-radius: 8px; cursor: pointer; text-align: center; transition: 0.2s;
         }
-        .risk-option h3 { margin: 0; font-family: 'Orbitron'; font-size: 20px; color: #888; }
-        .risk-option p { margin: 5px 0 0; font-size: 10px; color: #555; text-transform: uppercase; }
+        .risk-val { font-family: 'Orbitron'; font-size: 20px; display: block; margin-bottom: 5px; color: #aaa; }
+        .risk-sub { font-size: 10px; color: #555; text-transform: uppercase; }
         
-        .risk-option.selected { background: rgba(255, 51, 51, 0.1); border-color: var(--neon-red); }
-        .risk-option.selected h3 { color: var(--neon-red); text-shadow: 0 0 10px var(--neon-red); }
-        .risk-option.selected p { color: #aaa; }
+        .risk-card:hover { border-color: #555; background: rgba(255,255,255,0.05); }
+        .risk-card.active { border-color: var(--neon-red); background: rgba(255, 0, 68, 0.1); box-shadow: 0 0 20px rgba(255, 0, 68, 0.2); }
+        .risk-card.active .risk-val { color: var(--neon-red); text-shadow: 0 0 10px var(--neon-red); }
+        .risk-card.active .risk-sub { color: #fff; }
 
-        .roll-btn {
-            width: 100%; padding: 15px; background: var(--neon-red); color: white;
-            font-family: 'Orbitron'; font-size: 18px; border: none; border-radius: 12px;
-            box-shadow: 0 0 20px rgba(255, 51, 51, 0.4); cursor: pointer; transition: 0.2s;
-        }
-        .roll-btn:active { transform: scale(0.98); }
-        .roll-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+        /* --- STATUS MESSAGES --- */
+        .status-msg { text-align: center; font-size: 12px; margin-top: 10px; min-height: 15px; color: #666; letter-spacing: 1px; }
 
-        /* --- WIN POPUP --- */
-        .win-modal {
+        /* --- WIN MODAL --- */
+        .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 100; display: none;
-            justify-content: center; align-items: center; flex-direction: column;
-            backdrop-filter: blur(5px);
+            background: rgba(0,0,0,0.9); z-index: 999; display: none;
+            justify-content: center; align-items: center; backdrop-filter: blur(8px);
         }
-        .win-content {
-            background: linear-gradient(135deg, #111, #222); padding: 40px; border-radius: 30px;
-            border: 2px solid #ffd700; text-align: center; box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
-            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        .win-modal {
+            background: rgba(10,10,15,0.95); border: 2px solid var(--gold);
+            padding: 40px; border-radius: 20px; text-align: center;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.4);
+            animation: zoomIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-width: 90%;
         }
-        @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .win-amount { font-size: 40px; color: #ffd700; font-family: 'Orbitron'; margin: 10px 0; text-shadow: 0 0 20px #ffd700; }
+        @keyframes zoomIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        .win-title { font-family: 'Orbitron'; font-size: 30px; margin: 0; color: white; }
+        .win-amount { font-family: 'Orbitron'; font-size: 45px; margin: 15px 0; color: var(--gold); text-shadow: 0 0 20px var(--gold); }
+        .modal-btn {
+            background: transparent; border: 1px solid var(--gold); color: var(--gold);
+            padding: 10px 30px; font-family: 'Orbitron'; cursor: pointer; transition: 0.3s;
+        }
+        .modal-btn:hover { background: var(--gold); color: black; box-shadow: 0 0 20px var(--gold); }
 
     </style>
 </head>
@@ -132,73 +158,83 @@
 
     <div class="navbar">
         <a href="/" class="back-btn">← LOBBY</a>
-        <div class="balance-box">$<span id="bal">{{ "{:,}".format(balance) }}</span></div>
+        <div class="balance-container">
+            <span class="balance-label">LIQUID ASSETS</span>
+            <div class="balance-val">$<span id="bal">{{ "{:,}".format(balance) }}</span></div>
+        </div>
     </div>
 
-    <div class="game-card slot-card">
-        <div class="slot-header">
-            <h2 class="slot-title">NEON SLOTS</h2>
-            <span class="jackpot-badge">JACKPOT: 10M</span>
-        </div>
-        
-        <div class="reels-box">
-            <div class="reel" id="r1">🍒</div>
-            <div class="reel" id="r2">💎</div>
-            <div class="reel" id="r3">🍒</div>
-        </div>
-        
-        <div style="display:flex; justify-content:space-between; margin-top:15px; font-size:12px; color:#666;">
-            <span>COST: $50,000</span>
-            <span id="slot-msg">READY TO SPIN</span>
+    <div class="main-container">
+
+        <div class="game-panel panel-slots">
+            <div class="panel-header">
+                <h2 class="game-title">NEON SLOTS</h2>
+                <span class="game-tag">JACKPOT: 10M</span>
+            </div>
+
+            <div class="slot-machine-frame">
+                <div class="reels-container">
+                    <div class="reel" id="r1">🍒</div>
+                    <div class="reel" id="r2">💎</div>
+                    <div class="reel" id="r3">🍒</div>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; font-size:12px; color:#888; margin-bottom:15px;">
+                <span>ENTRY: $50,000</span>
+                <span id="slot-status">SYSTEM READY</span>
+            </div>
+
+            <button class="action-btn btn-purple" id="btn-spin" onclick="spinSlots()">SPIN REELS</button>
         </div>
 
-        <button class="spin-btn" id="btn-spin" onclick="spinSlots()">SPIN NOW</button>
+        <div class="game-panel panel-death">
+            <div class="panel-header">
+                <h2 class="game-title" style="color:var(--neon-red)">DEATH ROLL</h2>
+                <span class="game-tag" style="border-color:var(--neon-red); color:var(--neon-red)">HIGH RISK</span>
+            </div>
+
+            <div class="bet-input-container">
+                <span class="bet-label">WAGER AMOUNT</span>
+                <input type="number" id="betInput" class="bet-input" placeholder="0">
+            </div>
+
+            <div class="risk-grid">
+                <div class="risk-card" onclick="selectMult(2, this)">
+                    <span class="risk-val">2x</span>
+                    <span class="risk-sub">10% CHANCE</span>
+                </div>
+                <div class="risk-card" onclick="selectMult(3, this)">
+                    <span class="risk-val">3x</span>
+                    <span class="risk-sub">7% CHANCE</span>
+                </div>
+                <div class="risk-card" onclick="selectMult(5, this)">
+                    <span class="risk-val">5x</span>
+                    <span class="risk-sub">5% CHANCE</span>
+                </div>
+                <div class="risk-card" onclick="selectMult(10, this)">
+                    <span class="risk-val">10x</span>
+                    <span class="risk-sub">1% CHANCE</span>
+                </div>
+            </div>
+
+            <div class="status-msg" id="death-msg">SELECT MULTIPLIER TO BEGIN</div>
+
+            <button class="action-btn btn-red" id="btn-roll" onclick="playDeathRoll()">EXECUTE ROLL</button>
+        </div>
+
     </div>
 
-    <div class="divider"><span>HIGH RISK ZONE</span></div>
-
-    <div class="game-card death-card">
-        <div style="text-align:center; margin-bottom:20px;">
-            <h2 class="death-title">DEATH ROLL</h2>
-            <p style="color:#666; font-size:12px; margin:5px 0;">MULTIPLY YOUR FORTUNE OR LOSE IT ALL</p>
-        </div>
-
-        <input type="number" id="betInput" class="bet-input" placeholder="ENTER BET AMOUNT">
-
-        <div class="risk-grid">
-            <div class="risk-option" onclick="selectMult(2, this)">
-                <h3>2x</h3>
-                <p>10% CHANCE</p>
-            </div>
-            <div class="risk-option" onclick="selectMult(3, this)">
-                <h3>3x</h3>
-                <p>7% CHANCE</p>
-            </div>
-            <div class="risk-option" onclick="selectMult(5, this)">
-                <h3>5x</h3>
-                <p>5% CHANCE</p>
-            </div>
-            <div class="risk-option" onclick="selectMult(10, this)">
-                <h3>10x</h3>
-                <p>1% CHANCE</p>
-            </div>
-        </div>
-
-        <div id="death-msg" style="text-align:center; font-size:12px; color:#666; margin-bottom:15px; min-height:18px;">SELECT A MULTIPLIER</div>
-
-        <button class="roll-btn" id="btn-roll" onclick="playDeathRoll()">💀 ROLL FATE</button>
-    </div>
-
-    <div class="win-modal" id="winModal" onclick="this.style.display='none'">
-        <div class="win-content">
-            <h2 style="color:white; margin:0; font-family:'Orbitron';">YOU WON!</h2>
+    <div class="modal-overlay" id="winModal">
+        <div class="win-modal">
+            <h2 class="win-title">BIG WIN!</h2>
             <div class="win-amount" id="winDisplay">+$0</div>
-            <p style="color:#888; font-size:12px; margin:0;">TAP TO COLLECT</p>
+            <button class="modal-btn" onclick="document.getElementById('winModal').style.display='none'">CLAIM</button>
         </div>
     </div>
 
     <script>
-        // --- 1. BACKGROUND ---
+        // --- ANIMATED BACKGROUND ---
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
         let width, height, particles = [];
@@ -207,25 +243,26 @@
         window.addEventListener('resize', resize); resize();
 
         class Particle {
-            constructor() { this.reset(); }
-            reset() { 
+            constructor() { 
                 this.x = Math.random() * width; 
                 this.y = Math.random() * height; 
-                this.size = Math.random() * 1.5; 
-                this.speed = Math.random() * 0.5 + 0.1;
-                this.alpha = Math.random() * 0.5 + 0.1;
+                this.size = Math.random() * 2; 
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = (Math.random() - 0.5) * 0.5;
+                this.opacity = Math.random() * 0.5;
             }
             update() { 
-                this.y -= this.speed; 
-                if (this.y < 0) this.reset(); 
+                this.x += this.speedX; this.y += this.speedY; 
+                if (this.x < 0) this.x = width; if (this.x > width) this.x = 0;
+                if (this.y < 0) this.y = height; if (this.y > height) this.y = 0;
             }
             draw() { 
-                ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`; 
+                ctx.fillStyle = `rgba(0, 243, 255, ${this.opacity})`; 
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); 
             }
         }
         
-        for (let i = 0; i < 50; i++) particles.push(new Particle());
+        for (let i = 0; i < 60; i++) particles.push(new Particle());
         function animateBg() { 
             ctx.clearRect(0, 0, width, height); 
             particles.forEach(p => { p.update(); p.draw(); }); 
@@ -233,7 +270,7 @@
         }
         animateBg();
 
-        // --- 2. GAME LOGIC ---
+        // --- GAME LOGIC ---
         function updateBal(val) { document.getElementById('bal').innerText = val.toLocaleString(); }
         function showWin(amt) {
             document.getElementById('winDisplay').innerText = "+$" + amt.toLocaleString();
@@ -244,14 +281,13 @@
         async function spinSlots() {
             const btn = document.getElementById('btn-spin');
             const reels = [document.getElementById('r1'), document.getElementById('r2'), document.getElementById('r3')];
-            const msg = document.getElementById('slot-msg');
+            const msg = document.getElementById('slot-status');
 
-            // 1. DISABLE BUTTON (Prevents Spam)
+            // Prevent Double Click
             btn.disabled = true;
             msg.innerText = "SPINNING..."; msg.style.color = "#ccc";
             reels.forEach(r => r.classList.add('spinning'));
 
-            // Fake spin animation
             let interval = setInterval(() => {
                 const icons = ["💎","🍎","🥭","7️⃣","🏆","🍒"];
                 reels.forEach(r => r.innerText = icons[Math.floor(Math.random()*icons.length)]);
@@ -278,9 +314,8 @@
                         
                         if(data.win > 0) showWin(data.win);
                     }
-                    // 2. RE-ENABLE BUTTON
                     btn.disabled = false;
-                }, 1500); // 1.5s delay for effect
+                }, 1500); 
             } catch(e) {
                 btn.disabled = false;
                 msg.innerText = "Connection Error";
@@ -292,9 +327,9 @@
 
         function selectMult(val, el) {
             selectedMult = val;
-            document.querySelectorAll('.risk-option').forEach(d => d.classList.remove('selected'));
-            el.classList.add('selected');
-            document.getElementById('death-msg').innerText = `SELECTED: ${val}x MULTIPLIER`;
+            document.querySelectorAll('.risk-card').forEach(d => d.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('death-msg').innerText = `TARGET LOCKED: ${val}x MULTIPLIER`;
         }
 
         async function playDeathRoll() {
@@ -302,13 +337,12 @@
             const amt = document.getElementById('betInput').value;
             const msg = document.getElementById('death-msg');
 
-            if(!amt || amt <= 0) { msg.innerText = "ENTER VALID AMOUNT!"; msg.style.color = "#ff3333"; return; }
-            if(!selectedMult) { msg.innerText = "SELECT A MULTIPLIER!"; msg.style.color = "#ff3333"; return; }
+            if(!amt || amt <= 0) { msg.innerText = "INVALID AMOUNT"; msg.style.color = "#ff3333"; return; }
+            if(!selectedMult) { msg.innerText = "SELECT RISK LEVEL"; msg.style.color = "#ff3333"; return; }
 
-            // 1. DISABLE BUTTON
             btn.disabled = true;
-            btn.innerHTML = "ROLLING...";
-            msg.innerText = "FATE IS BEING SEALED..."; msg.style.color = "#ccc";
+            btn.innerHTML = "CALCULATING FATE...";
+            msg.innerText = "PROCESSING TRANSACTION..."; msg.style.color = "#ccc";
 
             try {
                 const res = await fetch('/api/satta', {
@@ -320,7 +354,7 @@
 
                 setTimeout(() => {
                     btn.disabled = false;
-                    btn.innerHTML = "💀 ROLL FATE";
+                    btn.innerHTML = "EXECUTE ROLL";
                     
                     if(data.status === 'error') {
                         msg.innerText = data.msg; msg.style.color = "#ff3333";
@@ -330,11 +364,11 @@
                         msg.style.color = data.won ? "#00ff00" : "#ff3333";
                         if(data.won) showWin(amt * selectedMult);
                     }
-                }, 1000); // 1s delay
+                }, 1000); 
             } catch(e) {
                 btn.disabled = false;
-                btn.innerHTML = "💀 ROLL FATE";
-                msg.innerText = "System Error";
+                btn.innerHTML = "EXECUTE ROLL";
+                msg.innerText = "Network Error";
             }
         }
     </script>
