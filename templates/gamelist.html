@@ -58,11 +58,13 @@
             animation: slideIn 0.6s forwards;
         }
         
+        /* Animation Delays for smooth entry */
         .game-card:nth-child(1) { animation-delay: 0.1s; }
         .game-card:nth-child(2) { animation-delay: 0.2s; }
         .game-card:nth-child(3) { animation-delay: 0.3s; }
         .game-card:nth-child(4) { animation-delay: 0.4s; }
         .game-card:nth-child(5) { animation-delay: 0.5s; }
+        .game-card:nth-child(6) { animation-delay: 0.6s; } /* New Memory Card Delay */
 
         @keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
         
@@ -101,6 +103,9 @@
         .card-death { border-color: #ff0000; } .card-death:hover { box-shadow: 0 0 30px #ff0000, inset 0 0 20px rgba(255, 0, 0, 0.1); }
         .card-biz { border-color: #00ff00; } .card-biz:hover { box-shadow: 0 0 30px #00ff00, inset 0 0 20px rgba(0, 255, 0, 0.1); }
         .card-dice { border-color: #ffd700; } .card-dice:hover { box-shadow: 0 0 30px #ffd700, inset 0 0 20px rgba(255, 215, 0, 0.1); }
+        
+        /* New Memory Game Style */
+        .card-memory { border-color: #aa00ff; } .card-memory:hover { box-shadow: 0 0 30px #aa00ff, inset 0 0 20px rgba(170, 0, 255, 0.1); }
 
     </style>
 </head>
@@ -122,6 +127,15 @@
                 <p style="color: cyan;">RUN & COLLECT • $10/COIN</p>
             </div>
             <div class="card-icon">🏃‍♂️</div>
+        </a>
+
+        <a href="/games/memory" class="game-card card-memory">
+            <div class="status-badge live" style="background:#aa00ff; color:white; box-shadow:0 0 15px #aa00ff;">LEGENDARY</div>
+            <div class="card-info">
+                <h2 style="background: linear-gradient(to right, #aa00ff, #ff00ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">CYBER MEMORY</h2>
+                <p style="color: #aa00ff;">SURVIVE BOMBS • WIN ROLES</p>
+            </div>
+            <div class="card-icon">🧠</div>
         </a>
 
         <a href="/games/casino" class="game-card card-slots">
