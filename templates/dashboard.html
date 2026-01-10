@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luneira Hub</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        body {
+            background: #050505; color: white; font-family: 'Orbitron', sans-serif;
+            margin: 0; height: 100vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; overflow: hidden;
+        }
+        /* Animated Background */
+        body::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 50% 50%, #1a0b2e 0%, #000000 70%);
+            z-index: -1; animation: pulseBg 10s infinite alternate;
+        }
+        @keyframes pulseBg { 0% { opacity: 0.8; } 100% { opacity: 1; } }
+
+        .profile {
+            position: absolute; top: 20px; right: 20px;
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(255, 255, 255, 0.05); padding: 10px 20px;
+            border-radius: 50px; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .profile img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #00ffcc; }
+        
+        h1 { font-size: 3rem; text-shadow: 0 0 20px #00ffcc; margin-bottom: 50px; }
+
+        .container { display: flex; gap: 40px; z-index: 2; }
+
+        .card {
+            width: 250px; height: 350px;
+            background: rgba(20, 20, 20, 0.6);
+            border: 2px solid #333; border-radius: 20px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(10px); position: relative; overflow: hidden;
+            text-decoration: none; color: white;
+        }
+        
+        .card::after {
+            content: ''; position: absolute; width: 100%; height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            top: -100%; transition: 0.5s;
+        }
+        .card:hover::after { top: 100%; }
+
+        .card:hover { transform: translateY(-15px) scale(1.05); border-color: white; }
+        
+        .shop-card:hover { box-shadow: 0 0 50px #ff00ff; border-color: #ff00ff; }
+        .game-card:hover { box-shadow: 0 0 50px #00ffff; border-color: #00ffff; }
+
+        .icon { font-size: 80px; margin-bottom: 20px; transition: 0.3s; }
+        .card:hover .icon { transform: scale(1.2) rotate(5deg); }
+
+        .btn-text { font-size: 24px; font-weight: bold; letter-spacing: 2px; }
+
+    </style>
+</head>
+<body>
+
+    <div class="profile">
+        <img src="{{ avatar }}" alt="User">
+        <div>
+            <div style="font-size: 12px; color: gray;">Welcome</div>
+            <div>{{ username }}</div>
+            <div style="color: #00ffcc;">${{ balance }}</div>
+        </div>
+    </div>
+
+    <h1>CHOOSE PATH</h1>
+
+    <div class="container">
+        <a href="/shop" class="card shop-card">
+            <div class="icon">🛍️</div>
+            <div class="btn-text">SHOP</div>
+        </a>
+
+        <a href="/games" class="card game-card">
+            <div class="icon">🎮</div>
+            <div class="btn-text">GAMES</div>
+        </a>
+    </div>
+
+</body>
+</html>
