@@ -101,9 +101,11 @@
 
         .shop-card { border-left: 4px solid var(--secondary); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
         .game-card { border-left: 4px solid var(--primary); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        
+        .login-card { border-left: 4px solid #5865F2; box-shadow: 0 10px 30px rgba(88, 101, 242, 0.3); justify-content: center; }
+
         .shop-card:hover { box-shadow: 0 10px 40px rgba(188, 19, 254, 0.2); }
         .game-card:hover { box-shadow: 0 10px 40px rgba(0, 243, 255, 0.2); }
+        .login-card:hover { box-shadow: 0 10px 40px rgba(88, 101, 242, 0.4); }
 
         .card-text h2 { margin: 0; font-family: 'Rajdhani'; font-size: 28px; text-transform: uppercase; font-weight: 700; }
         .card-text p { margin: 5px 0 0; font-size: 12px; color: #bbb; letter-spacing: 0.5px; }
@@ -129,33 +131,50 @@
 
     <div class="dev-badge">DEVELOPED BY SAKSHAM</div>
 
-    <div class="profile-bar">
-        <img src="{{ user['avatar'] }}" class="avatar" alt="User" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
-        <div class="info">
-            <h3>{{ user['username'] }}</h3>
-            <p>WALLET: ${{ "{:,}".format(balance) }}</p>
+    {% if user %}
+        
+        <div class="profile-bar">
+            <img src="{{ user['avatar'] }}" class="avatar" alt="User" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+            <div class="info">
+                <h3>{{ user['username'] }}</h3>
+                <p>WALLET: ${{ "{:,}".format(balance) }}</p>
+            </div>
         </div>
-    </div>
 
-    <div class="hub-container">
-        <a href="/shop" class="card shop-card">
-            <div class="card-text">
-                <h2 style="color: var(--secondary);">Item Shop</h2>
-                <p>Buy Roles & Inventory</p>
-            </div>
-            <div class="icon">🛍️</div>
-        </a>
+        <div class="hub-container">
+            <a href="/shop" class="card shop-card">
+                <div class="card-text">
+                    <h2 style="color: var(--secondary);">Item Shop</h2>
+                    <p>Buy Roles & Inventory</p>
+                </div>
+                <div class="icon">🛍️</div>
+            </a>
 
-        <a href="/games" class="card game-card">
-            <div class="card-text">
-                <h2 style="color: var(--primary);">Game Zone</h2>
-                <p>Play & Earn Money</p>
-            </div>
-            <div class="icon">🎮</div>
-        </a>
-    </div>
+            <a href="/games" class="card game-card">
+                <div class="card-text">
+                    <h2 style="color: var(--primary);">Game Zone</h2>
+                    <p>Play & Earn Money</p>
+                </div>
+                <div class="icon">🎮</div>
+            </a>
+        </div>
 
-    <div class="footer-credit">SYSTEM SECURED • ID: {{ user['id'] }}</div>
+        <div class="footer-credit">SYSTEM SECURED • ID: {{ user['id'] }}</div>
+
+    {% else %}
+        
+        <div class="hub-container" style="margin-top: 50px;">
+            <a href="{{ login_url }}" class="card login-card">
+                <div class="card-text" style="text-align: center;">
+                    <h2 style="color: #5865F2;">LOGIN</h2>
+                    <p>Connect with Discord</p>
+                </div>
+            </a>
+        </div>
+        <div class="footer-credit">WELCOME TO LUNEIRA</div>
+
+    {% endif %}
+
 
     <script>
         const canvas = document.getElementById('trail-canvas');
