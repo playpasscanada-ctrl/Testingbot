@@ -17275,14 +17275,21 @@ C_DARK = 0x2B2D31
 # ==========================================
 # 🌐 FINAL READY FLASK BACKEND
 # ==========================================
+            "msg":msg
+    })
+
+
+# ==========================================
+# 🚀 NEW BUSINESS SYSTEM ROUTES ADDED BELOW
+# ==========================================
 from flask import Flask, session, render_template, redirect, request, jsonify, url_for
 import os
 import requests
 import urllib.parse
-import random # Casino ke liye zaroori hai
-import db # Jo db.py file humne banayi thi usse connect kar rahe hain
-import time # Time calculation ke liye (Business Passive Income)
-from business_config import BUSINESSES # Business settings import kar rahe hain
+import random 
+import db # Database connection
+import time # For Business logic
+from business_config import BUSINESSES # Import Business Settings
 
 app = Flask(__name__)
 
@@ -17293,64 +17300,51 @@ CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "https://testingbot-q1jb.onrender.com/callback")
 API_ENDPOINT = 'https://discord.com/api/v10'
 
-# --- 1. HOME ROUTE (DASHBOARD) ---
+# ==========================================
+# 🏠 STANDARD ROUTES (DASHBOARD, SHOP, GAMES)
+# ==========================================
+
+# --- 1. HOME ROUTE ---
 @app.route('/')
 def home():
-    # Login URL Generate karna
     encoded_redirect = urllib.parse.quote(REDIRECT_URI)
     login_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
 
-    # Agar User Login Nahi Hai -> Login Button Dikhao
     if 'user_info' not in session:
         return render_template('dashboard.html', user=None, login_url=login_url)
     
-    # Agar User Login Hai -> Dashboard Dikhao
     user_id = session['user_info']['id']
-    
-    # Balance fresh DB se lo
     current_balance = db.get_user_balance(user_id)
-    
-    # Session update kardo
     session['user_info']['balance'] = current_balance
     
     return render_template('dashboard.html', user=session['user_info'], balance=current_balance)
 
-
 # --- 2. SHOP ROUTE ---
 @app.route('/shop')
 def shop():
-    if 'user_info' not in session:
-        return redirect('/') 
-    
+    if 'user_info' not in session: return redirect('/') 
     user_id = session['user_info']['id']
     cid_from_url = request.args.get('cid') 
-    
     current_balance = db.get_user_balance(user_id)
-    
     return render_template('index.html', user=session['user_info'], balance=current_balance, cid=cid_from_url)
 
-
-# --- 3. GAME LIST ROUTE ---
+# --- 3. GAME LIST ---
 @app.route('/games')
 def gamelist():
     if 'user_info' not in session: return redirect('/')
-    
     user_id = session['user_info']['id']
     balance = db.get_user_balance(user_id)
     return render_template('gamelist.html', balance=balance)
 
-
-# --- 4. CASINO GAME ROUTE ---
+# --- 4. CASINO ---
 @app.route('/games/casino')
 def casino():
     if 'user_info' not in session: return redirect('/')
-    
     user_id = session['user_info']['id']
     balance = db.get_user_balance(user_id)
     return render_template('casino.html', username=session['user_info']['username'], balance=balance)
 
-
-# --- 5. CALLBACK (LOGIN SYSTEM) ---
+# --- 5. AUTH CALLBACK ---
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
@@ -17383,26 +17377,20 @@ def callback():
             'avatar': f"https://cdn.discordapp.com/avatars/{user_id}/{user_data['avatar']}.png",
             'balance': user_balance
         }
-        
         return redirect('/') 
         
     except Exception as e:
         return f"Login Failed: {str(e)} <br> Tip: Check Client Secret in Render."
 
-
-# --- 6. API: SPIN LOGIC (CASINO) ---
+# --- 6. API: SPIN ---
 @app.route('/api/spin', methods=['POST'])
 def spin():
     if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
-    
     user_id = session['user_info']['id']
     cost = 50000
-    
-    if db.get_user_balance(user_id) < cost:
-        return jsonify({"status":"error", "msg":"Insufficient Funds!"})
+    if db.get_user_balance(user_id) < cost: return jsonify({"status":"error", "msg":"Insufficient Funds!"})
     
     db.update_balance(user_id, -cost)
-    
     items = ["💎", "🏆", "😈", "🍎", "🥭", "💩"]
     weights = [1, 3, 2, 12, 12, 70]
     result = random.choices(items, weights=weights, k=1)[0]
@@ -17425,32 +17413,22 @@ def spin():
         win = 100000; msg="Won 100k!"
         
     if win > 0: db.update_balance(user_id, win)
-    
-    return jsonify({
-        "status":"success", "slots":slots, 
-        "balance": db.get_user_balance(user_id), 
-        "win":win, "jackpot":is_jackpot, "msg":msg
-    })
+    return jsonify({"status":"success", "slots":slots, "balance": db.get_user_balance(user_id), "win":win, "jackpot":is_jackpot, "msg":msg})
 
-
-# --- 7. API: SATTA LOGIC ---
+# --- 7. API: SATTA ---
 @app.route('/api/satta', methods=['POST'])
 def satta():
     if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
-    
     user_id = session['user_info']['id']
     data = request.json
     bet_amount = int(data.get('amount'))
     multiplier = int(data.get('multiplier'))
     
-    if db.get_user_balance(user_id) < bet_amount:
-        return jsonify({"status":"error", "msg":"Garib! Balance nahi hai."})
-    
+    if db.get_user_balance(user_id) < bet_amount: return jsonify({"status":"error", "msg":"Garib! Balance nahi hai."})
     db.update_balance(user_id, -bet_amount)
     
     chance_map = {2: 10, 3: 7, 5: 5, 10: 1}
     win_chance = chance_map.get(multiplier, 0)
-    
     roll = random.randint(1, 100)
     won = roll <= win_chance
     
@@ -17462,116 +17440,120 @@ def satta():
     else:
         msg = f"LOST -{bet_amount}"
         
-    return jsonify({
-        "status":"success", "won":won, 
-        "balance": db.get_user_balance(user_id), 
-        "msg":msg
-    })
+    return jsonify({"status":"success", "won":won, "balance": db.get_user_balance(user_id), "msg":msg})
 
 
 # ==========================================
-# 🚀 NEW BUSINESS SYSTEM ROUTES ADDED BELOW
+# 🚀 ADVANCED BUSINESS SYSTEM (HEIST + INVESTMENT)
 # ==========================================
 
-# --- 8. BUSINESS DASHBOARD (PASSIVE INCOME) ---
+# --- 8. BUSINESS DASHBOARD (PASSIVE INCOME + DELIVERY) ---
 @app.route('/business')
 def business_dashboard():
     if 'user_info' not in session: return redirect('/')
-    
     user_id = session['user_info']['id']
     
-    # DB se Data lo (Supabase access direct db module se)
     data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
-    
-    if not data: return "Error loading data. Try again."
+    if not data: return "Error loading data."
     
     balance = data[0]['balance']
     owned_businesses = data[0]['businesses'] or {}
-
-    # --- PASSIVE INCOME CALCULATION (AUTO) ---
     current_time = int(time.time())
-    
-    for biz_id, biz_data in owned_businesses.items():
-        # Check kitna time hua pichle visit se
-        last_check = biz_data.get('last_check', current_time)
+
+    # --- DELIVERY & PASSIVE INCOME LOGIC ---
+    for biz_id, biz in owned_businesses.items():
+        # 1. Check Pending Delivery (3 Hours System)
+        if 'delivery_time' in biz and biz['delivery_time'] > 0:
+            if current_time >= biz['delivery_time']:
+                # Delivery Arrived!
+                biz['supplies'] = 100
+                biz['delivery_time'] = 0 
+        
+        # 2. Passive Income Calculation
+        last_check = biz.get('last_check', current_time)
         hours_passed = (current_time - last_check) / 3600
         
         if hours_passed > 0:
-            # Stats update logic
             rate = BUSINESSES[biz_id]['income_per_hr']
-            supplies = biz_data.get('supplies', 0)
-            popularity = biz_data.get('popularity', 100)
+            supplies = biz.get('supplies', 0)
             
-            # Sirf tabhi production hoga jab Supplies hongi
             if supplies > 0:
-                production_efficiency = (popularity / 100)
-                produced_stock = int(rate * hours_passed * production_efficiency)
-                
-                # Max stock cap check
+                # Production
+                production = int(rate * hours_passed * (biz.get('popularity', 100)/100))
                 max_st = BUSINESSES[biz_id]['max_stock']
-                new_stock = min(biz_data.get('stock', 0) + produced_stock, max_st)
+                biz['stock'] = min(biz.get('stock', 0) + production, max_st)
                 
-                # Supplies kam karo
-                supplies_used = int(hours_passed * 10) 
-                new_supplies = max(0, supplies - supplies_used)
-                
-                # Popularity thodi girao
-                new_popularity = max(0, int(popularity - (hours_passed * 2)))
-                
-                # Save changes locally
-                owned_businesses[biz_id]['stock'] = new_stock
-                owned_businesses[biz_id]['supplies'] = new_supplies
-                owned_businesses[biz_id]['popularity'] = new_popularity
-                owned_businesses[biz_id]['last_check'] = current_time
+                # Consumption
+                biz['supplies'] = max(0, supplies - int(hours_passed * 10))
+                biz['popularity'] = max(0, int(biz.get('popularity', 100) - hours_passed))
+                biz['last_check'] = current_time
 
-    # Updated stats DB me save karo
     db.supabase.table("economy").update({"businesses": owned_businesses}).eq("user_id", user_id).execute()
 
     return render_template('business.html', 
                          user=session['user_info'], 
                          balance=balance, 
                          owned=owned_businesses, 
-                         all_biz=BUSINESSES)
+                         all_biz=BUSINESSES,
+                         now=current_time)
 
 # --- 9. API: BUY BUSINESS ---
 @app.route('/api/business/buy', methods=['POST'])
 def buy_business():
     if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
-    
     user_id = session['user_info']['id']
     biz_id = request.json.get('biz_id')
     
-    # Fresh Data Fetch
     data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
     balance = data[0]['balance']
     owned = data[0]['businesses'] or {}
     
-    if biz_id in owned:
-        return jsonify({"status": "error", "msg": "You already own this business!"})
+    if biz_id in owned: return jsonify({"status": "error", "msg": "You already own this!"})
     
     cost = BUSINESSES[biz_id]['price']
-    if balance < cost:
-        return jsonify({"status": "error", "msg": f"Too expensive! You need ${cost:,}"})
+    if balance < cost: return jsonify({"status": "error", "msg": f"Too expensive! Need ${cost:,}"})
     
-    # Purchase Logic
+    # Initialize with Security Level 1 and No Investor
     owned[biz_id] = {
         "stock": 0, "supplies": 100, "popularity": 100, 
-        "level": 1, "last_check": int(time.time())
+        "level": 1, "security": 1, "last_check": int(time.time()),
+        "investment_open": False, "has_investor": False
     }
     
-    # DB Update
-    db.supabase.table("economy").update({
-        "balance": balance - cost,
-        "businesses": owned
-    }).eq("user_id", user_id).execute()
-    
-    return jsonify({"status": "success", "msg": f"Successfully Purchased {BUSINESSES[biz_id]['name']}!"})
+    db.supabase.table("economy").update({"balance": balance - cost, "businesses": owned}).eq("user_id", user_id).execute()
+    return jsonify({"status": "success", "msg": f"Purchased {BUSINESSES[biz_id]['name']}!"})
 
-# --- 10. API: BUSINESS ACTIONS (Resupply/Promote/Sell) ---
+# --- 10. API: ORDER SUPPLIES (3 HOURS DELAY) ---
+@app.route('/api/business/order', methods=['POST'])
+def order_supplies():
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+    user_id = session['user_info']['id']
+    biz_id = request.json.get('biz_id')
+    
+    data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
+    bal = data[0]['balance']
+    owned = data[0]['businesses']
+    
+    if biz_id not in owned: return jsonify({"status":"error", "msg":"Not Owned"})
+    
+    # Check if already delivering
+    if owned[biz_id].get('delivery_time', 0) > time.time():
+         return jsonify({"status":"error", "msg":"Truck already on the way!"})
+
+    cost = 75000
+    if bal < cost: return jsonify({"status":"error", "msg":"Need $75k"})
+    
+    # 3 HOURS DELAY (3 * 3600 seconds)
+    arrival_time = int(time.time()) + (3 * 3600)
+    owned[biz_id]['delivery_time'] = arrival_time
+    
+    db.supabase.table("economy").update({"balance": bal - cost, "businesses": owned}).eq("user_id", user_id).execute()
+    return jsonify({"status":"success", "msg": "Supplies ordered! Arriving in 3 Hours."})
+
+# --- 11. API: BUSINESS ACTIONS (SELL & PROMOTE) ---
 @app.route('/api/business/action', methods=['POST'])
 def biz_action():
     if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
-
     user_id = session['user_info']['id']
     req = request.json
     action = req.get('action') 
@@ -17581,77 +17563,202 @@ def biz_action():
     balance = data[0]['balance']
     owned = data[0]['businesses']
     
-    if biz_id not in owned: return jsonify({"status": "error", "msg": "You don't own this!"})
-    
+    if biz_id not in owned: return jsonify({"status": "error", "msg": "Not owned"})
     biz = owned[biz_id]
     msg = ""
     
-    if action == 'resupply':
-        cost = 75000
-        if balance < cost: return jsonify({"status":"error", "msg":"Need $75k for supplies"})
-        if biz['supplies'] >= 100: return jsonify({"status":"error", "msg":"Supplies are already full!"})
-        
-        balance -= cost
-        biz['supplies'] = 100
-        msg = "Trucks arrived! Supplies Restocked."
-        
-    elif action == 'promote':
+    if action == 'promote':
         cost = 10000
-        if balance < cost: return jsonify({"status":"error", "msg":"Need $10k for marketing"})
-        if biz['popularity'] >= 100: return jsonify({"status":"error", "msg":"Popularity is already max!"})
-        
+        if balance < cost: return jsonify({"status":"error", "msg":"Need $10k"})
+        if biz['popularity'] >= 100: return jsonify({"status":"error", "msg":"Popularity Maxed!"})
         balance -= cost
         biz['popularity'] = 100
-        msg = "Ad Campaign launched! Popularity Boosted."
+        msg = "Popularity Boosted!"
         
     elif action == 'sell_stock':
         stock_val = biz['stock']
-        if stock_val <= 0: return jsonify({"status":"error", "msg":"No Stock to sell right now."})
+        if stock_val <= 0: return jsonify({"status":"error", "msg":"No Stock"})
         
-        balance += stock_val
+        # --- INVESTMENT SPLIT (SHARK TANK) ---
+        final_profit = stock_val
+        
+        if biz.get('has_investor') and biz.get('investor_id'):
+            investor_share = int(stock_val * 0.20) # 20% to Investor
+            investor_id = biz['investor_id']
+            final_profit = stock_val - investor_share # 80% to Owner
+            
+            # Pay Investor (Offline)
+            db.update_balance(investor_id, investor_share)
+            msg = f"Stock Sold! You kept ${final_profit:,} (Partner took ${investor_share:,})"
+        else:
+            msg = f"Stock Sold! Earned ${final_profit:,}"
+            
+        balance += final_profit
         biz['stock'] = 0
-        msg = f"Stock Sold! Earned ${stock_val:,} from the market."
 
-    # Save to DB
-    db.supabase.table("economy").update({
-        "balance": balance, "businesses": owned
-    }).eq("user_id", user_id).execute()
-    
+    db.supabase.table("economy").update({"balance": balance, "businesses": owned}).eq("user_id", user_id).execute()
     return jsonify({"status": "success", "msg": msg, "new_bal": balance})
 
-# --- 11. API: RAID SYSTEM (ATTACK) ---
-@app.route('/api/business/raid', methods=['POST'])
-def raid_business():
+# --- 12. API: BUY SECURITY (ANT-HEIST) ---
+@app.route('/api/business/security', methods=['POST'])
+def buy_security():
+    user_id = session['user_info']['id']
+    biz_id = request.json.get('biz_id')
+    
+    data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
+    bal = data[0]['balance']
+    owned = data[0]['businesses']
+    
+    current_sec = owned[biz_id].get('security', 1)
+    if current_sec >= 5: return jsonify({"status":"error", "msg":"Max Security Reached!"})
+    
+    cost = 500000 * current_sec # Price increases with level
+    if bal < cost: return jsonify({"status":"error", "msg":f"Need ${cost:,} for upgrade"})
+    
+    owned[biz_id]['security'] = current_sec + 1
+    db.supabase.table("economy").update({"balance": bal - cost, "businesses": owned}).eq("user_id", user_id).execute()
+    
+    return jsonify({"status":"success", "msg": f"Security Upgraded to Level {current_sec + 1}!"})
+
+# --- 13. API: GET TARGETS (FOR HEIST & INVESTMENT) ---
+@app.route('/api/business/targets', methods=['GET'])
+def get_targets():
+    # Fetch random 20 users with businesses
+    all_users = db.supabase.table("economy").select("user_id, businesses").neq("businesses", "{}").limit(20).execute().data
+    targets = []
+    my_id = session['user_info']['id']
+    
+    for u in all_users:
+        if u['user_id'] == my_id: continue 
+        
+        for b_id, b_data in u['businesses'].items():
+            targets.append({
+                "user_id": u['user_id'],
+                "biz_name": BUSINESSES[b_id]['name'],
+                "biz_id": b_id,
+                "security": b_data.get('security', 1),
+                "stock": b_data.get('stock', 0),
+                "investment_open": b_data.get('investment_open', False),
+                "has_investor": b_data.get('has_investor', False)
+            })
+    return jsonify(targets)
+
+# --- 14. API: HEIST EXECUTION (4-STEP VERIFICATION) ---
+@app.route('/api/business/heist', methods=['POST'])
+def execute_heist():
+    hacker_id = session['user_info']['id']
+    req = request.json
+    target_id = req.get('target_id')
+    biz_id = req.get('biz_id')
+    step_success = req.get('success') # From UI minigame
+    
+    # 1. Entry Fee Check
+    hacker_data = db.supabase.table("economy").select("balance, businesses").eq("user_id", hacker_id).execute().data
+    if hacker_data[0]['balance'] < 100000000: 
+        return jsonify({"status":"error", "msg":"Insufficient Funds for Heist Kit ($100M)"})
+
+    new_hacker_bal = hacker_data[0]['balance'] - 100000000
+    
+    if not step_success:
+        db.supabase.table("economy").update({"balance": new_hacker_bal}).eq("user_id", hacker_id).execute()
+        return jsonify({"status":"fail", "msg":"HACK FAILED! You lost $100M."})
+
+    # 2. Fetch Target
+    target_data = db.supabase.table("economy").select("businesses").eq("user_id", target_id).execute().data
+    target_biz = target_data[0]['businesses']
+    
+    # 3. Security RNG Check
+    security_lvl = target_biz[biz_id].get('security', 1)
+    win_chance = 1.0 - (security_lvl * 0.15) 
+    
+    if random.random() > win_chance:
+        db.supabase.table("economy").update({"balance": new_hacker_bal}).eq("user_id", hacker_id).execute()
+        return jsonify({"status":"fail", "msg": f"Target Security Level {security_lvl} blocked your breach!"})
+    
+    # 4. SUCCESS: TRANSFER OWNERSHIP
+    stolen_biz_data = target_biz.pop(biz_id)
+    # Remove existing investors on theft
+    stolen_biz_data['has_investor'] = False 
+    stolen_biz_data['investment_open'] = False
+    
+    db.supabase.table("economy").update({"businesses": target_biz}).eq("user_id", target_id).execute()
+    
+    hacker_biz = hacker_data[0]['businesses'] or {}
+    hacker_biz[biz_id] = stolen_biz_data 
+    
+    db.supabase.table("economy").update({
+        "balance": new_hacker_bal, "businesses": hacker_biz
+    }).eq("user_id", hacker_id).execute()
+    
+    return jsonify({"status":"success", "msg":"SYSTEM BREACHED! Ownership transferred to you."})
+
+# --- 15. API: LIST FOR INVESTMENT ---
+@app.route('/api/business/open_investment', methods=['POST'])
+def open_investment():
     if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
-
-    attacker_id = session['user_info']['id']
-    bet = int(request.json.get('bet', 100000))
+    user_id = session['user_info']['id']
+    biz_id = request.json.get('biz_id')
     
-    # Check Balance
-    current_bal = db.get_user_balance(attacker_id)
-    if current_bal < bet:
-        return jsonify({"status": "error", "msg": "Garib! Raid karne ke liye cash chahiye."})
+    data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
+    owned = data[0]['businesses']
     
-    # RNG Logic (50% Win Rate)
-    success = random.random() < 0.5
+    if owned[biz_id].get('has_investor', False):
+         return jsonify({"status":"error", "msg":"Already has an investor!"})
+
+    # Price = 50% of Business Value
+    invest_price = int(BUSINESSES[biz_id]['price'] * 0.5)
+    owned[biz_id]['investment_open'] = True
+    owned[biz_id]['invest_price'] = invest_price
     
-    if success:
-        # Win: Double Money
-        winnings = bet * 2
-        profit = winnings - bet
-        db.update_balance(attacker_id, profit)
-        return jsonify({"status": "win", "msg": f"RAID SUCCESSFUL! You stole ${winnings:,}!", "amount": winnings})
-    else:
-        # Lose: Money Deducted
-        db.update_balance(attacker_id, -bet)
-        return jsonify({"status": "lose", "msg": f"RAID FAILED! Security took your ${bet:,}.", "amount": -bet})
+    db.supabase.table("economy").update({"businesses": owned}).eq("user_id", user_id).execute()
+    return jsonify({"status":"success", "msg": f"Listed for Investment! Price: ${invest_price:,}"})
+
+# --- 16. API: INVEST NOW ---
+@app.route('/api/business/invest_now', methods=['POST'])
+def invest_now():
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+    investor_id = session['user_info']['id']
+    req = request.json
+    target_id = req.get('target_id')
+    biz_id = req.get('biz_id')
+    
+    if investor_id == target_id: return jsonify({"status":"error", "msg":"Cannot invest in yourself!"})
+
+    # Fetch Both Users
+    investor_data = db.supabase.table("economy").select("balance").eq("user_id", investor_id).execute().data
+    target_data = db.supabase.table("economy").select("balance, businesses").eq("user_id", target_id).execute().data
+    
+    target_biz = target_data[0]['businesses']
+    biz = target_biz.get(biz_id)
+    
+    if not biz or not biz.get('investment_open'):
+        return jsonify({"status":"error", "msg":"Investment closed."})
+        
+    cost = biz['invest_price']
+    if investor_data[0]['balance'] < cost:
+        return jsonify({"status":"error", "msg":"Insufficient Funds!"})
+
+    # Transaction
+    new_inv_bal = investor_data[0]['balance'] - cost
+    new_owner_bal = target_data[0]['balance'] + cost
+    
+    biz['investment_open'] = False
+    biz['has_investor'] = True
+    biz['investor_id'] = investor_id
+    biz['equity'] = 0.20
+    
+    db.supabase.table("economy").update({"balance": new_inv_bal}).eq("user_id", investor_id).execute()
+    db.supabase.table("economy").update({"balance": new_owner_bal, "businesses": target_biz}).eq("user_id", target_id).execute()
+    
+    return jsonify({"status":"success", "msg": "Investment Successful! You own 20% of this business."})
 
 
-# --- 12. LOGOUT & RUN ---
+# --- 17. LOGOUT & RUN ---
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect('/')
+
 
 @app.route('/ping')
 def ping_check():
