@@ -3,134 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Business Empire & Investments</title>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;900&display=swap" rel="stylesheet">
+    <title>Elite Business Empire: Global Network</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
         :root { 
             --neon: #00ffcc; 
             --hack: #0f0; 
             --fail: #f00; 
             --gold: #ffd700;
+            --sky: #00f3ff;
             --bg: #050505; 
+            --card-bg: rgba(20, 20, 25, 0.95);
         }
+        
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
         body { 
-            background: var(--bg); 
-            color: white; 
-            font-family: 'Orbitron', sans-serif; 
-            margin: 0; 
-            padding-bottom: 80px; 
-            overflow-x: hidden; 
+            background: var(--bg); color: white; font-family: 'Orbitron', sans-serif; 
+            margin: 0; padding-bottom: 100px; overflow-x: hidden; 
         }
 
         /* --- RAINBOW TRAIL ANIMATION --- */
         #trail-canvas { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9999; }
 
-        /* --- HEADER --- */
+        /* --- PREMIUM HEADER --- */
         .header { 
-            padding: 20px; 
-            background: rgba(0,0,0,0.95); 
-            border-bottom: 1px solid #333; 
-            display: flex; 
-            justify-content: space-between; 
-            position: sticky; 
-            top: 0; 
-            z-index: 50; 
-            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            padding: 20px; background: rgba(0,0,0,0.9); border-bottom: 2px solid #333; 
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
         }
-        
-        /* --- TABS --- */
-        .tabs { display: flex; justify-content: center; gap: 10px; margin: 20px; flex-wrap: wrap; }
+        .user-profile { display: flex; align-items: center; gap: 12px; }
+        .avatar { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--neon); box-shadow: 0 0 15px var(--neon); }
+        .balance-box { text-align: right; }
+        .bal-val { color: var(--gold); font-size: 22px; font-weight: 900; text-shadow: 0 0 15px rgba(255, 215, 0, 0.5); }
+
+        /* --- NAVIGATION TABS --- */
+        .tabs { 
+            display: flex; justify-content: center; gap: 10px; padding: 20px; 
+            overflow-x: auto; white-space: nowrap; scrollbar-width: none;
+        }
+        .tabs::-webkit-scrollbar { display: none; }
         
         .tab-btn { 
-            background: #111; 
-            color: gray; 
-            border: 1px solid #333; 
-            padding: 12px 20px; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-family: 'Share Tech Mono'; 
-            transition: 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: bold;
+            background: #111; color: #666; border: 1px solid #333; padding: 12px 25px; 
+            border-radius: 10px; cursor: pointer; font-family: 'Share Tech Mono'; 
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-transform: uppercase; font-weight: bold; letter-spacing: 1px;
         }
-        .tab-btn:hover { background: #222; color: white; }
-        
         .tab-btn.active { 
-            background: var(--neon); 
-            color: black; 
-            box-shadow: 0 0 15px var(--neon); 
-            border-color: white; 
-            transform: scale(1.05);
+            background: var(--neon); color: black; box-shadow: 0 0 25px var(--neon); 
+            border-color: white; transform: scale(1.1);
         }
 
-        /* Special Tab Styles */
-        .tab-btn.heist-btn.active { background: red; box-shadow: 0 0 20px red; color: white; }
-        .tab-btn.invest-btn.active { background: var(--gold); box-shadow: 0 0 20px var(--gold); color: black; }
-
-        /* --- CARDS CONTAINER --- */
-        .container { display: none; padding: 20px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+        /* --- MAIN CONTAINERS --- */
+        .container { display: none; padding: 20px; max-width: 1400px; margin: 0 auto; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 25px; }
         .container.active { display: grid; }
-        
+
+        /* --- PREMIUM BUSINESS CARD --- */
         .card { 
-            background: rgba(20,20,20,0.8); 
-            border: 1px solid #333; 
-            padding: 25px; 
-            border-radius: 15px; 
-            backdrop-filter: blur(10px); 
-            position: relative; 
-            transition: 0.3s;
-            overflow: hidden;
+            background: var(--card-bg); border: 1px solid #333; padding: 25px; 
+            border-radius: 20px; position: relative; overflow: hidden;
+            transition: 0.3s; box-shadow: 0 15px 35px rgba(0,0,0,0.5);
         }
-        .card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.3); }
-
-        .card h2 { color: var(--neon); margin-top: 0; font-size: 22px; text-shadow: 0 0 5px rgba(0, 255, 204, 0.5); }
-        
-        /* --- SHIMMER EFFECT FOR PREMIUM FEEL --- */
-        .premium-shimmer {
-            position: relative;
-            overflow: hidden;
+        .card:hover { transform: translateY(-8px); border-color: var(--neon); }
+        .card::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent);
+            transform: skewX(-25deg); transition: 0.5s;
         }
-        .premium-shimmer::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 50%;
-            height: 100%;
-            background: linear-gradient(to right, transparent, rgba(255,255,255,0.2), transparent);
-            transform: skewX(-25deg);
-            animation: shimmer 3s infinite;
+        .card:hover::before { left: 150%; transition: 0.7s; }
+
+        .biz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .biz-name { font-size: 22px; margin: 0; color: var(--neon); text-transform: uppercase; }
+        .sec-badge { background: rgba(0, 243, 255, 0.1); color: var(--sky); padding: 4px 10px; border-radius: 5px; font-size: 10px; border: 1px solid var(--sky); }
+
+        /* --- PROGRESS BARS --- */
+        .stat-label { display: flex; justify-content: space-between; font-size: 13px; color: #aaa; margin-bottom: 5px; }
+        .progress-container { width: 100%; height: 8px; background: #111; border-radius: 10px; margin-bottom: 15px; overflow: hidden; border: 1px solid #222; }
+        .progress-fill { height: 100%; transition: 1s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        /* --- TRUCK ALERT --- */
+        .truck-alert {
+            background: rgba(255, 170, 0, 0.1); border: 1px solid #ffaa00; padding: 12px;
+            border-radius: 10px; margin: 15px 0; display: flex; align-items: center; gap: 10px;
+            animation: pulse-border 2s infinite;
         }
-        @keyframes shimmer { 100% { left: 200%; } }
+        @keyframes pulse-border { 50% { border-color: transparent; } }
 
-        /* --- TIMERS & BADGES --- */
-        .timer-badge { background: #ffaa00; color: black; padding: 3px 8px; border-radius: 4px; font-size: 12px; animation: blink 1s infinite; font-weight: bold; }
-        @keyframes blink { 50% { opacity: 0.5; } }
+        /* --- PARTNERS LIST --- */
+        .partners-box { background: rgba(0,0,0,0.4); padding: 15px; border-radius: 12px; margin: 15px 0; border: 1px dashed #444; }
+        .partner-item { display: flex; justify-content: space-between; font-size: 12px; padding: 8px 0; border-bottom: 1px solid #222; }
+        .kick-btn { color: #f44; cursor: pointer; font-weight: bold; text-decoration: underline; }
 
-        .invest-badge { background: var(--gold); color: black; padding: 5px 10px; border-radius: 20px; font-weight: bold; font-size: 12px; box-shadow: 0 0 10px var(--gold); }
+        /* --- BUTTON SYSTEM --- */
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .btn {
+            border: none; border-radius: 8px; padding: 12px; font-family: 'Orbitron'; 
+            font-weight: 900; font-size: 12px; cursor: pointer; transition: 0.2s;
+            text-transform: uppercase;
+        }
+        .btn-order { background: #222; color: white; border: 1px solid #444; }
+        .btn-sell { background: var(--neon); color: black; box-shadow: 0 5px 15px rgba(0, 255, 204, 0.3); }
+        .btn-upgrade { grid-column: span 2; background: var(--sky); color: black; }
+        .btn-promote { background: var(--gold); color: black; }
+        .btn:active { transform: scale(0.95); }
 
-        /* --- HACKING TERMINAL UI --- */
+        /* --- HACKING TERMINAL MODAL (FULL EXPERIENCE) --- */
         #hack-modal { 
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: black; z-index: 10000; font-family: 'Share Tech Mono', monospace; 
-            color: var(--hack); padding: 20px; box-sizing: border-box;
+            background: #000; z-index: 10000; font-family: 'Share Tech Mono', monospace;
+            padding: 20px;
         }
-        .hack-screen { border: 2px solid var(--hack); height: 90%; padding: 20px; position: relative; overflow: hidden; background: rgba(0, 20, 0, 0.9); box-shadow: inset 0 0 50px rgba(0,255,0,0.2); }
-        .scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 5px; background: rgba(0, 255, 0, 0.3); animation: scan 3s linear infinite; }
-        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+        .hack-window {
+            border: 2px solid var(--hack); height: 100%; border-radius: 10px;
+            position: relative; overflow: hidden; background: rgba(0, 10, 0, 0.95);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .scanline {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2; background-size: 100% 2px, 3px 100%; pointer-events: none;
+        }
+        .hack-step { display: none; width: 100%; max-width: 400px; text-align: center; }
+        .hack-step.active { display: block; animation: flicker 0.1s infinite; }
+        @keyframes flicker { 0% { opacity: 0.97; } 100% { opacity: 1; } }
 
-        .hack-step { display: none; text-align: center; margin-top: 50px; }
-        .hack-step.active { display: block; }
+        .terminal-input {
+            background: transparent; border: 1px solid var(--hack); color: var(--hack);
+            width: 100%; padding: 15px; font-size: 24px; text-align: center; outline: none;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+        }
 
-        .hack-input { background: black; border: 1px solid var(--hack); color: var(--hack); padding: 10px; font-size: 20px; outline: none; text-align: center; margin-top: 20px; }
-        
-        .wifi-bar-container { width: 80%; height: 30px; border: 2px solid var(--hack); margin: 20px auto; position: relative; }
-        .wifi-bar { height: 100%; width: 0%; background: var(--hack); transition: width 0.1s linear; }
-        
-        .lock-circle { width: 150px; height: 150px; border: 5px solid #333; border-radius: 50%; margin: 20px auto; position: relative; }
-        .lock-target { position: absolute; top: -5px; left: 50%; width: 20px; height: 20px; background: red; transform: translateX(-50%); border-radius: 50%; }
-        .lock-pointer { position: absolute; top: 50%; left: 50%; width: 2px; height: 75px; background: var(--hack); transform-origin: top center; animation: rotate 1s linear infinite; }
+        /* WIFI GAME */
+        .wifi-container { width: 100%; height: 40px; border: 1px solid var(--hack); margin: 30px 0; position: relative; }
+        .wifi-bar { height: 100%; width: 0%; background: var(--hack); box-shadow: 0 0 20px var(--hack); }
+        .target-zone { position: absolute; left: 75%; width: 15%; height: 100%; background: rgba(255, 255, 255, 0.3); border: 1px dashed white; }
+
+        /* LOCK GAME */
+        .lock-circle { width: 200px; height: 200px; border: 4px solid #111; border-radius: 50%; position: relative; margin: 30px auto; border-top-color: var(--hack); }
+        .pointer { position: absolute; top: 50%; left: 50%; width: 4px; height: 100px; background: red; transform-origin: top center; animation: rotate 1.5s linear infinite; }
         @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
     </style>
@@ -139,407 +151,306 @@
     <canvas id="trail-canvas"></canvas>
 
     <div class="header">
-        <div style="color:white; display:flex; align-items:center; gap:10px;">
-            <img src="{{ user.avatar }}" style="width:30px; height:30px; border-radius:50%; border:1px solid var(--neon);">
-            <span>{{ user.username }}</span>
+        <div class="user-profile">
+            <img src="{{ user.avatar }}" class="avatar">
+            <div>
+                <div style="font-size:12px; color:#888;">ID: {{ user.id }}</div>
+                <div style="font-weight:900; letter-spacing:1px;">{{ user.username }}</div>
+            </div>
         </div>
-        <div style="color:gold; font-size: 18px; text-shadow: 0 0 10px gold;">${{ "{:,}".format(balance) }}</div>
+        <div class="balance-box">
+            <div style="font-size:10px; color:#888; text-align:right;">LIQUID CASH</div>
+            <div class="bal-val" id="bal-display">${{ "{:,}".format(balance) }}</div>
+        </div>
     </div>
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('manage')">🏭 MY EMPIRE</button>
-        <button class="tab-btn" onclick="switchTab('market')">🛒 BLACK MARKET</button>
-        <button class="tab-btn invest-btn" style="color:gold; border-color:gold;" onclick="switchTab('invest')">🦈 SHARK TANK</button>
-        <button class="tab-btn heist-btn" style="color:#ff4444; border-color:#ff4444;" onclick="switchTab('heist')">💀 HEIST (100M)</button>
+        <button class="tab-btn active" onclick="switchTab(event, 'manage')">🏭 My Empire</button>
+        <button class="tab-btn" onclick="switchTab(event, 'market')">🛒 Black Market</button>
+        <button class="tab-btn" style="color:var(--gold);" onclick="switchTab(event, 'invest')">🦈 Shark Tank</button>
+        <button class="tab-btn" style="color:#0f0;" onclick="switchTab(event, 'portfolio')">📁 Portfolio</button>
+        <button class="tab-btn" style="color:#f44;" onclick="switchTab(event, 'attack')">💀 Ops Center</button>
     </div>
 
     <div id="manage" class="container active">
-        {% if owned|length == 0 %} 
-            <div class="card" style="grid-column: 1/-1; text-align:center;">
-                <h3>You don't own any business yet.</h3>
-                <button class="tab-btn" onclick="switchTab('market')">GO TO MARKET</button>
-            </div>
-        {% endif %}
-        
         {% for id, data in owned.items() %}
         <div class="card">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                <div>
-                    <h2>{{ all_biz[id].name }}</h2>
-                    <p style="color:gray; font-size:12px; margin:0;">Security Level: <span style="color:white;">{{ data.get('security', 1) }}</span></p>
+            <div class="biz-header">
+                <h2 class="biz-name">{{ all_biz[id].name }}</h2>
+                <span class="sec-badge">SECURITY LVL {{ data.security }}</span>
+            </div>
+
+            <div class="stat-label"><span>Supplies</span><span>{{ data.supplies }}%</span></div>
+            <div class="progress-container">
+                <div class="progress-fill" style="width: {{ data.supplies }}%; background: {{ 'var(--fail)' if data.supplies < 20 else 'var(--neon)' }}"></div>
+            </div>
+
+            <div class="stat-label"><span>Popularity</span><span>{{ data.popularity }}%</span></div>
+            <div class="progress-container">
+                <div class="progress-fill" style="width: {{ data.popularity }}%; background: var(--gold)"></div>
+            </div>
+
+            <div style="font-size: 14px; color: #888; margin-top: 10px;">Warehouse Value</div>
+            <div style="font-size: 28px; font-weight: 900; color: #0f0; margin-bottom: 15px;">${{ "{:,}".format(data.stock) }}</div>
+
+            {% if data.delivery_time > now %}
+            <div class="truck-alert">
+                <span>🚚</span>
+                <div style="font-size: 11px;">
+                    <b>SUPPLY TRUCK IN TRANSIT</b><br>
+                    Time Remaining: {{ ((data.delivery_time - now)/60)|int }} minutes
                 </div>
-                
-                {% if data.get('has_investor') %}
-                    <span class="invest-badge" style="background:#00ff00; color:black;">PARTNERED</span>
-                {% elif data.get('investment_open') %}
-                    <span class="invest-badge" style="background:orange;">LISTED</span>
+            </div>
+            {% endif %}
+
+            <div class="partners-box">
+                <div style="font-size: 10px; color: var(--gold); margin-bottom: 5px;">BOARD OF DIRECTORS</div>
+                {% if data.investors|length > 0 %}
+                    {% for inv_id, eq in data.investors.items() %}
+                    <div class="partner-item">
+                        <span>Agent: {{ inv_id[:8] }}...</span>
+                        <span>Share: {{ (eq*100)|int }}% <span class="kick-btn" onclick="manageInvestment('kick', '{{ id }}', '{{ inv_id }}')">KICK</span></span>
+                    </div>
+                    {% endfor %}
                 {% else %}
-                    <span class="invest-badge" style="background:#333; color:gray; cursor:pointer;" onclick="openInvestment('{{ id }}')">+ INVESTOR</span>
+                    <div style="font-size:10px; color:#555;">No outside investors.</div>
                 {% endif %}
+                <button class="btn btn-order" style="margin-top:10px; font-size:9px; width:100%;" onclick="openIPO('{{ id }}')">Sell 10% Equity</button>
             </div>
 
-            <hr style="border-color:#333; opacity:0.3; margin:15px 0;">
-
-            {% if data.get('delivery_time', 0) > now %}
-                {% set mins_left = ((data.delivery_time - now) / 60) | int %}
-                <div style="background:rgba(255, 165, 0, 0.1); padding:10px; margin:10px 0; border-left:3px solid orange; border-radius: 5px;">
-                    🚚 <b style="color:orange;">SUPPLY TRUCK ON WAY</b><br>
-                    <span class="timer-badge">Arrives in {{ mins_left }} mins</span><br>
-                    <small style="color:#ff4444; display:block; margin-top:5px;">⚠️ Risk of Robbery: HIGH</small>
-                </div>
-            {% else %}
-                <div style="margin:10px 0; display:flex; justify-content:space-between;">
-                    <span>Supplies:</span>
-                    <span style="color: {{ 'red' if data.supplies < 20 else 'lime' }}">{{ data.supplies }}%</span>
-                </div>
-                <div style="width:100%; height:5px; background:#333; border-radius:5px; overflow:hidden;">
-                    <div style="width:{{ data.supplies }}%; height:100%; background:var(--neon);"></div>
-                </div>
-            {% endif %}
-
-            <div style="margin:15px 0; font-size:18px;">
-                Stock Value: <span style="color:#0f0; text-shadow:0 0 10px #0f0;">${{ "{:,}".format(data.stock) }}</span>
+            <div class="btn-grid">
+                <button class="btn btn-order" onclick="triggerPost('/api/business/order', {biz_id:'{{ id }}'})">Restock</button>
+                <button class="btn btn-sell" onclick="triggerPost('/api/business/action', {action:'sell_stock', biz_id:'{{ id }}'})">Liquidate</button>
+                <button class="btn btn-promote" onclick="triggerPost('/api/business/action', {action:'promote', biz_id:'{{ id }}'})">Promote</button>
+                <button class="btn btn-upgrade" onclick="triggerPost('/api/business/security', {biz_id:'{{ id }}'})">Upgrade Firewall</button>
             </div>
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <button class="tab-btn" onclick="orderSupplies('{{ id }}')">🚚 ORDER</button>
-                <button class="tab-btn" onclick="sellStock('{{ id }}')">💰 SELL</button>
-                <button class="tab-btn" style="grid-column: span 2; border-color:#00f3ff; color:#00f3ff;" onclick="buySecurity('{{ id }}')">🛡️ UPGRADE SECURITY</button>
-            </div>
-            
-            {% if not data.get('has_investor') and not data.get('investment_open') %}
-            <div style="margin-top:10px; text-align:center;">
-                <small style="color:gray; cursor:pointer;" onclick="openInvestment('{{ id }}')">Need Cash? List for Investment</small>
-            </div>
-            {% endif %}
         </div>
         {% endfor %}
     </div>
 
-    <div id="invest" class="container">
-        <div class="card premium-shimmer" style="grid-column: 1/-1; border-color: gold; text-align: center; background: rgba(50,40,0,0.6);">
-            <h1 style="color:gold; margin:0; text-shadow:0 0 20px gold;">SHARK TANK</h1>
-            <p style="color:#fff;">Invest in other players. Receive 20% of their profits forever.</p>
-            <button class="tab-btn" style="background:gold; color:black; font-weight:900;" onclick="loadInvestments()">🔄 FIND DEALS</button>
-        </div>
-        <div id="invest-list" style="display:contents;">
-            </div>
+    <div id="portfolio" class="container">
+        <div id="portfolio-list" style="grid-column: 1/-1;">Loading assets...</div>
     </div>
 
-    <div id="heist" class="container">
-        <div class="card" style="grid-column: 1/-1; border-color: red; text-align: center;">
-            <h1 style="color:red; margin:0; text-shadow:0 0 20px red;">TARGET LIST</h1>
-            <p>Requirements: $100M Balance + Hacking Skill</p>
-            <button class="tab-btn" style="border-color:red; color:red;" onclick="loadTargets()">🔄 SCAN NETWORK</button>
-        </div>
-        <div id="target-list" style="display:contents;">
-            </div>
+    <div id="invest" class="container">
+        <div id="invest-list" style="grid-column: 1/-1;">Scanning market...</div>
+    </div>
+
+    <div id="attack" class="container">
+        <div id="target-list" style="grid-column: 1/-1;">Locating targets...</div>
     </div>
 
     <div id="market" class="container">
         {% for id, info in all_biz.items() %}
             {% if id not in owned %}
             <div class="card">
-                <h3>{{ info.name }}</h3>
-                <p>Price: <span style="color:gold;">${{ "{:,}".format(info.price) }}</span></p>
-                <p style="color:gray; font-size:12px;">Income: ${{ "{:,}".format(info.income_per_hr) }}/hr</p>
-                <button class="tab-btn" style="width:100%; margin-top:10px;" onclick="buyBiz('{{ id }}')">PURCHASE</button>
+                <h3 class="biz-name">{{ info.name }}</h3>
+                <p style="color:#888; font-size:12px;">Market Value: <b style="color:var(--gold)">${{ "{:,}".format(info.price) }}</b></p>
+                <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:8px; margin:10px 0;">
+                    <small>Projected Hourly: ${{ "{:,}".format(info.income_per_hr) }}</small>
+                </div>
+                <button class="btn btn-sell" style="width:100%" onclick="triggerPost('/api/business/buy', {biz_id:'{{ id }}'})">Aquire Asset</button>
             </div>
             {% endif %}
         {% endfor %}
     </div>
 
     <div id="hack-modal">
-        <div class="hack-screen">
-            <div class="scan-line"></div>
+        <div class="hack-window">
+            <div class="scanline"></div>
             
-            <div id="step1" class="hack-step active">
-                <h2>STEP 1: DECRYPTION</h2>
-                <p id="math-q" style="font-size:24px; color:white;">CALCULATE: 12 + 45</p>
-                <input type="number" id="math-ans" class="hack-input" placeholder="CODE">
-                <br><br>
-                <button class="tab-btn" onclick="checkStep1()">ENTER</button>
+            <div id="h-step1" class="hack-step active">
+                <h1 style="color:var(--hack)">PHASE 1: DECRYPTION</h1>
+                <p id="math-prompt" style="font-size:32px; color:white;"></p>
+                <input type="number" id="math-input" class="terminal-input" autofocus placeholder="X-TOKEN">
+                <button class="btn btn-sell" style="margin-top:20px; width:200px;" onclick="checkStep1()">BYPASS</button>
             </div>
 
-            <div id="step2" class="hack-step">
-                <h2>STEP 2: BRUTEFORCE WIFI</h2>
-                <p>Click [STOP] when bar is GREEN</p>
-                <div class="wifi-bar-container">
-                    <div id="wifi-bar" class="wifi-bar"></div>
-                    <div style="position:absolute; left:70%; width:10%; height:100%; background:rgba(0,255,0,0.5);"></div>
+            <div id="h-step2" class="hack-step">
+                <h1 style="color:var(--hack)">PHASE 2: WIFI BRUTEFORCE</h1>
+                <p>MATCH FREQUENCY IN GREEN ZONE</p>
+                <div class="wifi-container">
+                    <div class="target-zone"></div>
+                    <div id="wifi-fill" class="wifi-bar"></div>
                 </div>
-                <button class="tab-btn" onclick="checkStep2()">STOP</button>
+                <button class="btn btn-sell" style="width:200px" onclick="checkStep2()">LOCK SIGNAL</button>
             </div>
 
-            <div id="step3" class="hack-step">
-                <h2>STEP 3: BYPASS LOCK</h2>
+            <div id="h-step3" class="hack-step">
+                <h1 style="color:var(--hack)">PHASE 3: PHYSICAL OVERRIDE</h1>
+                <p>CAPTURE THE ROTATING LOCK</p>
                 <div class="lock-circle">
-                    <div class="lock-target"></div>
-                    <div id="lock-pointer" class="lock-pointer"></div>
+                    <div class="pointer" id="pointer"></div>
                 </div>
-                <button class="tab-btn" onclick="checkStep3()">UNLOCK</button>
+                <button class="btn btn-sell" style="width:200px" onclick="checkStep3()">UNLOCK</button>
             </div>
 
-            <div id="step4" class="hack-step">
-                <h2>STEP 4: ESCAPE</h2>
-                <p id="console-log" style="font-size:18px;">Connecting to Server...</p>
+            <div id="h-step4" class="hack-step">
+                <h1 style="color:var(--hack)">PHASE 4: ACCESS GRANTED</h1>
+                <div id="console-output" style="text-align:left; color:#888; font-size:12px; margin-top:20px;"></div>
+                <p id="hack-final-msg" style="font-size:24px; color:white; margin-top:30px;">INFILTRATING...</p>
             </div>
         </div>
     </div>
 
     <script>
-        // --- GLOBAL VARS ---
-        let currentTargetId = null;
-        let currentBizId = null;
-        let hackInterval = null;
-
-        // --- RAINBOW TRAIL ANIMATION ---
-        const canvas = document.getElementById('trail-canvas');
-        const ctx = canvas.getContext('2d');
-        let points = [];
-        
-        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-        window.addEventListener('resize', resize); resize();
-
-        document.addEventListener('mousemove', (e) => addPoint(e.clientX, e.clientY));
-        document.addEventListener('touchmove', (e) => addPoint(e.touches[0].clientX, e.touches[0].clientY));
-
-        function addPoint(x, y) { points.push({x, y, age: 0, hue: Math.random() * 360}); }
-
-        function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            points.forEach((p, i) => {
-                p.age++;
-                p.hue += 5;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 10 - p.age/2, 0, Math.PI * 2);
-                ctx.fillStyle = `hsla(${p.hue}, 100%, 50%, ${1 - p.age/20})`;
-                ctx.fill();
-            });
-            points = points.filter(p => p.age < 20);
-            requestAnimationFrame(animate);
-        }
-        animate();
-
-        // --- TAB LOGIC ---
-        function switchTab(id) {
-            document.querySelectorAll('.container').forEach(d => d.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            // Find the specific button clicked to add active class
-            event.currentTarget.classList.add('active');
-        }
-
-        // --- HELPER: POST DATA ---
-        async function post(url, data) {
-            try {
-                const res = await fetch(url, {
-                    method: 'POST', 
-                    headers: {'Content-Type':'application/json'}, 
-                    body: JSON.stringify(data)
-                });
-                const json = await res.json();
-                alert(json.msg);
-                if(json.status === 'success') location.reload();
-            } catch(e) {
-                alert("Error: " + e);
-            }
-        }
-
-        // --- BUSINESS ACTIONS ---
-        function orderSupplies(id) {
-            if(!confirm("Order Supplies for $75k? (Takes 3 Hours)")) return;
-            post('/api/business/order', {biz_id: id});
-        }
-        function buySecurity(id) {
-            if(!confirm("Upgrade Security? Cost increases per level.")) return;
-            post('/api/business/security', {biz_id: id});
-        }
-        function sellStock(id) { post('/api/business/action', {action:'sell_stock', biz_id: id}); }
-        function buyBiz(id) { post('/api/business/buy', {biz_id: id}); }
-
-        // --- INVESTMENT ACTIONS (NEW) ---
-        function openInvestment(id) {
-            if(!confirm("List this business for investment? You will get 50% cash now, but give away 20% future profits.")) return;
-            post('/api/business/open_investment', {biz_id: id});
-        }
-
-        async function loadInvestments() {
-            const list = document.getElementById('invest-list');
-            list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>Scanning Market for Deals...</p>";
-            
-            try {
-                // Note: Using the same logic as targets since we need to scan users
-                // Assuming backend has a route or reusing target logic to find investments
-                // For this code to work with minimal python changes, we'll fetch targets and filter in JS
-                const res = await fetch('/api/business/targets'); 
-                const data = await res.json();
-                list.innerHTML = "";
-
-                // Fake filtering for demo purposes if backend isn't perfect, 
-                // but ideally this endpoint returns investable biz
-                let found = false;
-                data.forEach(d => {
-                    // Logic: If API returns investable flag (mocking logic here)
-                    // You might need to add a dedicated route in python if 'targets' doesn't send investment info
-                    // But assuming we updated the get_targets to include investment status or use a new route
-                    // Let's use a hypothetical '/api/business/deals' if you added it, 
-                    // otherwise we display generic data
-                     
-                    list.innerHTML += `
-                    <div class="card premium-shimmer" style="border-color:gold;">
-                        <h3 style="color:gold;">${d.biz_name}</h3>
-                        <p>Owner ID: ${d.user_id}</p>
-                        <p style="color:#0f0;">Equity: 20%</p>
-                        <p>Cost: <span style="color:gold;">High Value</span></p>
-                        <button class="tab-btn" style="width:100%; background:rgba(255,215,0,0.2); border-color:gold; color:gold;" 
-                            onclick="doInvest('${d.user_id}', '${d.biz_id}')">INVEST NOW</button>
-                    </div>`;
-                    found = true;
-                });
-                
-                if(!found) list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>No deals found currently.</p>";
-            } catch(e) {
-                list.innerHTML = "<p>Error loading deals.</p>";
-            }
-        }
-
-        function doInvest(oid, bid) {
-            if(!confirm("Invest in this business? You will earn passive income from their sales.")) return;
-            post('/api/business/invest_now', {target_id: oid, biz_id: bid});
-        }
-
-        // --- HEIST SYSTEM ---
-        async function loadTargets() {
-            const list = document.getElementById('target-list');
-            list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>Scanning Network...</p>";
+        // --- DATA LOADERS ---
+        async function loadData() {
             const res = await fetch('/api/business/targets');
-            const targets = await res.json();
-            list.innerHTML = "";
+            const data = await res.json();
             
-            if(targets.length === 0) {
-                list.innerHTML = "<p style='grid-column:1/-1; text-align:center;'>No valid targets found.</p>";
-                return;
-            }
+            // Portfolio
+            const pList = document.getElementById('portfolio-list');
+            pList.innerHTML = data.portfolio.length ? "" : "NO ACTIVE INVESTMENTS";
+            data.portfolio.forEach(p => {
+                pList.innerHTML += `<div class="card" style="border-color:var(--hack)">
+                    <h3>${p.biz_name}</h3>
+                    <p style="color:#888">Equity: ${p.equity}% | Owner: ${p.owner_id}</p>
+                    <button class="btn" style="background:#400; color:white;" onclick="manageInvestment('leave', '${p.biz_id}', null, '${p.owner_id}')">DUMP SHARES</button>
+                </div>`;
+            });
 
-            targets.forEach(t => {
-                list.innerHTML += `
-                <div class="card" style="border-color:#ff4444;">
+            // Invest
+            const iList = document.getElementById('invest-list');
+            iList.innerHTML = "";
+            data.targets.forEach(t => {
+                if(t.investment_open) {
+                    iList.innerHTML += `<div class="card" style="border-color:var(--gold)">
+                        <h3 class="biz-name">${t.biz_name}</h3>
+                        <p>CEO: ${t.user_id}</p>
+                        <button class="btn btn-promote" onclick="triggerPost('/api/business/invest_now', {target_id:'${t.user_id}', biz_id:'${t.biz_id}'})">BUY 10% EQUITY</button>
+                    </div>`;
+                }
+            });
+
+            // Attack
+            const tList = document.getElementById('target-list');
+            tList.innerHTML = "";
+            data.targets.forEach(t => {
+                let truck = t.truck_active ? `<button class="btn" style="background:orange; color:black;" onclick="triggerPost('/api/business/rob_truck', {target_id:'${t.user_id}', biz_id:'${t.biz_id}'})">🚚 HIJACK TRUCK</button>` : "";
+                tList.innerHTML += `<div class="card" style="border-color:var(--fail)">
                     <h3>${t.biz_name}</h3>
-                    <p>Owner ID: ${t.user_id}</p>
-                    <p>Stock: $${t.stock}</p>
-                    <p>Security: Level ${t.security}</p>
-                    <button class="tab-btn" style="width:100%; background:#400; color:white; border:none;" 
-                        onclick="startHeist('${t.user_id}', '${t.biz_id}')">HACK SYSTEM</button>
+                    <p>Security: ${t.security} | Value: $${t.stock.toLocaleString()}</p>
+                    <button class="btn" style="background:red; color:white;" onclick="beginHacking('${t.user_id}', '${t.biz_id}')">INITIATE HEIST ($100M)</button>
+                    ${truck}
                 </div>`;
             });
         }
 
-        function startHeist(uid, bid) {
-            if(!confirm("Pay $100M to attempt Heist? Failure = Money Lost.")) return;
-            currentTargetId = uid;
-            currentBizId = bid;
+        // --- HACKING GAME ENGINE ---
+        let targetUID, targetBID, wifiInt, wifiW=0, wifiD=1;
+        let mathAnswer = 0;
+
+        function beginHacking(uid, bid) {
+            if(!confirm("Attempting a heist costs $100M. Non-refundable. Proceed?")) return;
+            targetUID = uid; targetBID = bid;
             document.getElementById('hack-modal').style.display = 'block';
-            setupStep1();
+            startStep1();
         }
 
-        // --- HACKING MINIGAMES ---
-        
-        // STEP 1: MATH
-        let ans = 0;
-        function setupStep1() {
-            const n1 = Math.floor(Math.random() * 50);
-            const n2 = Math.floor(Math.random() * 50);
-            ans = n1 + n2;
-            document.getElementById('math-q').innerText = `CALCULATE: ${n1} + ${n2}`;
-            document.getElementById('math-ans').value = "";
+        function startStep1() {
+            let n1 = Math.floor(Math.random()*99), n2 = Math.floor(Math.random()*99);
+            mathAnswer = n1 + n2;
+            document.getElementById('math-prompt').innerText = `DECRYPT: ${n1} + ${n2}`;
+            document.getElementById('math-input').value = "";
         }
         function checkStep1() {
-            if(parseInt(document.getElementById('math-ans').value) === ans) {
-                document.getElementById('step1').classList.remove('active');
-                document.getElementById('step2').classList.add('active');
-                setupStep2();
-            } else { failHack("Incorrect Code"); }
+            if(parseInt(document.getElementById('math-input').value) === mathAnswer) {
+                document.getElementById('h-step1').classList.remove('active');
+                document.getElementById('h-step2').classList.add('active');
+                startStep2();
+            } else { failHack("Decryption Error"); }
         }
 
-        // STEP 2: WIFI BAR
-        let barW = 0; let dir = 1;
-        function setupStep2() {
-            hackInterval = setInterval(() => {
-                barW += 3 * dir; // Speed
-                if(barW > 100 || barW < 0) dir *= -1;
-                document.getElementById('wifi-bar').style.width = barW + "%";
+        function startStep2() {
+            wifiInt = setInterval(() => {
+                wifiW += 4 * wifiD;
+                if(wifiW > 100 || wifiW < 0) wifiD *= -1;
+                document.getElementById('wifi-fill').style.width = wifiW + "%";
             }, 20);
         }
         function checkStep2() {
-            clearInterval(hackInterval);
-            if(barW >= 70 && barW <= 80) { // Green zone is 70-80%
-                document.getElementById('step2').classList.remove('active');
-                document.getElementById('step3').classList.add('active');
-            } else { failHack("Signal Lost (Missed Green Zone)"); }
+            clearInterval(wifiInt);
+            if(wifiW >= 75 && wifiW <= 90) {
+                document.getElementById('h-step2').classList.remove('active');
+                document.getElementById('h-step3').classList.add('active');
+            } else { failHack("Signal Dropped"); }
         }
 
-        // STEP 3: DOOR LOCK
         function checkStep3() {
-            // Visual simulation of unlocking
-            const pointer = document.getElementById('lock-pointer');
-            pointer.style.animation = 'none'; // Stop rotation
-            
-            setTimeout(() => {
-                 document.getElementById('step3').classList.remove('active');
-                 document.getElementById('step4').classList.add('active');
-                 finishHeist();
-            }, 500);
+            document.getElementById('pointer').style.animation = 'none';
+            document.getElementById('h-step3').classList.remove('active');
+            document.getElementById('h-step4').classList.add('active');
+            finalizeHeist();
         }
 
-        // STEP 4: SERVER RESULT
-        async function finishHeist() {
-            const log = document.getElementById('console-log');
-            log.innerText = "Bypassing Firewall...";
-            await new Promise(r => setTimeout(r, 800));
-            log.innerText = "Injecting Payload...";
-            await new Promise(r => setTimeout(r, 800));
-            log.innerText = "Transferring Ownership...";
+        async function finalizeHeist() {
+            const out = document.getElementById('console-output');
+            const lines = ["> Tunneling...", "> SSL Bypassed...", "> Injecting SQL...", "> Assets Found..."];
+            for(let l of lines) { out.innerHTML += `<div>${l}</div>`; await new Promise(r=>setTimeout(r, 600)); }
             
             const res = await fetch('/api/business/heist', {
-                method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({
-                    target_id: currentTargetId,
-                    biz_id: currentBizId,
-                    success: true
-                })
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({target_id: targetUID, biz_id: targetBID, success: true})
             });
-            const data = await res.json();
-            
-            log.innerText = data.msg;
-            log.style.color = data.status === 'success' ? '#0f0' : 'red';
-            
-            setTimeout(() => {
-                if(data.status === 'success') location.reload();
-                else document.getElementById('hack-modal').style.display = 'none';
-            }, 3000);
+            const d = await res.json();
+            document.getElementById('hack-final-msg').innerText = d.msg;
+            document.getElementById('hack-final-msg').style.color = d.status === 'success' ? 'lime' : 'red';
+            setTimeout(() => location.reload(), 3000);
         }
 
-        function failHack(reason) {
-            alert("HACK FAILED: " + reason);
-            // Optional: call backend to deduct money for fail if needed, 
-            // but usually we deduct on start or backend handles logic. 
-            // Here backend deducts on startHeist call if we moved logic there, 
-            // but current logic calls backend at the END.
-            // To make it secure, backend should verify steps, but for this game UI logic is fine.
-            
-            // Trigger fail on backend to deduct money
+        function failHack(msg) {
+            alert("HACK FAILED: " + msg);
             fetch('/api/business/heist', {
-                method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({
-                    target_id: currentTargetId,
-                    biz_id: currentBizId,
-                    success: false
-                })
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({target_id: targetUID, biz_id: targetBID, success: false})
             }).then(() => location.reload());
         }
 
+        // --- CORE FUNCTIONS ---
+        function switchTab(e, id) {
+            document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            e.target.classList.add('active');
+            if(['portfolio','invest','attack'].includes(id)) loadData();
+        }
+
+        async function triggerPost(url, data) {
+            const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+            const j = await res.json();
+            alert(j.msg);
+            if(j.status==='success') location.reload();
+        }
+
+        function manageInvestment(action, bid, tid=null, oid=null) {
+            if(!confirm("Warning: This action cannot be undone. No refunds. Proceed?")) return;
+            triggerPost('/api/business/manage_investor', {action, biz_id:bid, target_inv:tid, owner_id:oid});
+        }
+
+        function openIPO(id) { triggerPost('/api/business/open_investment', {biz_id: id}); }
+
+        // --- RAINBOW TRAIL ---
+        const canvas = document.getElementById('trail-canvas');
+        const ctx = canvas.getContext('2d');
+        let pts = [];
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        document.addEventListener('mousemove', e => pts.push({x:e.clientX, y:e.clientY, a:0, h:Math.random()*360}));
+        document.addEventListener('touchmove', e => pts.push({x:e.touches[0].clientX, y:e.touches[0].clientY, a:0, h:Math.random()*360}));
+        function anim() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            pts.forEach((p,i) => {
+                p.a++; ctx.beginPath(); ctx.arc(p.x, p.y, 10 - p.a/2, 0, Math.PI*2);
+                ctx.fillStyle = `hsla(${p.h},100%,50%,${1-p.a/20})`; ctx.fill();
+            });
+            pts = pts.filter(p => p.a < 20);
+            requestAnimationFrame(anim);
+        }
+        anim();
+        
+        // Initial load
+        window.onload = () => { if(window.location.hash) switchTab(null, window.location.hash.substring(1)); };
     </script>
 </body>
 </html>
