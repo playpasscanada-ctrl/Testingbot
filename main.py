@@ -17778,6 +17778,61 @@ def runner_payout():
     
     return jsonify({"status":"success", "msg": msg, "new_balance": new_bal, "earned": reward})
 
+# --- 20. DICE GAME ROUTE ---
+@app.route('/games/dice')
+def dice_game():
+    if 'user_info' not in session: return redirect('/')
+    user_id = session['user_info']['id']
+    balance = db.get_user_balance(user_id)
+    return render_template('dice.html', balance=balance)
+
+# --- 21. API: DICE ROLL ---
+@app.route('/api/games/dice/play', methods=['POST'])
+def play_dice():
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+    user_id = session['user_info']['id']
+    
+    data = request.json
+    bet = int(data.get('bet'))
+    choice = data.get('choice') # 'under', 'seven', 'over'
+    
+    current_bal = db.get_user_balance(user_id)
+    if current_bal < bet: return jsonify({"status":"error", "msg":"Insufficient Funds!"})
+    
+    # Deduct Bet
+    db.update_balance(user_id, -bet)
+    
+    # Roll 2 Dice
+    d1 = random.randint(1, 6)
+    d2 = random.randint(1, 6)
+    total = d1 + d2
+    
+    winnings = 0
+    msg = f"Rolled {total} ({d1}+{d2}). You Lost!"
+    won = False
+    
+    # Logic: Under 7 (2x), Over 7 (2x), Exact 7 (5x)
+    if choice == 'under' and total < 7:
+        winnings = bet * 2
+        won = True
+        msg = f"Rolled {total}! YOU WON ${winnings:,}"
+    elif choice == 'over' and total > 7:
+        winnings = bet * 2
+        won = True
+        msg = f"Rolled {total}! YOU WON ${winnings:,}"
+    elif choice == 'seven' and total == 7:
+        winnings = bet * 5
+        won = True
+        msg = f"LUCKY 7! JACKPOT ${winnings:,}"
+        
+    if won: db.update_balance(user_id, winnings)
+    
+    new_bal = db.get_user_balance(user_id)
+    
+    return jsonify({
+        "status":"success", "d1":d1, "d2":d2, "total":total, 
+        "won":won, "balance":new_bal, "msg":msg
+    })
 
 # --- 17. LOGOUT & RUN ---
 @app.route('/logout')
