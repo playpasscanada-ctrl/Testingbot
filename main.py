@@ -17273,13 +17273,6 @@ C_DARK = 0x2B2D31
 
 # ================== 🌐 WEBSITE BACKEND ==================
 # ==========================================
-# 🌐 FINAL READY FLASK BACKEND
-# ==========================================
-            "msg":msg
-    })
-
-
-# ==========================================
 # 🚀 NEW BUSINESS SYSTEM ROUTES ADDED BELOW
 # ==========================================
 from flask import Flask, session, render_template, redirect, request, jsonify, url_for
