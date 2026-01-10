@@ -17366,6 +17366,7 @@ CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "https://testingbot-q1jb.onrender.com/callback")
 API_ENDPOINT = 'https://discord.com/api/v10'
 LOG_CHANNEL_ID = "1457066104819028089" 
+GUILD_ID = "1257403231127076915"
 
 # --- HELPER: SEND DISCORD LOG ---
 def send_discord_log(msg):
@@ -18099,6 +18100,124 @@ def play_dice():
         "msg":msg
     })
 
+import json
+
+# --- PIXEL WAR CONFIG ---
+GRID_SIZE = 50 # 50x50 Grid
+pixel_grid = [["#111" for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)] # Default Black
+pixel_history = [] # Logs
+
+# Teams
+TEAMS = {
+    "neon": {"color": "#00f3ff", "name": "TEAM NEON"},
+    "cyber": {"color": "#ff00de", "name": "TEAM CYBER"}
+}
+
+# --- ROUTES ---
+
+@app.route('/games/pixelwar')
+def pixelwar_page():
+    if 'user_info' not in session: return redirect('/')
+    user = session['user_info']
+    return render_template('pixelwar.html', user=user, grid_size=GRID_SIZE)
+
+# --- API: GET GAME STATE ---
+@app.route('/api/pixelwar/state')
+def get_pixel_state():
+    # Return entire grid and history
+    return jsonify({
+        "grid": pixel_grid,
+        "history": pixel_history[-10:] # Last 10 events
+    })
+
+# --- API: PLACE PIXEL ---
+@app.route('/api/pixelwar/place', methods=['POST'])
+def place_pixel():
+    if 'user_info' not in session: return jsonify({"status":"error"})
+    data = request.json
+    x, y = data.get('x'), data.get('y')
+    team = data.get('team')
+    user = session['user_info']['username']
+    
+    # Validation
+    if not (0 <= x < GRID_SIZE and 0 <= y < GRID_SIZE):
+        return jsonify({"status":"error", "msg":"Out of bounds"})
+    
+    color = TEAMS.get(team, {}).get('color', '#fff')
+    
+    # Update Grid
+    pixel_grid[y][x] = color
+    
+    # Add Log
+    log = f"<b style='color:{color}'>{user}</b> captured ({x},{y})"
+    pixel_history.append(log)
+    
+    return jsonify({"status":"success"})
+
+# --- API: FETCH DISCORD MEMBERS ---
+@app.route('/api/pixelwar/members')
+def get_discord_members():
+    # Only fetch online members to prevent lag
+    guild = bot.get_guild(int(GUILD_ID))
+    if not guild: return jsonify([])
+    
+    members = []
+    for m in guild.members:
+        if not m.bot and m.status != discord.Status.offline:
+            members.append({
+                "id": str(m.id),
+                "name": m.name,
+                "avatar": m.display_avatar.url,
+                "status": str(m.status)
+            })
+            if len(members) >= 50: break # Limit to 50 for UI speed
+            
+    return jsonify(members)
+
+# --- API: INVITE PLAYER ---
+@app.route('/api/pixelwar/invite', methods=['POST'])
+def invite_player():
+    if 'user_info' not in session: return jsonify({"status":"error"})
+    
+    data = request.json
+    target_id = int(data.get('target_id'))
+    sender_name = session['user_info']['username']
+    
+    # Run async bot task
+    asyncio.run_coroutine_threadsafe(send_invite_msg(target_id, sender_name), bot.loop)
+    
+    return jsonify({"status":"success", "msg": "Invite Sent!"})
+
+# --- BOT TASK: SEND INVITE ---
+# --- CONFIG SECTION MEIN YE ID DAAL DENA ---
+PIXEL_WAR_CHANNEL_ID = 123456789012345678  # <--- Yaha us channel ki ID daalo jaha invite bhejna hai
+
+# --- BOT TASK: SEND INVITE (FIXED) ---
+async def send_invite_msg(target_id, sender_name):
+    # Specific Channel nikalenge ID se
+    channel = bot.get_channel(PIXEL_WAR_CHANNEL_ID)
+    
+    if not channel:
+        print("❌ Error: Pixel War Channel ID galat hai ya bot ko permission nahi hai.")
+        return
+
+    # Create Embed
+    embed = discord.Embed(
+        title="⚔️ PIXEL WAR RECRUITMENT", 
+        description=f"**{sender_name}** needs backup on the grid!", 
+        color=0x00f3ff
+    )
+    embed.set_thumbnail(url="https://media.giphy.com/media/26tn33aiTi1jkl6H6/giphy.gif") # Optional Cool GIF
+    embed.add_field(name="Mission Objective", value="Paint the map & dominate the server.", inline=False)
+    
+    # Button View
+    view = discord.ui.View()
+    # Yaha apni website ka link daalna
+    btn = discord.ui.Button(label="🚀 JOIN WAR NOW", url="https://testingbot-q1jb.onrender.com/games/pixelwar", style=discord.ButtonStyle.link)
+    view.add_item(btn)
+    
+    # Message Send
+    await channel.send(f"<@{target_id}> 🚨 **INCOMING TRANSMISSION!**", embed=embed, view=view)
 
 # --- 17. LOGOUT & RUN ---
 @app.route('/logout')
