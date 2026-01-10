@@ -17516,6 +17516,80 @@ def satta():
         
     return jsonify({"status":"success", "won":won, "balance": db.get_user_balance(user_id), "msg":msg})
 
+# --- MEMORY GAME CONFIG ---
+MEMORY_REWARDS = {
+    1: 500, 2: 1000, 3: 2000, 4: 5000, 5: 10000, 
+    6: 20000, 7: 40000, 8: 75000, 9: 150000,
+    10: 500000, 11: 1000000, 12: 5000000
+}
+
+# Roles for Levels 10, 11, 12
+SPECIAL_ROLES = {
+    10: {"name": "🧠 MEMORY MASTER", "color": 0x9b59b6}, # Purple
+    11: {"name": "💣 BOMB SQUAD ELITE", "color": 0xe67e22}, # Orange
+    12: {"name": "👑 GOD OF MINDS", "color": 0xffd700} # Gold
+}
+
+@app.route('/games/memory')
+def memory_game_page():
+    if 'user_info' not in session: return redirect('/')
+    user_id = session['user_info']['id']
+    balance = db.get_user_balance(user_id)
+    return render_template('memory.html', user=session['user_info'], balance=balance)
+
+@app.route('/api/games/memory/complete', methods=['POST'])
+def memory_complete():
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+    
+    user_id = session['user_info']['id']
+    level = int(request.json.get('level'))
+    won = request.json.get('won')
+    
+    if not won:
+        return jsonify({"status":"success", "msg":"Game Over"})
+
+    # 1. Money Reward
+    prize = MEMORY_REWARDS.get(level, 0)
+    db.update_balance(user_id, prize)
+    msg = f"Level {level} Cleared! Won ${prize:,}"
+
+    # 2. Special Role Logic (Level 10, 11, 12)
+    if level in SPECIAL_ROLES:
+        role_data = SPECIAL_ROLES[level]
+        guild = bot.get_guild(int(GUILD_ID)) # Make sure GUILD_ID is set in config
+        
+        if guild:
+            member = guild.get_member(int(user_id))
+            if member:
+                # Run async bot task in thread-safe way
+                asyncio.run_coroutine_threadsafe(assign_memory_role(guild, member, role_data), bot.loop)
+                msg += f" + ROLE: {role_data['name']}"
+
+    return jsonify({"status":"success", "msg": msg, "new_balance": db.get_user_balance(user_id)})
+
+# --- ASYNC ROLE FUNCTION ---
+async def assign_memory_role(guild, member, role_data):
+    # Check if role exists
+    role = discord.utils.get(guild.roles, name=role_data['name'])
+    
+    # If not, create it
+    if not role:
+        try:
+            role = await guild.create_role(
+                name=role_data['name'], 
+                color=discord.Color(role_data['color']),
+                reason="Auto-created by Memory Game"
+            )
+        except Exception as e:
+            print(f"Role create error: {e}")
+            return
+
+    # Assign to user
+    if role not in member.roles:
+        try:
+            await member.add_roles(role)
+        except Exception as e:
+            print(f"Role assign error: {e}")
 
 # ==========================================
 # 🚀 ULTIMATE BUSINESS SYSTEM (UPDATED)
