@@ -15944,6 +15944,38 @@ class WipeoutConfirmView(discord.ui.View):
             print(f"Wipeout Logic Error: {e}")
             await interaction.edit_original_response(content="❌ **Critical Error:** Database failed during raid.")
 
+# --- 🛠️ FIX NAME COMMAND (ONLY FOR TOP 3 STAFF) ---
+@bot.command(name="fix_name")
+async def fix_staff_name(ctx):
+    # 1. Database से Top 3 IDs निकालें (Owner को छोड़कर)
+    data = supabase.table("economy").select("user_id").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
+    
+    if not data:
+        return await ctx.send("❌ अभी कोई स्टाफ डेटा उपलब्ध नहीं है।")
+
+    top_3_ids = [int(u['user_id']) for u in data]
+
+    # 2. चेक करें कि क्या यूजर Top 3 में है
+    if ctx.author.id not in top_3_ids:
+        embed = discord.Embed(title="🚫 ACCESS DENIED", color=0xFF0000)
+        embed.description = "Aap Top 3 active players mein nahi hain. Sirf Staff members hi apna nick fix kar sakte hain."
+        return await ctx.send(embed=embed)
+
+    # 3. नाम फिक्स करने का लॉजिक
+    try:
+        # वही फॉर्मेट जो सैलरी सिस्टम में है
+        new_nick = f"[BOT STAFF] {ctx.author.name[:25]}" 
+        await ctx.author.edit(nick=new_nick)
+        
+        embed = discord.Embed(title="✅ NAME FIXED", color=0x00FF00)
+        embed.description = f"Aapka nickname fix kar diya gaya hai: **{new_nick}**"
+        await ctx.send(embed=embed)
+        
+    except discord.Forbidden:
+        await ctx.send("❌ मेरे पास आपके नाम बदलने की परमिशन नहीं है। (Role hierarchy चेक करें)")
+    except Exception as e:
+        await ctx.send(f"❌ एक एरर आई: {e}")
+
 
 # --- 2. MAIN COMMAND ---
 @bot.tree.command(name="wipeout", description="☠️ 100M RISK: Steal EVERYTHING (Wallet + Bank + Items)")
