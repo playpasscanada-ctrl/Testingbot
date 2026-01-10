@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber Dice Elite</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00de;
+            --neon-gold: #ffd700;
+            --dark-bg: #020205;
+        }
+
+        body { 
+            background: var(--dark-bg); color: white; margin: 0; 
+            font-family: 'Rajdhani', sans-serif; overflow: hidden; 
+            height: 100vh; display: flex; flex-direction: column;
+        }
+
+        /* --- BACKGROUND FX --- */
+        #bgCanvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0; pointer-events: none;
+        }
+
+        /* --- HEADER --- */
+        .header {
+            padding: 20px; display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
+            z-index: 10; position: relative;
+        }
+        .back-btn { text-decoration: none; color: white; font-size: 18px; font-family: 'Orbitron'; display: flex; align-items: center; gap: 5px; opacity: 0.8; transition: 0.3s; }
+        .back-btn:hover { opacity: 1; text-shadow: 0 0 10px white; }
+        .balance { font-family: 'Orbitron'; color: var(--neon-gold); font-size: 22px; text-shadow: 0 0 15px var(--neon-gold); }
+
+        /* --- MAIN GAME AREA --- */
+        .game-container {
+            flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            perspective: 1200px; z-index: 5; position: relative;
+        }
+
+        /* --- 3D DICE --- */
+        .dice-platform {
+            display: flex; gap: 60px; transform-style: preserve-3d;
+            padding: 50px;
+        }
+
+        .cube {
+            width: 100px; height: 100px; position: relative; transform-style: preserve-3d;
+            transition: transform 1.5s cubic-bezier(0.1, 0.9, 0.2, 1);
+        }
+
+        .cube div {
+            position: absolute; width: 100px; height: 100px;
+            background: rgba(0, 10, 20, 0.85); 
+            border: 2px solid var(--neon-blue);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2) inset;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 0; border-radius: 15px;
+        }
+
+        /* Dice Dots */
+        .dot { width: 18px; height: 18px; background: var(--neon-blue); border-radius: 50%; box-shadow: 0 0 10px var(--neon-blue); display: block; position: absolute; }
+        
+        /* Face Positioning */
+        .front  { transform: translateZ(50px); }
+        .back   { transform: rotateY(180deg) translateZ(50px); }
+        .right  { transform: rotateY(90deg) translateZ(50px); }
+        .left   { transform: rotateY(-90deg) translateZ(50px); }
+        .top    { transform: rotateX(90deg) translateZ(50px); }
+        .bottom { transform: rotateX(-90deg) translateZ(50px); }
+
+        /* Dot Positions Logic (Simple CSS patterns) */
+        .front .d1 { top: 41px; left: 41px; } /* 1 */
+        
+        .back .d1 { top: 20px; left: 20px; } .back .d2 { top: 20px; right: 20px; } /* 6 */
+        .back .d3 { top: 41px; left: 20px; } .back .d4 { top: 41px; right: 20px; }
+        .back .d5 { bottom: 20px; left: 20px; } .back .d6 { bottom: 20px; right: 20px; }
+
+        .right .d1 { top: 20px; right: 20px; } .right .d2 { top: 41px; left: 41px; } .right .d3 { bottom: 20px; left: 20px; } /* 3 */
+        
+        .left .d1 { top: 20px; left: 20px; } .left .d2 { top: 20px; right: 20px; } /* 4 */
+        .left .d3 { bottom: 20px; left: 20px; } .left .d4 { bottom: 20px; right: 20px; }
+
+        .top .d1 { top: 20px; left: 20px; } .top .d2 { bottom: 20px; right: 20px; } /* 2 */
+
+        .bottom .d1 { top: 20px; left: 20px; } .bottom .d2 { top: 20px; right: 20px; } /* 5 */
+        .bottom .d3 { top: 41px; left: 41px; } 
+        .bottom .d4 { bottom: 20px; left: 20px; } .bottom .d5 { bottom: 20px; right: 20px; }
+
+        /* --- INFO PANEL --- */
+        .info-panel {
+            background: rgba(20, 20, 30, 0.6); backdrop-filter: blur(10px);
+            padding: 15px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px; text-align: center; max-width: 90%; width: 400px;
+        }
+        .info-title { color: #888; font-size: 12px; letter-spacing: 2px; margin-bottom: 5px; }
+        .info-msg { font-size: 20px; font-weight: bold; color: white; text-shadow: 0 0 10px rgba(255,255,255,0.5); font-family: 'Orbitron'; }
+
+        /* --- CONTROLS --- */
+        .controls {
+            width: 100%; max-width: 500px; padding: 20px;
+            background: rgba(0,0,0,0.8); border-top: 1px solid #333;
+            border-top-left-radius: 30px; border-top-right-radius: 30px;
+            box-shadow: 0 -10px 50px rgba(0, 243, 255, 0.1);
+            z-index: 20;
+        }
+
+        .bet-input {
+            width: 100%; background: #111; border: 1px solid #333; color: white;
+            padding: 15px; font-size: 24px; text-align: center; border-radius: 12px;
+            font-family: 'Orbitron'; margin-bottom: 20px; outline: none;
+            transition: 0.3s;
+        }
+        .bet-input:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(0, 243, 255, 0.2); }
+
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        
+        .btn {
+            border: none; padding: 15px 5px; border-radius: 12px;
+            font-family: 'Orbitron'; font-weight: bold; font-size: 14px;
+            cursor: pointer; transition: 0.2s; position: relative; overflow: hidden;
+            color: black;
+        }
+        .btn span { display: block; font-size: 10px; opacity: 0.8; margin-top: 2px; }
+
+        .btn-under { background: var(--neon-pink); box-shadow: 0 0 15px var(--neon-pink); }
+        .btn-seven { background: var(--neon-gold); box-shadow: 0 0 15px var(--neon-gold); z-index: 2; transform: scale(1.05); }
+        .btn-over { background: var(--neon-blue); box-shadow: 0 0 15px var(--neon-blue); }
+        
+        .btn:active { transform: scale(0.95); filter: brightness(0.8); }
+        .btn:disabled { filter: grayscale(1); cursor: not-allowed; }
+
+        /* --- RULES MODAL --- */
+        .rules-tag {
+            position: absolute; top: 70px; right: 20px;
+            font-size: 12px; color: #888; cursor: pointer; border-bottom: 1px dotted #888;
+        }
+        .rules-modal {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            background: rgba(0,0,0,0.95); border: 1px solid var(--neon-blue); padding: 30px;
+            width: 80%; max-width: 400px; border-radius: 20px; z-index: 100; text-align: left;
+            box-shadow: 0 0 50px rgba(0,243,255,0.2);
+        }
+        .rules-modal h2 { color: var(--neon-blue); margin-top: 0; font-family: 'Orbitron'; }
+        .rules-modal ul { padding-left: 20px; color: #ccc; line-height: 1.6; }
+        .close-rules { 
+            margin-top: 20px; width: 100%; padding: 10px; background: #333; 
+            border: none; color: white; border-radius: 10px; cursor: pointer; 
+        }
+
+    </style>
+</head>
+<body>
+
+    <canvas id="bgCanvas"></canvas>
+
+    <div class="header">
+        <a href="/games" class="back-btn">← EXIT</a>
+        <div class="balance">$<span id="bal-display">{{ "{:,}".format(balance) }}</span></div>
+    </div>
+
+    <div class="rules-tag" onclick="toggleRules()">HOW TO PLAY?</div>
+
+    <div class="game-container">
+        
+        <div class="info-panel">
+            <div class="info-title">GAME STATUS</div>
+            <div class="info-msg" id="status-text">PLACE YOUR BET</div>
+        </div>
+
+        <div class="dice-platform">
+            <div class="cube" id="d1">
+                <div class="front"><span class="dot d1"></span></div> <div class="back"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="dot d4"></span><span class="dot d5"></span><span class="dot d6"></span></div> <div class="right"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span></div> <div class="left"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="dot d4"></span></div> <div class="top"><span class="dot d1"></span><span class="dot d2"></span></div> <div class="bottom"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="dot d4"></span><span class="dot d5"></span></div> </div>
+            
+            <div class="cube" id="d2">
+                <div class="front"><span class="dot d1"></span></div>
+                <div class="back"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="dot d4"></span><span class="dot d5"></span><span class="dot d6"></span></div>
+                <div class="right"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span></div>
+                <div class="left"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="dot d4"></span></div>
+                <div class="top"><span class="dot d1"></span><span class="dot d2"></span></div>
+                <div class="bottom"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="dot d4"></span><span class="dot d5"></span></div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="controls">
+        <input type="number" id="betInput" class="bet-input" value="1000" placeholder="Bet Amount">
+        <div class="btn-grid">
+            <button class="btn btn-under" onclick="play('under')">UNDER 7<span>WIN 2x</span></button>
+            <button class="btn btn-seven" onclick="play('seven')">EXACT 7<span>WIN 5x</span></button>
+            <button class="btn btn-over" onclick="play('over')">OVER 7<span>WIN 2x</span></button>
+        </div>
+    </div>
+
+    <div id="rulesModal" class="rules-modal">
+        <h2>GAME RULES</h2>
+        <ul>
+            <li><b style="color:var(--neon-pink)">UNDER 7:</b> Total dice sum must be 2 to 6. (Multiplier: 2x)</li>
+            <li><b style="color:var(--neon-gold)">EXACT 7:</b> Total dice sum must be exactly 7. (Multiplier: 5x)</li>
+            <li><b style="color:var(--neon-blue)">OVER 7:</b> Total dice sum must be 8 to 12. (Multiplier: 2x)</li>
+        </ul>
+        <p style="font-size:12px; color:gray;">Two dice are rolled. The sum determines the winner.</p>
+        <button class="close-rules" onclick="toggleRules()">CLOSE</button>
+    </div>
+
+    <script>
+        // --- SMOKE & SPARKLE ANIMATION ---
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, particles = [], touchParticles = [];
+
+        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        class Particle {
+            constructor(type, x, y) {
+                this.type = type; // 0 = Sparkle, 1 = Smoke
+                this.x = x || Math.random() * width;
+                this.y = y || Math.random() * height;
+                this.size = type === 1 ? Math.random() * 15 + 5 : Math.random() * 2;
+                this.speedY = Math.random() * 0.5 + 0.2;
+                this.opacity = Math.random();
+                this.hue = Math.random() * 360;
+                this.life = 1;
+            }
+            update() {
+                this.y -= this.speedY; // Move Up
+                if(this.y < 0) this.y = height;
+                
+                if(this.type === 1) { // Smoke Logic
+                    this.size += 0.2;
+                    this.life -= 0.02;
+                    this.opacity = this.life * 0.5;
+                } else { // Sparkle Logic
+                    this.opacity += Math.random() * 0.02 - 0.01;
+                }
+            }
+            draw() {
+                if(this.life <= 0) return;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+                if(this.type === 1) {
+                    ctx.shadowBlur = 20; ctx.shadowColor = `hsla(${this.hue},100%,50%,0.5)`;
+                    ctx.fillStyle = `hsla(${this.hue},100%,50%,${this.opacity})`;
+                } else {
+                    ctx.fillStyle = `rgba(255,255,255,${this.opacity})`;
+                }
+                ctx.fill(); ctx.shadowBlur = 0;
+            }
+        }
+
+        // Init BG Sparkles
+        for(let i=0; i<40; i++) particles.push(new Particle(0));
+
+        // Touch Smoke
+        const addSmoke = (x, y) => { for(let i=0; i<2; i++) touchParticles.push(new Particle(1, x, y)); };
+        document.addEventListener('mousemove', e => addSmoke(e.clientX, e.clientY));
+        document.addEventListener('touchmove', e => addSmoke(e.touches[0].clientX, e.touches[0].clientY));
+
+        function animate() {
+            ctx.clearRect(0,0,width,height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            touchParticles.forEach((p, i) => { 
+                p.update(); p.draw(); 
+                if(p.life <= 0) touchParticles.splice(i, 1); 
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // --- GAME LOGIC ---
+        
+        function toggleRules() {
+            const m = document.getElementById('rulesModal');
+            m.style.display = m.style.display === 'block' ? 'none' : 'block';
+        }
+
+        async function play(choice) {
+            const bet = document.getElementById('betInput').value;
+            const status = document.getElementById('status-text');
+            const d1 = document.getElementById('d1');
+            const d2 = document.getElementById('d2');
+            const btns = document.querySelectorAll('.btn');
+
+            if(bet < 1) return alert("Please enter a valid bet amount.");
+            
+            // Disable buttons
+            btns.forEach(b => b.disabled = true);
+            status.innerText = "ROLLING...";
+            status.style.color = "white";
+
+            // Random Spin Animation
+            let xRand = Math.floor(Math.random() * 24 + 10) * 90;
+            let yRand = Math.floor(Math.random() * 24 + 10) * 90;
+            
+            d1.style.transform = `rotateX(${xRand}deg) rotateY(${yRand}deg)`;
+            d2.style.transform = `rotateX(${xRand}deg) rotateY(${yRand}deg)`;
+
+            try {
+                const res = await fetch('/api/games/dice/play', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ bet: bet, choice: choice })
+                });
+                const data = await res.json();
+
+                setTimeout(() => {
+                    btns.forEach(b => b.disabled = false);
+
+                    if(data.status === 'error') {
+                        status.innerText = data.msg;
+                        status.style.color = 'red';
+                    } else {
+                        // UPDATE DICE POSITION BASED ON RESULT
+                        setDiceFace(d1, data.d1);
+                        setDiceFace(d2, data.d2);
+
+                        // Update Balance
+                        document.getElementById('bal-display').innerText = data.balance.toLocaleString();
+                        
+                        // Result Message
+                        status.innerText = data.msg;
+                        status.style.color = data.won ? '#ffd700' : '#ff4444';
+                        
+                        if(data.won) triggerConfetti();
+                    }
+                }, 1500); // Wait for spin to "finish"
+            } catch(e) {
+                btns.forEach(b => b.disabled = false);
+                status.innerText = "Error Connecting.";
+            }
+        }
+
+        // --- DICE ROTATION MAPPING ---
+        function setDiceFace(cube, num) {
+            // These angles rotate the cube to show the specific number face
+            // We add extra 360 rotations to ensure it spins to get there
+            const spins = 1080; // 3 full spins
+            let x = 0, y = 0;
+
+            switch(num) {
+                case 1: x = 0; y = 0; break;
+                case 6: x = 180; y = 0; break;
+                case 2: x = -90; y = 0; break; // Top
+                case 5: x = 90; y = 0; break;  // Bottom
+                case 3: x = 0; y = -90; break; // Right
+                case 4: x = 0; y = 90; break;  // Left
+            }
+            cube.style.transform = `rotateX(${x + spins}deg) rotateY(${y + spins}deg)`;
+        }
+
+        function triggerConfetti() {
+            // Simple visual feedback using smoke logic but gold color
+            for(let i=0; i<30; i++) {
+                let p = new Particle(1, width/2, height/2);
+                p.hue = 50; // Gold
+                p.speedY = (Math.random() - 0.5) * 10;
+                touchParticles.push(p);
+            }
+        }
+
+    </script>
+</body>
+</html>
