@@ -2,87 +2,108 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Luneira Hub</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Luneira Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Poppins:wght@300;600&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-        body {
-            background: #050505; color: white; font-family: 'Orbitron', sans-serif;
-            margin: 0; height: 100vh; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; overflow: hidden;
+        :root {
+            --primary: #00f3ff; --secondary: #bc13fe; --dark: #050505;
+            --glass: rgba(255, 255, 255, 0.05); --border: rgba(255, 255, 255, 0.1);
         }
-        /* Animated Background */
-        body::before {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at 50% 50%, #1a0b2e 0%, #000000 70%);
-            z-index: -1; animation: pulseBg 10s infinite alternate;
-        }
-        @keyframes pulseBg { 0% { opacity: 0.8; } 100% { opacity: 1; } }
-
-        .profile {
-            position: absolute; top: 20px; right: 20px;
-            display: flex; align-items: center; gap: 10px;
-            background: rgba(255, 255, 255, 0.05); padding: 10px 20px;
-            border-radius: 50px; border: 1px solid rgba(255,255,255,0.1);
-        }
-        .profile img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #00ffcc; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
-        h1 { font-size: 3rem; text-shadow: 0 0 20px #00ffcc; margin-bottom: 50px; }
+        body {
+            margin: 0; padding: 0; background: var(--dark); color: white;
+            font-family: 'Poppins', sans-serif; overflow: hidden; height: 100vh;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
 
-        .container { display: flex; gap: 40px; z-index: 2; }
+        /* --- ANIMATED BACKGROUND --- */
+        .bg-grid {
+            position: absolute; width: 200vw; height: 200vh;
+            background-image: 
+                linear-gradient(rgba(0, 243, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform: perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+            animation: moveGrid 10s linear infinite; z-index: -1;
+            opacity: 0.3; pointer-events: none;
+        }
+        @keyframes moveGrid { 0% { transform: perspective(500px) rotateX(60deg) translateY(0); } 100% { transform: perspective(500px) rotateX(60deg) translateY(50px); } }
+
+        /* --- PROFILE --- */
+        .profile-bar {
+            position: absolute; top: 20px; width: 90%; max-width: 400px;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(15px);
+            border: 1px solid var(--border); border-radius: 50px;
+            padding: 10px 20px; display: flex; align-items: center; gap: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: slideDown 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .avatar { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--primary); }
+        .info h3 { margin: 0; font-family: 'Rajdhani'; font-size: 18px; letter-spacing: 1px; }
+        .info p { margin: 0; font-size: 12px; color: var(--primary); font-weight: bold; }
+
+        /* --- CARDS CONTAINER --- */
+        .hub-container {
+            display: flex; flex-direction: column; gap: 25px; width: 90%; max-width: 400px;
+            margin-top: 60px;
+        }
 
         .card {
-            width: 250px; height: 350px;
-            background: rgba(20, 20, 20, 0.6);
-            border: 2px solid #333; border-radius: 20px;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            cursor: pointer; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            backdrop-filter: blur(10px); position: relative; overflow: hidden;
-            text-decoration: none; color: white;
+            background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
+            border: 1px solid var(--border); padding: 30px; border-radius: 25px;
+            text-decoration: none; color: white; position: relative; overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex; align-items: center; justify-content: space-between;
         }
         
-        .card::after {
-            content: ''; position: absolute; width: 100%; height: 100%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
-            top: -100%; transition: 0.5s;
+        /* Neon Glow on Hover/Active */
+        .card::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: 0.5s;
         }
-        .card:hover::after { top: 100%; }
+        .card:active { transform: scale(0.96); }
+        .card:hover::before { left: 100%; }
 
-        .card:hover { transform: translateY(-15px) scale(1.05); border-color: white; }
-        
-        .shop-card:hover { box-shadow: 0 0 50px #ff00ff; border-color: #ff00ff; }
-        .game-card:hover { box-shadow: 0 0 50px #00ffff; border-color: #00ffff; }
+        .shop-card { border-left: 5px solid var(--secondary); box-shadow: -5px 0 20px rgba(188, 19, 254, 0.2); }
+        .game-card { border-left: 5px solid var(--primary); box-shadow: -5px 0 20px rgba(0, 243, 255, 0.2); }
 
-        .icon { font-size: 80px; margin-bottom: 20px; transition: 0.3s; }
-        .card:hover .icon { transform: scale(1.2) rotate(5deg); }
+        .card-text h2 { margin: 0; font-family: 'Rajdhani'; font-size: 32px; text-transform: uppercase; }
+        .card-text p { margin: 5px 0 0; font-size: 12px; color: #aaa; }
+        .icon { font-size: 40px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.3)); }
 
-        .btn-text { font-size: 24px; font-weight: bold; letter-spacing: 2px; }
-
+        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <div class="profile">
-        <img src="{{ avatar }}" alt="User">
-        <div>
-            <div style="font-size: 12px; color: gray;">Welcome</div>
-            <div>{{ username }}</div>
-            <div style="color: #00ffcc;">${{ balance }}</div>
+    <div class="bg-grid"></div>
+
+    <div class="profile-bar">
+        <img src="{{ user['avatar'] }}" class="avatar" alt="Img" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+        <div class="info">
+            <h3>{{ user['username'] }}</h3>
+            <p>WALLET: ${{ balance }}</p>
         </div>
     </div>
 
-    <h1>CHOOSE PATH</h1>
-
-    <div class="container">
+    <div class="hub-container">
         <a href="/shop" class="card shop-card">
+            <div class="card-text">
+                <h2>Shop</h2>
+                <p>Buy Items & Roles</p>
+            </div>
             <div class="icon">🛍️</div>
-            <div class="btn-text">SHOP</div>
         </a>
 
         <a href="/games" class="card game-card">
-            <div class="icon">🎮</div>
-            <div class="btn-text">GAMES</div>
+            <div class="card-text">
+                <h2>Casino</h2>
+                <p>High Stakes, Big Wins</p>
+            </div>
+            <div class="icon">🎰</div>
         </a>
     </div>
 
