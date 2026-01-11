@@ -18620,17 +18620,15 @@ async def menu_cmd(i: discord.Interaction):
 @bot.tree.command(name="balance", description="💰 View Wallet, Bank & Inventory")
 @check_seized()
 async def balance(i: discord.Interaction, user: discord.Member = None):
-    # ✅ FIX 1: Interaction Defer करें (ताकि Timeout न हो)
-    await i.response.defer() 
+    await i.response.defer() # Timeout fix
 
     try:
         u = user or i.user
         
-        # Database se data nikalo
+        # 1. Fetch Data
         res = supabase.table("economy").select("*").eq("user_id", str(u.id)).execute()
         
         if not res.data:
-            # Agar user nahi hai to create karo
             supabase.table("economy").insert({
                 "user_id": str(u.id), 
                 "balance": 0, 
@@ -18641,41 +18639,54 @@ async def balance(i: discord.Interaction, user: discord.Member = None):
         else: 
             d = res.data[0]
         
-        total = d['balance'] + d['bank']
+        # 2. Balance Calculation
+        total = d.get('balance', 0) + d.get('bank', 0)
         
-        # Embed Banayein
-        embed = discord.Embed(title=f"🏦 WEALTH: {u.name.upper()}", color=0x2ECC71) # Color maine Green kar diya (C_DARK error de sakta hai agar defined na ho)
+        # Embed Setup
+        embed = discord.Embed(title=f"🏦 WEALTH: {u.name.upper()}", color=0x2ECC71)
         embed.set_thumbnail(url=u.display_avatar.url)
-        embed.add_field(name="💳 Wallet", value=f"`${d['balance']:,}`", inline=True)
-        embed.add_field(name="🏦 Bank", value=f"`${d['bank']:,}`", inline=True)
+        embed.add_field(name="💳 Wallet", value=f"`${d.get('balance', 0):,}`", inline=True)
+        embed.add_field(name="🏦 Bank", value=f"`${d.get('bank', 0):,}`", inline=True)
         embed.add_field(name="💎 Net Worth", value=f"**${total:,}**", inline=False)
         
-        # Inventory Display
-        inv = d.get('inventory', {}) or {}
-        inv_text = ""
-        
-        # Map IDs to Display Names
-        for k, v in inv.items():
-            if v > 0:
-                # SHOP_ITEMS agar defined nahi hai to key use karega
-                name = SHOP_ITEMS.get(k, {}).get('name', k.title()) if 'SHOP_ITEMS' in globals() else k.title()
-                inv_text += f"{name}: **x{v}**\n"
-        
-        # Check VIP (Timezone fix ke sath)
-        vip_end = d.get('vip_expiry')
-        if vip_end and vip_end > datetime.utcnow().isoformat():
-            inv_text += f"👑 **VIP ACTIVE**"
+        # 3. Inventory Logic (Protected)
+        try:
+            inv = d.get('inventory', {})
+            if not isinstance(inv, dict): inv = {} # Agar inventory list hui to crash nahi hoga
             
-        if inv_text: 
-            embed.add_field(name="🎒 Inventory", value=inv_text, inline=False)
-        
-        # ✅ FIX 2: response.send_message ki jagah followup.send use karein
+            inv_text = ""
+            for k, v in inv.items():
+                if v > 0:
+                    # Naam dhoondne ki koshish, nahi to ID dikhao
+                    item_name = k.title()
+                    if 'SHOP_ITEMS' in globals() and k in SHOP_ITEMS:
+                        item_name = SHOP_ITEMS[k].get('name', k.title())
+                    
+                    inv_text += f"{item_name}: **x{v}**\n"
+            
+            if inv_text: 
+                embed.add_field(name="🎒 Inventory", value=inv_text[:1024], inline=False) # Limit check
+        except Exception as e:
+            print(f"Inventory Error for {u.name}: {e}")
+            embed.add_field(name="🎒 Inventory", value="⚠️ Error loading items", inline=False)
+
+        # 4. VIP Check (Protected)
+        try:
+            vip_end = d.get('vip_expiry')
+            # datetime fix directly inside function
+            from datetime import datetime 
+            if vip_end and vip_end > datetime.utcnow().isoformat():
+                embed.set_footer(text="👑 VIP MEMBER ACTIVE")
+        except Exception as e:
+            print(f"VIP Error for {u.name}: {e}")
+
         await i.followup.send(embed=embed)
 
     except Exception as e:
-        print(f"❌ Balance Error: {e}")
-        # Error user ko dikhayein
-        await i.followup.send(f"❌ Error fetching balance. Database slow ho sakta hai.", ephemeral=True)
+        # YAHAN ASLI ERROR DIKHEGA
+        print(f"❌ CRITICAL BALANCE ERROR: {e}")
+        await i.followup.send(f"❌ **Staff Error Detected:**\n`{str(e)}`\n\n(Yeh screenshot developer ko bhejo)", ephemeral=True)
+
 
 
 @bot.tree.command(name="deposit", description="🏦 Deposit money (Safe)")
