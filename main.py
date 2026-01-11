@@ -6360,7 +6360,7 @@ class BombPassView(discord.ui.View):
         )
 
 
-@bot.tree.command(name="bomb_start", description="💣 Start Bomb Game ($30k Fee)")
+@bot.tree.command(name="bomb_start", description="💣 Start Bomb Game ($2 million Fee)")
 @check_seized()
 async def start_bomb(i: discord.Interaction):
     # 1. Permission Check
@@ -6368,7 +6368,7 @@ async def start_bomb(i: discord.Interaction):
         return await i.response.send_message("❌ Mere paas 'Timeout' permission nahi hai!", ephemeral=True)
 
     # 2. Economy Check ($30k Fee)
-    cost = 30000
+    cost = 2000000
     data = await get_data(i.user.id)
     
     if data["balance"] < cost:
@@ -6380,7 +6380,7 @@ async def start_bomb(i: discord.Interaction):
     # 3. Game Start Embed
     embed = discord.Embed(title="💣 ACTIVE BOMB PLANTED!", color=0xFF4500) # Red Orange
     embed.description = (
-        f"**{i.user.mention}** ne **$30,000** dekar pin nikaal di hai!\n\n"
+        f"**{i.user.mention}** ne **$2,000,000** dekar pin nikaal di hai!\n\n"
         f"💀 **Situation:** Critical\n"
         f"⏳ **Timer:** Random (Kabhi bhi phatega)\n"
         f"🔇 **Penalty:** 5 Min Mute (Hospital)\n\n"
