@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber Pixel War: Global Conflict</title>
+    <title>Cyber Pixel War: Zero Hour</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --neon-blue: #00f3ff;
-            --neon-pink: #ff00de;
+            --neon-pink: #bc13fe;
+            --neon-alert: #ff2a2a;
             --bg-dark: #050508;
-            --glass: rgba(10, 10, 15, 0.9);
-            --border: rgba(255,255,255,0.15);
+            --glass-panel: rgba(10, 15, 20, 0.85);
+            --border-glow: rgba(255, 255, 255, 0.1);
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
@@ -23,335 +24,323 @@
             height: 100vh; width: 100vw; display: flex; flex-direction: column;
         }
 
-        /* --- GAME LAYER --- */
-        #game-container {
-            flex: 1; position: relative; overflow: hidden;
-            background-color: #0b0b10;
-            /* Tech Grid Background */
-            background-image: 
-                linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px);
-            background-size: 40px 40px;
-            touch-action: none; 
+        /* --- 1. BACKGROUND FX LAYER --- */
+        #bg-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0; pointer-events: none; opacity: 0.6;
+        }
+
+        /* --- 2. GAME CONTAINER --- */
+        #game-wrapper {
+            flex: 1; position: relative; overflow: hidden; z-index: 5;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+            touch-action: none;
         }
 
         #pixel-canvas {
             position: absolute; left: 0; top: 0;
-            image-rendering: pixelated;
-            box-shadow: 0 0 100px rgba(0,0,0,1);
+            image-rendering: pixelated; /* Sharp pixels */
+            filter: drop-shadow(0 0 20px rgba(0,0,0,0.8));
         }
 
-        /* --- HUD TOP --- */
+        /* --- 3. HUD: TOP BAR --- */
         .hud-top {
             position: absolute; top: 0; left: 0; width: 100%;
-            padding: 15px; display: flex; justify-content: space-between; 
-            pointer-events: none; z-index: 10;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+            padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
+            z-index: 20; background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, transparent 100%);
+        }
+
+        .back-btn {
+            width: 40px; height: 40px; border-radius: 12px;
+            background: rgba(255,255,255,0.05); border: 1px solid var(--border-glow);
+            color: white; display: flex; align-items: center; justify-content: center;
+            text-decoration: none; backdrop-filter: blur(10px);
         }
 
         .score-board {
-            pointer-events: auto;
-            background: rgba(0,0,0,0.6); border: 1px solid var(--border);
-            border-radius: 10px; display: flex; overflow: hidden;
-            backdrop-filter: blur(5px);
+            display: flex; gap: 15px; background: rgba(0,0,0,0.6);
+            padding: 8px 16px; border-radius: 30px; border: 1px solid var(--border-glow);
+            backdrop-filter: blur(10px);
         }
-        .team-score { padding: 8px 15px; font-family: 'Orbitron'; font-weight: bold; font-size: 14px; display: flex; gap: 8px; align-items: center; }
-        .ts-neon { color: var(--neon-blue); border-right: 1px solid var(--border); }
-        .ts-cyber { color: var(--neon-pink); }
+        .score-item { display: flex; align-items: center; gap: 8px; font-family: 'Orbitron'; font-size: 14px; font-weight: bold; }
+        .si-neon { color: var(--neon-blue); text-shadow: 0 0 10px rgba(0, 243, 255, 0.4); }
+        .si-cyber { color: var(--neon-pink); text-shadow: 0 0 10px rgba(188, 19, 254, 0.4); }
 
-        .back-btn {
-            pointer-events: auto; text-decoration: none;
-            width: 40px; height: 40px; background: rgba(255,0,0,0.1); 
-            border: 1px solid red; color: red; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 18px;
-        }
-
-        /* --- BOTTOM CONTROLS --- */
+        /* --- 4. HUD: BOTTOM BAR --- */
         .hud-bottom {
-            position: absolute; bottom: 20px; left: 0; width: 100%;
-            padding: 0 20px; display: flex; justify-content: space-between; align-items: flex-end;
-            pointer-events: none; z-index: 10;
+            position: absolute; bottom: 30px; left: 0; width: 100%;
+            padding: 0 20px; display: flex; justify-content: center; align-items: flex-end;
+            z-index: 20; pointer-events: none;
         }
 
-        /* RECRUIT BUTTON (MAIN FEATURE) */
-        .btn-recruit {
+        .action-dock {
             pointer-events: auto;
-            background: rgba(0, 243, 255, 0.1); border: 1px solid var(--neon-blue);
-            color: var(--neon-blue); padding: 12px 25px; border-radius: 30px;
-            font-family: 'Orbitron'; font-weight: bold; font-size: 14px;
-            box-shadow: 0 0 20px rgba(0, 243, 255, 0.2); cursor: pointer;
-            display: flex; align-items: center; gap: 10px; transition: 0.3s;
-        }
-        .btn-recruit:active { transform: scale(0.95); background: var(--neon-blue); color: black; }
-        .btn-recruit i { font-size: 18px; }
-
-        /* LOGS BUTTON */
-        .btn-logs {
-            pointer-events: auto;
-            width: 50px; height: 50px; background: rgba(0,0,0,0.8);
-            border: 1px solid white; border-radius: 50%; color: white;
-            display: flex; align-items: center; justify-content: center; font-size: 20px;
+            background: var(--glass-panel); border: 1px solid var(--border-glow);
+            padding: 10px 20px; border-radius: 20px; display: flex; gap: 20px;
+            backdrop-filter: blur(15px); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        /* --- RECRUITMENT MODAL (Full Screen Overlay) --- */
-        .recruit-modal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 5, 10, 0.95); z-index: 100;
-            display: flex; flex-direction: column;
-            transform: translateY(100%); transition: 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        .dock-btn {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            color: #888; font-size: 10px; cursor: pointer; transition: 0.3s;
+            min-width: 50px;
         }
-        .recruit-modal.active { transform: translateY(0); }
+        .dock-btn i { font-size: 20px; margin-bottom: 2px; }
+        .dock-btn.active { color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); }
+        .dock-btn.active i { transform: scale(1.1); }
 
-        .rm-header {
-            padding: 20px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center;
-        }
-        .rm-title { font-family: 'Orbitron'; font-size: 20px; color: var(--neon-blue); }
-        .rm-close { font-size: 24px; color: white; cursor: pointer; }
-
-        .rm-list { flex: 1; overflow-y: auto; padding: 20px; }
-
-        .player-card {
-            background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px;
-            margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;
-            border: 1px solid transparent;
-        }
-        .player-card:hover { border-color: var(--neon-blue); }
-        
-        .p-info { display: flex; align-items: center; gap: 15px; }
-        .p-avatar { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #444; }
-        .p-name { font-weight: bold; font-size: 16px; color: white; }
-        .p-id { font-size: 10px; color: #888; font-family: 'Share Tech Mono'; }
-        
-        .p-invite-btn {
+        .btn-recruit-main {
             background: var(--neon-blue); color: black; border: none;
-            padding: 8px 16px; border-radius: 20px; font-weight: bold;
-            font-family: 'Orbitron'; font-size: 10px; cursor: pointer;
+            width: 50px; height: 50px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; margin-top: -30px; box-shadow: 0 0 20px var(--neon-blue);
+            cursor: pointer; animation: pulseBtn 2s infinite;
         }
-        .p-invite-btn:disabled { background: #333; color: #666; }
+        @keyframes pulseBtn { 0% { box-shadow: 0 0 10px var(--neon-blue); } 50% { box-shadow: 0 0 30px var(--neon-blue); } 100% { box-shadow: 0 0 10px var(--neon-blue); } }
 
-        /* --- JOIN NOTIFICATION (TOAST) --- */
-        .join-toast {
-            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
-            background: rgba(0, 20, 0, 0.9); border: 1px solid #0f0;
-            padding: 10px 20px; border-radius: 8px; width: 90%; max-width: 400px;
-            display: flex; align-items: center; gap: 15px;
-            box-shadow: 0 5px 20px rgba(0, 255, 0, 0.2);
-            animation: slideDown 0.5s ease forwards; z-index: 99; opacity: 0; pointer-events: none;
+        /* --- 5. COOLDOWN OVERLAY (MASSIVE VISIBILITY) --- */
+        .cooldown-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(20, 0, 0, 0.9); border: 2px solid var(--neon-alert);
+            padding: 15px 30px; border-radius: 10px; text-align: center;
+            display: none; z-index: 50; pointer-events: none;
+            box-shadow: 0 0 50px rgba(255, 42, 42, 0.4);
         }
-        @keyframes slideDown { 0% { opacity: 0; transform: translate(-50%, -20px); } 100% { opacity: 1; transform: translate(-50%, 0); } }
+        .cd-text { font-family: 'Orbitron'; color: var(--neon-alert); font-size: 12px; letter-spacing: 2px; margin-bottom: 5px; }
+        .cd-timer { font-family: 'Orbitron'; color: white; font-size: 30px; font-weight: bold; text-shadow: 0 0 10px white; }
+
+        /* --- 6. RECRUIT MODAL (SLIDE UP) --- */
+        .modal-sheet {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 70%;
+            background: #0f0f15; border-top: 2px solid var(--neon-blue);
+            border-radius: 25px 25px 0 0; z-index: 100;
+            transform: translateY(110%); transition: 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            display: flex; flex-direction: column;
+            box-shadow: 0 -10px 100px rgba(0,0,0,0.8);
+        }
+        .modal-sheet.active { transform: translateY(0); }
+
+        .sheet-header {
+            padding: 20px; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .sheet-title { font-family: 'Orbitron'; font-size: 18px; color: white; }
+        .sheet-close { color: #666; font-size: 20px; cursor: pointer; padding: 5px; }
+
+        .sheet-content { flex: 1; overflow-y: auto; padding: 20px; }
+
+        .agent-card {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
+            padding: 12px; border-radius: 12px; margin-bottom: 10px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .agent-info { display: flex; align-items: center; gap: 12px; }
+        .agent-avatar { width: 42px; height: 42px; border-radius: 10px; border: 1px solid #444; }
+        .agent-name { font-weight: bold; font-size: 14px; color: #eee; }
+        .agent-id { font-size: 10px; color: #666; font-family: 'Share Tech Mono'; }
         
-        .jt-icon { font-size: 24px; color: #0f0; }
-        .jt-text { font-family: 'Share Tech Mono'; font-size: 12px; color: #efe; }
-        .jt-name { color: #0f0; font-weight: bold; font-size: 14px; }
+        .btn-invite-action {
+            background: transparent; border: 1px solid var(--neon-blue); color: var(--neon-blue);
+            padding: 8px 16px; border-radius: 20px; font-family: 'Orbitron'; font-size: 10px;
+            font-weight: bold; cursor: pointer; transition: 0.2s;
+        }
+        .btn-invite-action:active { background: var(--neon-blue); color: black; }
 
-        /* --- TEAM SELECTION --- */
-        .team-overlay {
+        /* --- 7. TEAM SELECTION (FULLSCREEN) --- */
+        .team-select-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: black; z-index: 200; display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.95); z-index: 200;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(20px);
         }
-        .faction-card {
-            width: 80%; max-width: 300px; padding: 30px; margin: 15px;
-            background: #111; border: 2px solid #333; border-radius: 20px;
-            text-align: center; cursor: pointer; transition: 0.3s;
-        }
-        .faction-card h2 { margin: 10px 0 0; font-family: 'Orbitron'; }
+        .ts-title { font-family: 'Orbitron'; font-size: 24px; margin-bottom: 40px; letter-spacing: 2px; }
         
-        .f-neon { border-color: var(--neon-blue); box-shadow: 0 0 30px rgba(0, 243, 255, 0.2); }
-        .f-cyber { border-color: var(--neon-pink); box-shadow: 0 0 30px rgba(255, 0, 222, 0.2); }
-
-        /* COOLDOWN */
-        .cooldown-bar {
-            position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.8); padding: 8px 20px; border-radius: 20px;
-            border: 1px solid white; display: none; font-family: 'Orbitron'; font-size: 14px;
+        .ts-card {
+            width: 280px; padding: 25px; margin: 15px; border-radius: 20px;
+            background: rgba(255,255,255,0.02); border: 1px solid #333;
+            display: flex; align-items: center; gap: 20px; cursor: pointer;
+            transition: 0.3s; position: relative; overflow: hidden;
         }
+        .ts-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+        }
+        .ts-neon { border-color: var(--neon-blue); box-shadow: 0 0 20px rgba(0, 243, 255, 0.1); }
+        .ts-neon::before { background: var(--neon-blue); }
+        
+        .ts-cyber { border-color: var(--neon-pink); box-shadow: 0 0 20px rgba(188, 19, 254, 0.1); }
+        .ts-cyber::before { background: var(--neon-pink); }
 
+        /* --- 8. JOIN TOAST --- */
+        .join-notification {
+            position: absolute; top: 90px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 255, 100, 0.1); border: 1px solid #0f0;
+            padding: 10px 20px; border-radius: 8px; width: 90%; max-width: 350px;
+            display: flex; align-items: center; gap: 12px; z-index: 90;
+            box-shadow: 0 5px 20px rgba(0, 255, 0, 0.2); opacity: 0;
+            pointer-events: none; transition: 0.5s;
+        }
+        .jn-icon { color: #0f0; font-size: 20px; }
+        
     </style>
 </head>
 <body>
 
-    <div id="notification-area"></div>
+    <canvas id="bg-canvas"></canvas>
 
-    <div class="team-overlay" id="teamModal">
-        <h1 style="font-family:'Orbitron'; margin-bottom:40px; color:white;">SELECT FACTION</h1>
+    <div id="join-alert-area"></div>
+
+    <div class="team-select-screen" id="teamModal">
+        <div class="ts-title">CHOOSE FACTION</div>
         
-        <div class="faction-card f-neon" onclick="selectTeam('neon')">
-            <i class="fas fa-cube" style="font-size:40px; color:var(--neon-blue)"></i>
-            <h2 style="color:var(--neon-blue)">NEON</h2>
+        <div class="ts-card ts-neon" onclick="selectTeam('neon')">
+            <i class="fas fa-cube" style="font-size:30px; color:var(--neon-blue)"></i>
+            <div>
+                <h3 style="margin:0; font-family:'Orbitron'; color:var(--neon-blue)">NEON</h3>
+                <span style="font-size:10px; color:#888;">THE ARCHITECTS</span>
+            </div>
         </div>
 
-        <div class="faction-card f-cyber" onclick="selectTeam('cyber')">
-            <i class="fas fa-bolt" style="font-size:40px; color:var(--neon-pink)"></i>
-            <h2 style="color:var(--neon-pink)">CYBER</h2>
+        <div class="ts-card ts-cyber" onclick="selectTeam('cyber')">
+            <i class="fas fa-bolt" style="font-size:30px; color:var(--neon-pink)"></i>
+            <div>
+                <h3 style="margin:0; font-family:'Orbitron'; color:var(--neon-pink)">CYBER</h3>
+                <span style="font-size:10px; color:#888;">THE HACKERS</span>
+            </div>
         </div>
     </div>
 
     <div class="hud-top">
-        <a href="/" class="back-btn"><i class="fas fa-times"></i></a>
+        <a href="/" class="back-btn"><i class="fas fa-chevron-left"></i></a>
         <div class="score-board">
-            <div class="team-score ts-neon">
+            <div class="score-item si-neon">
                 <i class="fas fa-cube"></i> <span id="score-neon">0</span>
             </div>
-            <div class="team-score ts-cyber">
+            <div style="width:1px; height:15px; background:rgba(255,255,255,0.2)"></div>
+            <div class="score-item si-cyber">
                 <i class="fas fa-bolt"></i> <span id="score-cyber">0</span>
             </div>
         </div>
     </div>
 
-    <div class="hud-bottom">
-        <div class="btn-recruit" onclick="toggleRecruit(true)">
-            <i class="fas fa-satellite-dish"></i> RECRUIT
-        </div>
-        <div class="btn-logs" onclick="alert('Logs feature coming soon!')">
-            <i class="fas fa-list"></i>
-        </div>
+    <div class="cooldown-overlay" id="cd-overlay">
+        <div class="cd-text">WEAPON RECHARGING</div>
+        <div class="cd-timer"><span id="cd-val">5.0</span>s</div>
     </div>
 
-    <div class="cooldown-bar" id="cd-bar">RECHARGING: <span id="cd-time">0.0</span>s</div>
-
-    <div id="game-container">
+    <div id="game-wrapper">
         <canvas id="pixel-canvas"></canvas>
     </div>
 
-    <div class="recruit-modal" id="recruitModal">
-        <div class="rm-header">
-            <div class="rm-title">ACTIVE AGENTS</div>
-            <div class="rm-close" onclick="toggleRecruit(false)"><i class="fas fa-times"></i></div>
+    <div class="hud-bottom">
+        <div class="action-dock">
+            <div class="dock-btn active" onclick="centerMap()">
+                <i class="fas fa-crosshairs"></i>
+                <span>CENTER</span>
+            </div>
+            
+            <button class="btn-recruit-main" onclick="toggleSheet(true)">
+                <i class="fas fa-satellite-dish"></i>
+            </button>
+
+            <div class="dock-btn" onclick="toggleLogs()">
+                <i class="fas fa-list-ul"></i>
+                <span>LOGS</span>
+            </div>
         </div>
-        <div class="rm-list" id="member-list">
-            <div style="text-align:center; padding:30px; color:#666;">
-                <i class="fas fa-circle-notch fa-spin"></i> SCANNING...
+    </div>
+
+    <div class="modal-sheet" id="recruitSheet">
+        <div class="sheet-header">
+            <div class="sheet-title">ACTIVE OPERATORS</div>
+            <div class="sheet-close" onclick="toggleSheet(false)"><i class="fas fa-chevron-down"></i></div>
+        </div>
+        <div class="sheet-content" id="agents-list">
+            <div style="text-align:center; padding:40px; color:#555;">
+                <i class="fas fa-radar fa-spin"></i><br><br>SCANNING NETWORK...
             </div>
         </div>
     </div>
 
     <script>
-        // --- CONFIG ---
+        // --- CONFIGURATION ---
         const GRID_SIZE = {{ grid_size }};
-        const PIXEL_SIZE = 20;
+        const PIXEL_SIZE = 25; // Bigger pixels for better mobile view
         let myTeam = null;
         let cooldown = 0;
-        let knownPlayers = new Set(); // To track who we've already seen
+        let knownPlayers = new Set(); 
 
         // Canvas Setup
-        const container = document.getElementById('game-container');
+        const wrapper = document.getElementById('game-wrapper');
         const canvas = document.getElementById('pixel-canvas');
         const ctx = canvas.getContext('2d');
         
         canvas.width = GRID_SIZE * PIXEL_SIZE;
         canvas.height = GRID_SIZE * PIXEL_SIZE;
 
-        // Panning Variables
-        let isDragging = false, startX, startY, translateX = 0, translateY = 0, currentX = 0, currentY = 0;
+        // Pan/Zoom Vars
+        let translateX = 0, translateY = 0;
+        let isDragging = false;
+        let startX, startY, currentX = 0, currentY = 0;
 
-        // Center Map
-        translateX = (container.offsetWidth - canvas.width) / 2;
-        translateY = (container.offsetHeight - canvas.height) / 2;
-        updateTransform();
+        // --- 1. INITIALIZATION ---
+        // Center Map Function
+        function centerMap() {
+            translateX = (wrapper.offsetWidth - canvas.width) / 2;
+            translateY = (wrapper.offsetHeight - canvas.height) / 2;
+            updateTransform();
+        }
+        centerMap(); // Call once on load
 
-        // --- 1. TEAM LOGIC ---
+        // --- 2. BACKGROUND ANIMATION (Canvas Layer 0) ---
+        const bgCanvas = document.getElementById('bg-canvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        let width, height, particles = [];
+
+        function resizeBg() { width = bgCanvas.width = window.innerWidth; height = bgCanvas.height = window.innerHeight; }
+        window.addEventListener('resize', resizeBg); resizeBg();
+
+        class Star {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * width; this.y = Math.random() * height;
+                this.size = Math.random() * 2; this.speed = Math.random() * 0.5 + 0.1;
+                this.alpha = Math.random();
+            }
+            update() {
+                this.y -= this.speed; if (this.y < 0) this.reset();
+                this.alpha = Math.random() * 0.5 + 0.3;
+            }
+            draw() {
+                bgCtx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
+                bgCtx.beginPath(); bgCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2); bgCtx.fill();
+            }
+        }
+        for(let i=0; i<60; i++) particles.push(new Star());
+        function animateBg() {
+            bgCtx.clearRect(0,0,width,height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animateBg);
+        }
+        animateBg();
+
+
+        // --- 3. TEAM LOGIC ---
         function selectTeam(team) {
             myTeam = team;
             document.getElementById('teamModal').style.opacity = '0';
             setTimeout(() => document.getElementById('teamModal').style.display = 'none', 300);
             
-            // Start Systems
+            // Start Game Loop
             fetchState();
-            fetchMembers(); 
-            setInterval(fetchState, 2000);
-            setInterval(fetchMembers, 8000);
+            fetchMembers();
+            setInterval(fetchState, 2000); // 2s Grid Sync
+            setInterval(fetchMembers, 10000); // 10s Member Sync
         }
 
-        // --- 2. INVITE & JOIN NOTIFICATION SYSTEM ---
-        async function fetchMembers() {
-            try {
-                const res = await fetch('/api/pixelwar/members');
-                const members = await res.json();
-                const list = document.getElementById('member-list');
-                
-                if(members.length === 0) {
-                    list.innerHTML = `<div style="text-align:center; padding:20px; color:#444;">NO AGENTS FOUND</div>`;
-                    return;
-                }
 
-                let html = '';
-                members.forEach(m => {
-                    // CHECK FOR NEW JOINER
-                    if(!knownPlayers.has(m.id)) {
-                        knownPlayers.add(m.id);
-                        // Only show notification if it's not the initial load (simple check: knownPlayers size > 5)
-                        if(knownPlayers.size > 1) showJoinNotification(m.name, m.id);
-                    }
-
-                    html += `
-                    <div class="player-card">
-                        <div class="p-info">
-                            <img src="${m.avatar}" class="p-avatar">
-                            <div>
-                                <div class="p-name">${m.name}</div>
-                                <div class="p-id">ID: ${m.id}</div>
-                            </div>
-                        </div>
-                        <button class="p-invite-btn" onclick="invitePlayer('${m.id}', this)">INVITE +</button>
-                    </div>`;
-                });
-                list.innerHTML = html;
-
-            } catch(e) {}
-        }
-
-        function showJoinNotification(name, id) {
-            const area = document.getElementById('notification-area');
-            const toast = document.createElement('div');
-            toast.className = 'join-toast';
-            toast.innerHTML = `
-                <div class="jt-icon"><i class="fas fa-satellite-dish"></i></div>
-                <div>
-                    <div class="jt-name">${name}</div>
-                    <div class="jt-text">ID: ${id} • HAS JOINED</div>
-                </div>
-            `;
-            area.appendChild(toast);
-            
-            // Play Sound (Optional)
-            // let audio = new Audio('/static/join.mp3'); audio.play().catch(e=>{});
-
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 500);
-            }, 4000);
-        }
-
-        async function invitePlayer(id, btn) {
-            btn.innerText = "SENDING...";
-            btn.disabled = true;
-            
-            await fetch('/api/pixelwar/invite', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({target_id: id})
-            });
-
-            btn.innerText = "SENT ✅";
-            btn.style.background = "#333";
-            btn.style.color = "#0f0";
-        }
-
-        function toggleRecruit(show) {
-            const modal = document.getElementById('recruitModal');
-            if(show) {
-                modal.classList.add('active');
-                fetchMembers(); // Refresh on open
-            } else {
-                modal.classList.remove('active');
-            }
-        }
-
-        // --- 3. GAMEPLAY (CANVAS) ---
-        // Drag Logic
-        container.addEventListener('touchstart', e => dragStart(e.touches[0]));
-        container.addEventListener('mousedown', e => dragStart(e));
+        // --- 4. TOUCH & DRAG LOGIC (Smooth) ---
+        wrapper.addEventListener('touchstart', e => dragStart(e.touches[0]));
+        wrapper.addEventListener('mousedown', e => dragStart(e));
         
         window.addEventListener('touchmove', e => drag(e.touches[0]));
         window.addEventListener('mousemove', e => drag(e));
@@ -360,7 +349,7 @@
         window.addEventListener('mouseup', dragEnd);
 
         function dragStart(e) {
-            if(e.target !== canvas && e.target !== container) return;
+            if(e.target !== canvas && e.target !== wrapper) return;
             isDragging = true;
             startX = e.clientX; startY = e.clientY;
         }
@@ -383,51 +372,57 @@
         }
         function updateTransform() { setTranslate(translateX, translateY); }
 
-        // Click/Tap Logic (Separate from Drag)
+
+        // --- 5. PLACING PIXEL (TAP) ---
         let tapTime = 0;
-        container.addEventListener('mousedown', () => tapTime = Date.now());
-        container.addEventListener('mouseup', (e) => {
+        wrapper.addEventListener('mousedown', () => tapTime = Date.now());
+        wrapper.addEventListener('mouseup', (e) => {
             if(Date.now() - tapTime < 200 && currentX === 0 && currentY === 0) handleInput(e);
         });
-        
+        // Wrapper for touch tap handling usually handled by mouseup emulation or specialized touch handler, 
+        // but mouseup works for simple taps on most mobile browsers.
+
         async function handleInput(e) {
             if(cooldown > 0) return;
-            
+
             const rect = canvas.getBoundingClientRect();
             const x = Math.floor((e.clientX - rect.left) / PIXEL_SIZE);
             const y = Math.floor((e.clientY - rect.top) / PIXEL_SIZE);
 
             if(x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
-                ctx.fillStyle = myTeam === 'neon' ? '#00f3ff' : '#ff00de';
+                // Optimistic Update
+                ctx.fillStyle = myTeam === 'neon' ? '#00f3ff' : '#bc13fe';
                 ctx.fillRect(x*PIXEL_SIZE, y*PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
                 
+                // Server Sync
                 await fetch('/api/pixelwar/place', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({x, y, team: myTeam})
                 });
-                
-                startCooldown(5);
+
+                triggerCooldown(5);
                 fetchState();
             }
         }
 
-        function startCooldown(sec) {
+        function triggerCooldown(sec) {
             cooldown = sec;
-            const bar = document.getElementById('cd-bar');
-            const time = document.getElementById('cd-time');
-            bar.style.display = 'block';
-            
+            const overlay = document.getElementById('cd-overlay');
+            const val = document.getElementById('cd-val');
+            overlay.style.display = 'block';
+
             let int = setInterval(() => {
                 cooldown -= 0.1;
-                time.innerText = cooldown.toFixed(1);
+                val.innerText = cooldown.toFixed(1);
                 if(cooldown <= 0) {
                     clearInterval(int);
-                    bar.style.display = 'none';
+                    overlay.style.display = 'none';
                 }
             }, 100);
         }
 
-        // State Sync
+
+        // --- 6. STATE & MEMBERS ---
         async function fetchState() {
             try {
                 const res = await fetch('/api/pixelwar/state');
@@ -436,17 +431,103 @@
                 let n=0, c=0;
                 for(let y=0; y<GRID_SIZE; y++) {
                     for(let x=0; x<GRID_SIZE; x++) {
-                        let col = data.grid[y][x];
-                        if(col==='#00f3ff') n++; if(col==='#ff00de') c++;
-                        ctx.fillStyle = col;
+                        let color = data.grid[y][x];
+                        if(color==='#00f3ff') n++; if(color==='#ff00de') c++;
+                        
+                        ctx.fillStyle = color;
                         ctx.fillRect(x*PIXEL_SIZE, y*PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
-                        ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth=0.5;
-                        ctx.strokeRect(x*PIXEL_SIZE, y*PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
+                        
+                        // Subtle Grid Lines
+                        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+                        ctx.fillRect(x*PIXEL_SIZE, y*PIXEL_SIZE, 1, PIXEL_SIZE);
+                        ctx.fillRect(x*PIXEL_SIZE, y*PIXEL_SIZE, PIXEL_SIZE, 1);
                     }
                 }
                 document.getElementById('score-neon').innerText = n;
                 document.getElementById('score-cyber').innerText = c;
-            } catch(e) {}
+            } catch(e){}
+        }
+
+        async function fetchMembers() {
+            try {
+                const res = await fetch('/api/pixelwar/members');
+                const members = await res.json();
+                const list = document.getElementById('agents-list');
+
+                if(members.length === 0) {
+                    list.innerHTML = `<div style="text-align:center; padding:30px; color:#555;">NO SIGNALS DETECTED</div>`;
+                    return;
+                }
+
+                let html = '';
+                members.forEach(m => {
+                    // NEW PLAYER NOTIFICATION LOGIC
+                    if(!knownPlayers.has(m.id)) {
+                        knownPlayers.add(m.id);
+                        if(knownPlayers.size > 1) showJoinToast(m.name, m.id);
+                    }
+
+                    html += `
+                    <div class="agent-card">
+                        <div class="agent-info">
+                            <img src="${m.avatar}" class="agent-avatar">
+                            <div>
+                                <div class="agent-name">${m.name}</div>
+                                <div class="agent-id">ID: ${m.id}</div>
+                            </div>
+                        </div>
+                        <button class="btn-invite-action" onclick="sendInvite('${m.id}', this)">RECRUIT</button>
+                    </div>`;
+                });
+                list.innerHTML = html;
+            } catch(e){}
+        }
+
+        function showJoinToast(name, id) {
+            const area = document.getElementById('join-alert-area');
+            const toast = document.createElement('div');
+            toast.className = 'join-notification';
+            toast.innerHTML = `
+                <div class="jn-icon"><i class="fas fa-wifi"></i></div>
+                <div>
+                    <div style="font-weight:bold; color:#0f0; font-size:14px;">${name}</div>
+                    <div style="font-size:10px; color:#aaa;">HAS ENTERED THE BATTLEFIELD</div>
+                </div>
+            `;
+            area.appendChild(toast);
+            
+            // Animation
+            setTimeout(() => toast.style.opacity = '1', 100);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+
+        async function sendInvite(id, btn) {
+            btn.innerText = "SENDING...";
+            await fetch('/api/pixelwar/invite', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({target_id: id})
+            });
+            btn.innerText = "SENT ✅";
+            btn.style.borderColor = "#0f0";
+            btn.style.color = "#0f0";
+        }
+
+        // --- 7. UI TOGGLES ---
+        function toggleSheet(show) {
+            const sheet = document.getElementById('recruitSheet');
+            if(show) {
+                sheet.classList.add('active');
+                fetchMembers();
+            } else {
+                sheet.classList.remove('active');
+            }
+        }
+
+        function toggleLogs() {
+            alert("This feature is currently under encryption (Coming Soon)");
         }
 
     </script>
