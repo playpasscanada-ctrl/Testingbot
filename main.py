@@ -1135,7 +1135,8 @@ LOG_CHANNEL_ID = 987654321098765432         # <-- apna logs channel
 # ================== DISCORD INTENTS ==================
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True  # <--- YE LINE ADD KARNA ZAROORI HAI
+intents.members = True
+intents.presences = True # <--- YE LINE ADD KARNA ZAROORI HAI
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # ================== 🔒 MULTI-SERVER LOCK ==================
@@ -18154,23 +18155,34 @@ def place_pixel():
     
     return jsonify({"status":"success"})
 
-# --- API: FETCH DISCORD MEMBERS ---
+# --- API: FETCH ALL MEMBERS ---
 @app.route('/api/pixelwar/members')
 def get_discord_members():
-    # Only fetch online members to prevent lag
+    # GUILD_ID check karein
+    if not GUILD_ID: return jsonify([])
+
     guild = bot.get_guild(int(GUILD_ID))
-    if not guild: return jsonify([])
+    if not guild: 
+        print("❌ Error: Bot server mein nahi hai ya GUILD_ID galat hai.")
+        return jsonify([])
     
     members = []
+    # Ab hum offline walo ko bhi lenge
     for m in guild.members:
-        if not m.bot and m.status != discord.Status.offline:
+        if not m.bot: # Bots ko list me mat dikhao
+            # Agar banda online/idle/dnd hai to 'online' maano, varna 'offline'
+            status = 'online' if str(m.status) != 'offline' else 'offline'
+            
             members.append({
                 "id": str(m.id),
                 "name": m.name,
-                "avatar": m.display_avatar.url,
-                "status": str(m.status)
+                # Avatar check (agar avatar nahi hai to default use kare)
+                "avatar": m.display_avatar.url if m.display_avatar else "https://cdn.discordapp.com/embed/avatars/0.png",
+                "status": status
             })
-            if len(members) >= 50: break # Limit to 50 for UI speed
+            
+            # Limit badha di hai taaki sab dikhein (max 100 abhi ke liye)
+            if len(members) >= 100: break 
             
     return jsonify(members)
 
@@ -18190,7 +18202,7 @@ def invite_player():
 
 # --- BOT TASK: SEND INVITE ---
 # --- CONFIG SECTION MEIN YE ID DAAL DENA ---
-PIXEL_WAR_CHANNEL_ID = 123456789012345678  # <--- Yaha us channel ki ID daalo jaha invite bhejna hai
+PIXEL_WAR_CHANNEL_ID = "1457066104819028089"  # <--- Yaha us channel ki ID daalo jaha invite bhejna hai
 
 # --- BOT TASK: SEND INVITE (FIXED) ---
 async def send_invite_msg(target_id, sender_name):
