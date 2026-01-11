@@ -17802,23 +17802,37 @@ def rob_truck():
 # --- SELL STOCK (UPDATED WITH MULTI-INVESTOR & DISCORD LOG) ---
 @app.route('/api/business/action', methods=['POST'])
 def biz_action():
+    # 1. Session se ID aur Name lo
     user_id = session['user_info']['id']
+    user_name = session['user_info']['username'] # ✅ Name add kiya log ke liye
+
     req = request.json
-    action = req.get('action'); biz_id = req.get('biz_id')
+    action = req.get('action')
+    biz_id = req.get('biz_id')
     
+    # 2. Database Fetch
     data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
     owned = data[0]['businesses']
     biz = owned[biz_id]
     
+    msg = "" # Default message variable
+
+    # --- ACTION 1: PROMOTE ---
     if action == 'promote':
-        if data[0]['balance'] < 10000: return jsonify({"status":"error"})
-        data[0]['balance'] -= 10000; biz['popularity'] = 100; msg="Promoted!"
+        if data[0]['balance'] < 10000: 
+            return jsonify({"status":"error", "msg": "Need $10,000"})
         
+        data[0]['balance'] -= 10000
+        biz['popularity'] = 100
+        msg = "Promoted! Business is trending now."
+        
+    # --- ACTION 2: SELL STOCK (LIQUIDATE) ---
     elif action == 'sell_stock':
         stock_val = biz['stock']
-        if stock_val <= 0: return jsonify({"status":"error", "msg":"No Stock"})
+        if stock_val <= 0: 
+            return jsonify({"status":"error", "msg":"No Stock Value"})
         
-        # 1. Distribute to Investors
+        # A. Investors ko paisa do
         investors = biz.get('investors', {})
         total_payout = 0
         investor_msg = ""
@@ -17827,19 +17841,34 @@ def biz_action():
             share = int(stock_val * equity)
             db.update_balance(inv_id, share) # Pay investor
             total_payout += share
-            investor_msg += f"<@{inv_id}> got ${share:,} ({int(equity*100)}%)\n"
+            # (Optional log detail for investors)
+            # investor_msg += f"> Investor <@{inv_id}> got ${share:,}\n"
             
-        # 2. Pay Owner
+        # B. Owner (Aapko) paisa do
         owner_share = stock_val - total_payout
         data[0]['balance'] += owner_share
-        biz['stock'] = 0
+        biz['stock'] = 0 # Stock khatam
         msg = f"Sold! You kept ${owner_share:,}"
         
-        # 3. Discord Log
-        log_text = f"📢 **STOCK MARKET ALERT**\n**Seller:** <@{user_id}>\n**Business:** {BUSINESSES[biz_id]['name']}\n**Total Sale:** ${stock_val:,}\n\n**Payouts:**\n👑 Owner: ${owner_share:,}\n{investor_msg}"
-        send_discord_log(log_text)
+        # C. Discord Log (✅ FIXED SECTION)
+        # Business ka naam nikalne ke liye BUSINESSES dict use kiya (Ensure karein ye upar defined hai)
+        biz_name = BUSINESSES.get(biz_id, {}).get('name', 'Business')
 
+        log_text = (
+            f"📢 **STOCK LIQUIDATED**\n"
+            f"**Seller:** {user_name}\n"
+            f"**Business:** {biz_name}\n"
+            f"**Total Value:** ${stock_val:,}\n\n"
+            f"**Payouts:**\n"
+            f"👑 **Owner Kept:** ${owner_share:,}"
+        )
+        
+        # Sahi format me call kiya (Title, Message, Type)
+        send_discord_log("MARKET UPDATE", log_text, "success")
+
+    # 3. Database Update
     db.supabase.table("economy").update({"balance": data[0]['balance'], "businesses": owned}).eq("user_id", user_id).execute()
+    
     return jsonify({"status":"success", "msg": msg, "new_bal": data[0]['balance']})
 
 # --- SECURITY ---
