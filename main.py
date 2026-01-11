@@ -16473,9 +16473,14 @@ async def sell_items(i: discord.Interaction):
 
 # ============================= business empire =====================
 import discord
+import asyncio
+import pytz
 from discord import app_commands
-from discord.ext import commands
-from datetime import datetime, timezone
+from discord.ext import commands, tasks
+
+# ⚠️ IMPORTS KO AISE FIX KARO (Purana datetime import hata do)
+from datetime import datetime, timedelta, timezone 
+
 
 # --- ⚙️ ULTRA BUSINESS CONFIG (UPDATED) ---
 RESUPPLY_COST = 500000 
@@ -16502,32 +16507,40 @@ BUSINESS_TYPES = {
     "mars":       {"name": "Mars Colony 👽",       "cost": 1000000000,"income_per_hr": 5000000, "decay_rate": 1}
 }
 
-# --- 🛠️ HELPER FUNCTIONS ---
+# --- 🛠️ HELPER FUNCTIONS (CRASH PROOF) ---
 def get_progress_bar(percent):
     bar_len = 12
     filled = int((percent / 100) * bar_len)
-    
     if percent > 80: color = "🟩"
     elif percent > 40: color = "🟨"
     else: color = "🟥"
-    
     return f"{color * filled}{'▪️' * (bar_len - filled)} **{int(percent)}%**"
 
 def calculate_stock(last_supply_time, decay_rate):
-    if isinstance(last_supply_time, str):
-        try:
-            last_supply_time = datetime.fromisoformat(last_supply_time)
-        except ValueError:
-            last_supply_time = datetime.now(timezone.utc)
+    try:
+        # 1. Agar time string me hai, to convert karo
+        if isinstance(last_supply_time, str):
+            try:
+                last_supply_time = datetime.fromisoformat(last_supply_time)
+            except ValueError:
+                # Agar format kharab hai to abhi ka time man lo
+                last_supply_time = datetime.now(timezone.utc)
 
-    if last_supply_time.tzinfo is None:
-        last_supply_time = last_supply_time.replace(tzinfo=timezone.utc)
-    
-    now = datetime.now(timezone.utc)
-    hours_passed = (now - last_supply_time).total_seconds() / 3600
-    
-    current_stock = max(0, 100 - (hours_passed * decay_rate))
-    return current_stock, hours_passed
+        # 2. Timezone check (Sabse jaruri fix)
+        if last_supply_time.tzinfo is None:
+            last_supply_time = last_supply_time.replace(tzinfo=timezone.utc)
+        
+        # 3. Calculation
+        now = datetime.now(timezone.utc)
+        hours_passed = (now - last_supply_time).total_seconds() / 3600
+        
+        current_stock = max(0, 100 - (hours_passed * decay_rate))
+        return current_stock, hours_passed
+        
+    except Exception as e:
+        print(f"Stock Calc Error: {e}")
+        return 0, 0 # Crash hone ki jagah 0 return karega
+
 
 # --- 📋 SELECT MENU TO CHOOSE BUSINESS ---
 class OwnedBusinessSelect(discord.ui.Select):
@@ -16730,23 +16743,45 @@ class BusinessView(discord.ui.View):
         await interaction.followup.send(embed=embed)
 
 # --- 💻 COMMANDS ---
-@bot.tree.command(name="businesss", description="🏢 Manage Empire")
-async def businesss(interaction: discord.Interaction):
+@bot.tree.command(name="business", description="🏢 Manage Empire (Fixed)")
+async def business(interaction: discord.Interaction):
+    # 1. Sabse pehle Defer karo
     await interaction.response.defer()
     
-    # Fetch All Businesses
-    res = supabase.table("business").select("*").eq("user_id", str(interaction.user.id)).execute()
-    
-    if not res.data:
-        embed = discord.Embed(title="🏢 START YOUR EMPIRE", color=0x000000)
-        embed.description = "You don't own any businesses yet."
-        view = BuyBusinessView(interaction.user)
-        return await interaction.followup.send(embed=embed, view=view)
+    try:
+        user_id = str(interaction.user.id)
+        
+        # 2. Database se businesses nikalo
+        res = supabase.table("business").select("*").eq("user_id", user_id).execute()
+        
+        # SCENARIO 1: Koi Business nahi hai
+        if not res.data:
+            embed = discord.Embed(title="🏢 START YOUR EMPIRE", color=0x000000)
+            embed.description = "You don't own any businesses yet."
+            embed.set_footer(text="Buy multiple businesses to earn more!")
+            
+            # Buy View ko call karo
+            view = BuyBusinessView(interaction.user)
+            return await interaction.followup.send(embed=embed, view=view)
 
-    embed = discord.Embed(title="🏢 BUSINESS DASHBOARD", color=0x2f3136)
-    embed.description = f"You own **{len(res.data)}** businesses.\nSelect one to manage."
-    view = DashboardLauncher(interaction.user, res.data)
-    await interaction.followup.send(embed=embed, view=view)
+        # SCENARIO 2: Business hai -> List dikhao
+        owned_biz = res.data
+        
+        # Embed Setup
+        embed = discord.Embed(title="🏢 BUSINESS DASHBOARD", color=0x2f3136)
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        embed.description = f"You own **{len(owned_biz)}** businesses.\nSelect one below to manage stock & collect cash."
+        
+        # View (Dropdown) banao
+        view = DashboardLauncher(interaction.user, owned_biz)
+        
+        await interaction.followup.send(embed=embed, view=view)
+
+    except Exception as e:
+        # ⚠️ YAHAN ASLI ERROR DIKHEGA AGAR THINKING HOTA HAI
+        print(f"Business Command Error: {e}")
+        await interaction.followup.send(f"❌ **System Error:**\n`{str(e)}`", ephemeral=True)
+
 
 @bot.tree.command(name="invest", description="🤝 Invest in a specific business")
 async def invest(interaction: discord.Interaction, target: discord.Member, business_type: str, amount: int):
