@@ -9961,11 +9961,11 @@ from PIL import Image, ImageDraw, ImageFont
 
 # ================== ⚙️ CONFIGURATION ==================
 HACKER_GAME_CONFIG = {
-    1: {"len": 5,  "time": 45, "fee": 5000,  "prize": 10000,  "label": "Level 1: Script Kiddie", "desc": "Easy | 5 Chars"},
-    2: {"len": 6,  "time": 40, "fee": 10000, "prize": 25000,  "label": "Level 2: Code Breaker", "desc": "Medium | 6 Chars"},
-    3: {"len": 8,  "time": 35, "fee": 20000, "prize": 50000,  "label": "Level 3: Black Hat", "desc": "Hard | 8 Chars"},
-    4: {"len": 10, "time": 30, "fee": 50000, "prize": 120000, "label": "Level 4: Elite Hacker", "desc": "Expert | 10 Chars"},
-    5: {"len": 12, "time": 25, "fee": 100000,"prize": 300000, "label": "Level 5: ANONYMOUS", "desc": "GOD MODE | 12 Chars"},
+    1: {"len": 5,  "time": 45, "fee": 100,  "prize": 1000,  "label": "Level 1: Script Kiddie", "desc": "Easy | 5 Chars"},
+    2: {"len": 6,  "time": 40, "fee": 2000, "prize": 15000,  "label": "Level 2: Code Breaker", "desc": "Medium | 6 Chars"},
+    3: {"len": 20,  "time": 35, "fee": 5000, "prize": 25000,  "label": "Level 3: Black Hat", "desc": "Hard | 20 Chars"},
+    4: {"len": 30, "time": 30, "fee": 7000, "prize": 50000, "label": "Level 4: Elite Hacker", "desc": "Expert | 30 Chars"},
+    5: {"len": 50, "time": 25, "fee": 10000,"prize": 100000, "label": "Level 5: ANONYMOUS", "desc": "GOD MODE | 50 Chars"},
 }
 
 # 🖼️ SAFE IMAGE GENERATOR
@@ -17411,6 +17411,217 @@ def gamelist():
     user_id = session['user_info']['id']
     balance = db.get_user_balance(user_id)
     return render_template('gamelist.html', balance=balance)
+
+from flask import Flask, render_template, request, jsonify, session, redirect
+from PIL import Image, ImageDraw, ImageFont
+import io
+import base64
+import random
+import string
+import textwrap # Long text ko todne ke liye
+
+# --- ⚙️ 20 LEVELS CONFIGURATION (ULTIMATE SCALING) ---
+HACKER_LEVELS = {}
+
+# Base Config
+START_FEE = 1000
+START_PRIZE = 2000
+
+for i in range(1, 21):
+    # --- LOGIC TO GENERATE 20 UNIQUE LEVELS ---
+    
+    if i <= 5: 
+        # BEGINNER (Levels 1-5)
+        length = 5 + i         # 6 to 10 chars
+        time_limit = 60 - (i*5) # 55s to 35s
+        fee = START_FEE * i
+        prize = fee * 2 
+        label = "SCRIPT KIDDIE"
+        
+    elif i <= 10:
+        # INTERMEDIATE (Levels 6-10)
+        length = 15 + ((i-5) * 3) # 18 to 30 chars
+        time_limit = 50
+        fee = START_FEE * i * 2
+        prize = fee * 2.5
+        label = "CODE BREAKER"
+
+    elif i <= 15:
+        # PROFESSIONAL (Levels 11-15)
+        length = 40 + ((i-10) * 10) # 50 to 90 chars
+        time_limit = 90 # Time badhaya kyunki text lamba hai
+        fee = START_FEE * i * 5
+        prize = fee * 3
+        label = "BLACK HAT"
+
+    elif i < 20:
+        # ELITE (Levels 16-19)
+        length = 100 + ((i-15) * 20) # 120 to 180 chars
+        time_limit = 180 # 3 Minutes
+        fee = START_FEE * i * 10
+        prize = fee * 4
+        label = "ELITE HACKER"
+
+    else:
+        # LEVEL 20: GOD MODE
+        length = 250 # 250 Characters!!
+        time_limit = 300 # 5 Minutes
+        fee = 5000000 # 50 Lakh Entry
+        prize = 50000000 # 5 Crore Reward
+        label = "GOD MODE (ANONYMOUS)"
+
+    HACKER_LEVELS[i] = {
+        "id": i,
+        "len": length,
+        "time": time_limit,
+        "fee": fee,
+        "prize": int(prize),
+        "label": f"LVL {i}: {label}"
+    }
+
+# --- 🖼️ PREMIUM SECURE IMAGE GENERATOR ---
+def generate_secure_image(text):
+    # 1. Setup Canvas
+    width = 900
+    # Text wrapping: Level 20 ka text bahut lamba hoga, use lines me todo
+    wrapper = textwrap.TextWrapper(width=40) 
+    lines = wrapper.wrap(text)
+    
+    # Height dynamic hogi lines ke hisab se
+    line_height = 50
+    height = 100 + (len(lines) * line_height)
+    
+    bg_color = (10, 10, 12) # Dark Cyber Blue-Black
+    text_color = (0, 255, 65) # Matrix Green
+
+    image = Image.new('RGB', (width, height), color=bg_color)
+    draw = ImageDraw.Draw(image)
+    
+    # Font Load
+    try:
+        # Windows/Linux fonts try karein
+        font = ImageFont.truetype("arial.ttf", 40)
+    except:
+        font = ImageFont.load_default()
+
+    # 2. Add Matrix Noise (Background mein gandagi taaki OCR fail ho jaye)
+    for _ in range(100):
+        x, y = random.randint(0, width), random.randint(0, height)
+        char = random.choice("01XY#@")
+        draw.text((x, y), char, font=font, fill=(0, 40, 0)) # Dim Green Noise
+
+    # 3. Add Distraction Lines
+    for _ in range(15):
+        x1, y1 = random.randint(0, width), random.randint(0, height)
+        x2, y2 = random.randint(0, width), random.randint(0, height)
+        draw.line([(x1, y1), (x2, y2)], fill=(0, 100, 0), width=1)
+
+    # 4. Draw Main Text (With Glitch Effect)
+    current_y = 50
+    for line in lines:
+        # Center align text
+        try:
+            bbox = draw.textbbox((0, 0), line, font=font)
+            text_w = bbox[2] - bbox[0]
+            x = (width - text_w) / 2
+        except:
+            x = 50
+
+        # RGB Split Glitch (Text Shadow)
+        draw.text((x-2, current_y), line, font=font, fill=(255, 0, 0)) # Red Shift
+        draw.text((x+2, current_y), line, font=font, fill=(0, 0, 255)) # Blue Shift
+        draw.text((x, current_y), line, font=font, fill=text_color)    # Main Green
+        
+        current_y += line_height
+
+    # 5. Convert to Base64
+    buffer = io.BytesIO()
+    image.save(buffer, format='PNG')
+    img_str = base64.b64encode(buffer.getvalue()).decode()
+    return f"data:image/png;base64,{img_str}"
+
+
+# --- ROUTES ---
+
+@app.route('/games/hacker')
+def hacker_page():
+    if 'user_info' not in session: return redirect('/')
+    user = session['user_info']
+    balance = db.get_user_balance(user['id'])
+    return render_template('hacker.html', user=user, balance=balance, levels=HACKER_LEVELS)
+
+@app.route('/api/hacker/start', methods=['POST'])
+def start_hack():
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+    
+    user_id = session['user_info']['id']
+    try:
+        level = int(request.json.get('level'))
+    except:
+        return jsonify({"status":"error", "msg":"Invalid Level"})
+
+    config = HACKER_LEVELS.get(level)
+    if not config: return jsonify({"status":"error", "msg":"Level not found"})
+    
+    # 💰 Balance Check
+    current_bal = db.get_user_balance(user_id)
+    if current_bal < config['fee']:
+        return jsonify({"status":"error", "msg": f"Need ${config['fee']:,} to Hack!"})
+    
+    # 💸 Deduct Fee
+    db.update_balance(user_id, -config['fee'])
+    
+    # 🔐 Generate Complex Code
+    # Level 20 ke liye special characters bhi add karenge
+    chars = string.ascii_uppercase + string.digits
+    if level > 15: chars += "!@#$%" 
+    
+    secret_code = ''.join(random.choice(chars) for _ in range(config['len']))
+    
+    # Store in Session (Server Side Security)
+    session['hack_code'] = secret_code
+    session['hack_level'] = level
+    session['hack_start_time'] = import_time.time() # Anti-cheat timing ke liye (optional)
+    
+    # Generate Image
+    img_data = generate_secure_image(secret_code)
+    
+    return jsonify({
+        "status": "success",
+        "image": img_data,
+        "time": config['time'],
+        "len": config['len'],
+        "new_balance": current_bal - config['fee']
+    })
+
+@app.route('/api/hacker/submit', methods=['POST'])
+def submit_hack():
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+    
+    user_input = request.json.get('code', '').strip()
+    actual_code = session.get('hack_code')
+    level = session.get('hack_level')
+    user_id = session['user_info']['id']
+    
+    if not actual_code or not level:
+        return jsonify({"status":"error", "msg":"Session Expired. Try Again."})
+    
+    config = HACKER_LEVELS[level]
+    
+    if user_input == actual_code:
+        # 🎉 WINNER
+        db.update_balance(user_id, config['prize'])
+        session.pop('hack_code', None) # Clear session to prevent replay
+        
+        return jsonify({
+            "status": "win",
+            "prize": config['prize'],
+            "new_balance": db.get_user_balance(user_id)
+        })
+    else:
+        # 💀 LOSER
+        session.pop('hack_code', None) # Code expire
+        return jsonify({"status":"lose", "msg":"HASH MISMATCH. ACCESS DENIED."})
 
 # --- 4. CASINO ---
 @app.route('/games/casino')
