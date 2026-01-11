@@ -16472,7 +16472,7 @@ async def sell_items(i: discord.Interaction):
     await i.response.send_message(embed=embed, view=view)
 
 # ============================= business empire =====================
- import discord
+import discord
 import asyncio
 import json
 from discord import app_commands
