@@ -18155,6 +18155,38 @@ def place_pixel():
     
     return jsonify({"status":"success"})
 
+# --- API: PLACE PIXEL (WITH REWARD) ---
+@app.route('/api/pixelwar/place', methods=['POST'])
+def place_pixel():
+    if 'user_info' not in session: return jsonify({"status":"error"})
+    
+    user_id = session['user_info']['id'] # ID chahiye balance update ke liye
+    data = request.json
+    x, y = data.get('x'), data.get('y')
+    team = data.get('team')
+    user_name = session['user_info']['username']
+    
+    if not (0 <= x < GRID_SIZE and 0 <= y < GRID_SIZE):
+        return jsonify({"status":"error", "msg":"Out of bounds"})
+    
+    color = TEAMS.get(team, {}).get('color', '#fff')
+    pixel_grid[y][x] = color
+    
+    # --- 💰 PRIZE MONEY LOGIC ---
+    REWARD = 500  # Har pixel ka $500
+    db.update_balance(user_id, REWARD) # Balance badhao
+    new_bal = db.get_user_balance(user_id) # Naya balance lo
+    
+    # Log add karo
+    log = f"<b style='color:{color}'>{user_name}</b> mined <b>${REWARD}</b> at ({x},{y})"
+    pixel_history.append(log)
+    
+    return jsonify({
+        "status": "success", 
+        "reward": REWARD, 
+        "new_balance": new_bal
+    })
+
 # --- API: FETCH ALL MEMBERS ---
 @app.route('/api/pixelwar/members')
 def get_discord_members():
