@@ -17267,15 +17267,27 @@ LEVEL_PRIZES = {
     6: 5000, 7: 10000, 8: 25000, 9: 50000, 10: 100000
 }
 
-# --- 1. GAME PAGE ROUTE (Ye zaruri hai taaki website dikhe) ---
+# --- GAME PAGE ROUTE (UPDATED) ---
 @app.route('/play-game')
 def game_page():
-    # Login check (Optional, agar login zaruri hai to rakhna)
-    # if 'user_info' not in session: return redirect('/') 
+    # 1. Login Check
+    if 'user_info' not in session: 
+        return "Please Login First" # Ya redirect('/') kar do
     
-    # User info pass kar rahe hain taaki JS mein USER_ID mil sake
-    user = session.get('user_info', {'id': 'guest', 'username': 'Player'})
-    return render_template('paheli.html', user=user)
+    user = session['user_info']
+    user_id = user['id']
+
+    # 2. Database se latest Balance lao
+    data = db.supabase.table("economy").select("balance").eq("user_id", user_id).execute().data
+    
+    current_balance = 0
+    if data:
+        current_balance = data[0]['balance']
+
+    # 3. HTML ko data bhejo (Name, ID, Balance)
+    return render_template('paheli.html', 
+                           user=user, 
+                           balance=current_balance)
 
 
 # --- 2. API: GET RIDDLE (Pheli laane ke liye) ---
