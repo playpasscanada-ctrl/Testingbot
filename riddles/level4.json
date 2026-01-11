@@ -1,0 +1,602 @@
+[
+  {
+    "id": 401,
+    "question": "Main duniya bhar mein ghoomta hoon, lekin main kabhi apne kone se hilta nahi hoon. Main logon ke sandesh (messages) pahunchata hoon, lekin main khud bol nahi sakta. Log mujhe jeebh (tongue) se chat-te hain taaki main apna kaam kar sakun. Batao main kaun hoon?",
+    "options": ["Daak Tikat (Stamp)", "Lifafa", "Postman", "Email"],
+    "answer": "Daak Tikat (Stamp)"
+  },
+  {
+    "id": 402,
+    "question": "Main ek aisi cheez hoon jise tum tod sakte ho bina chuwe. Main koi kaanch ya lakdi nahi hoon. Main tumhare dil aur dimaag mein banta hoon, aur sirf ek shabd bolne se toot jaata hoon. Main kya hoon?",
+    "options": ["Khamoshi (Silence)", "Vaada", "Sapna", "Bharosa"],
+    "answer": "Khamoshi (Silence)"
+  },
+  {
+    "id": 403,
+    "question": "Mere paas spine (reedh ki haddi) hai par main insaan nahi hoon. Mere paas chehra nahi hai par main tumhe kahaniyan sunata hoon. Mere paas cover hai par main bistar nahi hoon. Batao main kya hoon?",
+    "options": ["Kitaab (Book)", "Laptop", "Magazine", "File"],
+    "answer": "Kitaab (Book)"
+  },
+  {
+    "id": 404,
+    "question": "Main hamesha bhookha rahta hoon. Agar tum mujhe khana (fuel) doge to main zinda rahoonga, lekin agar tumne mujhe paani pilaya to main mar jaunga. Main laal, peela aur narangi rang ka hoon. Main kya hoon?",
+    "options": ["Aag (Fire)", "Sher", "Insaan", "Suraj"],
+    "answer": "Aag (Fire)"
+  },
+  {
+    "id": 405,
+    "question": "Main tumhare aage chalti hoon, kabhi tumhare peeche. Dhoop mein main lambi ho jaati hoon aur dopahar mein choti. Andhera hone par main gayab ho jaati hoon, jaise main kabhi thi hi nahi. Main kaun hoon?",
+    "options": ["Parchhai (Shadow)", "Behen", "Hawa", "Roshni"],
+    "answer": "Parchhai (Shadow)"
+  },
+  {
+    "id": 406,
+    "question": "Main ek aisa kamra hoon jisme na to deewar hai, na darwaza aur na hi farsh. Lekin phir bhi mere andar log baithte hain aur safar karte hain. Batao main kaun sa 'room' hoon?",
+    "options": ["Mushroom", "Chatri", "Gubbare ka basket", "Waiting Room"],
+    "answer": "Mushroom"
+  },
+  {
+    "id": 407,
+    "question": "Main ek shehar hoon jisme ghar hain par log nahi. Mere paas pahad hain par patthar nahi. Mere paas nadiyan hain par paani nahi. Main kagaz par banti hoon aur tumhe rasta dikhati hoon.",
+    "options": ["Naksha (Map)", "Painting", "Sapna", "Globe"],
+    "answer": "Naksha (Map)"
+  },
+  {
+    "id": 408,
+    "question": "Main subah char pairon par chalta hoon, dopahar ko do pairon par, aur shaam ko teen pairon par. Main koi janwar nahi hoon. Yeh ek jeevan ka chakra hai. Batao main kaun hoon?",
+    "options": ["Insaan (Human)", "Bandar", "Robot", "Alien"],
+    "answer": "Insaan (Human)"
+  },
+  {
+    "id": 409,
+    "question": "Main tumhare paas hoon, aur har insaan ke paas hoon. Kuch log mujhe chupa kar rakhte hain, kuch log dikhate hain. Lekin tum mujhe kabhi pakad nahi sakte, sirf mehsoos kar sakte ho jab main toot-ta hoon.",
+    "options": ["Bharosa (Trust)", "Dil", "Haddi", "Paisa"],
+    "answer": "Bharosa (Trust)"
+  },
+  {
+    "id": 410,
+    "question": "Main ek box hoon jisme koi chabhi (key) nahi lagti, phir bhi mere andar ek sunehra khazana chupa hua hai. Mujhe kholne ke liye tumhe mujhe todna padega. Main kya hoon?",
+    "options": ["Anda (Egg)", "Gullak", "Nariyal", "Sandook"],
+    "answer": "Anda (Egg)"
+  },
+  {
+    "id": 411,
+    "question": "Main tumhare bistar ke neeche rahta hoon, kabhi almari ke andar. Main asli nahi hoon, bas tumhare darr ki wajah se banta hoon. Jab tum light jalate ho, main bhaag jaata hoon.",
+    "options": ["Andhera / Monster", "Chuha", "Bhoot", "Dhoom"],
+    "answer": "Andhera / Monster"
+  },
+  {
+    "id": 412,
+    "question": "Main ek aisi cheez hoon jo sookhi hone par 1 kilo ki hoti hai, geeli hone par 2 kilo ki ho jaati hai, aur jalne par waapas kuch grams ki rah jaati hai. Main kya hoon?",
+    "options": ["Sulphur", "Lakdi", "Rui (Cotton)", "Kagaz"],
+    "answer": "Sulphur"
+  },
+  {
+    "id": 413,
+    "question": "Main hamesha aane wala hoon, par kabhi pahunchta nahi. Log mera intezaar karte hain, plan banate hain, par jab main aata hoon to main 'aaj' ban jaata hoon. Main kya hoon?",
+    "options": ["Kal (Tomorrow)", "Sapna", "Bhavishya", "Umeed"],
+    "answer": "Kal (Tomorrow)"
+  },
+  {
+    "id": 414,
+    "question": "Main ek aisi cheez hoon jise tum khareedte ho khane ke liye, par tum mujhe kabhi kha nahi sakte. Main chammach, kaanta ya plate ho sakti hoon. Main kya hoon?",
+    "options": ["Crockery (Bartan)", "Pizza", "Sabzi", "Table"],
+    "answer": "Crockery (Bartan)"
+  },
+  {
+    "id": 415,
+    "question": "Main tumhare shareer ka wo hissa hoon jo tumhare marne ke baad bhi kuch samay tak badhta rahta hai. Mujhe kaatne par dard nahi hota. Main kya hoon?",
+    "options": ["Naakhun (Nails)", "Baal", "Haddi", "Daant"],
+    "answer": "Naakhun (Nails)"
+  },
+  {
+    "id": 416,
+    "question": "Main laal rang ka hoon aur tumhare muh mein rahta hoon. Agar main na hoon, to tum khana nahi kha paoge aur na hi bol paoge. Main kya hoon?",
+    "options": ["Jeebh (Tongue)", "Daant", "Gala", "Honth"],
+    "answer": "Jeebh (Tongue)"
+  },
+  {
+    "id": 417,
+    "question": "Main ek aisi cheez hoon jo khatti hai, par log mujhe pasand karte hain. Main hari aur peeli hoti hoon. Garmi mein log mera sharbat peete hain.",
+    "options": ["Nimbu (Lemon)", "Aam", "Imli", "Santra"],
+    "answer": "Nimbu (Lemon)"
+  },
+  {
+    "id": 418,
+    "question": "Main ek aisi cheez hoon jo tumhare ghar ki raksha karti hoon. Mere paas daant hain par main kaat-ti nahi. Mujhe kholne ke liye tumhe chabhi ghumani padti hai.",
+    "options": ["Taala (Lock)", "Kutta", "Darwaza", "Gate"],
+    "answer": "Taala (Lock)"
+  },
+  {
+    "id": 419,
+    "question": "Main ek aisi cheez hoon jo aag mein nahi jalti aur paani mein nahi doobti. Main safed rang ki hoon aur chune par thandi lagti hoon. Main kya hoon?",
+    "options": ["Baraf (Ice)", "Hawa", "Parchhai", "Roshni"],
+    "answer": "Baraf (Ice)"
+  },
+  {
+    "id": 420,
+    "question": "Main ek aisi cheez hoon jo tumhare paas hai. Tum ise kisi ko de sakte ho, lekin tum ise wapas nahi le sakte. Ek baar diya to hamesha ke liye gaya.",
+    "options": ["Vachan / Zubaan", "Paisa", "Dost", "Tohfa"],
+    "answer": "Vachan / Zubaan"
+  },
+  {
+    "id": 421,
+    "question": "Mere paas shehar hain, par ghar nahi. Mere paas pahad hain, par ped nahi. Mere paas paani hai, par machli nahi. Main kya hoon?",
+    "options": ["Naksha (Map)", "Globe", "Tasveer", "Sapna"],
+    "answer": "Naksha (Map)"
+  },
+  {
+    "id": 422,
+    "question": "Main hara hoon, mere bachhe kaale hain. Log mujhe chod dete hain aur mere bachhon ko kha jaate hain. Batao main kya phal hoon?",
+    "options": ["Elaichi", "Tarbooz", "Papita", "Jamun"],
+    "answer": "Elaichi"
+  },
+  {
+    "id": 423,
+    "question": "Main ek aisi cheez hoon jo tumhare school bag mein hoti hai. Mere andar gyaan bhara hai. Tum mujhe padhte ho.",
+    "options": ["Kitab (Book)", "Copy", "Pencil Box", "Lunch Box"],
+    "answer": "Kitab (Book)"
+  },
+  {
+    "id": 424,
+    "question": "Main ek aisi cheez hoon jo aasmaan mein udti hai par main panchi nahi hoon. Mere paas poonch hai par main janwar nahi hoon. Bachhe mujhe dhaage se udate hain.",
+    "options": ["Patang (Kite)", "Hawai Jahaj", "Gubbara", "Drone"],
+    "answer": "Patang (Kite)"
+  },
+  {
+    "id": 425,
+    "question": "Main ek aisi cheez hoon jo raat ko aati hai aur subah chali jaati hai. Main tumhe aaram deti hoon aur sapne dikhati hoon.",
+    "options": ["Neend (Sleep)", "Raat", "Chand", "Bistar"],
+    "answer": "Neend (Sleep)"
+  },
+  {
+    "id": 426,
+    "question": "Main ek aisi cheez hoon jo tumhare ghar ke bahar lagi hoti hai. Jab koi aata hai to wo mujhe bajata hai. Meri awaaz 'Ding-Dong' hoti hai.",
+    "options": ["Doorbell", "Ghanti", "Taala", "Kutta"],
+    "answer": "Doorbell"
+  },
+  {
+    "id": 427,
+    "question": "Main ek aisi cheez hoon jo tumhare kitchen mein hoti hai. Main gol hoon aur ghoomti hoon. Roti banane ke liye mera istemal hota hai.",
+    "options": ["Belan", "Chakla", "Tawa", "Chammach"],
+    "answer": "Belan"
+  },
+  {
+    "id": 428,
+    "question": "Main ek aisi cheez hoon jo tumhare bathroom mein hoti hai. Main tumhe saaf karti hoon aur khushboo deti hoon. Paani lagne par main ghulti hoon.",
+    "options": ["Sabun (Soap)", "Shampoo", "Toliya", "Balti"],
+    "answer": "Sabun (Soap)"
+  },
+  {
+    "id": 429,
+    "question": "Main ek aisi cheez hoon jo tumhare paon (feet) mein hoti hai. Main tumhe kaanto aur pattharo se bachati hoon. Main chamde ya kapde ki bani hoti hoon.",
+    "options": ["Joota / Chappal", "Moza", "Payal", "Parchhai"],
+    "answer": "Joota / Chappal"
+  },
+  {
+    "id": 430,
+    "question": "Main ek aisi cheez hoon jo tumhare computer ke paas hoti hai. Mera naam ek janwar (animal) ke naam par hai par main asli janwar nahi hoon.",
+    "options": ["Mouse", "Cat", "Tiger", "Keyboard"],
+    "answer": "Mouse"
+  },
+  {
+    "id": 431,
+    "question": "Main ek aisi cheez hoon jo tumhare birthday par kaati jaati hai. Main meethi hoon aur mere upar mombatti lagayi jaati hai.",
+    "options": ["Cake", "Mithai", "Chocolate", "Pizza"],
+    "answer": "Cake"
+  },
+  {
+    "id": 432,
+    "question": "Main ek aisi cheez hoon jo tumhare phone mein hoti hai. Main tumhari photo khinchta hoon aur video banata hoon.",
+    "options": ["Camera", "Screen", "Battery", "Speaker"],
+    "answer": "Camera"
+  },
+  {
+    "id": 433,
+    "question": "Main ek aisi cheez hoon jo tumhare ghar ki chat (roof) par laga hota hoon. Main ghoomta hoon to hawa aati hai.",
+    "options": ["Pankha (Fan)", "AC", "Light", "Cooler"],
+    "answer": "Pankha (Fan)"
+  },
+  {
+    "id": 434,
+    "question": "Main ek aisi cheez hoon jo tumhare bagiche (garden) mein hoti hai. Main rang-biranga hoon aur khushboo deta hoon.",
+    "options": ["Phool (Flower)", "Ghaas", "Patthar", "Mitti"],
+    "answer": "Phool (Flower)"
+  },
+  {
+    "id": 435,
+    "question": "Main ek aisi cheez hoon jo tumhare fridge mein hoti hai. Main paani ko thanda karti hoon aur jam jaati hoon.",
+    "options": ["Baraf (Ice)", "Doodh", "Sabzi", "Juice"],
+    "answer": "Baraf (Ice)"
+  },
+  {
+    "id": 436,
+    "question": "Main ek aisi cheez hoon jo tumhare school mein hoti hai. Teacher mujh par chalk se likhte hain.",
+    "options": ["Blackboard", "Desk", "Kursi", "Deewar"],
+    "answer": "Blackboard"
+  },
+  {
+    "id": 437,
+    "question": "Main ek aisi cheez hoon jo tumhare desh ka prateek (symbol) hoon. Mere teen rang hain - Kesariya, Safed aur Hara.",
+    "options": ["Jhanda (Flag)", "Emblem", "Map", "Rupee"],
+    "answer": "Jhanda (Flag)"
+  },
+  {
+    "id": 438,
+    "question": "Main ek aisi cheez hoon jo tumhare haath mein hoti hai. Mere 5 bhai hain jo hamesha saath rahte hain.",
+    "options": ["Ungliyan (Fingers)", "Paisa", "Dost", "Ghadi"],
+    "answer": "Ungliyan (Fingers)"
+  },
+  {
+    "id": 439,
+    "question": "Main ek aisi cheez hoon jo tumhare shareer mein bahti hai. Main laal rang ka hoon aur agar main bahar nikal jaaun to kamzori aati hai.",
+    "options": ["Khoon (Blood)", "Paani", "Pasina", "Aansu"],
+    "answer": "Khoon (Blood)"
+  },
+  {
+    "id": 440,
+    "question": "Main ek aisi cheez hoon jo tumhare chehre par hoti hai. Main sunghne (smell) ke kaam aati hoon aur saans lene ke bhi.",
+    "options": ["Naak (Nose)", "Kaan", "Aankh", "Muh"],
+    "answer": "Naak (Nose)"
+  },
+  {
+    "id": 441,
+    "question": "Main ek aisi cheez hoon jo tumhare kaano mein hoti hai. Main sunne ke kaam aata hoon.",
+    "options": ["Kaan (Ear)", "Naak", "Aankh", "Baal"],
+    "answer": "Kaan (Ear)"
+  },
+  {
+    "id": 442,
+    "question": "Main ek aisi cheez hoon jo tumhare daanto ko saaf karti hai. Main subah aur raat ko istemal hoti hoon.",
+    "options": ["Brush", "Kanghi", "Sabun", "Toliya"],
+    "answer": "Brush"
+  },
+  {
+    "id": 443,
+    "question": "Main ek aisi cheez hoon jo tumhare baalo (hair) mein lagta hai. Main liquid hoon aur jhaag banata hoon.",
+    "options": ["Shampoo", "Tel", "Paani", "Gel"],
+    "answer": "Shampoo"
+  },
+  {
+    "id": 444,
+    "question": "Main ek aisi cheez hoon jo tumhare pairon ke neeche hoti hai. Jis par tum chalte ho, wo main hoon.",
+    "options": ["Zameen (Ground)", "Aasmaan", "Paani", "Hawa"],
+    "answer": "Zameen (Ground)"
+  },
+  {
+    "id": 445,
+    "question": "Main ek aisi cheez hoon jo ladkiyon ke naam mein bhi aati hai aur pehne ke kaam bhi aati hai. Main chandi ya sone ki ho sakti hoon.",
+    "options": ["Payal", "Kajal", "Neelam", "Sona"],
+    "answer": "Payal"
+  },
+  {
+    "id": 446,
+    "question": "Mujhe banane ke liye tumhe mujhe todna padta hai. Agar main na tootun, to tum mujhe kha nahi sakte. Batao main kya hoon?",
+    "options": ["Anda (Egg)", "Nariyal", "Akhrot", "Anaar"],
+    "answer": "Anda (Egg)"
+  },
+  {
+    "id": 447,
+    "question": "Main ek aisi cheez hoon jise tum pakad sakte ho par fek nahi sakte. Main hamesha tumhare saath rahti hoon jab tak bukhar na ho.",
+    "options": ["Thand (Cold)", "Garmi", "Bimari", "Saans"],
+    "answer": "Thand (Cold)"
+  },
+  {
+    "id": 448,
+    "question": "Main ek janwar hoon jo apne bachhe ko apne pet ki thaili (pouch) mein rakhta hoon. Main jump karke chalta hoon aur Australia mein paaya jaata hoon.",
+    "options": ["Kangaroo", "Bandar", "Bhalu", "Koala"],
+    "answer": "Kangaroo"
+  },
+  {
+    "id": 449,
+    "question": "Main ek aisi cheez hoon jo dhoop mein paida hoti hai aur chaav mein mar jaati hai. Main tumhare saath chalti hoon par tum mujhe pakad nahi sakte.",
+    "options": ["Pasina (Sweat)", "Parchhai", "Roshni", "Hawa"],
+    "answer": "Pasina (Sweat)"
+  },
+  {
+    "id": 450,
+    "question": "Main ek aisi cheez hoon jo gandi hone par safed ho jaati hai aur saaf hone par kaali rahti hai. School mein bachhe mujhe roz dekhte hain.",
+    "options": ["Blackboard", "Chalk", "Duster", "Kitab"],
+    "answer": "Blackboard"
+  },
+  {
+    "id": 451,
+    "question": "Main bina par (wings) ke udta hoon aur bina aankhon ke rota hoon. Jab main aata hoon to log chhata nikal lete hain. Main kya hoon?",
+    "options": ["Baadal (Cloud)", "Hawai Jahaj", "Patang", "Panchi"],
+    "answer": "Baadal (Cloud)"
+  },
+  {
+    "id": 452,
+    "question": "Main ek aisi cheez hoon jo tumhare paas hai. Tum ise kisi ko de sakte ho, lekin tum ise wapas nahi le sakte. Ek baar diya to hamesha ke liye gaya.",
+    "options": ["Vachan / Zubaan", "Paisa", "Dost", "Pyaar"],
+    "answer": "Vachan / Zubaan"
+  },
+  {
+    "id": 453,
+    "question": "Main ek aisi cheez hoon jo paani se bhari hui hai par main geeli nahi hoon. Mere andar safed paani aur safed malai hai. Main kya hoon?",
+    "options": ["Nariyal (Coconut)", "Doodh ka packet", "Anda", "Matka"],
+    "answer": "Nariyal (Coconut)"
+  },
+  {
+    "id": 454,
+    "question": "Main din bhar chalta hoon par kabhi thakta nahi. Mere paas chehra hai par aankhein nahi. Mere paas haath hain par main kuch pakad nahi sakta.",
+    "options": ["Ghadi (Clock)", "Insaan", "Robot", "Pankha"],
+    "answer": "Ghadi (Clock)"
+  },
+  {
+    "id": 455,
+    "question": "Main ek aisi cheez hoon jo tumhari hai, par log ise tumse zyada istemal karte hain. Agar tumne ise badal diya, to log confuse ho jayenge.",
+    "options": ["Naam (Name)", "Chehra", "Kapde", "Phone Number"],
+    "answer": "Naam (Name)"
+  },
+  {
+    "id": 456,
+    "question": "Main ek aisi cheez hoon jo bina maachis ke jalti hai. Log mujhe dekhne ke liye door-door se aate hain, par mere paas koi nahi jaata.",
+    "options": ["Suraj (Sun)", "Bijli", "Aag", "Lava"],
+    "answer": "Suraj (Sun)"
+  },
+  {
+    "id": 457,
+    "question": "Main ek aisi cheez hoon jo subah hari hoti hai, dopahar ko kaali hoti hai, shaam ko neeli hoti hai aur raat ko safed. (Yeh ek majak wali paheli hai).",
+    "options": ["Billi ki aankhen", "Rang badalne wala bulb", "Girgit", "Paani"],
+    "answer": "Billi ki aankhen"
+  },
+  {
+    "id": 458,
+    "question": "Main tumhare bistar ke neeche chupa hoon. Main raat ko aata hoon aur tumhe darata hoon. Main asli nahi hoon, bas tumhari soch hoon. Main kya hoon?",
+    "options": ["Bhoot / Darr", "Chor", "Kutta", "Andhera"],
+    "answer": "Bhoot / Darr"
+  },
+  {
+    "id": 459,
+    "question": "Main ek aisi cheez hoon jo khane ke liye kharidi jaati hai par khayi nahi jaati. Main steel, kaanch ya plastic ki ho sakti hoon.",
+    "options": ["Plate / Chamach", "Pizza", "Burger", "Icecream"],
+    "answer": "Plate / Chamach"
+  },
+  {
+    "id": 460,
+    "question": "Main ek aisi cheez hoon jo tumhare aasuon (tears) ko pochtii hai. Main hamesha tumhari jeb (pocket) mein rahti hoon.",
+    "options": ["Rumal (Handkerchief)", "Haath", "Tissue", "Maa"],
+    "answer": "Rumal (Handkerchief)"
+  },
+  {
+    "id": 461,
+    "question": "Main ek phool hoon jo suraj ki taraf dekhta rahta hoon. Subah main khilta hoon aur shaam ko murjha jaata hoon. Mera tel bhi banta hai.",
+    "options": ["Surajmukhi (Sunflower)", "Gulab", "Kamal", "Genda"],
+    "answer": "Surajmukhi (Sunflower)"
+  },
+  {
+    "id": 462,
+    "question": "Main ek aisi cheez hoon jo tumhare sir ke upar hai par tumhare baal nahi. Main tumhe baarish aur dhoop se bachati hoon. Main kya hoon?",
+    "options": ["Chhat / Topi", "Aasmaan", "Ped", "Chhata"],
+    "answer": "Chhat / Topi"
+  },
+  {
+    "id": 463,
+    "question": "Main ek aisi cheez hoon jo bina pairon ke bhaagti hai aur kabhi wapas nahi aati. Log mujhe rokne ki koshish karte hain par main rukti nahi.",
+    "options": ["Samay (Time)", "Hawa", "Nadi", "Zindagi"],
+    "answer": "Samay (Time)"
+  },
+  {
+    "id": 464,
+    "question": "Main ek aisi cheez hoon jo tumhari baat sunti hai aur wahi baat wapas bolti hai. Main pahaado mein rahti hoon.",
+    "options": ["Goonj (Echo)", "Tota", "Speaker", "Dost"],
+    "answer": "Goonj (Echo)"
+  },
+  {
+    "id": 465,
+    "question": "Main ek aisi cheez hoon jo thandi hone par sakht (hard) hoti hai aur garam hone par paani ban jaati hai. Main kya hoon?",
+    "options": ["Baraf (Ice)", "Mombatti", "Loha", "Plastic"],
+    "answer": "Baraf (Ice)"
+  },
+  {
+    "id": 466,
+    "question": "Main ek aisi cheez hoon jo tumhare paas jitni kam hogi, tum utne hi zyada ameer maney jaoge. (Yeh karz/loan nahi hai).",
+    "options": ["Dukh / Chinta", "Paisa", "Dushman", "Bimari"],
+    "answer": "Dukh / Chinta"
+  },
+  {
+    "id": 467,
+    "question": "Main ek aisi cheez hoon jo tumhare pairon mein rahti hoon. Mere paas soul (talaa) hai par main zinda nahi hoon. Mere paas tongue (jeebh) hai par main bol nahi sakti.",
+    "options": ["Joota (Shoe)", "Moza", "Payal", "Chappal"],
+    "answer": "Joota (Shoe)"
+  },
+  {
+    "id": 468,
+    "question": "Main ek aisi cheez hoon jo khatti hai. Main hari bhi hoti hoon aur peeli bhi. Log mujhe nichod kar sharbat banate hain.",
+    "options": ["Nimbu (Lemon)", "Santra", "Aam", "Imli"],
+    "answer": "Nimbu (Lemon)"
+  },
+  {
+    "id": 469,
+    "question": "Main ek aisi cheez hoon jo tumhare ghar ki raksha karti hoon. Mere paas daant hain par main kaat-ti nahi. Main chabhi se khulti hoon.",
+    "options": ["Taala (Lock)", "Kutta", "Darwaza", "Gate"],
+    "answer": "Taala (Lock)"
+  },
+  {
+    "id": 470,
+    "question": "Main ek aisi cheez hoon jo aag mein nahi jalti aur paani mein nahi doobti. Main safed rang ki hoon aur thandak deti hoon.",
+    "options": ["Baraf (Ice)", "Hawa", "Roshni", "Parchhai"],
+    "answer": "Baraf (Ice)"
+  },
+  {
+    "id": 471,
+    "question": "Main ek aisi cheez hoon jo tumhare muh mein hai. Agar main na hoti to tum khana nahi kha paate aur na hi bol paate. Main laal rang ki hoon.",
+    "options": ["Jeebh (Tongue)", "Daant", "Honth", "Gala"],
+    "answer": "Jeebh (Tongue)"
+  },
+  {
+    "id": 472,
+    "question": "Main ek aisi cheez hoon jo tumhare shareer mein 206 hoti hain. Main sakht hoon aur safed hoon. Main tumhare shareer ka dhancha banati hoon.",
+    "options": ["Haddi (Bone)", "Daant", "Naakhun", "Baal"],
+    "answer": "Haddi (Bone)"
+  },
+  {
+    "id": 473,
+    "question": "Main ek aisi cheez hoon jo tumhare school bag mein hoti hai. Mere andar gyaan (knowledge) bhara hai. Tum mujhe padhte ho.",
+    "options": ["Kitab (Book)", "Lunchbox", "Pencil box", "Bottle"],
+    "answer": "Kitab (Book)"
+  },
+  {
+    "id": 474,
+    "question": "Main ek aisi cheez hoon jo aasmaan mein udti hai par main panchi nahi hoon. Mere paas poonch (tail) hai par main janwar nahi hoon. Bachhe mujhe dhaage se udate hain.",
+    "options": ["Patang (Kite)", "Hawai Jahaj", "Gubbara", "Drone"],
+    "answer": "Patang (Kite)"
+  },
+  {
+    "id": 475,
+    "question": "Main ek aisi cheez hoon jo raat ko aati hai aur subah chali jaati hai. Main tumhe aaram deti hoon aur sapne dikhati hoon.",
+    "options": ["Neend (Sleep)", "Raat", "Chand", "Bistr"],
+    "answer": "Neend (Sleep)"
+  },
+  {
+    "id": 476,
+    "question": "Main ek aisi cheez hoon jo tumhare ghar ke bahar lagi hoti hai. Jab koi aata hai to wo mujhe bajata hai. Meri awaaz 'Ding-Dong' hoti hai.",
+    "options": ["Doorbell", "Ghanti", "Taala", "Kutta"],
+    "answer": "Doorbell"
+  },
+  {
+    "id": 477,
+    "question": "Main ek aisi cheez hoon jo tumhare kitchen mein hoti hai. Main gol hoon aur ghoomti hoon. Roti banane ke liye mera istemal hota hai.",
+    "options": ["Belan", "Chakla", "Tawa", "Chammach"],
+    "answer": "Belan"
+  },
+  {
+    "id": 478,
+    "question": "Main ek aisi cheez hoon jo tumhare bathroom mein hoti hai. Main tumhe saaf karti hoon aur khushboo deti hoon. Pani lagne par main ghulti hoon.",
+    "options": ["Sabun (Soap)", "Shampoo", "Toliya", "Balti"],
+    "answer": "Sabun (Soap)"
+  },
+  {
+    "id": 479,
+    "question": "Main ek aisi cheez hoon jo tumhare paon (feet) mein hoti hai. Main tumhe kaanto aur pattharo se bachati hoon. Main chamde ya kapde ki bani hoti hoon.",
+    "options": ["Joota / Chappal", "Moza", "Payal", "Parchhai"],
+    "answer": "Joota / Chappal"
+  },
+  {
+    "id": 480,
+    "question": "Main ek aisi cheez hoon jo tumhare computer ke paas hoti hai. Mera naam ek janwar (animal) ke naam par hai par main asli janwar nahi hoon.",
+    "options": ["Mouse", "Cat", "Tiger", "Keyboard"],
+    "answer": "Mouse"
+  },
+  {
+    "id": 481,
+    "question": "Main ek aisi cheez hoon jo tumhare birthday par kaati jaati hai. Main meethi hoon aur mere upar mombatti lagayi jaati hai.",
+    "options": ["Cake", "Mithai", "Chocolate", "Pizza"],
+    "answer": "Cake"
+  },
+  {
+    "id": 482,
+    "question": "Main ek aisi cheez hoon jo tumhare phone mein hoti hai. Main tumhari photo khinchta hoon aur video banata hoon.",
+    "options": ["Camera", "Screen", "Battery", "Speaker"],
+    "answer": "Camera"
+  },
+  {
+    "id": 483,
+    "question": "Main ek aisi cheez hoon jo tumhare ghar ki chat (roof) par laga hota hoon. Main ghoomta hoon to hawa aati hai.",
+    "options": ["Pankha (Fan)", "AC", "Light", "Cooler"],
+    "answer": "Pankha (Fan)"
+  },
+  {
+    "id": 484,
+    "question": "Main ek aisi cheez hoon jo tumhare bagiche (garden) mein hoti hai. Main rang-biranga hoon aur khushboo deta hoon.",
+    "options": ["Phool (Flower)", "Ghaas", "Patthar", "Mitti"],
+    "answer": "Phool (Flower)"
+  },
+  {
+    "id": 485,
+    "question": "Main ek aisi cheez hoon jo tumhare fridge mein hoti hai. Main paani ko thanda karti hoon aur jam jaati hoon.",
+    "options": ["Baraf (Ice)", "Doodh", "Sabzi", "Juice"],
+    "answer": "Baraf (Ice)"
+  },
+  {
+    "id": 486,
+    "question": "Main ek aisi cheez hoon jo tumhare school mein hoti hai. Teacher mujh par chalk se likhte hain.",
+    "options": ["Blackboard", "Desk", "Kursi", "Deewar"],
+    "answer": "Blackboard"
+  },
+  {
+    "id": 487,
+    "question": "Main ek aisi cheez hoon jo tumhare desh ka prateek (symbol) hoon. Mere teen rang hain - Kesariya, Safed aur Hara.",
+    "options": ["Jhanda (Flag)", "Emblem", "Map", "Rupee"],
+    "answer": "Jhanda (Flag)"
+  },
+  {
+    "id": 488,
+    "question": "Main ek aisi cheez hoon jo tumhare haath mein hoti hai. Mere 5 bhai hain jo hamesha saath rahte hain.",
+    "options": ["Ungliyan (Fingers)", "Paisa", "Dost", "Ghadi"],
+    "answer": "Ungliyan (Fingers)"
+  },
+  {
+    "id": 489,
+    "question": "Main ek aisi cheez hoon jo tumhare shareer mein bahti hai. Main laal rang ka hoon aur agar main bahar nikal jaaun to kamzori aati hai.",
+    "options": ["Khoon (Blood)", "Paani", "Pasina", "Aansu"],
+    "answer": "Khoon (Blood)"
+  },
+  {
+    "id": 490,
+    "question": "Main ek aisi cheez hoon jo tumhare chehre par hoti hai. Main sunghne (smell) ke kaam aati hoon aur saans lene ke bhi.",
+    "options": ["Naak (Nose)", "Kaan", "Aankh", "Muh"],
+    "answer": "Naak (Nose)"
+  },
+  {
+    "id": 491,
+    "question": "Main ek aisi cheez hoon jo tumhare kaano mein hoti hai. Main sunne ke kaam aata hoon.",
+    "options": ["Kaan (Ear)", "Naak", "Aankh", "Baal"],
+    "answer": "Kaan (Ear)"
+  },
+  {
+    "id": 492,
+    "question": "Main ek aisi cheez hoon jo tumhare daanto ko saaf karti hai. Main subah aur raat ko istemal hoti hoon.",
+    "options": ["Brush", "Kanghi", "Sabun", "Toliya"],
+    "answer": "Brush"
+  },
+  {
+    "id": 493,
+    "question": "Main ek aisi cheez hoon jo tumhare baalo (hair) mein lagta hai. Main liquid hoon aur jhaag banata hoon.",
+    "options": ["Shampoo", "Tel", "Paani", "Gel"],
+    "answer": "Shampoo"
+  },
+  {
+    "id": 494,
+    "question": "Main ek aisi cheez hoon jo tumhare pairon ke neeche hoti hai. Jis par tum chalte ho, wo main hoon.",
+    "options": ["Zameen (Ground)", "Aasmaan", "Paani", "Hawa"],
+    "answer": "Zameen (Ground)"
+  },
+  {
+    "id": 495,
+    "question": "Main ek aisi cheez hoon jo ladkiyon ke naam mein bhi aati hai aur pehne ke kaam bhi aati hai. Main chandi ya sone ki ho sakti hoon.",
+    "options": ["Payal", "Kajal", "Neelam", "Sona"],
+    "answer": "Payal"
+  },
+  {
+    "id": 496,
+    "question": "Mujhe banane ke liye tumhe mujhe todna padta hai. Agar main na tootun, to tum mujhe kha nahi sakte. Batao main kya hoon?",
+    "options": ["Anda (Egg)", "Nariyal", "Akhrot", "Anaar"],
+    "answer": "Anda (Egg)"
+  },
+  {
+    "id": 497,
+    "question": "Main ek aisi cheez hoon jise tum pakad sakte ho par fek nahi sakte. Main hamesha tumhare saath rahti hoon jab tak bukhar na ho.",
+    "options": ["Thand (Cold)", "Garmi", "Bimari", "Saans"],
+    "answer": "Thand (Cold)"
+  },
+  {
+    "id": 498,
+    "question": "Main ek janwar hoon jo apne bachhe ko apne pet ki thaili (pouch) mein rakhta hoon. Main jump karke chalta hoon aur Australia mein paaya jaata hoon.",
+    "options": ["Kangaroo", "Bandar", "Bhalu", "Koala"],
+    "answer": "Kangaroo"
+  },
+  {
+    "id": 499,
+    "question": "Main ek aisi cheez hoon jo dhoop mein paida hoti hai aur chaav mein mar jaati hai. Main tumhare saath chalti hoon par tum mujhe pakad nahi sakte.",
+    "options": ["Pasina (Sweat)", "Parchhai", "Roshni", "Hawa"],
+    "answer": "Pasina (Sweat)"
+  },
+  {
+    "id": 500,
+    "question": "Main ek aisi cheez hoon jo gandi hone par safed ho jaati hai aur saaf hone par kaali rahti hai. School mein bachhe mujhe roz dekhte hain.",
+    "options": ["Blackboard", "Chalk", "Duster", "Kitab"],
+    "answer": "Blackboard"
+  }
+]
