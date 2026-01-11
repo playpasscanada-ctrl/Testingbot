@@ -17158,11 +17158,43 @@ LOG_CHANNEL_ID = "1457066104819028089"
 GUILD_ID = "1257403231127076915"
 
 # --- HELPER: SEND DISCORD LOG ---
-def send_discord_log(msg):
+import requests
+import datetime
+
+# --- 💎 PREMIUM LOGGING FUNCTION ---
+def send_discord_log(msg, type="info"):
     if not DISCORD_TOKEN or not LOG_CHANNEL_ID: return
+
+    # 🎨 Color & Icon Config based on log type
+    config = {
+        "info":    {"color": 0x00f3ff, "title": "📡 SYSTEM UPDATE", "icon": "ℹ️"}, # Neon Blue
+        "success": {"color": 0x00ff41, "title": "✅ OPERATION SUCCESS", "icon": "🚀"}, # Hacker Green
+        "error":   {"color": 0xff2a2a, "title": "⚠️ CRITICAL ERROR", "icon": "🔥"},   # Neon Red
+        "warning": {"color": 0xffd700, "title": "🛡️ SECURITY ALERT", "icon": "⚡"}    # Gold
+    }
+    
+    # Default to info if type not found
+    style = config.get(type, config["info"])
+
     url = f"https://discord.com/api/v10/channels/{LOG_CHANNEL_ID}/messages"
     headers = {"Authorization": f"Bot {DISCORD_TOKEN}", "Content-Type": "application/json"}
-    requests.post(url, headers=headers, json={"content": msg})
+
+    # 📦 Premium Embed Structure
+    embed = {
+        "title": f"{style['icon']} {style['title']}",
+        "description": f"```yaml\n{msg}\n```",  # YAML formatting makes text look colorful/techy
+        "color": style['color'],
+        "footer": {
+            "text": "🤖 Server Watchdog • Live Monitor",
+            "icon_url": "https://i.imgur.com/AfFp7pu.png" # Optional: Bot logo url here
+        },
+        "timestamp": datetime.datetime.utcnow().isoformat()
+    }
+
+    try:
+        requests.post(url, headers=headers, json={"embeds": [embed]})
+    except Exception as e:
+        print(f"Failed to send log: {e}")
 
 # ==========================================
 # 🏠 STANDARD ROUTES (DASHBOARD, SHOP, GAMES)
