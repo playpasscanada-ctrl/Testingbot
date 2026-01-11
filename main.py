@@ -16769,55 +16769,6 @@ API_ENDPOINT = 'https://discord.com/api/v10'
 LOG_CHANNEL_ID = "1457066104819028089" 
 GUILD_ID = "1257403231127076915"
 
-# --- HELPER: SEND DISCORD LOG ---
-import requests
-import datetime
-
-# ✅ Corrected Function
-def send_discord_log(title, msg, type="info"):
-    # Check if Token/ID exists
-    if not DISCORD_TOKEN or not LOG_CHANNEL_ID: 
-        print("❌ Error: DISCORD_TOKEN or LOG_CHANNEL_ID is missing!")
-        return
-
-    # Color Config
-    colors = {
-        "info": 0x00f3ff,    # Blue
-        "success": 0x00ff41, # Green
-        "error": 0xff2a2a,   # Red
-        "warning": 0xffd700  # Gold
-    }
-    
-    # 🔴 FIX 1: URL ko saaf kiya (Markdown hata diya)
-    url = f"https://discord.com/api/v10/channels/{LOG_CHANNEL_ID}/messages"
-    
-    headers = {
-        "Authorization": f"Bot {DISCORD_TOKEN}", 
-        "Content-Type": "application/json"
-    }
-
-    embed = {
-        "title": f"📡 {title}",
-        "description": msg,
-        "color": colors.get(type, 0x00f3ff),
-        "footer": {
-            "text": "🛡️ Server Watchdog • Live System",
-            "icon_url": "https://i.imgur.com/AfFp7pu.png" 
-        },
-        "timestamp": datetime.datetime.utcnow().isoformat()
-    }
-
-    try:
-        response = requests.post(url, headers=headers, json={"embeds": [embed]})
-        
-        # 🔴 FIX 2: Agar message fail hua to reason print karega
-        if response.status_code not in [200, 204]:
-            print(f"❌ Failed to send log! Status: {response.status_code}")
-            print(f"Reason: {response.text}")
-            
-    except Exception as e:
-        print(f"Log Error: {e}")
-
 
 # ==========================================
 # 🏠 STANDARD ROUTES (DASHBOARD, SHOP, GAMES)
@@ -17426,76 +17377,108 @@ def rob_truck():
         return jsonify({"status":"fail", "msg": f"HIJACK FAILED! Security fined you ${fine:,}"})
 
 # --- SELL STOCK (UPDATED WITH MULTI-INVESTOR & DISCORD LOG) ---
+import requests
+import json
+from datetime import datetime
+
+# 👇 YAHAN APNA WEBHOOK URL DALO
+DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1459876492044406835/H3Yr0hMve6EooTkclhoxF_v8fLrhRYT4cMnQUpDkrBvrHvpvt2eGyJ6hBdVOUOYfHmJ3"
+
 @app.route('/api/business/action', methods=['POST'])
 def biz_action():
-    # 1. Session se ID aur Name lo
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
+        
     user_id = session['user_info']['id']
-    user_name = session['user_info']['username'] # ✅ Name add kiya log ke liye
+    user_name = session['user_info']['username'] 
 
     req = request.json
     action = req.get('action')
     biz_id = req.get('biz_id')
     
-    # 2. Database Fetch
     data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
-    owned = data[0]['businesses']
-    biz = owned[biz_id]
+    if not data: return jsonify({"status":"error", "msg":"User data not found"})
     
-    msg = "" # Default message variable
+    owned = data[0]['businesses']
+    try: biz = owned[biz_id]
+    except: return jsonify({"status":"error", "msg":"Business not found"})
+    
+    msg = "" 
 
-    # --- ACTION 1: PROMOTE ---
     if action == 'promote':
-        if data[0]['balance'] < 10000: 
-            return jsonify({"status":"error", "msg": "Need $10,000"})
-        
+        if data[0]['balance'] < 10000: return jsonify({"status":"error", "msg": "Need $10,000"})
         data[0]['balance'] -= 10000
         biz['popularity'] = 100
-        msg = "Promoted! Business is trending now."
+        msg = "Promoted!"
         
-    # --- ACTION 2: SELL STOCK (LIQUIDATE) ---
     elif action == 'sell_stock':
-        stock_val = biz['stock']
-        if stock_val <= 0: 
-            return jsonify({"status":"error", "msg":"No Stock Value"})
+        stock_val = biz.get('stock', 0)
+        if stock_val <= 0: return jsonify({"status":"error", "msg":"No Stock Value"})
         
-        # A. Investors ko paisa do
+        # --- INVESTOR PAYOUT & LOGIC ---
         investors = biz.get('investors', {})
         total_payout = 0
-        investor_msg = ""
+        investor_log_str = ""
         
-        for inv_id, equity in investors.items():
-            share = int(stock_val * equity)
-            db.update_balance(inv_id, share) # Pay investor
-            total_payout += share
-            # (Optional log detail for investors)
-            # investor_msg += f"> Investor <@{inv_id}> got ${share:,}\n"
+        if investors:
+            investor_log_str = "\n**👥 Investors Share:**\n"
+            for inv_id, equity in investors.items():
+                # Equity example: 0.20 (20%)
+                share = int(stock_val * equity)
+                percentage = int(equity * 100) # Convert 0.20 -> 20%
+                
+                if share > 0:
+                    db.update_balance(inv_id, share)
+                    total_payout += share
+                    # ✅ AB YEHAN % BHI DIKHEGA
+                    investor_log_str += f"> <@{inv_id}> ({percentage}%): **${share:,}**\n"
             
-        # B. Owner (Aapko) paisa do
         owner_share = stock_val - total_payout
         data[0]['balance'] += owner_share
-        biz['stock'] = 0 # Stock khatam
+        biz['stock'] = 0 
         msg = f"Sold! You kept ${owner_share:,}"
         
-        # C. Discord Log (✅ FIXED SECTION)
-        # Business ka naam nikalne ke liye BUSINESSES dict use kiya (Ensure karein ye upar defined hai)
-        biz_name = BUSINESSES.get(biz_id, {}).get('name', 'Business')
+        # --- WEBHOOK LOG ---
+        biz_name = BUSINESSES.get(biz_id, {}).get('name', biz_id.title()) if 'BUSINESSES' in globals() else biz_id.title()
 
-        log_text = (
-            f"📢 **STOCK LIQUIDATED**\n"
-            f"**Seller:** {user_name}\n"
-            f"**Business:** {biz_name}\n"
-            f"**Total Value:** ${stock_val:,}\n\n"
-            f"**Payouts:**\n"
-            f"👑 **Owner Kept:** ${owner_share:,}"
-        )
-        
-        # Sahi format me call kiya (Title, Message, Type)
-        send_discord_log("MARKET UPDATE", log_text, "success")
+        embed = {
+            "title": "💸 MARKET SELL ALERT",
+            "description": f"**Seller:** {user_name} (<@{user_id}>)\n**Business:** {biz_name}",
+            "color": 0x00FF00,
+            "fields": [
+                {
+                    "name": "💰 Total Sold",
+                    "value": f"```${stock_val:,}```",
+                    "inline": False
+                },
+                {
+                    "name": "👑 Owner Profit",
+                    "value": f"**${owner_share:,}**",
+                    "inline": True
+                },
+                {
+                    "name": "👥 Investors Profit",
+                    "value": f"**${total_payout:,}**",
+                    "inline": True
+                }
+            ],
+            "footer": {"text": "Server Economy", "icon_url": "https://i.imgur.com/AfFp7pu.png"},
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
-    # 3. Database Update
+        if total_payout > 0:
+            embed["fields"].append({
+                "name": "📜 Distribution Details",
+                "value": investor_log_str,
+                "inline": False
+            })
+
+        try: requests.post(DISCORD_WEBHOOK_URL, json={"embeds": [embed]})
+        except Exception as e: print(f"Webhook Error: {e}")
+
     db.supabase.table("economy").update({"balance": data[0]['balance'], "businesses": owned}).eq("user_id", user_id).execute()
     
     return jsonify({"status":"success", "msg": msg, "new_bal": data[0]['balance']})
+
 
 # --- SECURITY ---
 @app.route('/api/business/security', methods=['POST'])
