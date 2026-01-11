@@ -17260,29 +17260,44 @@ async def assign_memory_role(guild, member, role_data):
 
 @app.route('/business')
 def business_dashboard():
+    # 1. Auth Check
     if 'user_info' not in session: return redirect('/')
     user_id = session['user_info']['id']
     
+    # 2. Fetch Data
     data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
     if not data: return "Error"
     
     balance = data[0]['balance']
-    owned_businesses = data[0]['businesses'] or {}
+    owned_businesses = data[0]['businesses'] or {} # Agar NULL ho to empty dict
     current_time = int(time.time())
 
     # --- ADVANCED PASSIVE INCOME & CONSUMPTION ---
     for biz_id, biz in owned_businesses.items():
-        # Truck Delivery Check
-        if 'delivery_time' in biz and biz['delivery_time'] > 0:
+        
+        # -----------------------------------------------------
+        # 🔴 ERROR FIX: Missing Keys Patch
+        # Ye code ensure karega ki Jinja template crash na ho
+        # -----------------------------------------------------
+        if 'delivery_time' not in biz: biz['delivery_time'] = 0
+        if 'supplies' not in biz: biz['supplies'] = 0
+        if 'stock' not in biz: biz['stock'] = 0
+        if 'popularity' not in biz: biz['popularity'] = 100
+        if 'last_check' not in biz: biz['last_check'] = current_time
+        # -----------------------------------------------------
+
+        # A. Truck Delivery Check
+        if biz['delivery_time'] > 0:
             if current_time >= biz['delivery_time']:
                 biz['supplies'] = 100
-                biz['delivery_time'] = 0 
+                biz['delivery_time'] = 0 # Reset timer (Truck Arrived)
         
+        # B. Passive Income Logic
         last_check = biz.get('last_check', current_time)
         hours_passed = (current_time - last_check) / 3600
         
         if hours_passed > 0:
-            # 1. Variable Consumption Logic
+            # Variable Consumption Logic
             # Cheaper business = High consumption (Needs more attention)
             price = BUSINESSES[biz_id]['price']
             consumption_rate = 20 if price < 150000000 else 5 if price > 500000000 else 10
@@ -17291,16 +17306,22 @@ def business_dashboard():
             
             if supplies > 0:
                 rate = BUSINESSES[biz_id]['income_per_hr']
+                
+                # Popularity based production calculation
                 production = int(rate * hours_passed * (biz.get('popularity', 100)/100))
                 max_st = BUSINESSES[biz_id]['max_stock']
                 
+                # Update Stock (Don't exceed max)
                 biz['stock'] = min(biz.get('stock', 0) + production, max_st)
                 
-                # Consume supplies
+                # Consume supplies & Decrease Popularity
                 biz['supplies'] = max(0, supplies - int(hours_passed * consumption_rate))
                 biz['popularity'] = max(0, int(biz.get('popularity', 100) - hours_passed))
+                
+                # Update Check Time
                 biz['last_check'] = current_time
 
+    # 3. Save Updates to Database
     db.supabase.table("economy").update({"businesses": owned_businesses}).eq("user_id", user_id).execute()
 
     return render_template('business.html', user=session['user_info'], balance=balance, owned=owned_businesses, all_biz=BUSINESSES, now=current_time)
