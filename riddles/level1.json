@@ -1,0 +1,602 @@
+[
+  {
+    "id": 101,
+    "question": "Wo kya hai jo paani peete hi mar jaati hai?",
+    "options": ["Machli", "Aag", "Pyaas", "Bhookh"],
+    "answer": "Pyaas"
+  },
+  {
+    "id": 102,
+    "question": "Gol hai par ball nahi, pooch hai par janwar nahi. Bacche isse khelte hain?",
+    "options": ["Gubbara", "Sikka", "Tarbooz", "Pahiya"],
+    "answer": "Gubbara"
+  },
+  {
+    "id": 103,
+    "question": "Katori pe katora, beta baap se bhi gora?",
+    "options": ["Anda", "Nariyal", "Badam", "Doodh"],
+    "answer": "Nariyal"
+  },
+  {
+    "id": 104,
+    "question": "Aisi kaun si cheez hai jo fटने par aawaz nahi karti?",
+    "options": ["Bomb", "Gubbara", "Doodh", "Kanch"],
+    "answer": "Doodh"
+  },
+  {
+    "id": 105,
+    "question": "Jiske paas taange (legs) hain par chal nahi sakti?",
+    "options": ["Ghoda", "Kursi", "Insaan", "Billi"],
+    "answer": "Kursi"
+  },
+  {
+    "id": 106,
+    "question": "Ek aankh hai par dekh nahi sakti?",
+    "options": ["Sui", "Kaana", "Mobile", "Button"],
+    "answer": "Sui"
+  },
+  {
+    "id": 107,
+    "question": "Iske daant (teeth) hain par kaat nahi sakti?",
+    "options": ["Kutta", "Kanghi", "Sher", "Macchar"],
+    "answer": "Kanghi"
+  },
+  {
+    "id": 108,
+    "question": "Wo kya hai jo upar to jaata hai par kabhi neeche nahi aata?",
+    "options": ["Gubbara", "Hawai Jahaj", "Umr (Age)", "Ball"],
+    "answer": "Umr (Age)"
+  },
+  {
+    "id": 109,
+    "question": "Jitna saaf karo, utna kaala ho jata hai?",
+    "options": ["Kapda", "Blackboard", "Haath", "Paani"],
+    "answer": "Blackboard"
+  },
+  {
+    "id": 110,
+    "question": "Gale me hai par sir nahi?",
+    "options": ["Bottle", "Shirt", "Insaan", "Bhoot"],
+    "answer": "Shirt"
+  },
+  {
+    "id": 111,
+    "question": "Ched (holes) hi ched hain, phir bhi paani rok leta hai?",
+    "options": ["Sponge", "Balti", "Kapda", "Mitti"],
+    "answer": "Sponge"
+  },
+  {
+    "id": 112,
+    "question": "Bina bulaye doctor aaye, sui lagakar bhaag jaye?",
+    "options": ["Kutta", "Macchar", "Chor", "Dost"],
+    "answer": "Macchar"
+  },
+  {
+    "id": 113,
+    "question": "Naak pe chadhta hai, kaan pakadta hai?",
+    "options": ["Makhhi", "Chashma", "Mask", "Joota"],
+    "answer": "Chashma"
+  },
+  {
+    "id": 114,
+    "question": "Kaan marodo to paani deta hai?",
+    "options": ["Nal (Tap)", "Kutta", "Bachha", "Bottle"],
+    "answer": "Nal (Tap)"
+  },
+  {
+    "id": 115,
+    "question": "Wo kaun hai jo din me sota hai aur raat me rota hai?",
+    "options": ["Ullu", "Mombatti", "Chor", "Chamgadar"],
+    "answer": "Mombatti"
+  },
+  {
+    "id": 116,
+    "question": "Teen akshar ka mera naam, ulta seedha ek saman?",
+    "options": ["Kalam", "Jahaj", "Sadak", "Namak"],
+    "answer": "Jahaj"
+  },
+  {
+    "id": 117,
+    "question": "Ek gufa ke do rakhwale, dono lambe dono kaale?",
+    "options": ["Aankhein", "Moochein", "Haath", "Pair"],
+    "answer": "Moochein"
+  },
+  {
+    "id": 118,
+    "question": "Hara chor laal makaan, usme baitha kaala shaitan?",
+    "options": ["Amrood", "Tarbooz", "Papita", "Seb"],
+    "answer": "Tarbooz"
+  },
+  {
+    "id": 119,
+    "question": "Sone ki cheez hai par sunar nahi bechta?",
+    "options": ["Angoothi", "Takiya", "Haar", "Chain"],
+    "answer": "Takiya"
+  },
+  {
+    "id": 120,
+    "question": "Haath pair nahi par chalti rahti hai?",
+    "options": ["Ghadi", "Cycle", "Gadi", "Hawa"],
+    "answer": "Ghadi"
+  },
+  {
+    "id": 121,
+    "question": "Wo kya hai jo car me hai par bike me nahi?",
+    "options": ["Horn", "Chhat", "Tyre", "Engine"],
+    "answer": "Chhat"
+  },
+  {
+    "id": 122,
+    "question": "Kaali hai par kauwa nahi, lambi hai par naag nahi?",
+    "options": ["Rassi", "Choti (Braid)", "Sadak", "Wire"],
+    "answer": "Choti (Braid)"
+  },
+  {
+    "id": 123,
+    "question": "Wo kya hai jo tumhara hai par dusre log istemal karte hain?",
+    "options": ["Tumhara Naam", "Tumhara Paisa", "Tumhara Phone", "Tumhari Bike"],
+    "answer": "Tumhara Naam"
+  },
+  {
+    "id": 124,
+    "question": "Duniya bhar me ghoomta hai par kone (corner) me baitha rahta hai?",
+    "options": ["Stamp", "Pankha", "TV", "Mobile"],
+    "answer": "Stamp"
+  },
+  {
+    "id": 125,
+    "question": "Bina tel ke jalta hai, bina pair ke chalta hai?",
+    "options": ["Suraj", "Chand", "Gadi", "Bulb"],
+    "answer": "Suraj"
+  },
+  {
+    "id": 126,
+    "question": "Ek phool kaale rang ka, sir par hamesha suhaye?",
+    "options": ["Baal (Hair)", "Gulab", "Topi", "Chashma"],
+    "answer": "Baal (Hair)"
+  },
+  {
+    "id": 127,
+    "question": "Subah dekho to bada, dopahar ko chota?",
+    "options": ["Insaan", "Parchhai (Shadow)", "Ped", "Suraj"],
+    "answer": "Parchhai (Shadow)"
+  },
+  {
+    "id": 128,
+    "question": "Rang biranga badan hai, hawa me udna kaam hai?",
+    "options": ["Titli", "Chidiya", "Patang", "Hawai Jahaj"],
+    "answer": "Titli"
+  },
+  {
+    "id": 129,
+    "question": "Chalta hai par thakta nahi?",
+    "options": ["Joota", "Pankha", "Insaan", "Kutta"],
+    "answer": "Pankha"
+  },
+  {
+    "id": 130,
+    "question": "Lal gaaye, lakdi khaaye, paani piye to mar jaaye?",
+    "options": ["Aag", "Sher", "Kutta", "Gadi"],
+    "answer": "Aag"
+  },
+  {
+    "id": 131,
+    "question": "Kahi bhi jaaye, saath nibhaye?",
+    "options": ["Dost", "Parchhai", "Joota", "Phone"],
+    "answer": "Parchhai"
+  },
+  {
+    "id": 132,
+    "question": "Bin pair ke chalti rahti?",
+    "options": ["Nadi (River)", "Sadak", "Hawa", "Gadi"],
+    "answer": "Nadi (River)"
+  },
+  {
+    "id": 133,
+    "question": "Muh kala, kaam ujala?",
+    "options": ["Kalam (Pen)", "Chor", "Koyla", "Raat"],
+    "answer": "Kalam (Pen)"
+  },
+  {
+    "id": 134,
+    "question": "Hari dibbi, laal makaan, andar baithe kaale pehelwan?",
+    "options": ["Tarbooz", "Mutter", "Bhindi", "Tamatar"],
+    "answer": "Tarbooz"
+  },
+  {
+    "id": 135,
+    "question": "Safed hai par doodh nahi?",
+    "options": ["Chuna", "Kagaz", "Paani", "Dahi"],
+    "answer": "Chuna"
+  },
+  {
+    "id": 136,
+    "question": "Hara hu par patta nahi, nakalchi hu par bandar nahi?",
+    "options": ["Tota", "Makhhi", "Girgit", "Saamp"],
+    "answer": "Tota"
+  },
+  {
+    "id": 137,
+    "question": "Ek thal motiyo bhara, sabke sir par ulta dhara?",
+    "options": ["Aasmaan", "Chhata", "Tokri", "Nadi"],
+    "answer": "Aasmaan"
+  },
+  {
+    "id": 138,
+    "question": "Do bhai hain ek rang ke, par mil nahi paate?",
+    "options": ["Kaan (Ears)", "Haath", "Aankhein", "Pair"],
+    "answer": "Kaan (Ears)"
+  },
+  {
+    "id": 139,
+    "question": "Paani me chalti hai par machli nahi?",
+    "options": ["Naav (Boat)", "Saamp", "Magarmach", "Patthar"],
+    "answer": "Naav (Boat)"
+  },
+  {
+    "id": 140,
+    "question": "Aage se gaaya, peeche se ghoda?",
+    "options": ["Bail-Gaadi", "Car", "Rickshaw", "Bus"],
+    "answer": "Bail-Gaadi"
+  },
+  {
+    "id": 141,
+    "question": "Meetha hai par cheeni nahi?",
+    "options": ["Shahad (Honey)", "Namak", "Nimbu", "Paani"],
+    "answer": "Shahad (Honey)"
+  },
+  {
+    "id": 142,
+    "question": "Thanda hai par baraf nahi?",
+    "options": ["Ice Cream", "Paani", "Hawa", "Patthar"],
+    "answer": "Ice Cream"
+  },
+  {
+    "id": 143,
+    "question": "Sirf bolne se toot jati hai?",
+    "options": ["Khamoshi (Silence)", "Kaanch", "Dosti", "Waada"],
+    "answer": "Khamoshi (Silence)"
+  },
+  {
+    "id": 144,
+    "question": "Dhoop me paida hoye, chhaon me mar jaye?",
+    "options": ["Pasina", "Paani", "Aag", "Roshni"],
+    "answer": "Pasina"
+  },
+  {
+    "id": 145,
+    "question": "Bina par ke udti hai?",
+    "options": ["Patang", "Chidiya", "Hawa", "Gubbara"],
+    "answer": "Patang"
+  },
+  {
+    "id": 146,
+    "question": "Har jagah hai par dikhti nahi?",
+    "options": ["Hawa", "Paani", "Bhoot", "Bhagwan"],
+    "answer": "Hawa"
+  },
+  {
+    "id": 147,
+    "question": "Ek pair pe khada rahta, baarish me khush hota?",
+    "options": ["Chhata", "Ped", "Insaan", "Sher"],
+    "answer": "Chhata"
+  },
+  {
+    "id": 148,
+    "question": "Aisi cheez jo ladki ka naam bhi hai aur pehenne ki cheez bhi?",
+    "options": ["Payal", "Kajal", "Mala", "Suman"],
+    "answer": "Payal"
+  },
+  {
+    "id": 149,
+    "question": "Choti si hai par pure ghar ko bharti hai?",
+    "options": ["Roshni (Light)", "Makhhi", "Chiti", "Dhoop"],
+    "answer": "Roshni (Light)"
+  },
+  {
+    "id": 150,
+    "question": "Na khata na peeta, marr jaye to sab ko dukh hota?",
+    "options": ["Rupaya", "Gubbara", "Khilona", "Bulb"],
+    "answer": "Rupaya"
+  },
+  {
+    "id": 151,
+    "question": "Mitti ka ghoda, lohe ki lagam?",
+    "options": ["Chulha", "Tawa", "Ghoda", "Gadi"],
+    "answer": "Chulha"
+  },
+  {
+    "id": 152,
+    "question": "Bina dhooye khate hain, khake pachtate hain?",
+    "options": ["Dhokha", "Joota", "Seb", "Kela"],
+    "answer": "Joota"
+  },
+  {
+    "id": 153,
+    "question": "Hari thi man bhari thi, motiyo se jari thi?",
+    "options": ["Bhutta (Corn)", "Mutter", "Bhindi", "Anaar"],
+    "answer": "Bhutta (Corn)"
+  },
+  {
+    "id": 154,
+    "question": "Na bhojan khata, na vetan leta, phir bhi pehra deta?",
+    "options": ["Taala", "Kutta", "Police", "Darwaza"],
+    "answer": "Taala"
+  },
+  {
+    "id": 155,
+    "question": "Ek raja ki anokhi rani, dum ke raste piti paani?",
+    "options": ["Diya (Lamp)", "Mombatti", "Pen", "Machli"],
+    "answer": "Diya (Lamp)"
+  },
+  {
+    "id": 156,
+    "question": "Jiske aane se log darte hain?",
+    "options": ["Bukhaar", "Police", "Sher", "Mehmaan"],
+    "answer": "Bukhaar"
+  },
+  {
+    "id": 157,
+    "question": "Wo kya hai jo kacha ho to hara, pakka ho to laal?",
+    "options": ["Mirchi", "Aam", "Kela", "Seb"],
+    "answer": "Mirchi"
+  },
+  {
+    "id": 158,
+    "question": "Chota sa sipahi, khinch ke uski pant utari?",
+    "options": ["Kela", "Mombatti", "Pen", "Gubbara"],
+    "answer": "Kela"
+  },
+  {
+    "id": 159,
+    "question": "Andar chilam, bahar tamakku?",
+    "options": ["Hukka", "Cigarette", "Chulha", "Bidi"],
+    "answer": "Hukka"
+  },
+  {
+    "id": 160,
+    "question": "Paani se nikla darakht (tree) ek, paat (leaf) nahi par daal anek?",
+    "options": ["Fuhara (Fountain)", "Kamal", "Ped", "Nadi"],
+    "answer": "Fuhara (Fountain)"
+  },
+  {
+    "id": 161,
+    "question": "Ek jaanwar aisa, jiske dum par paisa?",
+    "options": ["Mor", "Bandar", "Saamp", "Kutta"],
+    "answer": "Mor"
+  },
+  {
+    "id": 162,
+    "question": "Haath me hara, muh me laal?",
+    "options": ["Paan", "Mirchi", "Mehndi", "Tamatar"],
+    "answer": "Paan"
+  },
+  {
+    "id": 163,
+    "question": "Raat gali me khada-khada, danda lekar bada-bada?",
+    "options": ["Chaukidaar", "Police", "Bhoot", "Kutta"],
+    "answer": "Chaukidaar"
+  },
+  {
+    "id": 164,
+    "question": "Kala ghoda, safed sawari, ek utra to dusre ki baari?",
+    "options": ["Tawa aur Roti", "Pen aur Kagaz", "Car aur Driver", "Chulha aur Kadhai"],
+    "answer": "Tawa aur Roti"
+  },
+  {
+    "id": 165,
+    "question": "Paani me hai par gila nahi hota?",
+    "options": ["Parchhai", "Patthar", "Loha", "Plastic"],
+    "answer": "Parchhai"
+  },
+  {
+    "id": 166,
+    "question": "Joota pahan ke sota hai?",
+    "options": ["Ghoda", "Insaan", "Kutta", "Billi"],
+    "answer": "Ghoda"
+  },
+  {
+    "id": 167,
+    "question": "Wo kya hai jo ladkiyo ko aata hai par ladko ko nahi?",
+    "options": ["Sharam", "Gussa", "Bukhaar", "Rona"],
+    "answer": "Sharam"
+  },
+  {
+    "id": 168,
+    "question": "Duniya me sabse tezz kya chalta hai?",
+    "options": ["Mann", "Hawa", "Roshni", "Train"],
+    "answer": "Mann"
+  },
+  {
+    "id": 169,
+    "question": "Wo kya hai jo dhone ke baad ganda ho jata hai?",
+    "options": ["Paani", "Kapda", "Haath", "Bartan"],
+    "answer": "Paani"
+  },
+  {
+    "id": 170,
+    "question": "Aisi cheez jise hum khate bhi hain aur pite bhi?",
+    "options": ["Nariyal", "Aam", "Seb", "Kela"],
+    "answer": "Nariyal"
+  },
+  {
+    "id": 171,
+    "question": "Bina maachis ke jalti hai?",
+    "options": ["Bijli", "Aag", "Mombatti", "Diya"],
+    "answer": "Bijli"
+  },
+  {
+    "id": 172,
+    "question": "Wo kya hai jo saal me ek baar kharida jata hai?",
+    "options": ["Calendar", "Phone", "Kapda", "Joota"],
+    "answer": "Calendar"
+  },
+  {
+    "id": 173,
+    "question": "Wo kya hai jo chalta rahta hai par apni jagah se nahi hilta?",
+    "options": ["Ghadi", "Ped", "Pankha", "Suraj"],
+    "answer": "Ghadi"
+  },
+  {
+    "id": 174,
+    "question": "Iske paas gardan (neck) hai par sir nahi?",
+    "options": ["Bottle", "Insaan", "Shirt", "Gubbara"],
+    "answer": "Bottle"
+  },
+  {
+    "id": 175,
+    "question": "Chota hoon par bada kaam karta hoon, pure shehar ko roshan karta hoon?",
+    "options": ["Bulb", "Suraj", "Diya", "Mombatti"],
+    "answer": "Bulb"
+  },
+  {
+    "id": 176,
+    "question": "Gili mitti, pakaa rang, baje to nikalta sureela sang?",
+    "options": ["Matka", "Eent", "Bansuri", "Mitti"],
+    "answer": "Matka"
+  },
+  {
+    "id": 177,
+    "question": "Kala hai par raat nahi, lamba hai par saamp nahi?",
+    "options": ["Baal", "Raasta", "Dhaaga", "Rassi"],
+    "answer": "Baal"
+  },
+  {
+    "id": 178,
+    "question": "Chiti ke kitne pair hote hain?",
+    "options": ["6", "4", "8", "2"],
+    "answer": "6"
+  },
+  {
+    "id": 179,
+    "question": "Falon ka raja kaun hai?",
+    "options": ["Aam", "Seb", "Kela", "Angoor"],
+    "answer": "Aam"
+  },
+  {
+    "id": 180,
+    "question": "Jungle ka raja kaun hai?",
+    "options": ["Sher", "Haathi", "Cheeta", "Bhalu"],
+    "answer": "Sher"
+  },
+  {
+    "id": 181,
+    "question": "Suraj kis disha (direction) se nikalta hai?",
+    "options": ["Purab (East)", "Paschim", "Uttar", "Dakshin"],
+    "answer": "Purab (East)"
+  },
+  {
+    "id": 182,
+    "question": "Barf (Ice) pighalne par kya banti hai?",
+    "options": ["Paani", "Bhaap", "Hawa", "Kuch nahi"],
+    "answer": "Paani"
+  },
+  {
+    "id": 183,
+    "question": "Bharat ki rajdhani (capital) kya hai?",
+    "options": ["Delhi", "Mumbai", "Kolkata", "Chennai"],
+    "answer": "Delhi"
+  },
+  {
+    "id": 184,
+    "question": "Hafte (Week) me kitne din hote hain?",
+    "options": ["7", "5", "10", "12"],
+    "answer": "7"
+  },
+  {
+    "id": 185,
+    "question": "Saal (Year) me kitne mahine hote hain?",
+    "options": ["12", "10", "6", "8"],
+    "answer": "12"
+  },
+  {
+    "id": 186,
+    "question": "Rainbow (Indradhanush) me kitne rang hote hain?",
+    "options": ["7", "5", "10", "3"],
+    "answer": "7"
+  },
+  {
+    "id": 187,
+    "question": "Diwali par kya jalate hain?",
+    "options": ["Diya", "Paani", "Kagaz", "Kapda"],
+    "answer": "Diya"
+  },
+  {
+    "id": 188,
+    "question": "Holi par kya lagate hain?",
+    "options": ["Rang", "Mitti", "Paani", "Aag"],
+    "answer": "Rang"
+  },
+  {
+    "id": 189,
+    "question": "Cricket kis se khelte hain?",
+    "options": ["Bat-Ball", "Hockey", "Football", "Racket"],
+    "answer": "Bat-Ball"
+  },
+  {
+    "id": 190,
+    "question": "Kaun sa janwar bhaukta (barks) hai?",
+    "options": ["Kutta", "Billi", "Sher", "Gaye"],
+    "answer": "Kutta"
+  },
+  {
+    "id": 191,
+    "question": "Doodh ka rang kya hota hai?",
+    "options": ["Safed", "Kala", "Neela", "Lal"],
+    "answer": "Safed"
+  },
+  {
+    "id": 192,
+    "question": "Ped (Tree) hume kya dete hain?",
+    "options": ["Oxygen", "Plastic", "Loha", "Kanch"],
+    "answer": "Oxygen"
+  },
+  {
+    "id": 193,
+    "question": "Patang (Kite) kaha udti hai?",
+    "options": ["Aasmaan", "Paani", "Zameen", "Ghar"],
+    "answer": "Aasmaan"
+  },
+  {
+    "id": 194,
+    "question": "Cycle me kitne pahiye (wheels) hote hain?",
+    "options": ["2", "4", "3", "1"],
+    "answer": "2"
+  },
+  {
+    "id": 195,
+    "question": "Train kaha chalti hai?",
+    "options": ["Patri", "Sadak", "Paani", "Hawa"],
+    "answer": "Patri"
+  },
+  {
+    "id": 196,
+    "question": "School hum kyu jaate hain?",
+    "options": ["Padhne", "Sone", "Khelne", "Khane"],
+    "answer": "Padhne"
+  },
+  {
+    "id": 197,
+    "question": "Bukhaar aane par hum kiske paas jaate hain?",
+    "options": ["Doctor", "Police", "Teacher", "Dost"],
+    "answer": "Doctor"
+  },
+  {
+    "id": 198,
+    "question": "Raat ko aasmaan me kya chamakta hai?",
+    "options": ["Taare (Stars)", "Suraj", "Badal", "Patang"],
+    "answer": "Taare (Stars)"
+  },
+  {
+    "id": 199,
+    "question": "Phone ka istemal kisliye karte hain?",
+    "options": ["Baat karne", "Kapde dhone", "Khana pakane", "Nahane"],
+    "answer": "Baat karne"
+  },
+  {
+    "id": 200,
+    "question": "Jo jhoot nahi bolta use kya kahte hain?",
+    "options": ["Sachha", "Jhootha", "Chor", "Dost"],
+    "answer": "Sachha"
+  }
+]
