@@ -18131,30 +18131,6 @@ def get_pixel_state():
         "history": pixel_history[-10:] # Last 10 events
     })
 
-# --- API: PLACE PIXEL ---
-@app.route('/api/pixelwar/place', methods=['POST'])
-def place_pixel():
-    if 'user_info' not in session: return jsonify({"status":"error"})
-    data = request.json
-    x, y = data.get('x'), data.get('y')
-    team = data.get('team')
-    user = session['user_info']['username']
-    
-    # Validation
-    if not (0 <= x < GRID_SIZE and 0 <= y < GRID_SIZE):
-        return jsonify({"status":"error", "msg":"Out of bounds"})
-    
-    color = TEAMS.get(team, {}).get('color', '#fff')
-    
-    # Update Grid
-    pixel_grid[y][x] = color
-    
-    # Add Log
-    log = f"<b style='color:{color}'>{user}</b> captured ({x},{y})"
-    pixel_history.append(log)
-    
-    return jsonify({"status":"success"})
-
 # --- API: PLACE PIXEL (WITH REWARD) ---
 @app.route('/api/pixelwar/place', methods=['POST'])
 def place_pixel():
