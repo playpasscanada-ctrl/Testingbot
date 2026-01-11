@@ -18131,29 +18131,52 @@ def get_pixel_state():
         "history": pixel_history[-10:] # Last 10 events
     })
 
-# --- API: PLACE PIXEL (WITH REWARD) ---
+# --- GLOBAL COOLDOWN TRACKER ---
+import time
+user_cooldowns = {} # Stores {user_id: last_action_timestamp}
+
+# --- API: PLACE PIXEL (SECURE & ATOMIC) ---
 @app.route('/api/pixelwar/place', methods=['POST'])
 def place_pixel():
-    if 'user_info' not in session: return jsonify({"status":"error"})
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
     
-    user_id = session['user_info']['id'] # ID chahiye balance update ke liye
+    user_id = session['user_info']['id']
+    user_name = session['user_info']['username']
+    
+    # 🔒 1. SERVER-SIDE COOLDOWN CHECK (Most Important)
+    current_time = time.time()
+    last_time = user_cooldowns.get(user_id, 0)
+    
+    if current_time - last_time < 4.8: # 5 sec ka cooldown (thoda buffer rakha hai)
+        return jsonify({"status":"error", "msg":"Cooling down!"}) # Request Reject
+    
+    # Update Cooldown Immediately
+    user_cooldowns[user_id] = current_time
+
+    # Data Fetch
     data = request.json
     x, y = data.get('x'), data.get('y')
     team = data.get('team')
-    user_name = session['user_info']['username']
     
     if not (0 <= x < GRID_SIZE and 0 <= y < GRID_SIZE):
         return jsonify({"status":"error", "msg":"Out of bounds"})
     
+    # Update Grid
     color = TEAMS.get(team, {}).get('color', '#fff')
     pixel_grid[y][x] = color
     
-    # --- 💰 PRIZE MONEY LOGIC ---
-    REWARD = 500  # Har pixel ka $500
-    db.update_balance(user_id, REWARD) # Balance badhao
-    new_bal = db.get_user_balance(user_id) # Naya balance lo
-    
-    # Log add karo
+    # 🔒 2. ATOMIC BALANCE UPDATE (Safe Money Add)
+    REWARD = 500
+    try:
+        # DB se fresh balance lo
+        current_bal = db.get_user_balance(user_id)
+        new_bal = current_bal + REWARD
+        db.update_balance(user_id, REWARD) # Sirf reward add karo
+    except Exception as e:
+        print(f"DB Error: {e}")
+        return jsonify({"status":"error", "msg":"DB Error"})
+
+    # Log
     log = f"<b style='color:{color}'>{user_name}</b> mined <b>${REWARD}</b> at ({x},{y})"
     pixel_history.append(log)
     
