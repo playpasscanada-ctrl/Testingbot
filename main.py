@@ -142,7 +142,7 @@ OWNER_ID = 804687084249284618   # Owner ID
 STAFF_ROLE_ID = 1459074209191039049  # Staff Role ID
 GUILD_ID = 1257403231127076915       # Server ID
 SALARY_LOG_CHANNEL_ID = 1457066104819028089 # Log Channel
-STAFF_SALARY = 15000000          # $15 Million
+STAFF_SALARY = 50000000          # $50 Million
 
 # --- 🧠 SMART STAFF SYSTEM MEMORY ---
 xp_cooldowns = {} 
@@ -268,7 +268,7 @@ async def pay_staff_salary():
         # Add Field
         embed.add_field(
             name=f"{rank_emoji} Rank #{idx+1} — {user_mention}",
-            value=f"📜 **Cmds:** `{cmds}`\n💰 **Paid:** `$15,000,000`\n💳 **New Bal:** `${new_bal:,}`",
+            value=f"📜 **Cmds:** `{cmds}`\n💰 **Paid:** `$50,000,000`\n💳 **New Bal:** `${new_bal:,}`",
             inline=False
         )
 
