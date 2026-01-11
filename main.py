@@ -23,8 +23,8 @@ app = Flask(__name__)
 # IDs (Hardcoded as per your portal)
 CLIENT_ID = "1451451135813746700"
 CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
-REDIRECT_URI = "https://testingbot-q1jb.onrender.com/callback"
-WEBSITE_URL = "https://testingbot-q1jb.onrender.com" 
+REDIRECT_URI = "https://testingbot-z0y6.onrender.com/callback"
+WEBSITE_URL = "https://testingbot-z0y6.onrender.com" 
 
 # --- LOAN SYSTEM SETTINGS ---
 MAX_LOAN = 10000000      # 10 Million Limit
@@ -17364,7 +17364,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "vikas_bhai_super_secure_key_786")
 CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "1451451135813746700")
 CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET") 
-REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "https://testingbot-q1jb.onrender.com/callback")
+REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI", "https://testingbot-z0y6.onrender.com/callback")
 API_ENDPOINT = 'https://discord.com/api/v10'
 LOG_CHANNEL_ID = "1457066104819028089" 
 GUILD_ID = "1257403231127076915"
@@ -18225,7 +18225,7 @@ async def send_invite_msg(target_id, sender_name):
     # Button View
     view = discord.ui.View()
     # Yaha apni website ka link daalna
-    btn = discord.ui.Button(label="🚀 JOIN WAR NOW", url="https://testingbot-q1jb.onrender.com/games/pixelwar", style=discord.ButtonStyle.link)
+    btn = discord.ui.Button(label="🚀 JOIN WAR NOW", url="https://testingbot-z0y6.onrender.com/games/pixelwar", style=discord.ButtonStyle.link)
     view.add_item(btn)
     
     # Message Send
@@ -18464,7 +18464,7 @@ async def business(interaction: discord.Interaction):
 async def menu_cmd(i: discord.Interaction):
     # 🔗 Configuration (As per your details)
     CLIENT_ID = "1451451135813746700" 
-    REDIRECT_URI = "https://testingbot-q1jb.onrender.com/callback"
+    REDIRECT_URI = "https://testingbot-z0y6.onrender.com/callback"
     
     # URL Encoding
     import urllib.parse
