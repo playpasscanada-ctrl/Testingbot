@@ -17207,6 +17207,8 @@ import base64
 import random
 import string
 import textwrap # Long text ko todne ke liye
+import time  # <--- Ye line sabse upar imports me honi chahiye
+
 
 # --- ⚙️ 20 LEVELS CONFIGURATION (ULTIMATE SCALING) ---
 HACKER_LEVELS = {}
@@ -17360,7 +17362,6 @@ def start_hack():
     db.update_balance(user_id, -config['fee'])
     
     # 🔐 Generate Complex Code
-    # Level 20 ke liye special characters bhi add karenge
     chars = string.ascii_uppercase + string.digits
     if level > 15: chars += "!@#$%" 
     
@@ -17369,7 +17370,9 @@ def start_hack():
     # Store in Session (Server Side Security)
     session['hack_code'] = secret_code
     session['hack_level'] = level
-    session['hack_start_time'] = import_time.time() # Anti-cheat timing ke liye (optional)
+    
+    # --- ✅ FIXED LINE IS HERE ---
+    session['hack_start_time'] = time.time()  # import_time hata kar sirf time.time() kar diya hai
     
     # Generate Image
     img_data = generate_secure_image(secret_code)
