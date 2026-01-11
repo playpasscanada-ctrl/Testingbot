@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Paheli Master - Premium</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='paheli-style.css') }}">
+</head>
+<body>
+    
+    <div class="bg-animation">
+        <div id="stars"></div>
+        <div id="stars2"></div>
+    </div>
+
+    <div class="main-container">
+        
+        <header class="glass-panel glow-border">
+            <div class="profile-info">
+                <span class="avatar">😎</span>
+                <span class="username">{{ user.username if user else 'Player' }}</span>
+            </div>
+            <div class="coins-display gold">
+                <span>💰</span> <span id="coinCount">0</span>
+            </div>
+        </header>
+
+        <section id="levelScreen" class="screen active">
+            <h2 class="title glow-text">SELECT LEVEL</h2>
+            <div class="levels-grid" id="levelsGrid">
+                </div>
+            <a href="/" class="back-home-btn">🏠 Home</a>
+        </section>
+
+        <section id="gameScreen" class="screen hidden">
+            <div class="game-top-bar">
+                <button onclick="showScreen('levelScreen')" class="small-btn">⬅ Back</button>
+                <div class="level-badge glow-text-blue" id="currentLevelDisplay">Level 1</div>
+            </div>
+
+            <div class="question-box glass-panel glow-border-blue animate-zoom">
+                <p id="questionText">Loading Riddle...</p>
+            </div>
+
+            <div class="options-grid" id="optionsGrid">
+                </div>
+
+            <div id="statusMessage" class="hidden"></div>
+        </section>
+
+    </div>
+
+    <script>
+        const USER_ID = "{{ user.id if user else 'guest_user' }}";
+    </script>
+    <script src="{{ url_for('static', filename='paheli-game.js') }}"></script>
+</body>
+</html>
