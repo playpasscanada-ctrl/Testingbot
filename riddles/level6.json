@@ -1,0 +1,602 @@
+[
+  {
+    "id": 601,
+    "question": "Ek aadmi tasveer (photo) ki taraf ishara karke kehta hai: 'Mera koi bhai ya behen nahi hai, lekin is aadmi ka pita, mere pita ka beta hai.' Batao tasveer mein kaun hai?",
+    "options": ["Uska Beta", "Wo khud", "Uska Pita", "Uska Dada"],
+    "answer": "Uska Beta"
+  },
+  {
+    "id": 602,
+    "question": "Kalpana karo ki tum ek daldal (swamp) mein phans gaye ho aur tumhare chaaron taraf bhookhe sher ghoom rahe hain. Tumhare paas koi hathiyaar nahi hai. Tum bachne ke liye kya karoge?",
+    "options": ["Chillaunga", "Ped par chadh jaunga", "Kalpana karna band kar dunga", "Sher se ladunga"],
+    "answer": "Kalpana karna band kar dunga"
+  },
+  {
+    "id": 603,
+    "question": "Ek aadmi apne ghar se nikalta hai, thoda aage jaata hai aur baayi (left) mudta hai. Phir thoda aage jaakar baayi mudta hai. Phir wo baayi mudta hai aur apne ghar wapas aa jaata hai. Wahan use ek mask pehne aadmi milta hai. Wo mask wala kaun hai?",
+    "options": ["Catcher (Baseball)", "Chor", "Doctor", "Jallad"],
+    "answer": "Catcher (Baseball)"
+  },
+  {
+    "id": 604,
+    "question": "Ek truck driver sadak par 'Wrong Side' (galat disha) mein ja raha tha. Police ne use dekha lekin use roka nahi aur na hi fine lagaya. Aisa kyun hua?",
+    "options": ["Driver paidal (walking) tha", "Police so rahi thi", "Truck kharab tha", "Minister ki gadi thi"],
+    "answer": "Driver paidal (walking) tha"
+  },
+  {
+    "id": 605,
+    "question": "Ek kamre mein 5 behne (sisters) hain: Sita padh rahi hai, Geeta khana bana rahi hai, Rita chess khel rahi hai, aur Meeta kapde dho rahi hai. Batao 5vi behen kya kar rahi hai?",
+    "options": ["Chess khel rahi hai", "So rahi hai", "TV dekh rahi hai", "Phone chala rahi hai"],
+    "answer": "Chess khel rahi hai"
+  },
+  {
+    "id": 606,
+    "question": "Agar tum ek andhere kamre mein ho jahan ek mombatti (candle), ek lalten aur ek diya rakha hai. Tumhare paas sirf ek maachis ki tilli hai. Tum sabse pehle kise jalaoge?",
+    "options": ["Maachis ki tilli", "Mombatti", "Lalten", "Diya"],
+    "answer": "Maachis ki tilli"
+  },
+  {
+    "id": 607,
+    "question": "Ek plane Bharat aur Pakistan ke border par crash ho gaya. Batao bache hue ghayal yatriyon (survivors) ko kahan dafnaya jayega?",
+    "options": ["Kahi nahi (Zinda hain)", "Bharat mein", "Pakistan mein", "No Man's Land mein"],
+    "answer": "Kahi nahi (Zinda hain)"
+  },
+  {
+    "id": 608,
+    "question": "Hamesha tumhare aage rahta hoon, kabhi peeche nahi aata. Jitna mere paas aane ki koshish karoge, main utna hi door chala jaunga. Main vartaman (present) ka dushman hoon.",
+    "options": ["Bhavishya (Future)", "Sapna", "Lakshya", "Kshitij (Horizon)"],
+    "answer": "Kshitij (Horizon)"
+  },
+  {
+    "id": 609,
+    "question": "Wo kaun si jagah hai jahan 'Success' (Safalta) hamesha 'Work' (Kaam) se pehle aati hai?",
+    "options": ["Dictionary (Shabdkosh)", "Sapne mein", "School mein", "Office mein"],
+    "answer": "Dictionary (Shabdkosh)"
+  },
+  {
+    "id": 610,
+    "question": "Ek tokri mein 5 seb (apples) hain. Tumhe ye 5 seb 5 bachon mein is tarah baatne hain ki har bache ko ek seb mile, lekin phir bhi ek seb tokri mein hi bacha rahe. Ye kaise hoga?",
+    "options": ["Last bache ko tokri samet de do", "Ek seb kaat kar do", "Ek bacha seb nahi khata", "Ye namumkin hai"],
+    "answer": "Last bache ko tokri samet de do"
+  },
+  {
+    "id": 611,
+    "question": "Bina par (wings) ke udta hoon, bina aankhon ke rota hoon. Jab main zameen par aata hoon to dharti khush hoti hai, lekin agar zyada der ruk jaaun to tabahi macha deta hoon.",
+    "options": ["Baadal (Cloud)", "Hawai Jahaj", "Toofan", "Rocket"],
+    "answer": "Baadal (Cloud)"
+  },
+  {
+    "id": 612,
+    "question": "Ek aadmi 8 din bina soye kaise reh sakta hai? Dhyan rahe wo koi machine ya robot nahi hai, ek aam insaan hai.",
+    "options": ["Wo raat ko sota hai", "Wo coma mein hai", "Wo coffee peeta hai", "Wo jhooth bol raha hai"],
+    "answer": "Wo raat ko sota hai"
+  },
+  {
+    "id": 613,
+    "question": "Hazaron sur mere andar kaid hain, kaale aur safed mere libaas hain. Bina saans liye main gaata hoon, par sirf tab jab tum mujhe chute ho.",
+    "options": ["Piano", "Zebra", "Computer", "Harmonium"],
+    "answer": "Piano"
+  },
+  {
+    "id": 614,
+    "question": "Ek killer ko maut ki saza mili. Use 3 kamron mein se ek chunna hai: Pehle mein aag hai, dusre mein bandook wale hatyare hain, aur teesre mein 3 saal se bhookhe sher hain. Wo kaun sa kamra chune?",
+    "options": ["Kamra 3 (Sher)", "Kamra 1 (Aag)", "Kamra 2 (Hatyare)", "Koi nahi"],
+    "answer": "Kamra 3 (Sher)"
+  },
+  {
+    "id": 615,
+    "question": "Agar tumhare paas sirf ek machis hai aur tum ek thande kamre mein ho jahan lakdi ka chulha aur kerosene lamp hai, to tum sabse pehle kya jalaoge?",
+    "options": ["Maachis", "Lamp", "Chulha", "Kagaz"],
+    "answer": "Maachis"
+  },
+  {
+    "id": 616,
+    "question": "Ek jadugar dawa karta hai ki wo glass ko bina chuye, bina phoonk maare aur bina kisi machine ke gira sakta hai. Batao wo ye kaise karega?",
+    "options": ["Glass ko dhakka dekar", "Table hila kar", "Jaadu se", "Paani daal kar"],
+    "answer": "Table hila kar"
+  },
+  {
+    "id": 617,
+    "question": "Wo kya hai jo tootta hai par awaaz nahi karta, girta hai par chot nahi lagti, aur chalta hai par pair nahi hote?",
+    "options": ["Sapna", "Vaada", "Dil", "Barf"],
+    "answer": "Sapna"
+  },
+  {
+    "id": 618,
+    "question": "Ek gufa hai jisme 100 log gaye par wapas 101 log aaye. Batao ye kaise sambhav hua?",
+    "options": ["Ek mahila pregnant thi", "Ginti galat thi", "Ek bhoot tha", "Koi chhupa hua tha"],
+    "answer": "Ek mahila pregnant thi"
+  },
+  {
+    "id": 619,
+    "question": "Ek aadmi ne apne naukar se kaha: 'Agar tum mujhe jhooth bologe to main tumhe talwar se maar dunga, aur agar sach bologe to faansi de dunga.' Naukar ne kya kaha ki wo bach gaya?",
+    "options": ["Aap mujhe talwar se maarenge", "Main chup rahoonga", "Main sach bolunga", "Mujhe jaane do"],
+    "answer": "Aap mujhe talwar se maarenge"
+  },
+  {
+    "id": 620,
+    "question": "Duniya mein jitne log hain, unse zyada mere paas chehre hain. Main kabhi hasti hoon, kabhi roti hoon, par mere paas apne khud ke jazbaat nahi hain.",
+    "options": ["Aina (Mirror)", "TV", "Cinema", "Tasveer"],
+    "answer": "Aina (Mirror)"
+  },
+  {
+    "id": 621,
+    "question": "Agar tum ek race mein daud rahe ho aur tumne us aadmi ko peeche choda jo second (dusre) number par tha, to ab tum kaunse number par ho?",
+    "options": ["Second (Dusre)", "First", "Third", "Last"],
+    "answer": "Second (Dusre)"
+  },
+  {
+    "id": 622,
+    "question": "Lal makan hai, uske bahar hara maidaan hai, maidaan mein kaale sipahi hain. Ye koi ghar nahi, balki ek phal (fruit) hai.",
+    "options": ["Tarbooz (Watermelon)", "Seb", "Amrood", "Anaar"],
+    "answer": "Tarbooz (Watermelon)"
+  },
+  {
+    "id": 623,
+    "question": "Ek aurat 1935 mein paida hui aur 1935 mein hi mar gayi. Phir bhi jab wo mari, uski umr 70 saal thi. Ye kaise sambhav hai?",
+    "options": ["1935 Hospital ka room number tha", "Wo jhoot bol rahi thi", "Calendar alag tha", "Punjanarm hua"],
+    "answer": "1935 Hospital ka room number tha"
+  },
+  {
+    "id": 624,
+    "question": "Mere shehar mein sadkein hain par gaadiyan nahi, jungle hain par ped nahi, aur nadiyan hain par paani nahi. Main kaun hoon?",
+    "options": ["Naksha (Map)", "Registan", "Kagaz", "Sapna"],
+    "answer": "Naksha (Map)"
+  },
+  {
+    "id": 625,
+    "question": "Ek aadmi baarish mein bina chhate aur hat ke ja raha tha. Uske kapde geele ho gaye par uska ek bhi baal geela nahi hua. Kyun?",
+    "options": ["Wo ganja tha", "Baarish nakli thi", "Wo car mein tha", "Usne wig pehni thi"],
+    "answer": "Wo ganja tha"
+  },
+  {
+    "id": 626,
+    "question": "Wo kya hai jo tumhara hai, lekin log tumse zyada uska istemal karte hain? Agar tumne use badal diya to tumhari pehchan kho jayegi.",
+    "options": ["Tumhara Naam", "Tumhara Phone", "Tumhari Gadi", "Tumhara Paisa"],
+    "answer": "Tumhara Naam"
+  },
+  {
+    "id": 627,
+    "question": "Main ek aisi cheez hoon jo sookhi hone par 2 kilo, geeli hone par 1 kilo aur jalne par 3 kilo ho jaati hoon. (Science logic lagao).",
+    "options": ["Sulphur", "Lakdi", "Koyla", "Rui"],
+    "answer": "Sulphur"
+  },
+  {
+    "id": 628,
+    "question": "Ek aadmi 100 feet ki oonchi seedhi (ladder) se neeche gira, lekin use zara si bhi chot nahi lagi. Ye kaise hua?",
+    "options": ["Wo pehli seedhi par khada tha", "Wo superman tha", "Neeche gadda tha", "Seedhi leti hui thi"],
+    "answer": "Wo pehli seedhi par khada tha"
+  },
+  {
+    "id": 629,
+    "question": "Kaun sa mahina hai jisme 28 din hote hain?",
+    "options": ["Sabhi mahino mein", "Sirf February mein", "Kisi mein nahi", "Leap year mein"],
+    "answer": "Sabhi mahino mein"
+  },
+  {
+    "id": 630,
+    "question": "Bina dhooye sab khate hain, khakar bahut pachtate hain. Kehne ko wo cheez hai, par dekh koi nahi sakta.",
+    "options": ["Dhokha", "Hawa", "Kasam", "Gaali"],
+    "answer": "Dhokha"
+  },
+  {
+    "id": 631,
+    "question": "Jitna tum isme se nikaloge, ye utna hi bada hota jayega. Ye koi elastic nahi hai, zameen se juda hai.",
+    "options": ["Gaddha (Hole)", "Gubbara", "Kuan", "Paisa"],
+    "answer": "Gaddha (Hole)"
+  },
+  {
+    "id": 632,
+    "question": "Ek train 'Electric Train' hai jo North se South ja rahi hai, aur hawa West se East chal rahi hai. Batao train ka dhuaan kis disha mein jayega?",
+    "options": ["Kahi nahi (Electric train dhuaan nahi deti)", "South-East", "North", "Upar"],
+    "answer": "Kahi nahi (Electric train dhuaan nahi deti)"
+  },
+  {
+    "id": 633,
+    "question": "Ek aadmi andhere mein baitha hai, uske saamne kitaab khuli hai par wo padh nahi raha. Light aati hai, wo rone lagta hai. Kyun?",
+    "options": ["Wo andha nahi tha, bas light gayi thi", "Kitaab sad thi", "Uski aankh mein kachra tha", "Wo prison mein tha"],
+    "answer": "Wo andha nahi tha, bas light gayi thi"
+  },
+  {
+    "id": 634,
+    "question": "Wo kya hai jo subah ko chaar taango par, dopahar ko do taango par aur shaam ko teen taango par chalta hai?",
+    "options": ["Insaan (Human)", "Ghoda", "Bhoot", "Alien"],
+    "answer": "Insaan (Human)"
+  },
+  {
+    "id": 635,
+    "question": "Agar tumhare paas 3 seb hain aur tumne 2 utha liye, to tumhare paas kitne seb bache?",
+    "options": ["2 (Jo tumne uthaye)", "1", "3", "0"],
+    "answer": "2 (Jo tumne uthaye)"
+  },
+  {
+    "id": 636,
+    "question": "Kala hai par raat nahi, lamba hai par saamp nahi, tel peeta hai par diya nahi. Batao kya?",
+    "options": ["Baal (Hair)", "Rassi", "Road", "Wire"],
+    "answer": "Baal (Hair)"
+  },
+  {
+    "id": 637,
+    "question": "Ek aisi cheez jo ladki saal mein ek baar kharidti hai aur ladka use pura saal istemal karta hai?",
+    "options": ["Rakhi", "Gift", "Kapde", "Helmet"],
+    "answer": "Rakhi"
+  },
+  {
+    "id": 638,
+    "question": "Duniya mein sabse zyada 'Sona' kahan paya jaata hai?",
+    "options": ["Kumbhkaran ke paas (Neend)", "Africa", "Bank", "Dukan"],
+    "answer": "Kumbhkaran ke paas (Neend)"
+  },
+  {
+    "id": 639,
+    "question": "Aisi kaun si cheez hai jo phatne par aawaz nahi karti, par nuksan bahut karti hai?",
+    "options": ["Doodh", "Bum", "Kismet", "Gubbara"],
+    "answer": "Doodh"
+  },
+  {
+    "id": 640,
+    "question": "Agar ek electric train 100 km/h ki speed se ja rahi hai aur piche ka dibba khul jaye, to wo kitni der mein rukega?",
+    "options": ["Turant ruk jayega", "Kuch der baad", "Nahi rukega", "Train palat jayegi"],
+    "answer": "Kuch der baad"
+  },
+  {
+    "id": 641,
+    "question": "Ek aadmi ne ek mahila se poocha: 'Aapka naam kya hai?' Mahila ne jawab diya: '3-11-211'. Batao mahila ka naam kya hai?",
+    "options": ["ASHA", "NEHA", "TINA", "RANI"],
+    "answer": "ASHA"
+  },
+  {
+    "id": 642,
+    "question": "Paani mein rahti hoon par paani nahi peeti. Agar paani piya to mar jaungi. Main chamakti hoon par sona nahi.",
+    "options": ["Diya / Deep", "Machli", "Patthar", "Moti"],
+    "answer": "Diya / Deep"
+  },
+  {
+    "id": 643,
+    "question": "Main ek aisa shabd hoon jisme se agar pehla akshar hata do to 'Bhagwan' ka naam ban jaata hoon, aur agar beech ka hata do to 'Phal' ban jaata hoon.",
+    "options": ["Aaram (Ram/Aam)", "Kamal", "Sharam", "Karam"],
+    "answer": "Aaram (Ram/Aam)"
+  },
+  {
+    "id": 644,
+    "question": "Ek pita ne apni beti ko ek cheez di aur kaha: 'Jab bhookh lage to kha lena, pyaas lage to pee lena, aur thand lage to jala lena.' Wo kya cheez thi?",
+    "options": ["Nariyal", "Aam", "Ganna", "Lakdi"],
+    "answer": "Nariyal"
+  },
+  {
+    "id": 645,
+    "question": "Andhere mein baithi ek rani, sir par aag aur badan mein paani. Raat bhar wo roti hai, subah hote hi kho jati hai.",
+    "options": ["Mombatti", "Oos", "Chudail", "Machli"],
+    "answer": "Mombatti"
+  },
+  {
+    "id": 646,
+    "question": "Ek bakri ka muh agar uttar (North) ki taraf hai, to batao wo ghaas kaise khayegi?",
+    "options": ["Muh neeche karke", "North ki taraf", "South ki taraf", "Nahi khayegi"],
+    "answer": "Muh neeche karke"
+  },
+  {
+    "id": 647,
+    "question": "Jitna aage badhaoge, utne peeche chhoot jaoge. Ye koi daud nahi, bas jeevan ka ek hissa hai.",
+    "options": ["Kadam (Footsteps)", "Yaadein", "Umar", "Dost"],
+    "answer": "Kadam (Footsteps)"
+  },
+  {
+    "id": 648,
+    "question": "Teen akshar ka mera naam, ulta seedha ek saman. Aata hoon main khane ke kaam, hara hoon main dekhne mein.",
+    "options": ["Daal-da (Dalda)", "Nayan", "Kanak", "Jahaj"],
+    "answer": "Daal-da (Dalda)"
+  },
+  {
+    "id": 649,
+    "question": "Wo kya hai jo ladkiyon ko shadi ke baad milta hai par ladko ko shadi se pehle mil jaata hai?",
+    "options": ["Surname", "Dahej", "Pati", "Ghar"],
+    "answer": "Surname"
+  },
+  {
+    "id": 650,
+    "question": "Ek gufa ke do darwaze, dono se hawa aati hai. Agar ek band ho jaye to dum ghutne lagta hai.",
+    "options": ["Naak (Nose)", "Khidki", "Kaan", "Pipe"],
+    "answer": "Naak (Nose)"
+  },
+  {
+    "id": 651,
+    "question": "Kala hoon par kauwa nahi, lamba hoon par saamp nahi. Tel chadhta hai mujh par, par main Hanuman nahi.",
+    "options": ["Choti (Braid)", "Rassi", "Sadak", "Wire"],
+    "answer": "Choti (Braid)"
+  },
+  {
+    "id": 652,
+    "question": "Aisi kaun si cheez hai jo ladki khati bhi hai aur pehanti bhi hai? (Tricky: Naam ek hi hai)",
+    "options": ["Laung", "Sona", "Chandi", "Haar"],
+    "answer": "Laung"
+  },
+  {
+    "id": 653,
+    "question": "Bina pairon ke chalti rahti hoon, haathon se apna chehra chupati hoon. Agar main ruk jaaun to duniya ki raftar ruk jaye.",
+    "options": ["Ghadi (Clock)", "Hawa", "Nadi", "Dharti"],
+    "answer": "Ghadi (Clock)"
+  },
+  {
+    "id": 654,
+    "question": "Wo kya hai jo tumhare paas jitna kam hoga, log tumhe utna hi zyada ameer samjhenge? (Hint: Ye paisa nahi hai)",
+    "options": ["Dukh / Karz", "Ghamand", "Kapde", "Waqt"],
+    "answer": "Dukh / Karz"
+  },
+  {
+    "id": 655,
+    "question": "Ek rumaal ke 4 kone hain. Agar tumne 2 kone kaat diye, to ab kitne kone bache?",
+    "options": ["6 Kone", "2 Kone", "4 Kone", "3 Kone"],
+    "answer": "6 Kone"
+  },
+  {
+    "id": 656,
+    "question": "Main zinda hoon par saans nahi leta. Mujhe paani ki zarurat nahi, phir bhi main badhta hoon. Mere paas na muh hai na pet.",
+    "options": ["Aag (Fire)", "Ped", "Nadi", "Baal"],
+    "answer": "Aag (Fire)"
+  },
+  {
+    "id": 657,
+    "question": "Kaun si cheez hai jo dhoop mein paida hoti hai aur chhaon mein mar jaati hai? Wo tumhare saath chalti hai par tum use pakad nahi sakte.",
+    "options": ["Pasina (Sweat)", "Parchhai", "Roshni", "Hawa"],
+    "answer": "Pasina (Sweat)"
+  },
+  {
+    "id": 658,
+    "question": "Ek kamre mein 2 maa aur 2 betiyan hain. Lekin kamre mein sirf 3 log hain. Ye kaise sambhav hai?",
+    "options": ["Nani, Maa aur Beti", "Ek pregnant hai", "Ginti galat hai", "Ek gudia hai"],
+    "answer": "Nani, Maa aur Beti"
+  },
+  {
+    "id": 659,
+    "question": "Wo kya hai jo tumhara hai par dusre log uska istemal tumse zyada karte hain?",
+    "options": ["Tumhara Naam", "Tumhara Paisa", "Tumhari Gadi", "Tumhara Ghar"],
+    "answer": "Tumhara Naam"
+  },
+  {
+    "id": 660,
+    "question": "Ek aadmi ne ek ungli se poori bus ko rok diya. Batao wo aadmi kaun tha aur ye kaise hua?",
+    "options": ["Wo Bus Conductor tha (Whistle)", "Wo Superman tha", "Bus kharab thi", "Wo police tha"],
+    "answer": "Wo Bus Conductor tha (Whistle)"
+  },
+  {
+    "id": 661,
+    "question": "Hari thi man bhari thi, laakh motiyon se jari thi. Raja ji ke baag mein, dushala odhe khadi thi. Batao kaun?",
+    "options": ["Bhutta (Corn)", "Mutter", "Bhindi", "Anaar"],
+    "answer": "Bhutta (Corn)"
+  },
+  {
+    "id": 662,
+    "question": "Main ek aisi cheez hoon jo khatti hai, par log mujhe 'Meetha' (Sweet) kehte hain. Batao main kya hoon?",
+    "options": ["Sabr ka phal", "Aam", "Jalebi", "Nimbu"],
+    "answer": "Sabr ka phal"
+  },
+  {
+    "id": 663,
+    "question": "Bina maachis ke jalti hai, bina tel ke chalti hai. Duniya bhar mein raaj karti hai, andhere ko wo harati hai.",
+    "options": ["Bijli (Electricity)", "Suraj", "Hawa", "Aag"],
+    "answer": "Bijli (Electricity)"
+  },
+  {
+    "id": 664,
+    "question": "Ek aadmi ne ek laash (dead body) dekhi. Usne poocha 'Kaun mara?'. Jawab mila: 'Jo mara, wo mera baap tha, par main uska beta nahi.' Batao jawab dene wala kaun tha?",
+    "options": ["Uski Beti", "Uska Bhai", "Uska Pota", "Koi nahi"],
+    "answer": "Uski Beti"
+  },
+  {
+    "id": 665,
+    "question": "Mere paas gardan hai par sir nahi, bahein (arms) hain par haath nahi. Main tumhare jism se chipak kar rahti hoon.",
+    "options": ["Shirt / Kameez", "Kursi", "Bottle", "Bag"],
+    "answer": "Shirt / Kameez"
+  },
+  {
+    "id": 666,
+    "question": "Ek choti si gadi, lamba sa rasta. Jo na maane, wo hai sasta. Is gadi mein driver nahi hota.",
+    "options": ["Sui-Dhaaga", "Train", "Cycle", "Saanp"],
+    "answer": "Sui-Dhaaga"
+  },
+  {
+    "id": 667,
+    "question": "Ant kate to 'Nag' ban jaun, Madhya kate to 'Nar' ban jaun. Batao main kaun sa shahar (city) hoon?",
+    "options": ["Nagar", "Nagpur", "Nainital", "Noida"],
+    "answer": "Nagar"
+  },
+  {
+    "id": 668,
+    "question": "Main ek aisi cheez hoon jo tootne ke baad hi kaam aati hoon. Agar main na tootun to mujhe bekar samjha jata hai.",
+    "options": ["Anda (Egg)", "Dil", "Kaanch", "Khamoshi"],
+    "answer": "Anda (Egg)"
+  },
+  {
+    "id": 669,
+    "question": "Wo kya hai jo neele rang ka hai, par jab use paani mein daalo to wo laal ho jaata hai?",
+    "options": ["Litmus Paper", "Khoon", "Loha", "Patthar"],
+    "answer": "Litmus Paper"
+  },
+  {
+    "id": 670,
+    "question": "Ek aadmi ne apne dost ko ek photo dikhaya aur kaha: 'Is photo wale ke pita, mere pita ke iklaute bete hain.' To batao photo kiska tha?",
+    "options": ["Uske Bete ka", "Uska khud ka", "Uske pita ka", "Uske bhai ka"],
+    "answer": "Uske Bete ka"
+  },
+  {
+    "id": 671,
+    "question": "Duniya mein sabse tezi se kya chalta hai? Hawa se bhi tez, Roshni se bhi tez.",
+    "options": ["Mann / Soch", "Rocket", "Bijli", "Aawaz"],
+    "answer": "Mann / Soch"
+  },
+  {
+    "id": 672,
+    "question": "Main ek aisa bank hoon jahan paise nahi rakh sakte, par mere bina jeevan nahi chal sakta. Main nadi ke kinare bhi hoon.",
+    "options": ["Blood Bank / River Bank", "State Bank", "Power Bank", "Piggy Bank"],
+    "answer": "Blood Bank / River Bank"
+  },
+  {
+    "id": 673,
+    "question": "Bina dhooye jo khata hai, kha kar wo pachtata hai. Kehne ko wo kuch nahi, par sab kuch gawa deta hai.",
+    "options": ["Dhokha", "Zeher", "Joota", "Gussa"],
+    "answer": "Dhokha"
+  },
+  {
+    "id": 674,
+    "question": "Ek ped par 5 panchi baithe the. Shikari ne goli maari, ek mar gaya. Ab ped par kitne bache?",
+    "options": ["0 (Sab ud gaye)", "4", "1", "5"],
+    "answer": "0 (Sab ud gaye)"
+  },
+  {
+    "id": 675,
+    "question": "Main ek aisi cheez hoon jo dhoop mein sookhne ke bajaye aur geeli ho jaati hoon. Jitna dhoop mein rakhoge, utna pani chodungi.",
+    "options": ["Pasina (Sweat)", "Barf", "Kapda", "Mitti"],
+    "answer": "Pasina (Sweat)"
+  },
+  {
+    "id": 676,
+    "question": "Char driver ek sawari, jiske peeche duniya saari. Jab wo nikle, sab chup ho jayein.",
+    "options": ["Arthhi (Murda)", "Raja ki sawari", "Dulha", "Police"],
+    "answer": "Arthhi (Murda)"
+  },
+  {
+    "id": 677,
+    "question": "Wo kaun si cheez hai jise hum din mein kai baar uthate hain aur rakhte hain? Iske bina hum kahin aa ja nahi sakte.",
+    "options": ["Kadam (Steps)", "Phone", "Chashma", "Bag"],
+    "answer": "Kadam (Steps)"
+  },
+  {
+    "id": 678,
+    "question": "Ek aadmi ne suicide kiya. Uske paas ek tape recorder mila. Police ne play kiya to aawaz aayi 'Main mar raha hoon' aur fir goli chalne ki aawaz. Police samajh gayi ye murder hai. Kaise?",
+    "options": ["Tape rewind kisne kiya?", "Goli ki aawaz nakli thi", "Tape recorder naya tha", "Koi saboot nahi tha"],
+    "answer": "Tape rewind kisne kiya?"
+  },
+  {
+    "id": 679,
+    "question": "Aisi kaun si cheez hai jo bandh (closed) hone par bhi chalti hai? Wo tik-tik karti hai par ghadi nahi.",
+    "options": ["Kismat / Sikka", "Naadi (Pulse)", "Pankha", "Dimag"],
+    "answer": "Kismat / Sikka"
+  },
+  {
+    "id": 680,
+    "question": "Ek aadmi 7 din tak bina khaye reh sakta hai, par bina soye nahi. Kyun?",
+    "options": ["Kyunki wo raat ko sota hai", "Wo bimar hai", "Use neend pyari hai", "Ye namumkin hai"],
+    "answer": "Kyunki wo raat ko sota hai"
+  },
+  {
+    "id": 681,
+    "question": "Main wo hoon jo tumhara naam pukarata hoon, par mera koi gala nahi. Main tumhare peeche chalta hoon par mere pair nahi. Pahaado mein main zinda hota hoon.",
+    "options": ["Goonj (Echo)", "Hawa", "Saaya", "Jaanwar"],
+    "answer": "Goonj (Echo)"
+  },
+  {
+    "id": 682,
+    "question": "Ek aurat ke 5 bete hain. Unke naam hain: Monday, Tuesday, Wednesday, Thursday. Batao paanchve bete ka naam kya hai?",
+    "options": ["Friday", "Sunday", "Saturday", "Jo aurat ka naam ho"],
+    "answer": "Friday"
+  },
+  {
+    "id": 683,
+    "question": "Main ek box hoon jisme raaz chupa hai. Mere paas keys (chabhi) hain par main lock nahi khol sakta. Main computer ke saath kaam karta hoon.",
+    "options": ["Keyboard", "Mouse", "CPU", "Screen"],
+    "answer": "Keyboard"
+  },
+  {
+    "id": 684,
+    "question": "Ek aadmi apne kutte ke saath walk par gaya. Wahan ek nadi thi. Aadmi doob gaya par kutta bach gaya. Kutta police ko kaise batayega?",
+    "options": ["Bhauk kar", "Wo nahi bata sakta", "Ishara karke", "Likh kar"],
+    "answer": "Wo nahi bata sakta"
+  },
+  {
+    "id": 685,
+    "question": "Wo kya hai jo tumhare paas hai, par tum use dusron ko de sakte ho bina haath lagaye? Wo dil se nikalti hai.",
+    "options": ["Dua / Baddua", "Paisa", "Tohfa", "Hawa"],
+    "answer": "Dua / Baddua"
+  },
+  {
+    "id": 686,
+    "question": "Kaun sa fal (fruit) hai jo kacha ho to meetha lagta hai aur pakka ho to kadwa ya bekar?",
+    "options": ["Sabr ka phal", "Kela", "Aam", "Pineapple"],
+    "answer": "Sabr ka phal"
+  },
+  {
+    "id": 687,
+    "question": "Main hoon to pani jaisa, par pani nahi. Main behta hoon par nadi nahi. Agar main ruk jaaun to zindagi ruk jaye.",
+    "options": ["Khoon (Blood)", "Tel", "Doodh", "Hawa"],
+    "answer": "Khoon (Blood)"
+  },
+  {
+    "id": 688,
+    "question": "Main ek aisi cheez hoon jo kharidne par kaali, jalne par laal aur fekne par safed hoti hoon. Main sardi mein kaam aati hoon.",
+    "options": ["Koyla (Coal)", "Lakdi", "Kagaz", "Rui"],
+    "answer": "Koyla (Coal)"
+  },
+  {
+    "id": 689,
+    "question": "Agar tumhare paas 5 rupaye hain aur tumne 2 rupaye kharch kar diye, to tumhare jeb mein kya bacha?",
+    "options": ["Ched (Hole)", "3 Rupaye", "Kuch nahi", "Rumal"],
+    "answer": "Ched (Hole)"
+  },
+  {
+    "id": 690,
+    "question": "Wo kaun si cheez hai jo ladkiyon ki badi hoti hai aur ladko ki choti? (Soch samajh kar jawab dena).",
+    "options": ["Baal (Hair)", "Awaaz", "Ungli", "Naak"],
+    "answer": "Baal (Hair)"
+  },
+  {
+    "id": 691,
+    "question": "Main ek aisi cheez hoon jo upar jaati hai to wapas nahi aati. Log mujhe chupane ke liye rang lagate hain.",
+    "options": ["Umar (Age)", "Gubbara", "Dhuan", "Paisa"],
+    "answer": "Umar (Age)"
+  },
+  {
+    "id": 692,
+    "question": "Kaun si cheez hai jo baarish mein chahe jitni bhi bheege, wo kabhi geeli nahi hoti?",
+    "options": ["Paani", "Roshni", "Aag", "Hawa"],
+    "answer": "Paani"
+  },
+  {
+    "id": 693,
+    "question": "Ek aadmi jail mein band hai. Wo wahan se bhaag nahi sakta. Lekin wo wahan baith-baith kar ameer ban gaya. Kaise?",
+    "options": ["Wo Monopoly khel raha tha", "Usne lottery jiti", "Wo sapna dekh raha tha", "Chori karke"],
+    "answer": "Wo Monopoly khel raha tha"
+  },
+  {
+    "id": 694,
+    "question": "Main ek aisi cheez hoon jo tumhare pairon ke neeche aati hoon, par mujhe dard nahi hota. Main tumhare saath chalti hoon par main zinda nahi.",
+    "options": ["Sadak (Road)", "Joota", "Parchhai", "Ghaas"],
+    "answer": "Sadak (Road)"
+  },
+  {
+    "id": 695,
+    "question": "Wo kya hai jo pure kamre ko bhar deta hai, par jagah bilkul nahi leta? Wo darwaze ke neeche se bhi aa sakta hai.",
+    "options": ["Roshni (Light)", "Dhuaan", "Hawa", "Paani"],
+    "answer": "Roshni (Light)"
+  },
+  {
+    "id": 696,
+    "question": "Ek andha aadmi kya dekh sakta hai? (Ye trick question hai)",
+    "options": ["Andhera (Darkness)", "Sapna", "Kuch nahi", "Roshni"],
+    "answer": "Andhera (Darkness)"
+  },
+  {
+    "id": 697,
+    "question": "Wo kya hai jo subah bina pairon ke aata hai, dopahar ko bina haathon ke khata hai, aur shaam ko bina muh ke bolta hai?",
+    "options": ["Akhbar (Newspaper)", "Suraj", "Waqt", "Hawa"],
+    "answer": "Akhbar (Newspaper)"
+  },
+  {
+    "id": 698,
+    "question": "Main ek aisi cheez hoon jo tumhare haath mein hai par tum mujhe dekh nahi sakte. Main tumhare muh se nikalti hoon par main aawaz nahi. Sardi mein main dhuan ban jati hoon.",
+    "options": ["Saans (Breath)", "Bhaap", "Hawa", "Shabd"],
+    "answer": "Saans (Breath)"
+  },
+  {
+    "id": 699,
+    "question": "Agar tumhare paas ek bowl mein 6 seb hain aur tumne 4 nikal liye, to tumhare paas kitne seb hain?",
+    "options": ["4 (Jo nikale)", "2", "6", "0"],
+    "answer": "4 (Jo nikale)"
+  },
+  {
+    "id": 700,
+    "question": "Main duniya ki sabse halki cheez hoon, par duniya ka sabse takatwar aadmi bhi mujhe 5 minute se zyada pakad kar nahi rakh sakta. Main kya hoon?",
+    "options": ["Saans (Breath)", "Rui", "Hawa", "Parchhai"],
+    "answer": "Saans (Breath)"
+  }
+]
