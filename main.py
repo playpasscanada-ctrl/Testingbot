@@ -17269,47 +17269,47 @@ for i in range(1, 21):
         "label": f"LVL {i}: {label}"
     }
 
-# --- 🖼️ PREMIUM SECURE IMAGE GENERATOR ---
+# --- 🖼️ CLEAN & SECURE IMAGE GENERATOR (FIXED) ---
 def generate_secure_image(text):
-    # 1. Setup Canvas
+    # 1. Setup Canvas (Bada Size)
     width = 900
-    # Text wrapping: Level 20 ka text bahut lamba hoga, use lines me todo
-    wrapper = textwrap.TextWrapper(width=40) 
+    wrapper = textwrap.TextWrapper(width=35) 
     lines = wrapper.wrap(text)
     
-    # Height dynamic hogi lines ke hisab se
-    line_height = 50
-    height = 100 + (len(lines) * line_height)
+    line_height = 60 # Line gap badhaya
+    height = 150 + (len(lines) * line_height)
     
-    bg_color = (10, 10, 12) # Dark Cyber Blue-Black
-    text_color = (0, 255, 65) # Matrix Green
+    bg_color = (5, 5, 8) # Deep Black-Blue
+    text_color = (0, 255, 65) # Bright Neon Green
 
     image = Image.new('RGB', (width, height), color=bg_color)
     draw = ImageDraw.Draw(image)
     
-    # Font Load
+    # 2. Font Setup (Bada aur Saaf)
     try:
-        # Windows/Linux fonts try karein
-        font = ImageFont.truetype("arial.ttf", 40)
+        # Bold font try karenge, nahi to default bada karenge
+        font = ImageFont.truetype("arialbd.ttf", 50) 
     except:
-        font = ImageFont.load_default()
+        try:
+            font = ImageFont.truetype("arial.ttf", 50)
+        except:
+            font = ImageFont.load_default() 
 
-    # 2. Add Matrix Noise (Background mein gandagi taaki OCR fail ho jaye)
-    for _ in range(100):
-        x, y = random.randint(0, width), random.randint(0, height)
-        char = random.choice("01XY#@")
-        draw.text((x, y), char, font=font, fill=(0, 40, 0)) # Dim Green Noise
-
-    # 3. Add Distraction Lines
-    for _ in range(15):
+    # 3. Background Noise (Text ke PEECHE - Faint)
+    # Kam lines, aur dark color taaki text na chupe
+    for _ in range(20):
         x1, y1 = random.randint(0, width), random.randint(0, height)
         x2, y2 = random.randint(0, width), random.randint(0, height)
-        draw.line([(x1, y1), (x2, y2)], fill=(0, 100, 0), width=1)
+        draw.line([(x1, y1), (x2, y2)], fill=(0, 40, 0), width=1) # Bahut halki lines
 
-    # 4. Draw Main Text (With Glitch Effect)
-    current_y = 50
+    for _ in range(50):
+        x, y = random.randint(0, width), random.randint(0, height)
+        char = random.choice("01")
+        draw.text((x, y), char, font=font, fill=(0, 30, 0)) # Background numbers
+
+    # 4. Draw Main Text (Text sabse UPAR - Bright)
+    current_y = 60
     for line in lines:
-        # Center align text
         try:
             bbox = draw.textbbox((0, 0), line, font=font)
             text_w = bbox[2] - bbox[0]
@@ -17317,11 +17317,16 @@ def generate_secure_image(text):
         except:
             x = 50
 
-        # RGB Split Glitch (Text Shadow)
-        draw.text((x-2, current_y), line, font=font, fill=(255, 0, 0)) # Red Shift
-        draw.text((x+2, current_y), line, font=font, fill=(0, 0, 255)) # Blue Shift
-        draw.text((x, current_y), line, font=font, fill=text_color)    # Main Green
+        # Glitch Effect (Halka sa, taaki padha ja sake)
+        # Red Shadow (Peeche)
+        draw.text((x+2, current_y+2), line, font=font, fill=(100, 0, 0)) 
         
+        # Main Bright Text (Upar)
+        draw.text((x, current_y), line, font=font, fill=text_color)
+        
+        # Glow Effect (Text ko repeat karke bold look)
+        draw.text((x+1, current_y), line, font=font, fill=text_color)
+
         current_y += line_height
 
     # 5. Convert to Base64
