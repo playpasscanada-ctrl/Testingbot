@@ -16743,8 +16743,8 @@ class BusinessView(discord.ui.View):
         await interaction.followup.send(embed=embed)
 
 # --- 💻 COMMANDS ---
-@bot.tree.command(name="business", description="🏢 Manage Empire (Fixed)")
-async def business(interaction: discord.Interaction):
+@bot.tree.command(name="businesss", description="🏢 Manage Empire (Fixed)")
+async def businesss(interaction: discord.Interaction):
     # 1. Sabse pehle Defer karo
     await interaction.response.defer()
     
