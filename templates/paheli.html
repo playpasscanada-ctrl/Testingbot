@@ -1,58 +1,129 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Paheli Master - Premium</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='paheli-style.css') }}">
+    <title>Paheli Master</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Rajdhani:wght@600&display=swap" rel="stylesheet">
+    <style>
+        /* --- PREMIUM CSS --- */
+        body { background: #050a14; color: white; margin: 0; font-family: 'Rajdhani', sans-serif; overflow-x: hidden; }
+        
+        /* HEADER (Top Bar) */
+        .top-bar {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 100;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        
+        .player-info { display: flex; flex-direction: column; }
+        .player-name { font-family: 'Orbitron'; font-size: 1.1rem; color: #00f3ff; text-shadow: 0 0 10px #00f3ff; }
+        .discord-id { font-size: 0.8rem; color: #aaa; letter-spacing: 1px; }
+
+        .balance-box {
+            background: linear-gradient(45deg, #ffd700, #ffaa00);
+            color: black; padding: 5px 15px; border-radius: 20px;
+            font-weight: 900; font-family: 'Orbitron';
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+        }
+
+        /* GAME CONTAINER */
+        .main-container { padding: 20px; max-width: 600px; margin: 0 auto; }
+
+        .question-box {
+            background: rgba(20, 20, 30, 0.8); border: 1px solid #8c00ff;
+            padding: 20px; border-radius: 15px; margin-top: 20px;
+            text-align: center; font-size: 1.3rem; min-height: 120px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 20px rgba(140, 0, 255, 0.2);
+        }
+
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        
+        .opt-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            color: white; padding: 15px; border-radius: 10px; font-size: 1rem; cursor: pointer;
+            transition: 0.2s; font-family: 'Rajdhani'; font-weight: bold;
+        }
+        .opt-btn:active { transform: scale(0.95); }
+        .opt-btn.correct { background: #00ff41; color: black; box-shadow: 0 0 20px #00ff41; border: none; }
+        .opt-btn.wrong { background: #ff2a2a; border-color: red; box-shadow: 0 0 20px red; }
+
+        /* REWARD POPUP (Hidden by default) */
+        .reward-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 200;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: 0.3s;
+        }
+        .reward-overlay.show { opacity: 1; pointer-events: all; }
+
+        .reward-card {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 2px solid #ffd700; padding: 30px; border-radius: 20px;
+            text-align: center; transform: scale(0.8); transition: 0.3s;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
+            width: 80%; max-width: 400px;
+        }
+        .reward-overlay.show .reward-card { transform: scale(1); }
+
+        .big-price { font-size: 3rem; color: #ffd700; font-family: 'Orbitron'; margin: 10px 0; text-shadow: 0 0 20px #ffd700; }
+        
+        .next-btn {
+            background: #00f3ff; color: black; border: none; padding: 12px 30px;
+            font-size: 1.2rem; font-weight: bold; border-radius: 50px; cursor: pointer;
+            box-shadow: 0 0 20px #00f3ff; margin-top: 15px; font-family: 'Orbitron';
+        }
+        .next-btn:active { transform: scale(0.95); }
+
+        .hidden { display: none; }
+    </style>
 </head>
 <body>
-    
-    <div class="bg-animation">
-        <div id="stars"></div>
-        <div id="stars2"></div>
+
+    <div class="top-bar">
+        <div class="player-info">
+            <span class="player-name">{{ user.global_name or user.username }}</span>
+            <span class="discord-id">ID: {{ user.id }}</span>
+        </div>
+        <div class="balance-box">
+            💰 <span id="liveBalance">{{ "{:,}".format(balance) }}</span>
+        </div>
     </div>
 
     <div class="main-container">
         
-        <header class="glass-panel glow-border">
-            <div class="profile-info">
-                <span class="avatar">😎</span>
-                <span class="username">{{ user.username if user else 'Player' }}</span>
+        <div class="level-badge" style="text-align: center; color: #8c00ff; font-weight: bold; font-family: 'Orbitron';">
+            LEVEL <span id="levelNum">1</span>
+        </div>
+
+        <div class="question-box">
+            <span id="questionText">Loading Riddle...</span>
+        </div>
+
+        <div class="options-grid" id="optionsGrid">
             </div>
-            <div class="coins-display gold">
-                <span>💰</span> <span id="coinCount">0</span>
-            </div>
-        </header>
+        
+        <div id="statusMsg" style="text-align: center; margin-top: 15px; min-height: 20px;"></div>
+    </div>
 
-        <section id="levelScreen" class="screen active">
-            <h2 class="title glow-text">SELECT LEVEL</h2>
-            <div class="levels-grid" id="levelsGrid">
-                </div>
-            <a href="/" class="back-home-btn">🏠 Home</a>
-        </section>
-
-        <section id="gameScreen" class="screen hidden">
-            <div class="game-top-bar">
-                <button onclick="showScreen('levelScreen')" class="small-btn">⬅ Back</button>
-                <div class="level-badge glow-text-blue" id="currentLevelDisplay">Level 1</div>
-            </div>
-
-            <div class="question-box glass-panel glow-border-blue animate-zoom">
-                <p id="questionText">Loading Riddle...</p>
-            </div>
-
-            <div class="options-grid" id="optionsGrid">
-                </div>
-
-            <div id="statusMessage" class="hidden"></div>
-        </section>
-
+    <div class="reward-overlay" id="rewardPopup">
+        <div class="reward-card">
+            <h2 style="color:white; margin:0;">CORRECT!</h2>
+            <p style="color:#aaa;">You earned</p>
+            <div class="big-price" id="wonAmount">+ ₹0</div>
+            <button class="next-btn" onclick="loadNextRiddle()">NEXT RIDDLE ➡️</button>
+        </div>
     </div>
 
     <script>
-        const USER_ID = "{{ user.id if user else 'guest_user' }}";
+        const USER_ID = "{{ user.id }}";
     </script>
     <script src="{{ url_for('static', filename='paheli-game.js') }}"></script>
+
 </body>
 </html>
