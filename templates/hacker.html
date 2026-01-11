@@ -5,17 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ZERO DAY: HACKER TERMINAL</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         /* --- CORE VISUALS --- */
         :root { 
-            --neon-green: #0f0; 
-            --neon-red: #f00;
+            --neon-green: #00ff41; 
+            --neon-dark-green: #008F11;
+            --neon-red: #ff3333;
             --bg-black: #050505; 
-            --glass: rgba(0, 10, 0, 0.9);
-            --border: 1px solid #0f0;
+            --card-bg: rgba(0, 20, 0, 0.85);
+            --gold: #FFD700;
         }
 
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -27,66 +28,104 @@
         }
 
         /* MATRIX CANVAS (BACKGROUND) */
-        canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.25; }
+        canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.3; }
 
         /* --- HEADER --- */
         .header {
-            padding: 15px; background: rgba(0,0,0,0.9);
-            border-bottom: 2px solid var(--neon-green);
+            flex-shrink: 0;
+            padding: 20px; background: rgba(0,0,0,0.95);
+            border-bottom: 3px solid var(--neon-green);
             display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2); z-index: 10;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.3); z-index: 10;
         }
-        .user-id { font-size: 12px; color: #aaa; }
-        .balance { font-family: 'Orbitron'; font-size: 20px; color: gold; text-shadow: 0 0 10px gold; }
+        .user-info { display: flex; flex-direction: column; }
+        .username { font-weight: bold; font-family: 'Orbitron'; font-size: 16px; color: white; letter-spacing: 1px; }
+        .user-id { font-size: 11px; color: #888; margin-top: 2px; }
+        
+        .balance-box { 
+            font-family: 'Orbitron'; font-size: 24px; color: var(--gold); 
+            text-shadow: 0 0 15px var(--gold); font-weight: 900;
+        }
         
         .btn-exit {
             border: 1px solid var(--neon-red); color: var(--neon-red);
-            padding: 5px 15px; text-decoration: none; font-size: 12px;
-            transition: 0.3s;
+            padding: 8px 20px; text-decoration: none; font-size: 12px;
+            font-weight: bold; border-radius: 4px; transition: 0.3s;
+            background: rgba(50, 0, 0, 0.3);
         }
-        .btn-exit:hover { background: var(--neon-red); color: black; }
+        .btn-exit:hover { background: var(--neon-red); color: white; box-shadow: 0 0 15px var(--neon-red); }
 
         /* --- LEVEL SELECTOR (SCROLLABLE) --- */
         .main-container {
-            flex: 1; overflow-y: auto; padding: 20px;
-            display: flex; flex-direction: column; gap: 15px;
+            flex: 1; overflow-y: auto; padding: 25px;
+            display: flex; flex-direction: column; gap: 20px;
             align-items: center;
         }
         
-        /* 20 Levels List Styling */
+        /* 20 LEVELS LIST STYLING (FIXED UI) */
         .level-card {
-            width: 100%; max-width: 500px;
-            background: rgba(0, 20, 0, 0.6);
-            border: 1px solid #004400; border-left: 5px solid var(--neon-green);
-            padding: 15px; border-radius: 5px;
+            width: 100%; max-width: 600px;
+            min-height: 110px; /* Bada kar diya */
+            background: var(--card-bg);
+            border: 2px solid var(--neon-dark-green); 
+            border-left: 8px solid var(--neon-green);
+            padding: 20px; border-radius: 8px;
             display: flex; justify-content: space-between; align-items: center;
-            cursor: pointer; transition: 0.2s; position: relative;
-            overflow: hidden;
+            cursor: pointer; transition: all 0.2s ease;
+            position: relative; overflow: hidden;
+            
+            /* GLOW EFFECT ADDED */
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.1);
         }
         
+        /* HOVER EFFECT */
+        .level-card:active { transform: scale(0.98); }
+        .level-card:hover {
+            background: rgba(0, 40, 0, 0.9);
+            border-color: var(--neon-green);
+            box-shadow: 0 0 25px var(--neon-green), inset 0 0 20px rgba(0, 255, 65, 0.2);
+        }
+
         /* LEVEL 20 SPECIAL STYLE */
         .level-card.god-mode {
-            border-color: gold; border-left-color: gold;
-            background: rgba(50, 40, 0, 0.3);
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+            border-color: var(--gold); border-left-color: var(--gold);
+            background: rgba(60, 50, 0, 0.4);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
         }
-        .level-card.god-mode .lvl-name { color: gold; }
+        .level-card.god-mode .lvl-name { color: var(--gold); text-shadow: 0 0 10px var(--gold); }
 
-        .level-card:hover {
-            transform: translateX(10px);
-            background: rgba(0, 50, 0, 0.8);
-            box-shadow: 0 0 15px var(--neon-green);
+        /* INSIDE CARD LAYOUT */
+        .lvl-left { 
+            display: flex; flex-direction: column; gap: 6px; 
+            flex: 1; /* Take available space */
         }
+        
+        .lvl-name { 
+            font-family: 'Orbitron'; font-size: 20px; font-weight: 900; 
+            letter-spacing: 1px; color: white; text-transform: uppercase;
+        }
+        
+        .lvl-stats { 
+            display: flex; gap: 15px; font-size: 13px; color: #ccc; 
+            font-weight: bold; background: rgba(0,0,0,0.5);
+            padding: 5px 10px; border-radius: 4px; width: fit-content;
+        }
+        .lvl-stats i { color: var(--neon-green); }
 
-        .lvl-left { display: flex; flex-direction: column; gap: 2px; }
-        .lvl-name { font-family: 'Orbitron'; font-size: 16px; font-weight: bold; }
-        .lvl-desc { font-size: 11px; color: #888; }
-        .lvl-prize { font-size: 14px; color: gold; font-weight: bold; }
-
-        .lvl-btn {
-            background: transparent; border: 1px solid var(--neon-green);
-            color: var(--neon-green); padding: 8px 15px;
-            font-family: 'Share Tech Mono'; cursor: pointer;
+        .lvl-right {
+            text-align: right; min-width: 100px;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        
+        .lvl-label-fee { font-size: 10px; color: #aaa; letter-spacing: 1px; }
+        .lvl-fee { 
+            font-family: 'Orbitron'; font-size: 18px; color: var(--neon-red); 
+            font-weight: bold; text-shadow: 0 0 5px rgba(255, 51, 51, 0.5);
+        }
+        
+        .lvl-reward { 
+            font-size: 12px; color: var(--gold); margin-top: 5px; 
+            font-weight: bold;
         }
 
         /* --- GAME TERMINAL (FULLSCREEN OVERLAY) --- */
@@ -94,30 +133,33 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.98); z-index: 100;
             display: none; flex-direction: column; align-items: center;
-            padding: 20px;
+            padding: 10px;
         }
 
         .terminal-header {
             width: 100%; max-width: 800px;
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 10px;
+            margin-bottom: 10px; border-bottom: 2px solid #333; padding: 15px;
+            background: rgba(20,20,20,0.8);
         }
 
         .timer-box {
-            font-family: 'Orbitron'; font-size: 24px; color: var(--neon-red);
-            animation: pulse 1s infinite;
+            font-family: 'Orbitron'; font-size: 28px; color: var(--neon-red);
+            font-weight: bold; animation: pulse 1s infinite;
         }
 
         /* SECURE IMAGE BOX */
         .secure-frame {
             width: 100%; max-width: 900px; flex: 1;
-            border: 2px dashed #333; background: #080808;
+            border: 2px dashed #444; background: #080808;
             overflow-y: auto; display: flex; justify-content: center;
             margin-bottom: 15px; position: relative;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
         }
         .secure-frame img {
             max-width: 100%; height: auto; display: block;
-            filter: contrast(1.2) brightness(1.1);
+            filter: contrast(1.3) brightness(1.2) hue-rotate(90deg) saturate(0); 
+            /* Green tint removed for clarity or kept dependent on backend gen */
         }
 
         /* INPUT AREA */
@@ -127,23 +169,27 @@
         }
         
         .hack-input {
-            flex: 1; background: #000; border: 1px solid var(--neon-green);
+            flex: 1; background: #050505; border: 2px solid var(--neon-green);
             color: var(--neon-green); font-family: 'Share Tech Mono';
-            padding: 15px; font-size: 16px; outline: none;
+            padding: 15px; font-size: 18px; outline: none;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
+            text-transform: uppercase;
         }
-        .hack-input::placeholder { color: #003300; }
+        .hack-input::placeholder { color: #004400; }
 
         .btn-execute {
             background: var(--neon-green); color: black; border: none;
-            padding: 0 30px; font-weight: bold; font-size: 18px; cursor: pointer;
+            padding: 0 30px; font-weight: 900; font-size: 18px; cursor: pointer;
+            font-family: 'Orbitron'; box-shadow: 0 0 20px var(--neon-green);
         }
-        .btn-execute:active { background: white; }
+        .btn-execute:active { background: white; transform: scale(0.95); }
 
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
         /* STATUS MESSAGE */
         #status-display {
-            height: 30px; font-size: 18px; text-align: center;
+            height: 30px; font-size: 18px; text-align: center; font-weight: bold;
+            margin-bottom: 10px; text-shadow: 0 0 10px currentColor;
         }
 
     </style>
@@ -154,39 +200,44 @@
 
     <div class="header">
         <div class="user-info">
-            <div style="font-weight:bold; color:white;">{{ user.username }}</div>
+            <div class="username">{{ user.username }}</div>
             <div class="user-id">ID: {{ user.id }}</div>
         </div>
-        <div class="balance">$<span id="nav-balance">{{ "{:,}".format(balance) }}</span></div>
-        <a href="/" class="btn-exit">DISCONNECT</a>
+        <div class="balance-box">$<span id="nav-balance">{{ "{:,}".format(balance) }}</span></div>
+        <a href="/" class="btn-exit">ABORT</a>
     </div>
 
     <div class="main-container">
         {% for id, lvl in levels.items() %}
         <div class="level-card {% if id == 20 %}god-mode{% endif %}" onclick="initiateHack({{ id }})">
+            
             <div class="lvl-left">
                 <div class="lvl-name">{{ lvl.label }}</div>
-                <div class="lvl-desc">
-                    <i class="fas fa-lock"></i> LEN: {{ lvl.len }} | 
-                    <i class="fas fa-clock"></i> {{ lvl.time }}s
+                <div class="lvl-stats">
+                    <span><i class="fas fa-key"></i> {{ lvl.len }} CHARS</span>
+                    <span><i class="fas fa-stopwatch"></i> {{ lvl.time }}s</span>
                 </div>
-                <div class="lvl-prize">REWARD: ${{ "{:,}".format(lvl.prize) }}</div>
             </div>
-            <div>
-                <div style="font-size:10px; color:#aaa; text-align:right;">FEE</div>
-                <div style="color:var(--neon-red);">${{ "{:,}".format(lvl.fee) }}</div>
+
+            <div class="lvl-right">
+                <div class="lvl-label-fee">ENTRY FEE</div>
+                <div class="lvl-fee">${{ "{:,}".format(lvl.fee) }}</div>
+                <div class="lvl-reward">PRIZE: ${{ "{:,}".format(lvl.prize) }}</div>
             </div>
+
         </div>
         {% endfor %}
         
-        <div style="text-align:center; padding:20px; color:#555; font-size:10px;">
-            SYSTEM SECURE. END OF LIST.
+        <div style="text-align:center; padding:20px; color:#555; font-size:12px; margin-bottom: 50px;">
+            // END OF ENCRYPTED DATABASE //
         </div>
     </div>
 
     <div id="terminal-overlay">
         <div class="terminal-header">
-            <div style="color:white;">SYSTEM BREACH // <span id="lvl-display" style="color:var(--neon-green)">LVL ?</span></div>
+            <div style="color:white; font-family:'Orbitron'; font-size:14px;">
+                SYSTEM BREACH // <span id="lvl-display" style="color:var(--neon-green); font-size:18px;">LVL ?</span>
+            </div>
             <div class="timer-box" id="timer">000</div>
         </div>
 
@@ -197,11 +248,13 @@
         <div id="status-display"></div>
 
         <div class="hack-input-area">
-            <input type="text" id="code-input" class="hack-input" placeholder="DECRYPT SIGNAL..." autocomplete="off">
+            <input type="text" id="code-input" class="hack-input" placeholder="ENTER DECRYPT KEY..." autocomplete="off">
             <button class="btn-execute" onclick="executeHack()">EXECUTE</button>
         </div>
         
-        <button onclick="abortHack()" style="background:none; border:none; color:#555; cursor:pointer;">[ ABORT CONNECTION ]</button>
+        <button onclick="abortHack()" style="background:none; border:1px solid #444; color:#666; cursor:pointer; padding: 10px 20px; font-family:'Share Tech Mono'; margin-bottom: 20px;">
+            [ TERMINATE CONNECTION ]
+        </button>
     </div>
 
     <script>
@@ -210,7 +263,7 @@
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        const chars = '01';
+        const chars = '01XYZE';
         const fontSize = 14;
         const columns = canvas.width / fontSize;
         const drops = Array(Math.floor(columns)).fill(1);
@@ -236,36 +289,45 @@
         async function initiateHack(levelId) {
             if(isProcessing) return;
             
-            if(!confirm("⚠️ WARNING: Initiate Hack on Level " + levelId + "?\nFee will be deducted.")) return;
+            // Haptic Feedback (Mobile)
+            if(navigator.vibrate) navigator.vibrate(50);
+
+            if(!confirm("⚠️ INITIALIZE ATTACK ON LEVEL " + levelId + "?\nEntry Fee will be deducted.")) return;
 
             isProcessing = true;
             
             // API Call
-            const res = await fetch('/api/hacker/start', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ level: levelId })
-            });
-            const data = await res.json();
-            
-            isProcessing = false;
+            try {
+                const res = await fetch('/api/hacker/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ level: levelId })
+                });
+                const data = await res.json();
+                
+                isProcessing = false;
 
-            if(data.status === 'error') {
-                alert("ACCESS DENIED: " + data.msg);
-                return;
+                if(data.status === 'error') {
+                    alert("ACCESS DENIED: " + data.msg);
+                    return;
+                }
+
+                // Setup UI
+                document.getElementById('nav-balance').innerText = data.new_balance.toLocaleString();
+                document.getElementById('terminal-overlay').style.display = 'flex';
+                document.getElementById('hack-image').src = data.image;
+                document.getElementById('lvl-display').innerText = "LVL " + levelId;
+                document.getElementById('code-input').value = "";
+                document.getElementById('code-input').focus();
+                document.getElementById('status-display').innerText = "";
+
+                // Start Timer
+                startTimer(data.time);
+
+            } catch(e) {
+                isProcessing = false;
+                alert("Connection Error");
             }
-
-            // Setup UI
-            document.getElementById('nav-balance').innerText = data.new_balance.toLocaleString();
-            document.getElementById('terminal-overlay').style.display = 'flex';
-            document.getElementById('hack-image').src = data.image;
-            document.getElementById('lvl-display').innerText = "LVL " + levelId;
-            document.getElementById('code-input').value = "";
-            document.getElementById('code-input').focus();
-            document.getElementById('status-display').innerText = "";
-
-            // Start Timer
-            startTimer(data.time);
         }
 
         function startTimer(seconds) {
@@ -283,7 +345,7 @@
 
                 if(timeLeft <= 0) {
                     clearInterval(timerInterval);
-                    failHack("TIMEOUT - CONNECTION LOST");
+                    failHack("TIMEOUT - PACKET LOSS");
                 }
             }, 1000);
         }
@@ -295,36 +357,45 @@
             if(!code) return;
 
             status.style.color = "yellow";
-            status.innerText = "VERIFYING HASH...";
+            status.innerText = "DECRYPTING HASH...";
 
-            const res = await fetch('/api/hacker/submit', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ code: code })
-            });
-            const data = await res.json();
+            try {
+                const res = await fetch('/api/hacker/submit', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ code: code })
+                });
+                const data = await res.json();
 
-            clearInterval(timerInterval);
+                clearInterval(timerInterval);
 
-            if(data.status === 'win') {
-                status.style.color = "#0f0";
-                status.innerText = "ACCESS GRANTED! FUNDS TRANSFERRED.";
-                document.getElementById('nav-balance').innerText = data.new_balance.toLocaleString();
-                
-                // Success Sound Effect (Optional)
-                setTimeout(() => {
-                    document.getElementById('terminal-overlay').style.display = 'none';
-                }, 2000);
-            } else {
-                failHack(data.msg);
+                if(data.status === 'win') {
+                    status.style.color = "#00ff41";
+                    status.style.textShadow = "0 0 20px #00ff41";
+                    status.innerText = "ACCESS GRANTED! FUNDS SECURED.";
+                    document.getElementById('nav-balance').innerText = data.new_balance.toLocaleString();
+                    
+                    if(navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+                    setTimeout(() => {
+                        document.getElementById('terminal-overlay').style.display = 'none';
+                    }, 2000);
+                } else {
+                    failHack(data.msg);
+                }
+            } catch(e) {
+                failHack("SERVER ERROR");
             }
         }
 
         function failHack(msg) {
             const status = document.getElementById('status-display');
             status.style.color = "red";
+            status.style.textShadow = "0 0 10px red";
             status.innerText = msg;
             
+            if(navigator.vibrate) navigator.vibrate(200);
+
             // Shake Effect
             const term = document.querySelector('.secure-frame');
             term.style.transform = "translateX(10px)";
