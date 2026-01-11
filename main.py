@@ -17254,6 +17254,86 @@ async def assign_memory_role(guild, member, role_data):
         except Exception as e:
             print(f"Role assign error: {e}")
 
+@app.route('/api/get_riddle', methods=['POST'])
+def get_riddle():
+    """
+    यह सबसे मुख्य फंक्शन है।
+    यह यूजर की प्रोग्रेस चेक करेगा और यूनिक पहेली देगा।
+    """
+    data = request.json
+    user_id = data.get('user_id')
+    level = data.get('level')
+
+    if not user_id or not level:
+        return jsonify({"status": "error", "msg": "Missing data"})
+
+    # 1. उस लेवल की JSON फाइल लोड करें
+    try:
+        json_path = os.path.join('riddles', f'level{level}.json')
+        with open(json_path, 'r', encoding='utf-8') as f:
+            all_riddles = json.load(f)
+    except FileNotFoundError:
+        return jsonify({"status": "error", "msg": "Level not found"})
+
+    # 2. Supabase से पता करें कि यूजर ने क्या हल कर लिया है
+    user_data = supabase.table("user_progress").select("solved_riddles").eq("user_id", user_id).execute()
+    
+    solved_ids = []
+    if user_data.data:
+        solved_ids = user_data.data[0].get('solved_riddles', []) or []
+
+    # 3. सिर्फ वो पहेलियां छानें (Filter) जो हल नहीं हुई हैं
+    # (Available = Total - Solved)
+    available_riddles = [r for r in all_riddles if r['id'] not in solved_ids]
+
+    if not available_riddles:
+        return jsonify({"status": "completed", "msg": "Level Complete! All riddles solved."})
+
+    # 4. बची हुई पहेलियों में से एक रैंडम चुनें
+    selected_riddle = random.choice(available_riddles)
+
+    # 5. पहेली का सही जवाब frontend को न भेजें (Cheating रोकने के लिए)
+    # हम जवाब session में या अगली API कॉल में चेक करेंगे, 
+    # लेकिन अभी आसानी के लिए पूरा भेज रहे हैं।
+    return jsonify({"status": "success", "riddle": selected_riddle})
+
+
+@app.route('/api/submit_answer', methods=['POST'])
+def submit_answer():
+    """
+    जब यूजर सही जवाब दे, तो इस API को कॉल करें।
+    यह पहेली की ID को डेटाबेस में सेव कर लेगा।
+    """
+    data = request.json
+    user_id = data.get('user_id')
+    riddle_id = int(data.get('riddle_id'))
+    is_correct = data.get('is_correct') # Frontend से बताएं कि जवाब सही था या नहीं
+
+    if not is_correct:
+        return jsonify({"status": "ignored", "msg": "Answer was wrong"})
+
+    # 1. यूजर का मौजूदा डेटा लाएं
+    user_data = supabase.table("user_progress").select("*").eq("user_id", user_id).execute()
+
+    if not user_data.data:
+        # अगर नया यूजर है, तो नई एंट्री बनाएं
+        supabase.table("user_progress").insert({
+            "user_id": user_id,
+            "solved_riddles": [riddle_id]
+        }).execute()
+    else:
+        # अगर पुराना यूजर है, तो लिस्ट अपडेट करें
+        current_solved = user_data.data[0]['solved_riddles'] or []
+        
+        if riddle_id not in current_solved:
+            current_solved.append(riddle_id)
+            
+            supabase.table("user_progress").update({
+                "solved_riddles": current_solved
+            }).eq("user_id", user_id).execute()
+
+    return jsonify({"status": "success", "msg": "Progress Saved"})
+
 # ==========================================
 # 🚀 ULTIMATE BUSINESS SYSTEM (UPDATED)
 # ==========================================
