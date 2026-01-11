@@ -17298,33 +17298,48 @@ def get_riddle():
     return jsonify({"status": "success", "riddle": selected_riddle})
 
 
+# --- 💰 PRIZE CONFIGURATION (इसे function के ऊपर रखें) ---
+LEVEL_PRIZES = {
+    1: 100,      # Easy
+    2: 250,
+    3: 500,
+    4: 1000,
+    5: 2500,     # Medium
+    6: 5000,
+    7: 10000,
+    8: 25000,
+    9: 50000,
+    10: 100000   # Hardest
+}
+
 @app.route('/api/submit_answer', methods=['POST'])
 def submit_answer():
     """
-    जब यूजर सही जवाब दे, तो इस API को कॉल करें।
-    यह पहेली की ID को डेटाबेस में सेव कर लेगा।
+    1. पहेली को सॉल्व लिस्ट में सेव करता है।
+    2. लेवल के हिसाब से पैसा (Balance) बढ़ाता है।
     """
     data = request.json
     user_id = data.get('user_id')
     riddle_id = int(data.get('riddle_id'))
-    is_correct = data.get('is_correct') # Frontend से बताएं कि जवाब सही था या नहीं
+    is_correct = data.get('is_correct')
 
     if not is_correct:
         return jsonify({"status": "ignored", "msg": "Answer was wrong"})
 
-    # 1. यूजर का मौजूदा डेटा लाएं
+    # --- 1. SAVE PROGRESS (User Progress Table) ---
     user_data = supabase.table("user_progress").select("*").eq("user_id", user_id).execute()
 
     if not user_data.data:
-        # अगर नया यूजर है, तो नई एंट्री बनाएं
+        # New User Entry
         supabase.table("user_progress").insert({
             "user_id": user_id,
             "solved_riddles": [riddle_id]
         }).execute()
     else:
-        # अगर पुराना यूजर है, तो लिस्ट अपडेट करें
+        # Update Existing Entry
         current_solved = user_data.data[0]['solved_riddles'] or []
         
+        # अगर पहले से सॉल्व नहीं की है, तभी सेव करें और पैसा दें
         if riddle_id not in current_solved:
             current_solved.append(riddle_id)
             
@@ -17332,7 +17347,36 @@ def submit_answer():
                 "solved_riddles": current_solved
             }).eq("user_id", user_id).execute()
 
-    return jsonify({"status": "success", "msg": "Progress Saved"})
+            # --- 2. ADD PRIZE MONEY (Economy Table) ---
+            # ID से लेवल पता लगाना (e.g., 105 -> Level 1, 505 -> Level 5, 1001 -> Level 10)
+            if riddle_id >= 1000:
+                level = 10
+            elif riddle_id >= 100:
+                level = int(str(riddle_id)[0]) # pehla digit level hai
+            else:
+                level = 1 # Fallback
+
+            prize_amount = LEVEL_PRIZES.get(level, 100)
+
+            # बैलेंस अपडेट करें
+            econ_data = supabase.table("economy").select("balance").eq("user_id", user_id).execute()
+            
+            if econ_data.data:
+                current_bal = econ_data.data[0]['balance']
+                new_bal = current_bal + prize_amount
+                
+                supabase.table("economy").update({
+                    "balance": new_bal
+                }).eq("user_id", user_id).execute()
+
+            return jsonify({
+                "status": "success", 
+                "msg": f"Correct! Won ₹{prize_amount:,}", 
+                "new_balance": new_bal
+            })
+
+    return jsonify({"status": "success", "msg": "Already Solved (No Money Added)"})
+
 
 # ==========================================
 # 🚀 ULTIMATE BUSINESS SYSTEM (UPDATED)
