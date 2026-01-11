@@ -17254,12 +17254,33 @@ async def assign_memory_role(guild, member, role_data):
         except Exception as e:
             print(f"Role assign error: {e}")
 
+import os
+import random
+from datetime import datetime # Dhyan dena yahan
+from flask import Flask, render_template, request, jsonify, session
+
+# --- BAKI IMPORTS AUR CONFIGURATION ---
+
+# --- 💰 PRIZE CONFIGURATION ---
+LEVEL_PRIZES = {
+    1: 100, 2: 250, 3: 500, 4: 1000, 5: 2500,
+    6: 5000, 7: 10000, 8: 25000, 9: 50000, 10: 100000
+}
+
+# --- 1. GAME PAGE ROUTE (Ye zaruri hai taaki website dikhe) ---
+@app.route('/play-game')
+def game_page():
+    # Login check (Optional, agar login zaruri hai to rakhna)
+    # if 'user_info' not in session: return redirect('/') 
+    
+    # User info pass kar rahe hain taaki JS mein USER_ID mil sake
+    user = session.get('user_info', {'id': 'guest', 'username': 'Player'})
+    return render_template('paheli.html', user=user)
+
+
+# --- 2. API: GET RIDDLE (Pheli laane ke liye) ---
 @app.route('/api/get_riddle', methods=['POST'])
 def get_riddle():
-    """
-    यह सबसे मुख्य फंक्शन है।
-    यह यूजर की प्रोग्रेस चेक करेगा और यूनिक पहेली देगा।
-    """
     data = request.json
     user_id = data.get('user_id')
     level = data.get('level')
@@ -17267,66 +17288,45 @@ def get_riddle():
     if not user_id or not level:
         return jsonify({"status": "error", "msg": "Missing data"})
 
-    # 1. उस लेवल की JSON फाइल लोड करें
     try:
+        # JSON file load karna
         json_path = os.path.join('riddles', f'level{level}.json')
         with open(json_path, 'r', encoding='utf-8') as f:
             all_riddles = json.load(f)
     except FileNotFoundError:
         return jsonify({"status": "error", "msg": "Level not found"})
 
-    # 2. Supabase से पता करें कि यूजर ने क्या हल कर लिया है
+    # User ki progress check karna
     user_data = supabase.table("user_progress").select("solved_riddles").eq("user_id", user_id).execute()
     
     solved_ids = []
     if user_data.data:
         solved_ids = user_data.data[0].get('solved_riddles', []) or []
 
-    # 3. सिर्फ वो पहेलियां छानें (Filter) जो हल नहीं हुई हैं
-    # (Available = Total - Solved)
+    # Jo solve nahi hui, unhe filter karna
     available_riddles = [r for r in all_riddles if r['id'] not in solved_ids]
 
     if not available_riddles:
-        return jsonify({"status": "completed", "msg": "Level Complete! All riddles solved."})
+        return jsonify({"status": "completed", "msg": "Level Complete!"})
 
-    # 4. बची हुई पहेलियों में से एक रैंडम चुनें
+    # Random paheli bhejna
     selected_riddle = random.choice(available_riddles)
-
-    # 5. पहेली का सही जवाब frontend को न भेजें (Cheating रोकने के लिए)
-    # हम जवाब session में या अगली API कॉल में चेक करेंगे, 
-    # लेकिन अभी आसानी के लिए पूरा भेज रहे हैं।
     return jsonify({"status": "success", "riddle": selected_riddle})
 
 
-# --- 💰 PRIZE CONFIGURATION (इसे function के ऊपर रखें) ---
-LEVEL_PRIZES = {
-    1: 100,      # Easy
-    2: 250,
-    3: 500,
-    4: 1000,
-    5: 2500,     # Medium
-    6: 5000,
-    7: 10000,
-    8: 25000,
-    9: 50000,
-    10: 100000   # Hardest
-}
-
+# --- 3. API: SUBMIT ANSWER (Jawab check aur Prize dene ke liye) ---
 @app.route('/api/submit_answer', methods=['POST'])
 def submit_answer():
-    """
-    1. पहेली को सॉल्व लिस्ट में सेव करता है।
-    2. लेवल के हिसाब से पैसा (Balance) बढ़ाता है।
-    """
     data = request.json
     user_id = data.get('user_id')
     riddle_id = int(data.get('riddle_id'))
     is_correct = data.get('is_correct')
 
+    # Agar jawab galat hai to kuch mat karo
     if not is_correct:
-        return jsonify({"status": "ignored", "msg": "Answer was wrong"})
+        return jsonify({"status": "ignored", "msg": "Wrong Answer"})
 
-    # --- 1. SAVE PROGRESS (User Progress Table) ---
+    # --- SAVE PROGRESS ---
     user_data = supabase.table("user_progress").select("*").eq("user_id", user_id).execute()
 
     if not user_data.data:
@@ -17335,39 +17335,33 @@ def submit_answer():
             "user_id": user_id,
             "solved_riddles": [riddle_id]
         }).execute()
+        first_time = True
     else:
-        # Update Existing Entry
         current_solved = user_data.data[0]['solved_riddles'] or []
-        
-        # अगर पहले से सॉल्व नहीं की है, तभी सेव करें और पैसा दें
         if riddle_id not in current_solved:
             current_solved.append(riddle_id)
-            
             supabase.table("user_progress").update({
                 "solved_riddles": current_solved
             }).eq("user_id", user_id).execute()
+            first_time = True
+        else:
+            first_time = False
 
-            # --- 2. ADD PRIZE MONEY (Economy Table) ---
-            # ID से लेवल पता लगाना (e.g., 105 -> Level 1, 505 -> Level 5, 1001 -> Level 10)
-            if riddle_id >= 1000:
-                level = 10
-            elif riddle_id >= 100:
-                level = int(str(riddle_id)[0]) # pehla digit level hai
-            else:
-                level = 1 # Fallback
+    # --- GIVE MONEY (Sirf agar pehli baar solve kiya ho) ---
+    if first_time:
+        # Level detection logic from ID
+        if riddle_id >= 1000: level = 10
+        elif riddle_id >= 100: level = int(str(riddle_id)[0])
+        else: level = 1 
 
-            prize_amount = LEVEL_PRIZES.get(level, 100)
+        prize_amount = LEVEL_PRIZES.get(level, 100)
 
-            # बैलेंस अपडेट करें
-            econ_data = supabase.table("economy").select("balance").eq("user_id", user_id).execute()
-            
-            if econ_data.data:
-                current_bal = econ_data.data[0]['balance']
-                new_bal = current_bal + prize_amount
-                
-                supabase.table("economy").update({
-                    "balance": new_bal
-                }).eq("user_id", user_id).execute()
+        # Economy update
+        econ_data = supabase.table("economy").select("balance").eq("user_id", user_id).execute()
+        if econ_data.data:
+            current_bal = econ_data.data[0]['balance']
+            new_bal = current_bal + prize_amount
+            supabase.table("economy").update({"balance": new_bal}).eq("user_id", user_id).execute()
 
             return jsonify({
                 "status": "success", 
@@ -17375,7 +17369,7 @@ def submit_answer():
                 "new_balance": new_bal
             })
 
-    return jsonify({"status": "success", "msg": "Already Solved (No Money Added)"})
+    return jsonify({"status": "success", "msg": "Already Solved (No Money)"})
 
 
 # ==========================================
