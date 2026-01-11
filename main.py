@@ -17162,31 +17162,27 @@ import requests
 import datetime
 
 # --- 💎 PREMIUM LOGGING FUNCTION ---
-def send_discord_log(msg, type="info"):
+def send_discord_log(title, msg, type="info"):
     if not DISCORD_TOKEN or not LOG_CHANNEL_ID: return
 
-    # 🎨 Color & Icon Config based on log type
-    config = {
-        "info":    {"color": 0x00f3ff, "title": "📡 SYSTEM UPDATE", "icon": "ℹ️"}, # Neon Blue
-        "success": {"color": 0x00ff41, "title": "✅ OPERATION SUCCESS", "icon": "🚀"}, # Hacker Green
-        "error":   {"color": 0xff2a2a, "title": "⚠️ CRITICAL ERROR", "icon": "🔥"},   # Neon Red
-        "warning": {"color": 0xffd700, "title": "🛡️ SECURITY ALERT", "icon": "⚡"}    # Gold
+    # Color Config
+    colors = {
+        "info": 0x00f3ff,    # Blue
+        "success": 0x00ff41, # Green
+        "error": 0xff2a2a,   # Red
+        "warning": 0xffd700  # Gold
     }
     
-    # Default to info if type not found
-    style = config.get(type, config["info"])
-
-    url = f"https://discord.com/api/v10/channels/{LOG_CHANNEL_ID}/messages"
+    url = f"[https://discord.com/api/v10/channels/](https://discord.com/api/v10/channels/){LOG_CHANNEL_ID}/messages"
     headers = {"Authorization": f"Bot {DISCORD_TOKEN}", "Content-Type": "application/json"}
 
-    # 📦 Premium Embed Structure
     embed = {
-        "title": f"{style['icon']} {style['title']}",
-        "description": f"```yaml\n{msg}\n```",  # YAML formatting makes text look colorful/techy
-        "color": style['color'],
+        "title": f"📡 {title}",
+        "description": msg,  # ✅ Markdown Allow (Bold/Links work here)
+        "color": colors.get(type, 0x00f3ff),
         "footer": {
-            "text": "🤖 Server Watchdog • Live Monitor",
-            "icon_url": "https://i.imgur.com/AfFp7pu.png" # Optional: Bot logo url here
+            "text": "🛡️ Server Watchdog • Live System",
+            "icon_url": "[https://i.imgur.com/AfFp7pu.png](https://i.imgur.com/AfFp7pu.png)" 
         },
         "timestamp": datetime.datetime.utcnow().isoformat()
     }
@@ -17194,7 +17190,8 @@ def send_discord_log(msg, type="info"):
     try:
         requests.post(url, headers=headers, json={"embeds": [embed]})
     except Exception as e:
-        print(f"Failed to send log: {e}")
+        print(f"Log Error: {e}")
+
 
 # ==========================================
 # 🏠 STANDARD ROUTES (DASHBOARD, SHOP, GAMES)
