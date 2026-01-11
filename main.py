@@ -18202,7 +18202,7 @@ def invite_player():
 
 # --- BOT TASK: SEND INVITE ---
 # --- CONFIG SECTION MEIN YE ID DAAL DENA ---
-PIXEL_WAR_CHANNEL_ID = "1457066104819028089"  # <--- Yaha us channel ki ID daalo jaha invite bhejna hai
+PIXEL_WAR_CHANNEL_ID = 1457066104819028089  # <--- Yaha us channel ki ID daalo jaha invite bhejna hai
 
 # --- BOT TASK: SEND INVITE (FIXED) ---
 async def send_invite_msg(target_id, sender_name):
