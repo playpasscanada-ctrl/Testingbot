@@ -66,7 +66,8 @@
         .game-card:nth-child(5) { animation-delay: 0.5s; }
         .game-card:nth-child(6) { animation-delay: 0.6s; }
         .game-card:nth-child(7) { animation-delay: 0.7s; } 
-        .game-card:nth-child(8) { animation-delay: 0.8s; } /* New Delay */
+        .game-card:nth-child(8) { animation-delay: 0.8s; }
+        .game-card:nth-child(9) { animation-delay: 0.9s; } /* New Delay for Riddle */
 
         @keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
         
@@ -107,6 +108,9 @@
         .card-dice { border-color: #ffd700; } .card-dice:hover { box-shadow: 0 0 30px #ffd700, inset 0 0 20px rgba(255, 215, 0, 0.1); }
         .card-memory { border-color: #aa00ff; } .card-memory:hover { box-shadow: 0 0 30px #aa00ff, inset 0 0 20px rgba(170, 0, 255, 0.1); }
         
+        /* RIDDLE COLOR (Mystic Purple) */
+        .card-riddle { border-color: #8c00ff; } .card-riddle:hover { box-shadow: 0 0 30px #8c00ff, inset 0 0 20px rgba(140, 0, 255, 0.2); }
+
         /* PIXEL WAR COLOR (Orange/Fire) */
         .card-pixel { border-color: #ff5500; } .card-pixel:hover { box-shadow: 0 0 30px #ff5500, inset 0 0 20px rgba(255, 85, 0, 0.1); }
 
@@ -133,6 +137,15 @@
                 <p style="color: #00ff00;">BREACH SYSTEM • 20 LVLS</p>
             </div>
             <div class="card-icon">💻</div>
+        </a>
+
+        <a href="/play-game" class="game-card card-riddle">
+            <div class="status-badge live" style="background:#8c00ff; color:white; box-shadow:0 0 15px #8c00ff;">BRAIN IQ</div>
+            <div class="card-info">
+                <h2 style="background: linear-gradient(to right, #8c00ff, #d48cff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">PAHELI MASTER</h2>
+                <p style="color: #8c00ff;">1000+ LEVELS • MYSTERY</p>
+            </div>
+            <div class="card-icon">🧩</div>
         </a>
 
         <a href="/games/pixelwar" class="game-card card-pixel">
