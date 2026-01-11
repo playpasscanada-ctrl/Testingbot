@@ -151,7 +151,7 @@ xp_cooldowns = {}
 async def track_command_usage(user_id):
     if user_id == OWNER_ID: return 
     
-    current_time = datetime.now()
+    current_time = datetime.datetime.now()
     
     # 🚫 ANTI-SPAM CHECK
     if user_id in xp_cooldowns:
