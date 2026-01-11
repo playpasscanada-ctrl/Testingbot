@@ -17161,9 +17161,12 @@ GUILD_ID = "1257403231127076915"
 import requests
 import datetime
 
-# --- 💎 PREMIUM LOGGING FUNCTION ---
+# ✅ Corrected Function
 def send_discord_log(title, msg, type="info"):
-    if not DISCORD_TOKEN or not LOG_CHANNEL_ID: return
+    # Check if Token/ID exists
+    if not DISCORD_TOKEN or not LOG_CHANNEL_ID: 
+        print("❌ Error: DISCORD_TOKEN or LOG_CHANNEL_ID is missing!")
+        return
 
     # Color Config
     colors = {
@@ -17173,22 +17176,33 @@ def send_discord_log(title, msg, type="info"):
         "warning": 0xffd700  # Gold
     }
     
-    url = f"[https://discord.com/api/v10/channels/](https://discord.com/api/v10/channels/){LOG_CHANNEL_ID}/messages"
-    headers = {"Authorization": f"Bot {DISCORD_TOKEN}", "Content-Type": "application/json"}
+    # 🔴 FIX 1: URL ko saaf kiya (Markdown hata diya)
+    url = f"https://discord.com/api/v10/channels/{LOG_CHANNEL_ID}/messages"
+    
+    headers = {
+        "Authorization": f"Bot {DISCORD_TOKEN}", 
+        "Content-Type": "application/json"
+    }
 
     embed = {
         "title": f"📡 {title}",
-        "description": msg,  # ✅ Markdown Allow (Bold/Links work here)
+        "description": msg,
         "color": colors.get(type, 0x00f3ff),
         "footer": {
             "text": "🛡️ Server Watchdog • Live System",
-            "icon_url": "[https://i.imgur.com/AfFp7pu.png](https://i.imgur.com/AfFp7pu.png)" 
+            "icon_url": "https://i.imgur.com/AfFp7pu.png" 
         },
         "timestamp": datetime.datetime.utcnow().isoformat()
     }
 
     try:
-        requests.post(url, headers=headers, json={"embeds": [embed]})
+        response = requests.post(url, headers=headers, json={"embeds": [embed]})
+        
+        # 🔴 FIX 2: Agar message fail hua to reason print karega
+        if response.status_code not in [200, 204]:
+            print(f"❌ Failed to send log! Status: {response.status_code}")
+            print(f"Reason: {response.text}")
+            
     except Exception as e:
         print(f"Log Error: {e}")
 
