@@ -16446,7 +16446,8 @@ class SellCartView(discord.ui.View):
         await self.update_message(interaction)
 
 # 4. COMMAND
-@bot.tree.command(name="sell", description="🛒 Add multiple items to cart and sell at once")async def sell_items(i: discord.Interaction):
+@bot.tree.command(name="sell", description="🛒 Add multiple items to cart and sell at once")
+async def sell_items(i: discord.Interaction):
     # Inventory check
     data = supabase.table("economy").select("inventory").eq("user_id", str(i.user.id)).execute().data
     
