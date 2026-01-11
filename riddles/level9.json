@@ -1,0 +1,602 @@
+[
+  {
+    "id": 901,
+    "question": "Ek andheri raat mein, ek aadmi car chala raha tha. Uski car ki headlights kharab thi aur sadak ki street lights bhi band thi. Achanak sadak ke beech mein ek kaali billi (black cat) aa gayi. Aadmi ne break lagaya aur billi ko bachane ke liye car mod di. Jabki wahan koi chaand ya taare bhi nahi dikh rahe the. Aadmi ne billi ko kaise dekha?",
+    "options": ["Billi ki aankhein chamak rahi thi", "Din ka samay tha (Sawal mein 'Raat' nahi, 'Andheri' bola hai)", "Aadmi ke paas night vision tha", "Billi safed thi"],
+    "answer": "Din ka samay tha (Sawal mein 'Raat' nahi, 'Andheri' bola hai)"
+  },
+  {
+    "id": 902,
+    "question": "Ek jaasoos ek barfili pahadi par bane ek round (gol) ghar mein murder mystery solve karne gaya. Wahan 3 log the: Cook, Maid, aur Butler. Victim drawing room mein mara hua tha. Cook ne kaha: 'Main kitchen mein tha'. Maid ne kaha: 'Main kono (corners) ki safai kar rahi thi'. Butler ne kaha: 'Main gate par pehra de raha tha'. Jaasoos ne Maid ko arrest kar liya. Kyun?",
+    "options": ["Butler jhooth bol raha tha", "Ghar gol (round) tha, usme kone (corners) nahi hote", "Maid ke paas weapon tha", "Cook ne zeher diya tha"],
+    "answer": "Ghar gol (round) tha, usme kone (corners) nahi hote"
+  },
+  {
+    "id": 903,
+    "question": "Ek aadmi 100 feet ki oonchi seedhi (ladder) par khada tha. Achanak wo phisla aur zameen par gir gaya. Use ek kharoch tak nahi aayi aur wo uth kar chala gaya. Neeche koi gadda, paani ya net nahi tha. Ye kaise sambhav hua?",
+    "options": ["Wo Superman tha", "Wo seedhi ke sabse neeche wale dande (step) par khada tha", "Seedhi hawa mein latak rahi thi", "Wo sapna dekh raha tha"],
+    "answer": "Wo seedhi ke sabse neeche wale dande (step) par khada tha"
+  },
+  {
+    "id": 904,
+    "question": "Dhyan se suno: Ek plane America se Canada ja raha hai. Wo thik border ke upar crash ho jata hai. Malba (debris) dono deshon mein girta hai. Batao 'Survivors' (Bache hue logon) ko kahan dafnaya jayega?",
+    "options": ["America mein", "Canada mein", "No Man's Land mein", "Survivors ko dafnaya nahi jaata"],
+    "answer": "Survivors ko dafnaya nahi jaata"
+  },
+  {
+    "id": 905,
+    "question": "Ek kamre mein Romeo aur Juliet mare hue hain. Unke aas-paas thoda paani aur kaanch ke tukde hain. Kamre ki khidki khuli hai aur hawa chal rahi hai. Unke shareer par koi chot nahi hai aur na hi zeher diya gaya hai. Wo kaise mare?",
+    "options": ["Wo machliyan (fish) thi aur bowl toot gaya", "Wo suicide tha", "Thand se mar gaye", "Hawa se dam ghut gaya"],
+    "answer": "Wo machliyan (fish) thi aur bowl toot gaya"
+  },
+  {
+    "id": 906,
+    "question": "Ek aadmi apni car ko dhakka maar kar ek hotel ke paas le gaya. Jaise hi wo wahan pahuncha, use ehsaas hua ki wo kangal (bankrupt) ho chuka hai aur sab kuch haar gaya hai. Wo aadmi kaun hai aur kya hua?",
+    "options": ["Wo Monopoly game khel raha tha", "Wo car mechanic tha", "Uski car chori ki thi", "Hotel maalik ne use loot liya"],
+    "answer": "Wo Monopoly game khel raha tha"
+  },
+  {
+    "id": 907,
+    "question": "Ek jadugar ek band kamre mein ek glass mein paani bharta hai. Wo us glass ko room ke beech mein rakh deta hai aur challenge karta hai ki koi bhi insaan us glass ko utha kar dikhaye. Ek pehelwan koshish karta hai par glass hilta bhi nahi. Glass chipkaya nahi gaya hai aur na hi wo bhaari hai. Jadugar ne kya kiya?",
+    "options": ["Glass mein mercury tha", "Jadugar ne glass ke upar koi bhari cheez rakh di thi (Invisible)", "Jadugar ne gravity badha di", "Jadugar ne pehelwan ko hypnotize kiya"],
+    "answer": "Jadugar ne glass ke upar koi bhari cheez rakh di thi (Invisible)"
+  },
+  {
+    "id": 908,
+    "question": "Mere paas shehar hain, par ghar nahi. Mere paas pahad hain, par ped nahi. Mere paas nadiyan hain, par paani nahi. Main tumhe duniya ghumata hoon bina ghar se nikle. Main kya hoon?",
+    "options": ["Globe", "Naksha (Map)", "Kitaab", "TV"],
+    "answer": "Naksha (Map)"
+  },
+  {
+    "id": 909,
+    "question": "Ek aadmi Friday ko ek ghode par shahar aaya. Wo teen din wahan ruka aur Friday ko hi wapas chala gaya. Ye koi time travel nahi hai aur na hi koi jaadu. Ye kaise hua?",
+    "options": ["Uske ghode ka naam 'Friday' tha", "Wo agle Friday ko gaya", "Wo calendar use nahi karta", "Wo sapna tha"],
+    "answer": "Uske ghode ka naam 'Friday' tha"
+  },
+  {
+    "id": 910,
+    "question": "Ek gufa mein teen darwaze hain. Pehle darwaze ke peeche bhayankar aag hai. Dusre darwaze ke peeche hatyare hain jo bandook lekar khade hain. Teesre darwaze ke peeche sher hain jo 3 saal se bhookhe hain. Tumhe kaun sa darwaza chunna chahiye?",
+    "options": ["Darwaza 1", "Darwaza 2", "Darwaza 3", "Wapas chale jana chahiye"],
+    "answer": "Darwaza 3"
+  },
+  {
+    "id": 911,
+    "question": "Ek aadmi ne ek dukandar se 100 rupaye ka saaman kharida aur 500 ka note diya. Dukandar ke paas chutte nahi the, to wo padosi se chutte laya. Usne aadmi ko 400 wapas kiye. Thodi der baad padosi aaya aur bola ki 500 ka note nakli hai. Dukandar ko use asli 500 dene pade. Dukandar ka kul nuksan kitna hua?",
+    "options": ["1000", "500", "900", "400"],
+    "answer": "500"
+  },
+  {
+    "id": 912,
+    "question": "Ek scientist ne ek aisi dawai banayi jo kisi bhi bimari ko theek kar sakti hai. Usne ise apne kutte par test kiya, par kutta mar gaya. Postmortem mein pata chala ki dawai kaam kar rahi thi aur kutte ko koi bimari nahi thi. Kutta kaise mara?",
+    "options": ["Overdose se", "Side effect se", "Scientist ne galti se zeher de diya", "Kutta immortal ho gaya tha isliye nature ne maar diya"],
+    "answer": "Overdose se"
+  },
+  {
+    "id": 913,
+    "question": "Ek aadmi apne office mein baitha tha. Achanak light chali gayi. Usne apni drawer se ek maachis nikali aur jalane ki koshish ki, par wo nahi jali. Phir bhi wo khush ho gaya. Kyun?",
+    "options": ["Maachis gili thi isliye bach gaya", "Wo bomb diffuse kar raha tha aur andhere mein galat wire nahi kaat paya", "Use andhera pasand tha", "Uski shift khatam ho gayi thi"],
+    "answer": "Wo bomb diffuse kar raha tha aur andhere mein galat wire nahi kaat paya"
+  },
+  {
+    "id": 914,
+    "question": "Ek aadmi ne ek aurat ki tasveer ki taraf ishara karke kaha: 'Is aurat ki maa meri maa ki iklauti beti hai.' Batao wo aurat us aadmi ki kya lagti hai?",
+    "options": ["Behen", "Patni", "Bhanji (Niece)", "Beti (Lekin aadmi ki maa ki iklauti beti wo khud aadmi kaise hoga? Socho)"],
+    "answer": "Bhanji (Niece)"
+  },
+  {
+    "id": 915,
+    "question": "Ek aadmi ne ek restaurant mein 'Albatross' (ek pakshi) ka maas mangaya. Ek bite khate hi wo rone laga aur restaurant se bahar nikal kar khud ko goli maar li. Uske paas koi chithi nahi thi. Kyun?",
+    "options": ["Maas mein zeher tha", "Usne pehle kabhi apne bete ka maas khaya tha ye soch kar ki wo Albatross hai", "Wo Albatross ko bachana chahta tha", "Use purani yaad aa gayi"],
+    "answer": "Usne pehle kabhi apne bete ka maas khaya tha ye soch kar ki wo Albatross hai"
+  },
+  {
+    "id": 916,
+    "question": "Do aadmi, A aur B, ek registan mein hain. A ke paas paani ki bottle hai jisme zeher hai. B ke paas paani ki bottle hai jisme ched (hole) hai. Dono pyaas se mar jaate hain. Pehle kaun marega aur kyun?",
+    "options": ["A pehle marega (Zeher)", "B pehle marega (Pyaas)", "Dono saath marenge", "B pehle marega kyunki A ke paas option hai paani na peene ka"],
+    "answer": "B pehle marega kyunki A ke paas option hai paani na peene ka"
+  },
+  {
+    "id": 917,
+    "question": "Ek aadmi ne ek building ke 20th floor se chalang lagayi. Neeche koi net nahi tha, koi parachute nahi tha. Phir bhi wo zinda bach gaya aur wapas seedhiyon se upar aa gaya. Kaise?",
+    "options": ["Wo khidki se andar kooda tha", "Wo Superman tha", "Building paani mein thi", "Hawa bahut tez thi"],
+    "answer": "Wo khidki se andar kooda tha"
+  },
+  {
+    "id": 918,
+    "question": "Ek aadmi ne apni biwi ko phone kiya aur kaha 'Main 5 minute mein ghar aa raha hoon, khana taiyar rakhna'. 5 minute baad wo ghar pahuncha to biwi mari hui thi aur khana jala hua tha. Police ne aadmi ko arrest kar liya. Kyun?",
+    "options": ["Phone call ki recording mili", "Aadmi ke haath mein gun thi", "Aadmi ne phone dead body ke paas se kiya tha (Trace hua)", "Padosi ne dekha"],
+    "answer": "Aadmi ne phone dead body ke paas se kiya tha (Trace hua)"
+  },
+  {
+    "id": 919,
+    "question": "Ek aadmi ek band kamre mein phansi par latka hua mila. Kamre mein koi furniture nahi tha, bas zameen par thoda paani tha. Chat (ceiling) bahut oonchi thi. Wo wahan tak kaise pahuncha?",
+    "options": ["Wo kooda tha", "Wo barf ki silli (ice block) par khada tha jo pighal gayi", "Rassi neeche thi", "Koi aur latka kar gaya"],
+    "answer": "Wo barf ki silli (ice block) par khada tha jo pighal gayi"
+  },
+  {
+    "id": 920,
+    "question": "Ek chor ek museum mein ghusa. Wahan ek diamond rakha tha jiske chaaron taraf laser beams thi. Agar koi beam tootti to alarm baj jaata. Chor ne bina koi gadget use kiye, bina light band kiye diamond chura liya. Kaise?",
+    "options": ["Wo chhota tha", "Diamond asli nahi tha", "Lasers visible thi par wo infrared nahi thi (Dummy)", "Chor ne box ke neeche se kaat diya"],
+    "answer": "Chor ne box ke neeche se kaat diya"
+  },
+  {
+    "id": 921,
+    "question": "Ek aadmi ne ek ladki ko 'I Love You' kaha. Ladki ne jawab diya 'Main tumhari maa hoon'. Aadmi ne kaha 'Mujhe pata hai'. Ye koi incest nahi hai aur na hi wo pagal hain. Ye kaise sambhav hai?",
+    "options": ["Wo natak (play) kar rahe the", "Ladki sauteli maa thi", "Aadmi ne apni asli maa ko pehchana", "Wo video call par the"],
+    "answer": "Wo natak (play) kar rahe the"
+  },
+  {
+    "id": 922,
+    "question": "Ek aadmi ne ek kitab likhi jisme ek bhi shabd nahi tha. Phir bhi wo duniya ki sabse zyada bikne wali kitab bani. Us kitab ka naam kya tha?",
+    "options": ["The Invisible Man", "My Diary", "How to Write", "Notebook"],
+    "answer": "Notebook"
+  },
+  {
+    "id": 923,
+    "question": "Ek aadmi ne ek building ko dhakka diya aur wo gir gayi. Ye building taash ke patton ki nahi thi aur na hi kamzor thi. Aadmi koi superhero nahi tha. Kaise?",
+    "options": ["Building Mobile Home thi (Pahiye wali)", "Aadmi ne bulldozer chalaya", "Building Domini effect se giri", "Building sapne mein thi"],
+    "answer": "Building Domini effect se giri"
+  },
+  {
+    "id": 924,
+    "question": "Ek aadmi ne ek sheesha (mirror) dekha jisme kuch nahi dikh raha tha. Phir bhi wo darr gaya. Use kya dikha?",
+    "options": ["Uska reflection nahi tha (Vampire)", "Peeche bhoot tha", "Sheesha toot gaya", "Kuch nahi"],
+    "answer": "Uska reflection nahi tha (Vampire)"
+  },
+  {
+    "id": 925,
+    "question": "Ek aadmi 8 din bina soye kaise reh sakta hai? Dhyan rahe wo koi machine ya robot nahi hai, ek aam insaan hai aur use neend ki bimari nahi hai.",
+    "options": ["Wo raat ko sota hai", "Wo coma mein hai", "Wo coffee peeta hai", "Wo jhooth bol raha hai"],
+    "answer": "Wo raat ko sota hai"
+  },
+  {
+    "id": 926,
+    "question": "Ek aadmi ek restaurant mein gaya aur usne 'Seagull Soup' order kiya. Ek chammach peete hi wo bathroom mein gaya aur ro-ro kar apni jaan de di. Police investigation mein pata chala ki soup mein koi zeher nahi tha, aur wo aadmi mansik roop se swasth (mentally stable) tha. Usne pehle kabhi Seagull Soup nahi piya tha. To usne aisa kyun kiya?",
+    "options": ["Soup ka taste kharab tha", "Wo shipwreck survivor tha, use laga tha usne pehle Seagull khaya tha par wo asal mein uske bete ka maas tha", "Use Seagull se allergy thi", "Soup mein uski anguthi gir gayi thi"],
+    "answer": "Wo shipwreck survivor tha, use laga tha usne pehle Seagull khaya tha par wo asal mein uske bete ka maas tha"
+  },
+  {
+    "id": 927,
+    "question": "Ek jaasoos ek band kamre mein pahuncha. Kamre mein ek table thi aur us par taash ke patte (playing cards) bikhre hue the. Zameen par 53 bicycles (cycles) padi thi aur ek laash thi. Kamre mein aur kuch nahi tha. Jaasoos ne dekhte hi kaha: 'Ye cheating ka mamla hai'. Ye kaise sambhav hai?",
+    "options": ["Bicycles 'Bicycle' brand ke playing cards the", "Laash ke paas cycle ki chain thi", "Kamra cycle ki dukan thi", "Cards par cycle bani thi"],
+    "answer": "Bicycles 'Bicycle' brand ke playing cards the"
+  },
+  {
+    "id": 928,
+    "question": "Do aadmi, A aur B, ek registan (desert) mein phas gaye. Unke paas pani nahi tha. A ne B ko goli maar di. Phir bhi, court ne A ko bari kar diya aur kaha ki ye self-defense nahi tha, balki ye 'Dayalu Hatya' (Mercy Killing) thi. Court ne aisa kyun kaha?",
+    "options": ["B ne A se kaha tha mujhe maar do taaki main pyaas se na tadpun", "A paani bachana chahta tha", "B zombie ban gaya tha", "B ke paas bomb tha"],
+    "answer": "B ne A se kaha tha mujhe maar do taaki main pyaas se na tadpun"
+  },
+  {
+    "id": 929,
+    "question": "Ek aadmi apne office se nikalta hai aur ghar ki taraf chalta hai. Raste mein barish shuru ho jati hai. Uske paas na chhatri hai, na topi, aur na hi koi hood. Uske kapde puri tarah bheeg jate hain, lekin uska ek bhi baal gila nahi hota. Wo gadi mein nahi tha aur na hi kisi chhat ke neeche. Kaise?",
+    "options": ["Wo ganja (bald) tha", "Baarish acid rain thi", "Wo sapna dekh raha tha", "Baarish bahut dheere ho rahi thi"],
+    "answer": "Wo ganja (bald) tha"
+  },
+  {
+    "id": 930,
+    "question": "Ek aadmi ne ek antique shop se ek purani bottle kharidi. Bottle par likha tha 'Isme kaid jinn tumhari ek khwaish puri karega'. Aadmi ne dhakkan khola, jinn bahar aaya, par aadmi mar gaya. Jinn ne use nahi mara aur na hi aadmi darr se mara. To kya hua?",
+    "options": ["Bottle mein zeherili gas thi jo sadiyon se band thi", "Aadmi heart patient tha", "Jinn ne oxygen khatam kar di", "Bottle phat gayi"],
+    "answer": "Bottle mein zeherili gas thi jo sadiyon se band thi"
+  },
+  {
+    "id": 931,
+    "question": "Ek aadmi subah uthta hai, brush karta hai, kapde pehanta hai aur breakfast karne baithta hai. Jaise hi wo pehla nivala (bite) leta hai, use ehsaas hota hai ki wo aaj marne wala hai. Khane mein zeher nahi hai aur wo bimar nahi hai. Use kaise pata chala?",
+    "options": ["Usne newspaper mein apni maut ki khabar (Obituary) padhi (Galti se chhap gayi thi)", "Calendar par date 'Friday the 13th' thi", "Uska sapna sach ho raha tha", "Ghar ke bahar police khadi thi"],
+    "answer": "Usne newspaper mein apni maut ki khabar (Obituary) padhi (Galti se chhap gayi thi)"
+  },
+  {
+    "id": 932,
+    "question": "Ek aadmi ne ek ladki ko kidnap kiya aur use ek soundproof basement mein band kar diya. Ladki ke paas phone nahi tha, internet nahi tha. Phir bhi usne police ko bula liya bina darwaza khole aur bina shor machaye. Kaise?",
+    "options": ["Usne 'Pizza Order' app se 911 ke liye pizza order kiya (Comments mein 'Help' likha)", "Usne dhuen (smoke) se signal diya", "Wo cheekhi aur padosi ne sun liya", "Usne telepathy use ki"],
+    "answer": "Usne 'Pizza Order' app se 911 ke liye pizza order kiya (Comments mein 'Help' likha)"
+  },
+  {
+    "id": 933,
+    "question": "Ek aadmi 7th floor par rehta hai. Wo roz subah lift se neeche ground floor par jata hai aur kaam par jata hai. Sham ko jab wo wapas aata hai, to agar barish ho rahi ho ya lift mein aur log hon, to wo seedha 7th floor par jata hai. Warna wo 5th floor par utarta hai aur baaki 2 floor seedhiyon se jata hai. Kyun?",
+    "options": ["Wo naata (dwarf) hai aur 7th button tak nahi pahunch pata (Umbrella se pahunchta hai)", "Wo exercise karna chahta hai", "Lift 5th floor tak hi jaati hai", "7th floor par bhoot hai"],
+    "answer": "Wo naata (dwarf) hai aur 7th button tak nahi pahunch pata (Umbrella se pahunchta hai)"
+  },
+  {
+    "id": 934,
+    "question": "Ek aadmi ne ek building ke 30th floor ki khidki kholi aur bahar kood gaya. Neeche zameen pakki thi, koi safety net nahi tha. Phir bhi use kuch nahi hua aur wo wapas andar aa gaya. Kaise?",
+    "options": ["Wo khidki se 'andar' ki taraf kooda (floor par)", "Wo parachute pehne hue tha", "Khidki zameen se sirf 1 foot upar thi", "Wo gravity control kar sakta tha"],
+    "answer": "Wo khidki se 'andar' ki taraf kooda (floor par)"
+  },
+  {
+    "id": 935,
+    "question": "Ek kamre mein ek laash latki hui hai. Kamre ka darwaza andar se lock hai. Khidkiyan band hain. Kamre mein koi furniture nahi hai, na koi stool, na kursi. Zameen par sirf pani ka ek bada ghera (puddle) hai. Aadmi ne khudkushi kaise ki?",
+    "options": ["Wo ek bade barf ke block (Ice slab) par khada tha jo pighal gaya", "Wo kood kar latka", "Pani se phisal gaya", "Rassi lambi thi"],
+    "answer": "Wo ek bade barf ke block (Ice slab) par khada tha jo pighal gaya"
+  },
+  {
+    "id": 936,
+    "question": "Ek aadmi ne ek aurat ki photo khechi. Photo develop hone par aurat ka chehra gayab tha, lekin uske kapde aur background saaf dikh rahe the. Camera digital nahi tha aur na hi photo edit ki gayi thi. Aurat wahi khadi thi. Ye kaise hua?",
+    "options": ["Aurat ne burqa pehna tha jo background se match kar gaya", "Aurat Vampire thi (No reflection/image)", "Aurat bahut tezi se hil rahi thi (Motion blur)", "Camera kharab tha"],
+    "answer": "Aurat Vampire thi (No reflection/image)"
+  },
+  {
+    "id": 937,
+    "question": "Ek aadmi car chala raha hai. Usne radio on kiya. Radio par gaana band hua aur news aayi. News sunte hi aadmi ne car roka aur khud ko goli maar li. News mein kya tha?",
+    "options": ["'Nuclear War shuru ho gaya hai'", "'Jish ship par aapki family thi wo doob gayi'", "'Police ne aapki pehchan kar li hai'", "'Aapka lottery ticket farzi hai'"],
+    "answer": "'Jish ship par aapki family thi wo doob gayi'"
+  },
+  {
+    "id": 938,
+    "question": "Ek aadmi ne ek dukandar se kaha: 'Agar main tumhe ek aisa naya shabd bataun jo aaj tak kisi ne nahi suna, to kya tum mujhe ye samaan free mein doge?' Dukandar maan gaya. Aadmi ne kaun sa shabd bola?",
+    "options": ["Koi bhi random aawaz", "Kal ki tareekh", "Aaj ka lottery number", "Aisa koi shabd nahi hai"],
+    "answer": "Koi bhi random aawaz"
+  },
+  {
+    "id": 939,
+    "question": "Ek aadmi ne ek machli pakdi. Machli ne kaha 'Mujhe mat khao, main tumhe 3 vardan dungi'. Aadmi ne kaha 'Theek hai' aur machli ko wapas pani mein daal diya. Machli doob gayi aur mar gayi. Kaise?",
+    "options": ["Wo machli nahi, ek 'Land Animal' tha jo machli jaisa dikhta tha", "Pani mein zeher tha", "Machli ko heart attack aa gaya", "Machli ko tairna bhool gaya"],
+    "answer": "Wo machli nahi, ek 'Land Animal' tha jo machli jaisa dikhta tha"
+  },
+  {
+    "id": 940,
+    "question": "Ek aadmi ne ek building kharidi. Agle din wo building gayab ho gayi. Police ne investigation ki to pata chala ki building chori nahi hui, na hi tuti, na hi zameen mein dhasi. Building wahi thi par dikh nahi rahi thi. Kaise?",
+    "options": ["Wo ek 'Mobile Home' (Caravan) tha jo chala gaya", "Building mirrors (sheeshe) se dhaki thi (Invisibility illusion)", "Kohra (Fog) bahut ghana tha", "Aadmi andha ho gaya tha"],
+    "answer": "Building mirrors (sheeshe) se dhaki thi (Invisibility illusion)"
+  },
+  {
+    "id": 941,
+    "question": "Ek aadmi ne ek ladki ko kiss kiya. Ladki ne thappad maara. Aadmi ne maafi maangi aur kaha 'Sorry, mujhe laga tum meri biwi ho'. Ladki ne phir thappad maara. Kyun?",
+    "options": ["Kyunki wo uski biwi hi thi", "Ladki ko laga wo jhooth bol raha hai", "Aadmi ne dobara kiss kiya", "Ladki behri thi"],
+    "answer": "Kyunki wo uski biwi hi thi"
+  },
+  {
+    "id": 942,
+    "question": "Ek aadmi ne ek glass doodh piya aur mar gaya. Doodh mein zeher nahi tha, doodh kharab nahi tha, aadmi ko allergy nahi thi. To maut kaise hui?",
+    "options": ["Glass toot gaya aur wo kaanch nigal gaya", "Gay (Cow) ne use maara tha jab wo doodh nikal raha tha", "Doodh bhains ka tha", "Aadmi ne doodh naak se piya aur fefdo mein chala gaya"],
+    "answer": "Glass toot gaya aur wo kaanch nigal gaya"
+  },
+  {
+    "id": 943,
+    "question": "Ek aadmi ne ek kutta kharida. Dukandar ne kaha 'Ye kutta kabhi nahi bhaukta'. Aadmi khush ho gaya. 2 din baad aadmi ne dukandar par case kar diya kyunki kutta bhaukta nahi tha par wo aadmi ko pasand nahi aaya. Kyun?",
+    "options": ["Kutta mar chuka tha", "Kutta sher tha", "Kutta rota bahut tha", "Kutta goonga nahi, behra tha aur sun nahi sakta tha"],
+    "answer": "Kutta rota bahut tha"
+  },
+  {
+    "id": 944,
+    "question": "Ek aadmi ne ek bandook saaf ki aur galti se chala di. Goli seedha uske dost ke dil par lagi. Dost gira, par mara nahi. Uthi aur bola 'Dhyan se yaar'. Dost Superman nahi tha aur na hi usne bulletproof vest pehni thi. Kaise bacha?",
+    "options": ["Goli blank (khali) thi", "Goli sheeshe (mirror) mein lage dost ke reflection par lagi thi", "Dost ka dil right side mein tha", "Bandook pani wali thi"],
+    "answer": "Goli sheeshe (mirror) mein lage dost ke reflection par lagi thi"
+  },
+  {
+    "id": 945,
+    "question": "Ek aadmi ne ek building ke 15th floor se chalang lagayi. Raste mein use ek phone aaya. Usne phone uthaya, baat ki, aur zameen par girne se pehle phone rakh diya. Girne ke baad wo zinda tha. Kaise?",
+    "options": ["Wo 'Bungee Jumping' kar raha tha", "Wo sapna dekh raha tha", "Building paani mein thi", "Phone wireless tha"],
+    "answer": "Wo 'Bungee Jumping' kar raha tha"
+  },
+  {
+    "id": 946,
+    "question": "Ek aadmi ne ek kitab likhi jisme koi kahani nahi thi, koi gyaan nahi tha, bas blank pages the. Phir bhi wo kitab duniya ki har library mein hai aur log use roz kharidte hain. Kitab ka naam kya hai?",
+    "options": ["Notebook / Diary", "Sketchbook", "Drawing Book", "Invisible Ink Book"],
+    "answer": "Notebook / Diary"
+  },
+  {
+    "id": 947,
+    "question": "Ek aadmi ne ek ladki ko phone kiya. Ladki ne phone uthaya aur kaha 'Wrong Number'. Aadmi ne kaha 'Thank you' aur khushi-khushi phone rakh diya. Aadmi stalker nahi tha. To wo khush kyun hua?",
+    "options": ["Wo check kar raha tha ki uska phone kaam kar raha hai ya nahi", "Wo apni biwi ko phone kar raha tha aur confirm karna chahta tha ki wo ghar par hai ya nahi (Aawaz se pehchan liya)", "Usne galat number hi milaya tha", "Wo pagal tha"],
+    "answer": "Wo check kar raha tha ki uska phone kaam kar raha hai ya nahi"
+  },
+  {
+    "id": 948,
+    "question": "Ek aadmi ne ek sheesha toda. 7 saal baad uski shaadi hui. Log kehte hain sheesha todne se 7 saal ki badkismati hoti hai. Kya is case mein ye sach hua?",
+    "options": ["Haan, kyunki shaadi hi badkismati thi (Joke riddle)", "Nahi, shaadi achi thi", "Sheesha magic tha", "Ye andhvishwas hai"],
+    "answer": "Haan, kyunki shaadi hi badkismati thi (Joke riddle)"
+  },
+  {
+    "id": 949,
+    "question": "Ek aadmi 10 din bina khaye raha aur mar gaya. Dusra aadmi 10 din bina khaye raha aur uska wazan badh gaya. Kaise?",
+    "options": ["Dusra aadmi raat mein khata tha", "Dusra aadmi paani bahut peeta tha (Water retention)", "Dusra aadmi pregnant aurat thi", "Dusra aadmi jhooth bol raha tha"],
+    "answer": "Dusra aadmi raat mein khata tha"
+  },
+  {
+    "id": 950,
+    "question": "Ek aadmi ne ek bakri ko sher ke pinjre mein dala. Sher ne use nahi khaya. Sher bimar nahi tha aur na hi mara hua tha. Bakri bhi asli thi. Kyun?",
+    "options": ["Sher ka pet bhara hua tha", "Bakri plastic ki thi", "Sher aur Bakri dost the", "Sher andha tha"],
+    "answer": "Sher ka pet bhara hua tha"
+  },
+  {
+    "id": 951,
+    "question": "Ek aadmi apne ghar ki light band karke so jata hai. Agle din wo news dekhta hai ki ek jahaj (ship) doob gaya aur saikdon log mar gaye. Wo aadmi rote hue khud ko goli maar leta hai. Kyun?",
+    "options": ["Wo Lighthouse Keeper tha (Light band hone se jahaj takra gaya)", "Wo jahaj ka Captain tha jo ghar aa gaya tha", "Uski family us jahaj par thi", "Usne sapne mein jahaj doobte dekha tha"],
+    "answer": "Wo Lighthouse Keeper tha (Light band hone se jahaj takra gaya)"
+  },
+  {
+    "id": 952,
+    "question": "Ek jale hue jungle ke beech mein ek aadmi ki laash milti hai. Aadmi ne Scuba Diving suit pehna hua hai, oxygen tank lagaya hai aur pairon mein flippers hain. Jungle samundar se 50 km door hai. Ye aadmi wahan kaise pahuncha aur kaise mara?",
+    "options": ["Wo plane se gira tha", "Aag bujhane wale plane ne use galti se paani ke saath utha liya aur jungle mein gira diya", "Wo jungle mein nadi dhoond raha tha", "Wo pagal tha"],
+    "answer": "Aag bujhane wale plane ne use galti se paani ke saath utha liya aur jungle mein gira diya"
+  },
+  {
+    "id": 953,
+    "question": "Ek aadmi ne ek restaurant mein khana khaya. Waiter ne bill diya. Aadmi ne bill par kuch likha aur waiter ko de diya. Waiter ne police ko bula liya. Aadmi ke paas paise the aur usne gali-galoch bhi nahi ki thi. To police kyun aayi?",
+    "options": ["Aadmi ne napkin par 'Help me, I'm kidnapped' likha tha", "Aadmi ne farzi check diya", "Aadmi wanted criminal tha", "Aadmi ne tip nahi di"],
+    "answer": "Aadmi ne napkin par 'Help me, I'm kidnapped' likha tha"
+  },
+  {
+    "id": 954,
+    "question": "Ek aadmi railway patri par leta hua hai. Wo train ke aane ka intezar kar raha hai taaki wo mar sake. Train aati hai, uske upar se guzar jaati hai, par wo aadmi marta nahi hai. Wo patri ke beech mein hi leta tha aur train puri speed mein thi. Kaise?",
+    "options": ["Wo patri 'Abandoned' (band) thi", "Train doosri patri par thi", "Aadmi patri ke neeche gaddhe mein tha", "Train patri par nahi, upar (Metro/Monorail) thi"],
+    "answer": "Train patri par nahi, upar (Metro/Monorail) thi"
+  },
+  {
+    "id": 955,
+    "question": "Ek aadmi subah uthta hai aur dekhta hai ki uske ghar ke bahar lakdi ka buraada (sawdust) pada hai. Wo turant suicide kar leta hai. Wo aadmi circus mein kaam karta tha aur duniya ka sabse chota (shortest) aadmi tha. Usne suicide kyun kiya?",
+    "options": ["Use laga wo lamba ho raha hai (naukri jane ka darr)", "Kisi ne uski walking stick kaat di thi (use laga wo andha ho gaya)", "Use laga deemak (termites) ghar kha gaye", "Uski lakdi ki taang toot gayi thi"],
+    "answer": "Kisi ne uski walking stick kaat di thi (use laga wo andha ho gaya)"
+  },
+  {
+    "id": 956,
+    "question": "Ek aadmi car mein baitha hai aur apne pairon par goli maar leta hai. Car ka darwaza lock hai aur khidkiyan band hain. Bahar koi nahi hai. Usne aisa kyun kiya?",
+    "options": ["Wo check kar raha tha gun asli hai ya nahi", "Wo car mein phans gaya tha aur dhyan khichne ke liye goli chalayi", "Galti se trigger dab gaya (Bump aane par)", "Wo insurance fraud karna chahta tha"],
+    "answer": "Galti se trigger dab gaya (Bump aane par)"
+  },
+  {
+    "id": 957,
+    "question": "Ek aurat ne apne husband ke liye coffee banayi. Husband ne ek sip li aur mar gaya. Aurat ne wahi coffee pi par use kuch nahi hua. Coffee mein zeher nahi tha, cup mein zeher nahi tha. Husband ko allergy bhi nahi thi. Husband kaise mara?",
+    "options": ["Husband ki muchh (moustache) par zeher laga tha", "Husband ne dawai khaayi thi jo react kar gayi", "Husband ne sugar ki jagah kuch aur daal diya tha", "Husband ko heart attack aaya"],
+    "answer": "Husband ki muchh (moustache) par zeher laga tha"
+  },
+  {
+    "id": 958,
+    "question": "Ek aadmi ne ek building ke 50th floor se chalang lagayi. Usne parachute pehna hua tha, par wo khula nahi. Wo zameen par gira, par mara nahi, sirf pair toota. Ye kaise hua?",
+    "options": ["Wo 'Snow' (Barf) ke dher par gira", "Wo building ke andar 'Safety Net' par gira", "Wo sapna dekh raha tha", "Uska parachute 'Bag' tha, asli parachute nahi"],
+    "answer": "Wo 'Snow' (Barf) ke dher par gira"
+  },
+  {
+    "id": 959,
+    "question": "Ek aadmi apne dost ke ghar jata hai. Wahan table par taash ke patte (cards) bikhre hue hain aur dost mara hua hai. Aadmi turant police ko phone karta hai aur kehta hai: 'Mere dost ko kisi ne dhokhe se maara hai'. Police aati hai aur aadmi ko arrest kar leti hai. Kyun?",
+    "options": ["Aadmi ne gun wahin chod di thi", "Dost ke haath mein '5 Aces' the (Jo cheating ka saboot hai, par sirf khelne wale ko pata hoga)", "Aadmi ke kapdon par khoon tha", "Phone par fingerprints aadmi ke the"],
+    "answer": "Dost ke haath mein '5 Aces' the (Jo cheating ka saboot hai, par sirf khelne wale ko pata hoga)"
+  },
+  {
+    "id": 960,
+    "question": "Ek aadmi ne ek dukan se ek painting kharidi. Dukandar ne kaha: 'Is painting ko banane wale ne ise kabhi nahi dekha, kharidne wale ne ise kabhi nahi dekha, aur jiske liye ye banayi gayi hai wo bhi ise kabhi nahi dekhega'. Ye painting kis cheez ki thi?",
+    "options": ["Andhe aadmi ka portrait", "Coffin (Taboot) - (Okay, ye painting nahi object hai, riddle logic)", "Ek aisi painting jo invisible ink se bani thi", "Uswaqt ki painting jab wo mar chuka hoga"],
+    "answer": "Coffin (Taboot) - (Okay, ye painting nahi object hai, riddle logic)"
+  },
+  {
+    "id": 961,
+    "question": "Ek aadmi ne apni biwi ko phone kiya aur kaha 'Main lift mein hoon, 2 minute mein upar aa raha hoon'. 2 minute baad lift ka darwaza khula, par lift khali thi. Aadmi gayab tha. Lift beech mein kahin nahi ruki. Aadmi kahan gaya?",
+    "options": ["Aadmi lift ke upar (roof par) tha", "Aadmi ne jhooth bola tha, wo building mein hi nahi tha", "Lift mein chor darwaza tha", "Aadmi 'Dwarf' tha aur button nahi daba paya"],
+    "answer": "Aadmi 'Dwarf' tha aur button nahi daba paya"
+  },
+  {
+    "id": 962,
+    "question": "Ek aadmi registan (desert) mein mara hua mila. Uske paas ek bag tha jo khula nahi tha. Agar wo bag khul jata to wo zinda hota. Bag mein kya tha?",
+    "options": ["Paani", "Khana", "Parachute", "Phone"],
+    "answer": "Parachute"
+  },
+  {
+    "id": 963,
+    "question": "Ek aadmi ne ek ladki ko 'Happy Birthday' wish kiya. Ladki ne gusse mein kaha 'Aaj mera birthday nahi hai'. Aadmi ne kaha 'Pata hai, par ye tumhara aakhri birthday hai'. Phir aadmi ne ladki ko nahi maara, ladki khud mar gayi. Kaise?",
+    "options": ["Ladki 'Terminal Illness' (Cancer) se pidit thi", "Aadmi bhavishya-vani (Fortune teller) tha", "Ladki ko heart attack aa gaya", "Wo dono video game khel rahe the"],
+    "answer": "Aadmi bhavishya-vani (Fortune teller) tha"
+  },
+  {
+    "id": 964,
+    "question": "Ek aadmi ne ek hotel room book kiya. Raat ko usne reception par call kiya aur kaha 'Mere room mein bhoot hai'. Staff upar gaya, room khola, wahan koi nahi tha, aadmi bhi nahi. Khidkiyan andar se lock thi. Aadmi kahan gaya?",
+    "options": ["Aadmi bed ke neeche chupa tha", "Aadmi kabhi room mein gaya hi nahi (Check-in kiya par gaya nahi)", "Aadmi ne suicide kar liya tha bathroom mein", "Aadmi AC duct se bhaag gaya"],
+    "answer": "Aadmi AC duct se bhaag gaya"
+  },
+  {
+    "id": 965,
+    "question": "Ek aadmi ne ek building ke neeche apni car park ki. 5 minute baad wapas aaya to car puri tarah pichki (crushed) hui thi, jaise kisi ne upar se kuch bhari phenka ho. Par building se kuch nahi gira tha aur aas-paas koi bhari cheez nahi thi. Car kaise tooti?",
+    "options": ["Upar se barf (icicle) giri jo pighal gayi", "Hathi baith gaya tha", "Building gir gayi thi", "Meteorite (Ulka pind) gira tha"],
+    "answer": "Upar se barf (icicle) giri jo pighal gayi"
+  },
+  {
+    "id": 966,
+    "question": "Ek aadmi ne ek ladki ko 'Shoot' kiya, phir use 'Paani' mein duboya, aur phir 'Latka' diya. Phir bhi ladki zinda hai aur dono khush hain. Ye aadmi kaun hai?",
+    "options": ["Photographer (Photo shoot, develop, hang)", "Jallad", "Jaadugar", "Director"],
+    "answer": "Photographer (Photo shoot, develop, hang)"
+  },
+  {
+    "id": 967,
+    "question": "Ek aadmi ne apni biwi ke liye Paris ki ticket book ki. Aate waqt ki ticket 'Round Trip' thi, par jaate waqt ki ticket sirf 'One Way' thi. Police ne use murder ke liye arrest kar liya bina laash mile. Kyun?",
+    "options": ["Kyunki use pata tha biwi wapas nahi aayegi", "Ticket par 'To Hell' likha tha", "Biwi ke paas passport nahi tha", "Agent ne police ko bata diya"],
+    "answer": "Kyunki use pata tha biwi wapas nahi aayegi"
+  },
+  {
+    "id": 968,
+    "question": "Ek aadmi ne ek glass paani manga. Waiter ne gun nikal kar taan di. Aadmi ne 'Thank you' kaha aur chala gaya. Waiter ne goli nahi chalayi thi. Aadmi ne thank you kyun kaha?",
+    "options": ["Aadmi ko hichki (hiccups) aa rahi thi (Darr se ruk gayi)", "Aadmi suicide karna chahta tha", "Gun nakli thi (Lighter)", "Aadmi police officer tha"],
+    "answer": "Aadmi ko hichki (hiccups) aa rahi thi (Darr se ruk gayi)"
+  },
+  {
+    "id": 969,
+    "question": "Ek aadmi barf (snow) par chal raha hai. Wo peeche mud kar dekhta hai to use koi pairon ke nishan (footprints) nahi dikhte. Wo hawa mein nahi ud raha. Kaise?",
+    "options": ["Wo ulat (backwards) chal raha tha", "Barf bahut sakht thi", "Wo pahiye wali kursi (wheelchair) par tha", "Tez hawa nishan mita rahi thi"],
+    "answer": "Wo ulat (backwards) chal raha tha"
+  },
+  {
+    "id": 970,
+    "question": "Ek aadmi jail ki kothri mein band hai. Kothri mein sirf ek khidki hai jo bahut oonchi hai. Zameen par mitti hai. Aadmi ko wahan se bhagne ke liye sirf 'haddi' (bone) milti hai. Wo kaise bhagega?",
+    "options": ["Mitti khod kar tunnel banayega", "Haddi par chadh kar khidki tak pahunchega", "Haddi se tala todega", "Mitti ka dher banakar khidki tak pahunchega"],
+    "answer": "Mitti ka dher banakar khidki tak pahunchega"
+  },
+  {
+    "id": 971,
+    "question": "Ek aadmi ne ek aurat ko khat (letter) likha. Khat mein likha tha 'Main tumhe maar dunga'. Aurat ne khat padha aur hasne lagi. Kyun?",
+    "options": ["Wo aurat anpadh thi (kisi aur ne padha)", "Khat mein 'Maaroonga' ka matlab 'Pyar' tha (Code word)", "Wo aadmi comedian tha", "Aurat mar chuki thi"],
+    "answer": "Khat mein 'Maaroonga' ka matlab 'Pyar' tha (Code word)"
+  },
+  {
+    "id": 972,
+    "question": "Ek aadmi ne ek building ke 10th floor se neeche dekha. Use zameen par ek aadmi dikha jo use 'Ghoor' raha tha. Aadmi darr ke maare mar gaya. Neeche wala aadmi kaun tha?",
+    "options": ["Yamraj", "Wo khud (Doppelganger/Humshakal)", "Uska judwa bhai jo mar chuka tha", "Koi nahi, wo sapna tha"],
+    "answer": "Wo khud (Doppelganger/Humshakal)"
+  },
+  {
+    "id": 973,
+    "question": "Ek aadmi ne ek machli pakdi. Machli ne kaha 'Agar tum mujhe chod doge to main tumhari biwi ko zinda kar dungi'. Aadmi ne machli ko kha liya. Kyun?",
+    "options": ["Aadmi ki biwi zinda thi (Use laga bhoot ban jayegi)", "Aadmi ko bhookh lagi thi", "Aadmi behra tha", "Aadmi apni biwi se nafrat karta tha"],
+    "answer": "Aadmi apni biwi se nafrat karta tha"
+  },
+  {
+    "id": 974,
+    "question": "Ek aadmi ne ek car kharidi. Car ka engine, tyre, steering sab naya tha. Phir bhi car ek inch bhi aage nahi badhi. Kaise?",
+    "options": ["Car mein petrol nahi tha", "Car toy car thi", "Car hawa mein latak rahi thi (Garage lift)", "Driver ko chalana nahi aata tha"],
+    "answer": "Car hawa mein latak rahi thi (Garage lift)"
+  },
+  {
+    "id": 975,
+    "question": "Ek aadmi ne ek bakri ko rassi se bandha. Rassi 5 meter lambi thi. Bakri ne 10 meter door rakha khana kha liya. Rassi tooti nahi thi. Kaise?",
+    "options": ["Rassi ka dusra sira (end) kahin bandha nahi tha", "Rassi elastic thi", "Khana hawa mein ud kar aaya", "Bakri ki gardan lambi thi"],
+    "answer": "Rassi ka dusra sira (end) kahin bandha nahi tha"
+  },
+  {
+    "id": 976,
+    "question": "Ek aurat naye joote (shoes) kharidti hai aur kaam par jaati hai. Wahan wo mar jaati hai. Agar usne wo naye joote nahi pehne hote, to wo zinda hoti. Wo aurat kaun thi aur kaise mari?",
+    "options": ["Wo 'Electrician' thi (Joote conductive the)", "Wo 'Knife Thrower's Assistant' thi (Heels oonchi thi, nishana chuk gaya)", "Joote mein zeher tha", "Wo bhaag nahi payi"],
+    "answer": "Wo 'Knife Thrower's Assistant' thi (Heels oonchi thi, nishana chuk gaya)"
+  },
+  {
+    "id": 977,
+    "question": "Ek aadmi train mein safar kar raha hai. Train ek lambi tunnel (gufa) se guzarti hai. Jaise hi train tunnel se bahar aati hai, wo aadmi khud ko goli maar leta hai. Wo aadmi andha nahi tha, par pehle andha reh chuka tha. Usne suicide kyun kiya?",
+    "options": ["Use laga wo phir se andha ho gaya (Tunnel ke andhere ki wajah se)", "Tunnel mein bhoot tha", "Uski aankhon ka operation fail ho gaya", "Train galat disha mein ja rahi thi"],
+    "answer": "Use laga wo phir se andha ho gaya (Tunnel ke andhere ki wajah se)"
+  },
+  {
+    "id": 978,
+    "question": "Teen aadmi ek registan mein fase the. Unmein se ek aadmi ke paas ek packet aaya. Usne packet khola, usme ek insaan ka kata hua haath (arm) tha. Wo aadmi khush ho gaya aur usne wo haath fenk diya. Ye kya maajra hai?",
+    "options": ["Wo teeno 'Cannibals' the (Unhone shart lagayi thi ki sab apna haath kaatenge, ye saboot tha)", "Wo doctor tha", "Haath nakli tha", "Packet mein paani tha"],
+    "answer": "Wo teeno 'Cannibals' the (Unhone shart lagayi thi ki sab apna haath kaatenge, ye saboot tha)"
+  },
+  {
+    "id": 979,
+    "question": "Ek aadmi ek maidaan mein mara hua mila. Uske paas ek 'broken straw' (tuti hui lakdi/tinka) thi. Wahan koi aur nahi tha. Wo kaise mara?",
+    "options": ["Wo Hot Air Balloon mein tha (Wazan kam karne ke liye 'Straw' khinchi, wo haar gaya aur koodna pada)", "Wo khet mein kaam kar raha tha", "Use saamp ne kaata", "Aasmaan se gira"],
+    "answer": "Wo Hot Air Balloon mein tha (Wazan kam karne ke liye 'Straw' khinchi, wo haar gaya aur koodna pada)"
+  },
+  {
+    "id": 980,
+    "question": "Ek Circus mein 'Music' band hote hi ek ladki mar gayi. Ladki bimar nahi thi aur na hi kisi ne use maara. Music band hone se wo kaise mari?",
+    "options": ["Wo 'Tightrope Walker' thi (Music uska signal tha, music galti se jaldi band ho gaya aur wo gir gayi)", "Use heart attack aa gaya", "Sher khul gaya", "Music player phat gaya"],
+    "answer": "Wo 'Tightrope Walker' thi (Music uska signal tha, music galti se jaldi band ho gaya aur wo gir gayi)"
+  },
+  {
+    "id": 981,
+    "question": "Ek aadmi ek phone booth mein mara hua mila. Booth ka kaanch toota hua tha aur aadmi ke haathon mein zakhm the. Bahar ek 'Fishing Rod' padi thi. Wo kaise mara?",
+    "options": ["Wo machli pakdne ki acting kar raha tha, haath failaye to kaanch toot gaya aur nas kat gayi", "Machli ne hamla kiya", "Hook gale mein phas gaya", "Murder hua tha"],
+    "answer": "Wo machli pakdne ki acting kar raha tha, haath failaye to kaanch toot gaya aur nas kat gayi"
+  },
+  {
+    "id": 982,
+    "question": "Ek aadmi kamre mein dakhil hota hai aur ek button dabata hai. Turant hi wo doob kar mar jaata hai. Wo aadmi tairna jaanta tha. Ye kaise hua?",
+    "options": ["Wo 'Submarine' ke airlock mein tha (Galat button dabaya)", "Kamre mein baadh (flood) aa gayi", "Wo paani ki tanki mein gira", "Button se floor khul gaya"],
+    "answer": "Wo 'Submarine' ke airlock mein tha (Galat button dabaya)"
+  },
+  {
+    "id": 983,
+    "question": "Ek aadmi ek kursi par baitha hua mara mila. Zameen par ek bandook thi. Chat (ceiling) mein ek goli ka nishan tha. Aadmi ko goli nahi lagi thi. Wo kaise mara?",
+    "options": ["Darr se (Heart attack)", "Goli upar se takra kar wapas aayi aur sir par lagi", "Upar se chandelier gira", "Wo soya hua tha"],
+    "answer": "Darr se (Heart attack)"
+  },
+  {
+    "id": 984,
+    "question": "Ek aadmi apni car chala raha tha. Achanak car par bijli (lightning) giri. Aadmi mar gaya, par car ko kuch nahi hua aur na hi aadmi jala. Wo kaise mara?",
+    "options": ["Aadmi ne darr ke maare steering mod diya aur accident ho gaya", "Current lagne se", "Wo heart patient tha", "Kaanch tootne se"],
+    "answer": "Aadmi ne darr ke maare steering mod diya aur accident ho gaya"
+  },
+  {
+    "id": 985,
+    "question": "Ek aadmi balcony par khada tha. Usne 'VR Headset' (Virtual Reality) pehna hua tha. Achanak wo balcony se kood gaya aur mar gaya. Game mein aisa kya tha?",
+    "options": ["Game mein wo 'Pool' mein kood raha tha", "Game mein wo ud raha tha", "Game mein aag lag gayi thi", "Headset mein current tha"],
+    "answer": "Game mein wo 'Pool' mein kood raha tha"
+  },
+  {
+    "id": 986,
+    "question": "Ek aadmi ne ek car kharidi aur use seedha pahadi (cliff) se neeche gira diya. Wo aadmi car mein nahi tha. Usne aisa jaan-boojh kar kiya aur wo khush tha. Kyun?",
+    "options": ["Wo 'Movie Stuntman' tha (Shooting chal rahi thi)", "Car kharab thi", "Wo insurance chahta tha", "Wo pagal tha"],
+    "answer": "Wo 'Movie Stuntman' tha (Shooting chal rahi thi)"
+  },
+  {
+    "id": 987,
+    "question": "Ek aadmi library mein chillaya 'Aag lag gayi!'. Sab log bhaag gaye par wo wahi baitha raha. Wahan sach mein aag nahi lagi thi. Police ne use arrest nahi kiya. Kyun?",
+    "options": ["Wo TV par news dekh kar chillaya tha (Headphones)", "Wo kitab ka naam padh raha tha", "Wo library ka maalik tha", "Wo actor tha"],
+    "answer": "Wo TV par news dekh kar chillaya tha (Headphones)"
+  },
+  {
+    "id": 988,
+    "question": "Ek aadmi ne ek dukandar se 'Koyla' (Coal) kharida. Dukandar ne kaha 'Ye kala hai par tumhare haath kaale nahi karega'. Aadmi ne khareed liya. Wo koyla kaisa tha?",
+    "options": ["Wo 'Charcoal Pencil' thi (Lakdi ke andar)", "Wo plastic ka koyla tha", "Dukandar jhooth bol raha tha", "Wo jala hua nahi tha"],
+    "answer": "Wo 'Charcoal Pencil' thi (Lakdi ke andar)"
+  },
+  {
+    "id": 989,
+    "question": "Ek aadmi naha raha tha. Achanak paani mein radio gir gaya. Radio chal raha tha aur plug mein laga tha. Phir bhi aadmi ko current nahi laga. Kaise?",
+    "options": ["Fuse udd gaya tha (Short circuit)", "Paani distilled tha", "Radio waterproof tha", "Aadmi rubber ke joote pehne tha"],
+    "answer": "Fuse udd gaya tha (Short circuit)"
+  },
+  {
+    "id": 990,
+    "question": "Ek aurat ne ek naya 'Fur Coat' kharida. Wo use pehan kar jungle mein gayi aur mar gayi. Kaise?",
+    "options": ["Bhalu (Bear) ne use apne saathi samajh kar hamla kar diya", "Garmi se mar gayi", "Coat mein zeher tha", "Shikari ne use janwar samajh kar goli maar di"],
+    "answer": "Shikari ne use janwar samajh kar goli maar di"
+  },
+  {
+    "id": 991,
+    "question": "Ek aadmi ne ek bottle mein ek sikka (coin) daala aur dhakkan band kar diya. Phir usne bina dhakkan khole aur bina bottle tode sikka bahar nikal liya. Bottle kaanch ki thi. Kaise?",
+    "options": ["Dhakkan 'Cork' tha, usne use bottle ke andar dhakel diya", "Bottle ke neeche ched tha", "Sikka pighal gaya", "Jaadu se"],
+    "answer": "Dhakkan 'Cork' tha, usne use bottle ke andar dhakel diya"
+  },
+  {
+    "id": 992,
+    "question": "Ek aadmi ne ek building ki khidki se bahar chalang lagayi. Hawa mein hi wo wapas andar khidki mein khinch liya gaya. Ye koi rassi ya bungee jumping nahi thi. Ye kaise hua?",
+    "options": ["Bahar 'Tornado' (Bawandar) aaya hua tha", "Wo sapna dekh raha tha", "Building ghoom rahi thi", "Video rewind kiya gaya"],
+    "answer": "Bahar 'Tornado' (Bawandar) aaya hua tha"
+  },
+  {
+    "id": 993,
+    "question": "Ek aadmi apne bistar par soya. Subah wo mara hua mila. Bistar ke neeche kuch nahi tha, kamre mein koi nahi aaya. Doctor ne kaha 'Oxygen ki kami'. Khidkiyan khuli thi. Kaise mara?",
+    "options": ["Wo bistar ke 'Upar' nahi, galti se gadday (mattress) ke andar ghus gaya tha", "Makkhi gale mein phas gayi", "Chadar se dum ghut gaya", "Gas leak hui thi"],
+    "answer": "Wo bistar ke 'Upar' nahi, galti se gadday (mattress) ke andar ghus gaya tha"
+  },
+  {
+    "id": 994,
+    "question": "Ek aadmi ne ek taxi driver ko kaha 'Jaldi chalo, mera peecha kiya ja raha hai'. Driver ne gadi tez ki aur police station le gaya. Wahan aadmi ko arrest kar liya gaya. Kyun?",
+    "options": ["Aadmi ne kaha tha 'Main chor hoon'", "Driver ne mirror mein dekha ki koi peecha nahi kar raha (Paranoid)", "Driver police wala tha (Undercover)", "Aadmi ke paas gun thi"],
+    "answer": "Driver ne mirror mein dekha ki koi peecha nahi kar raha (Paranoid)"
+  },
+  {
+    "id": 995,
+    "question": "Ek aadmi ne ek restaurant khola jisme koi table, kursi ya waiter nahi tha. Sirf ek machine thi. Phir bhi log wahan khana khane aate the. Wo kya tha?",
+    "options": ["Vending Machine Cafe", "Buffet", "Drive-Through", "Online Kitchen"],
+    "answer": "Vending Machine Cafe"
+  },
+  {
+    "id": 996,
+    "question": "Ek aadmi ne ek chitti (letter) likhi 'The End' aur mar gaya. Wo writer nahi tha aur na hi ye suicide note tha. To kya tha?",
+    "options": ["Wo 'Typewriter' repair kar raha tha aur current lag gaya", "Wo film ka editor tha", "Wo bhavishya-vani likh raha tha", "Kagaz par zeher tha"],
+    "answer": "Wo 'Typewriter' repair kar raha tha aur current lag gaya"
+  },
+  {
+    "id": 997,
+    "question": "Ek aadmi ne ek glass eye (nakli aankh) kharidi. Uski dono aankhein theek thi. Usne wo kyun kharidi?",
+    "options": ["Apne 'Humshakal' (Doppelganger) ko dene ke liye jo ek aankh se kaana tha", "Collection ke liye", "Darrane ke liye", "Wo jadugar tha"],
+    "answer": "Apne 'Humshakal' (Doppelganger) ko dene ke liye jo ek aankh se kaana tha"
+  },
+  {
+    "id": 998,
+    "question": "Ek aadmi apne ghar ke garden mein khada tha. Achanak uske upar ek 'Frozen Human Waste' (Jami hui gandagi) ka tukda gira aur wo mar gaya. Ye kahan se aaya?",
+    "options": ["Upar se guzar rahe Airplane ke toilet se (Blue Ice)", "Padosi ki chat se", "Space se", "Ped se"],
+    "answer": "Upar se guzar rahe Airplane ke toilet se (Blue Ice)"
+  },
+  {
+    "id": 999,
+    "question": "Ek aadmi 1990 mein paida hua aur 2000 mein uski shaadi ho gayi (10 saal ki umr mein nahi). Ye kaise sambhav hai?",
+    "options": ["1990 aur 2000 'Room Number' the hospital ke", "Wo 1990 BC mein paida hua tha", "Wo dog (kutta) tha", "Calendar alag tha"],
+    "answer": "1990 aur 2000 'Room Number' the hospital ke"
+  },
+  {
+    "id": 1000,
+    "question": "GRAND FINAL: Ek aadmi ek band kamre mein baitha hai. Kamre mein koi khidki ya darwaza nahi hai. Sirf ek table aur ek aaina (mirror) hai. Wo wahan se kaise niklega?",
+    "options": ["Aaine mein dekhega, dekhega ki wo kya 'Saw' (Dekha/Aari), Aari se table katega, 2 tukdo ko jodkar 'Whole' (Hole/Ched) banayega aur nikal jayega (Wordplay Riddle)", "Aaina todega aur nass kaat lega", "Ye sapna hai, wo jag jayega", "Deewar tod dega"],
+    "answer": "Aaine mein dekhega, dekhega ki wo kya 'Saw' (Dekha/Aari), Aari se table katega, 2 tukdo ko jodkar 'Whole' (Hole/Ched) banayega aur nikal jayega (Wordplay Riddle)"
+  }
+]
