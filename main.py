@@ -18620,39 +18620,63 @@ async def menu_cmd(i: discord.Interaction):
 @bot.tree.command(name="balance", description="💰 View Wallet, Bank & Inventory")
 @check_seized()
 async def balance(i: discord.Interaction, user: discord.Member = None):
-    u = user or i.user
-    res = supabase.table("economy").select("*").eq("user_id", str(u.id)).execute()
-    
-    if not res.data:
-        supabase.table("economy").insert({"user_id": str(u.id), "balance": 0, "bank": 0, "inventory": {}}).execute()
-        d = {"balance": 0, "bank": 0, "inventory": {}}
-    else: d = res.data[0]
-    
-    total = d['balance'] + d['bank']
-    
-    embed = discord.Embed(title=f"🏦 WEALTH: {u.name.upper()}", color=C_DARK)
-    embed.set_thumbnail(url=u.display_avatar.url)
-    embed.add_field(name="💳 Wallet", value=f"`${d['balance']:,}`", inline=True)
-    embed.add_field(name="🏦 Bank", value=f"`${d['bank']:,}`", inline=True)
-    embed.add_field(name="💎 Net Worth", value=f"**${total:,}**", inline=False)
-    
-    # Inventory Display (NEW LOGIC)
-    inv = d.get('inventory', {}) or {}
-    inv_text = ""
-    # Map IDs to Display Names
-    for k, v in inv.items():
-        if v > 0:
-            name = SHOP_ITEMS.get(k, {}).get('name', k.title())
-            inv_text += f"{name}: **x{v}**\n"
-    
-    # Check VIP
-    vip_end = d.get('vip_expiry')
-    if vip_end and vip_end > datetime.utcnow().isoformat():
-        inv_text += f"👑 **VIP ACTIVE**"
+    # ✅ FIX 1: Interaction Defer करें (ताकि Timeout न हो)
+    await i.response.defer() 
+
+    try:
+        u = user or i.user
         
-    if inv_text: embed.add_field(name="🎒 Inventory", value=inv_text, inline=False)
-    
-    await i.response.send_message(embed=embed)
+        # Database se data nikalo
+        res = supabase.table("economy").select("*").eq("user_id", str(u.id)).execute()
+        
+        if not res.data:
+            # Agar user nahi hai to create karo
+            supabase.table("economy").insert({
+                "user_id": str(u.id), 
+                "balance": 0, 
+                "bank": 0, 
+                "inventory": {}
+            }).execute()
+            d = {"balance": 0, "bank": 0, "inventory": {}}
+        else: 
+            d = res.data[0]
+        
+        total = d['balance'] + d['bank']
+        
+        # Embed Banayein
+        embed = discord.Embed(title=f"🏦 WEALTH: {u.name.upper()}", color=0x2ECC71) # Color maine Green kar diya (C_DARK error de sakta hai agar defined na ho)
+        embed.set_thumbnail(url=u.display_avatar.url)
+        embed.add_field(name="💳 Wallet", value=f"`${d['balance']:,}`", inline=True)
+        embed.add_field(name="🏦 Bank", value=f"`${d['bank']:,}`", inline=True)
+        embed.add_field(name="💎 Net Worth", value=f"**${total:,}**", inline=False)
+        
+        # Inventory Display
+        inv = d.get('inventory', {}) or {}
+        inv_text = ""
+        
+        # Map IDs to Display Names
+        for k, v in inv.items():
+            if v > 0:
+                # SHOP_ITEMS agar defined nahi hai to key use karega
+                name = SHOP_ITEMS.get(k, {}).get('name', k.title()) if 'SHOP_ITEMS' in globals() else k.title()
+                inv_text += f"{name}: **x{v}**\n"
+        
+        # Check VIP (Timezone fix ke sath)
+        vip_end = d.get('vip_expiry')
+        if vip_end and vip_end > datetime.utcnow().isoformat():
+            inv_text += f"👑 **VIP ACTIVE**"
+            
+        if inv_text: 
+            embed.add_field(name="🎒 Inventory", value=inv_text, inline=False)
+        
+        # ✅ FIX 2: response.send_message ki jagah followup.send use karein
+        await i.followup.send(embed=embed)
+
+    except Exception as e:
+        print(f"❌ Balance Error: {e}")
+        # Error user ko dikhayein
+        await i.followup.send(f"❌ Error fetching balance. Database slow ho sakta hai.", ephemeral=True)
+
 
 @bot.tree.command(name="deposit", description="🏦 Deposit money (Safe)")
 @check_seized()
