@@ -4,16 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cyber Pixel War: Global Conflict</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
+        /* --- 1. GLOBAL VARIABLES & RESET --- */
         :root {
             --neon-blue: #00f3ff;
             --neon-pink: #bc13fe;
-            --neon-alert: #ff2a2a;
+            --neon-red: #ff2a2a;
+            --neon-green: #00ff9d;
             --gold: #ffd700;
             --bg-dark: #050508;
-            --glass-panel: rgba(10, 15, 20, 0.9);
+            --glass-panel: rgba(12, 12, 18, 0.92);
             --border-glow: rgba(255, 255, 255, 0.15);
         }
 
@@ -25,56 +29,73 @@
             height: 100vh; width: 100vw; display: flex; flex-direction: column;
         }
 
-        /* --- 1. BACKGROUND FX LAYER --- */
+        /* --- 2. BACKGROUND FX LAYER --- */
         #bg-canvas {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 0; pointer-events: none; opacity: 0.6;
+            z-index: 0; pointer-events: none; opacity: 0.5;
         }
 
-        /* --- 2. GAME CONTAINER (Fixed Visibility) --- */
+        /* --- 3. GAME CONTAINER (MAP) --- */
         #game-wrapper {
             flex: 1; position: relative; overflow: hidden; z-index: 5;
-            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.95);
             touch-action: none;
-            /* Background grid for empty space */
+            background-color: #08080a; /* Base dark color */
+            
+            /* Background Grid Effect */
             background-image: 
-                linear-gradient(#1a1a20 1px, transparent 1px),
-                linear-gradient(90deg, #1a1a20 1px, transparent 1px);
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
             background-size: 40px 40px;
         }
 
         #pixel-canvas {
             position: absolute; left: 0; top: 0;
-            image-rendering: pixelated; 
-            /* CANVAS VISIBILITY FIX: Separate background and shadow */
-            background-color: #111116; 
-            box-shadow: 0 0 0 2px rgba(255,255,255,0.1), 0 0 50px rgba(0,0,0,0.8);
+            image-rendering: pixelated; /* Sharp pixels */
+            /* MAP VISIBILITY FIX: Glow around the map */
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.1), 0 0 80px rgba(0,0,0,0.8);
+            background-color: #111116; /* Map specific background */
         }
 
-        /* --- 3. HUD: TOP BAR --- */
+        /* --- 4. HUD: TOP BAR (With Reset Button) --- */
         .hud-top {
             position: absolute; top: 0; left: 0; width: 100%;
             padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
-            z-index: 20; background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, transparent 100%);
+            z-index: 20; background: linear-gradient(180deg, rgba(0,0,0,0.95) 0%, transparent 100%);
+            pointer-events: none; /* Let clicks pass through empty space */
         }
 
-        .back-btn {
-            width: 40px; height: 40px; border-radius: 12px;
+        .hud-left-group {
+            display: flex; gap: 15px; pointer-events: auto;
+        }
+
+        .btn-icon {
+            width: 42px; height: 42px; border-radius: 12px;
             background: rgba(255,255,255,0.05); border: 1px solid var(--border-glow);
             color: white; display: flex; align-items: center; justify-content: center;
-            text-decoration: none; backdrop-filter: blur(10px);
+            text-decoration: none; backdrop-filter: blur(10px); cursor: pointer;
+            transition: 0.3s;
         }
+        .btn-icon:active { transform: scale(0.9); background: rgba(255,255,255,0.1); }
+
+        /* NEW RESET BUTTON STYLE */
+        .btn-reset {
+            border-color: var(--neon-red); color: var(--neon-red);
+            box-shadow: 0 0 10px rgba(255, 42, 42, 0.2);
+        }
+        .btn-reset:active { background: var(--neon-red); color: white; }
 
         .score-board {
-            display: flex; gap: 15px; background: rgba(0,0,0,0.6);
-            padding: 8px 16px; border-radius: 30px; border: 1px solid var(--border-glow);
-            backdrop-filter: blur(10px);
+            pointer-events: auto;
+            display: flex; gap: 15px; background: rgba(0,0,0,0.7);
+            padding: 10px 20px; border-radius: 30px; border: 1px solid var(--border-glow);
+            backdrop-filter: blur(10px); box-shadow: 0 5px 20px rgba(0,0,0,0.5);
         }
         .score-item { display: flex; align-items: center; gap: 8px; font-family: 'Orbitron'; font-size: 14px; font-weight: bold; }
         .si-neon { color: var(--neon-blue); text-shadow: 0 0 10px rgba(0, 243, 255, 0.4); }
         .si-cyber { color: var(--neon-pink); text-shadow: 0 0 10px rgba(188, 19, 254, 0.4); }
 
-        /* --- 4. HUD: BOTTOM BAR --- */
+        /* --- 5. HUD: BOTTOM BAR --- */
         .hud-bottom {
             position: absolute; bottom: 30px; left: 0; width: 100%;
             padding: 0 20px; display: flex; justify-content: center; align-items: flex-end;
@@ -84,93 +105,104 @@
         .action-dock {
             pointer-events: auto;
             background: var(--glass-panel); border: 1px solid var(--border-glow);
-            padding: 10px 20px; border-radius: 20px; display: flex; gap: 20px;
-            backdrop-filter: blur(15px); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            padding: 12px 25px; border-radius: 25px; display: flex; gap: 25px;
+            backdrop-filter: blur(20px); box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            align-items: center;
         }
 
         .dock-btn {
-            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            display: flex; flex-direction: column; align-items: center; gap: 5px;
             color: #888; font-size: 10px; cursor: pointer; transition: 0.3s;
             min-width: 50px;
         }
-        .dock-btn i { font-size: 20px; margin-bottom: 2px; }
+        .dock-btn i { font-size: 22px; margin-bottom: 2px; }
         .dock-btn.active { color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); }
         .dock-btn.active i { transform: scale(1.1); }
 
         .btn-recruit-main {
             background: var(--neon-blue); color: black; border: none;
-            width: 50px; height: 50px; border-radius: 50%;
+            width: 55px; height: 55px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 22px; margin-top: -30px; box-shadow: 0 0 20px var(--neon-blue);
-            cursor: pointer; animation: pulseBtn 2s infinite;
+            font-size: 24px; margin-top: -35px; box-shadow: 0 0 25px var(--neon-blue);
+            cursor: pointer; animation: pulseBtn 2s infinite; position: relative;
         }
-        @keyframes pulseBtn { 0% { box-shadow: 0 0 10px var(--neon-blue); } 50% { box-shadow: 0 0 30px var(--neon-blue); } 100% { box-shadow: 0 0 10px var(--neon-blue); } }
+        .btn-recruit-main::after {
+            content: ''; position: absolute; width: 100%; height: 100%; border-radius: 50%;
+            border: 2px solid var(--neon-blue); animation: ripple 1.5s infinite;
+        }
+        @keyframes pulseBtn { 0% { box-shadow: 0 0 15px var(--neon-blue); } 50% { box-shadow: 0 0 35px var(--neon-blue); } 100% { box-shadow: 0 0 15px var(--neon-blue); } }
+        @keyframes ripple { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
 
-        /* --- 5. COOLDOWN OVERLAY --- */
+        /* --- 6. COOLDOWN OVERLAY (Updated Visibility) --- */
         .cooldown-overlay {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(20, 0, 0, 0.9); border: 2px solid var(--neon-alert);
-            padding: 15px 30px; border-radius: 10px; text-align: center;
+            background: rgba(15, 5, 5, 0.95); border: 2px solid var(--neon-red);
+            padding: 20px 40px; border-radius: 15px; text-align: center;
             display: none; z-index: 50; pointer-events: none;
-            box-shadow: 0 0 50px rgba(255, 42, 42, 0.4);
+            box-shadow: 0 0 60px rgba(255, 42, 42, 0.5);
+            backdrop-filter: blur(5px);
         }
-        .cd-text { font-family: 'Orbitron'; color: var(--neon-alert); font-size: 12px; letter-spacing: 2px; margin-bottom: 5px; }
-        .cd-timer { font-family: 'Orbitron'; color: white; font-size: 30px; font-weight: bold; text-shadow: 0 0 10px white; }
+        .cd-text { font-family: 'Orbitron'; color: var(--neon-red); font-size: 12px; letter-spacing: 2px; margin-bottom: 8px; font-weight: bold; }
+        .cd-timer { font-family: 'Orbitron'; color: white; font-size: 35px; font-weight: 900; text-shadow: 0 0 15px rgba(255,255,255,0.5); }
 
-        /* --- 6. MODAL SHEETS (RECRUIT & LOGS) --- */
+        /* --- 7. MODAL SHEETS (RECRUIT & LOGS) --- */
         .modal-sheet {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 70%;
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 75%;
             background: #0f0f15; border-top: 2px solid var(--neon-blue);
-            border-radius: 25px 25px 0 0; z-index: 100;
+            border-radius: 30px 30px 0 0; z-index: 100;
             transform: translateY(110%); transition: 0.4s cubic-bezier(0.19, 1, 0.22, 1);
             display: flex; flex-direction: column;
-            box-shadow: 0 -10px 100px rgba(0,0,0,0.8);
+            box-shadow: 0 -10px 100px rgba(0,0,0,0.9);
         }
         .modal-sheet.active { transform: translateY(0); }
 
         .sheet-header {
-            padding: 20px; display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 25px; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02);
         }
-        .sheet-title { font-family: 'Orbitron'; font-size: 18px; color: white; }
-        .sheet-close { color: #666; font-size: 20px; cursor: pointer; padding: 5px; }
+        .sheet-title { font-family: 'Orbitron'; font-size: 18px; color: white; letter-spacing: 1px; }
+        .sheet-close { color: #666; font-size: 24px; cursor: pointer; padding: 5px; transition: 0.3s; }
+        .sheet-close:hover { color: white; transform: rotate(90deg); }
 
         .sheet-content { flex: 1; overflow-y: auto; padding: 20px; }
 
-        /* AGENT CARD */
+        /* AGENT CARD STYLE */
         .agent-card {
             background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
-            padding: 12px; border-radius: 12px; margin-bottom: 10px;
+            padding: 15px; border-radius: 15px; margin-bottom: 12px;
             display: flex; align-items: center; justify-content: space-between;
+            transition: 0.2s;
         }
-        .agent-info { display: flex; align-items: center; gap: 12px; }
-        .agent-avatar { width: 42px; height: 42px; border-radius: 10px; border: 1px solid #444; }
-        .agent-name { font-weight: bold; font-size: 14px; color: #eee; }
-        .agent-id { font-size: 10px; color: #666; font-family: 'Share Tech Mono'; }
+        .agent-card:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.1); }
+        
+        .agent-info { display: flex; align-items: center; gap: 15px; }
+        .agent-avatar { width: 45px; height: 45px; border-radius: 12px; border: 2px solid #333; }
+        .agent-name { font-weight: bold; font-size: 15px; color: #fff; font-family: 'Orbitron'; }
+        .agent-id { font-size: 10px; color: #666; font-family: 'Share Tech Mono'; margin-top: 2px; }
         
         .btn-invite-action {
             background: transparent; border: 1px solid var(--neon-blue); color: var(--neon-blue);
-            padding: 8px 16px; border-radius: 20px; font-family: 'Orbitron'; font-size: 10px;
+            padding: 8px 18px; border-radius: 25px; font-family: 'Orbitron'; font-size: 11px;
             font-weight: bold; cursor: pointer; transition: 0.2s;
         }
-        .btn-invite-action:active { background: var(--neon-blue); color: black; }
+        .btn-invite-action:active { background: var(--neon-blue); color: black; transform: scale(0.95); }
 
         /* LOG ENTRY STYLE */
         .log-entry {
             font-family: 'Share Tech Mono'; font-size: 12px; color: #aaa;
-            padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
-            display: flex; gap: 10px;
+            padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex; align-items: center; gap: 10px;
         }
-        .log-time { color: #555; font-size: 10px; }
+        .log-icon { color: var(--gold); font-size: 14px; }
 
-        /* --- 7. TEAM SELECTION (FULLSCREEN) --- */
+        /* --- 8. TEAM SELECTION SCREEN (FULLSCREEN) --- */
         .team-select-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 200;
+            background: rgba(0,0,0,0.98); z-index: 200;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             backdrop-filter: blur(20px);
         }
-        .ts-title { font-family: 'Orbitron'; font-size: 24px; margin-bottom: 40px; letter-spacing: 2px; }
+        .ts-title { font-family: 'Orbitron'; font-size: 26px; margin-bottom: 50px; letter-spacing: 3px; text-shadow: 0 0 20px white; }
         
         .ts-card {
             width: 280px; padding: 25px; margin: 15px; border-radius: 20px;
@@ -178,30 +210,38 @@
             display: flex; align-items: center; gap: 20px; cursor: pointer;
             transition: 0.3s; position: relative; overflow: hidden;
         }
-        .ts-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
-        .ts-neon { border-color: var(--neon-blue); box-shadow: 0 0 20px rgba(0, 243, 255, 0.1); }
+        .ts-card:active { transform: scale(0.95); }
+        .ts-card::before { content: ''; position: absolute; top: 0; left: 0; width: 5px; height: 100%; }
+        
+        .ts-neon { border-color: var(--neon-blue); box-shadow: 0 0 30px rgba(0, 243, 255, 0.15); }
         .ts-neon::before { background: var(--neon-blue); }
-        .ts-cyber { border-color: var(--neon-pink); box-shadow: 0 0 20px rgba(188, 19, 254, 0.1); }
+        
+        .ts-cyber { border-color: var(--neon-pink); box-shadow: 0 0 30px rgba(188, 19, 254, 0.15); }
         .ts-cyber::before { background: var(--neon-pink); }
 
-        /* --- 8. JOIN TOAST --- */
+        /* --- 9. JOIN NOTIFICATION (TOAST) --- */
         .join-notification {
-            position: absolute; top: 90px; left: 50%; transform: translateX(-50%);
-            background: rgba(0, 255, 100, 0.1); border: 1px solid #0f0;
-            padding: 10px 20px; border-radius: 8px; width: 90%; max-width: 350px;
-            display: flex; align-items: center; gap: 12px; z-index: 90;
-            box-shadow: 0 5px 20px rgba(0, 255, 0, 0.2); opacity: 0;
+            position: absolute; top: 100px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 20, 10, 0.95); border: 1px solid var(--neon-green);
+            padding: 12px 25px; border-radius: 50px; width: 90%; max-width: 400px;
+            display: flex; align-items: center; gap: 15px; z-index: 90;
+            box-shadow: 0 5px 30px rgba(0, 255, 157, 0.3); opacity: 0;
             pointer-events: none; transition: 0.5s;
         }
-        .jn-icon { color: #0f0; font-size: 20px; }
+        .jn-icon { color: var(--neon-green); font-size: 22px; animation: spinIcon 2s infinite linear; }
+        @keyframes spinIcon { 100% { transform: rotate(360deg); } }
 
-        /* --- 9. FLOATING MONEY ANIMATION --- */
+        /* --- 10. FLOATING MONEY ANIMATION --- */
         .floating-money {
-            position: fixed; font-family: 'Orbitron'; font-weight: 900; font-size: 24px;
-            color: var(--gold); text-shadow: 0 0 15px var(--gold);
-            pointer-events: none; z-index: 1000; animation: floatUp 1s ease-out forwards;
+            position: fixed; font-family: 'Orbitron'; font-weight: 900; font-size: 28px;
+            color: var(--gold); text-shadow: 0 0 20px var(--gold);
+            pointer-events: none; z-index: 1000; animation: floatUp 1.2s ease-out forwards;
         }
-        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-50px) scale(1.5); } }
+        @keyframes floatUp { 
+            0% { opacity: 0; transform: translateY(10px) scale(0.5); } 
+            20% { opacity: 1; transform: translateY(0) scale(1.2); }
+            100% { opacity: 0; transform: translateY(-80px) scale(1); } 
+        }
 
     </style>
 </head>
@@ -215,7 +255,7 @@
         <div class="ts-title">CHOOSE FACTION</div>
         
         <div class="ts-card ts-neon" onclick="selectTeam('neon')">
-            <i class="fas fa-cube" style="font-size:30px; color:var(--neon-blue)"></i>
+            <i class="fas fa-cube" style="font-size:35px; color:var(--neon-blue)"></i>
             <div>
                 <h3 style="margin:0; font-family:'Orbitron'; color:var(--neon-blue)">NEON</h3>
                 <span style="font-size:10px; color:#888;">THE ARCHITECTS</span>
@@ -223,7 +263,7 @@
         </div>
 
         <div class="ts-card ts-cyber" onclick="selectTeam('cyber')">
-            <i class="fas fa-bolt" style="font-size:30px; color:var(--neon-pink)"></i>
+            <i class="fas fa-bolt" style="font-size:35px; color:var(--neon-pink)"></i>
             <div>
                 <h3 style="margin:0; font-family:'Orbitron'; color:var(--neon-pink)">CYBER</h3>
                 <span style="font-size:10px; color:#888;">THE HACKERS</span>
@@ -232,12 +272,18 @@
     </div>
 
     <div class="hud-top">
-        <a href="/" class="back-btn"><i class="fas fa-chevron-left"></i></a>
+        <div class="hud-left-group">
+            <a href="/" class="btn-icon"><i class="fas fa-chevron-left"></i></a>
+            <div class="btn-icon btn-reset" onclick="resetGame()">
+                <i class="fas fa-power-off"></i>
+            </div>
+        </div>
+
         <div class="score-board">
             <div class="score-item si-neon">
                 <i class="fas fa-cube"></i> <span id="score-neon">0</span>
             </div>
-            <div style="width:1px; height:15px; background:rgba(255,255,255,0.2)"></div>
+            <div style="width:1px; height:20px; background:rgba(255,255,255,0.1)"></div>
             <div class="score-item si-cyber">
                 <i class="fas fa-bolt"></i> <span id="score-cyber">0</span>
             </div>
@@ -274,19 +320,20 @@
     <div class="modal-sheet" id="recruitSheet">
         <div class="sheet-header">
             <div class="sheet-title">ACTIVE OPERATORS</div>
-            <div class="sheet-close" onclick="toggleSheet('recruitSheet', false)"><i class="fas fa-chevron-down"></i></div>
+            <div class="sheet-close" onclick="toggleSheet('recruitSheet', false)"><i class="fas fa-times"></i></div>
         </div>
         <div class="sheet-content" id="agents-list">
             <div style="text-align:center; padding:40px; color:#555;">
-                <i class="fas fa-radar fa-spin"></i><br><br>SCANNING NETWORK...
+                <i class="fas fa-radar fa-spin" style="font-size:30px; margin-bottom:15px; opacity:0.5;"></i><br>
+                SCANNING NETWORK...
             </div>
         </div>
     </div>
 
-    <div class="modal-sheet" id="logsSheet" style="border-top-color: #ffd700;">
+    <div class="modal-sheet" id="logsSheet" style="border-top-color: var(--gold);">
         <div class="sheet-header">
-            <div class="sheet-title" style="color:#ffd700">WAR LOGS</div>
-            <div class="sheet-close" onclick="toggleSheet('logsSheet', false)"><i class="fas fa-chevron-down"></i></div>
+            <div class="sheet-title" style="color:var(--gold)">BATTLE LOGS</div>
+            <div class="sheet-close" onclick="toggleSheet('logsSheet', false)"><i class="fas fa-times"></i></div>
         </div>
         <div class="sheet-content" id="logs-list">
             <div style="text-align:center; padding:40px; color:#555;">
@@ -296,12 +343,13 @@
     </div>
 
     <script>
-        // --- CONFIGURATION ---
+        // --- GAME CONFIGURATION ---
         const GRID_SIZE = {{ grid_size }};
-        const PIXEL_SIZE = 25; 
+        const PIXEL_SIZE = 30; // Increased size for visibility
         let myTeam = null;
         let cooldown = 0;
-        let knownPlayers = new Set(); 
+        let knownPlayers = new Set();
+        let isProcessing = false; // LOCK VARIABLE FOR SPAM FIX
 
         // Canvas Setup
         const wrapper = document.getElementById('game-wrapper');
@@ -316,13 +364,20 @@
         let isDragging = false;
         let startX, startY, currentX = 0, currentY = 0;
 
-        // --- 1. INITIALIZATION ---
+        // --- 1. INITIALIZATION & RESET ---
         function centerMap() {
             translateX = (wrapper.offsetWidth - canvas.width) / 2;
             translateY = (wrapper.offsetHeight - canvas.height) / 2;
             updateTransform();
         }
         centerMap();
+
+        function resetGame() {
+            if(confirm("SYSTEM RESET: Logout and clear data?")) {
+                // Assuming logout route exists or redirect to home
+                window.location.href = '/'; 
+            }
+        }
 
         // --- 2. BACKGROUND ANIMATION ---
         const bgCanvas = document.getElementById('bg-canvas');
@@ -363,6 +418,7 @@
             document.getElementById('teamModal').style.opacity = '0';
             setTimeout(() => document.getElementById('teamModal').style.display = 'none', 300);
             
+            // Start Systems
             fetchState();
             fetchMembers();
             setInterval(fetchState, 2000); 
@@ -405,7 +461,7 @@
         function updateTransform() { setTranslate(translateX, translateY); }
 
 
-        // --- 5. PLACING PIXEL (TAP) ---
+        // --- 5. PLACING PIXEL (WITH SPAM FIX & MONEY) ---
         let tapTime = 0;
         wrapper.addEventListener('mousedown', () => tapTime = Date.now());
         wrapper.addEventListener('mouseup', (e) => {
@@ -413,36 +469,48 @@
         });
 
         async function handleInput(e) {
-            if(cooldown > 0) return;
+            // SPAM FIX: Check if already processing or in cooldown
+            if(cooldown > 0 || isProcessing) return;
 
             const rect = canvas.getBoundingClientRect();
             const x = Math.floor((e.clientX - rect.left) / PIXEL_SIZE);
             const y = Math.floor((e.clientY - rect.top) / PIXEL_SIZE);
 
             if(x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+                
+                isProcessing = true; // LOCK INPUT
+
                 // Optimistic Update
                 ctx.fillStyle = myTeam === 'neon' ? '#00f3ff' : '#bc13fe';
                 ctx.fillRect(x*PIXEL_SIZE, y*PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
-                drawGridLines(x, y); // Redraw outline
+                drawCellOutline(x, y);
 
-                // Server Sync
-                const res = await fetch('/api/pixelwar/place', {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({x, y, team: myTeam})
-                });
-                const data = await res.json();
+                try {
+                    // Server Request
+                    const res = await fetch('/api/pixelwar/place', {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({x, y, team: myTeam})
+                    });
+                    const data = await res.json();
 
-                // 💰 REWARD ANIMATION
-                if(data.status === 'success') {
-                    showFloatingMoney(e.clientX, e.clientY, data.reward);
+                    // 💰 MONEY ANIMATION
+                    if(data.status === 'success') {
+                        showFloatingMoney(e.clientX, e.clientY, data.reward);
+                        triggerCooldown(5); // Start cooldown only on success
+                    } else {
+                        // If error (e.g. server side cooldown), handle gracefully
+                        console.warn(data.msg);
+                        if(data.msg.includes("Cooling")) triggerCooldown(5);
+                    }
+                } catch(err) {
+                    console.error(err);
+                } finally {
+                    isProcessing = false; // UNLOCK INPUT
+                    fetchState();
                 }
-
-                triggerCooldown(5);
-                fetchState();
             }
         }
 
-        // --- MONEY ANIMATION ---
         function showFloatingMoney(x, y, amount) {
             const el = document.createElement('div');
             el.className = 'floating-money';
@@ -450,7 +518,7 @@
             el.style.left = x + 'px';
             el.style.top = y + 'px';
             document.body.appendChild(el);
-            setTimeout(() => el.remove(), 1000);
+            setTimeout(() => el.remove(), 1200);
         }
 
         function triggerCooldown(sec) {
@@ -470,7 +538,7 @@
         }
 
 
-        // --- 6. STATE, LOGS & MEMBERS ---
+        // --- 6. STATE, LOGS (FIXED) & MEMBERS ---
         async function fetchState() {
             try {
                 const res = await fetch('/api/pixelwar/state');
@@ -485,11 +553,11 @@
                     for(let x=0; x<GRID_SIZE; x++) {
                         let color = data.grid[y][x];
                         
-                        // DRAW GRID BOXES
-                        ctx.fillStyle = color === '#111' ? 'rgba(0,0,0,0)' : color; // Transparent if empty
+                        // DRAW GRID
+                        ctx.fillStyle = color === '#111' ? 'rgba(0,0,0,0)' : color; 
                         ctx.fillRect(x*PIXEL_SIZE, y*PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
                         
-                        // DRAW OUTLINES (VISIBILITY FIX)
+                        // VISIBILITY FIX: Always draw outlines
                         ctx.strokeStyle = 'rgba(255,255,255,0.08)'; 
                         ctx.lineWidth = 1;
                         ctx.strokeRect(x*PIXEL_SIZE, y*PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
@@ -505,19 +573,18 @@
                 if(data.history && data.history.length > 0) {
                     logDiv.innerHTML = data.history.map(l => `
                         <div class="log-entry">
-                            <span style="color:#0f0">></span> ${l}
+                            <i class="fas fa-terminal log-icon"></i> ${l}
                         </div>
                     `).reverse().join('');
                 } else {
-                    logDiv.innerHTML = '<div style="text-align:center; padding:20px; color:#444">NO ACTIVITY</div>';
+                    logDiv.innerHTML = '<div style="text-align:center; padding:20px; color:#444">NO ACTIVITY RECORDED</div>';
                 }
 
             } catch(e){}
         }
 
-        // Helper for single cell draw
-        function drawGridLines(x, y) {
-            ctx.strokeStyle = 'rgba(255,255,255,0.2)'; 
+        function drawCellOutline(x, y) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)'; 
             ctx.strokeRect(x*PIXEL_SIZE, y*PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
         }
 
@@ -562,8 +629,8 @@
             toast.innerHTML = `
                 <div class="jn-icon"><i class="fas fa-wifi"></i></div>
                 <div>
-                    <div style="font-weight:bold; color:#0f0; font-size:14px;">${name}</div>
-                    <div style="font-size:10px; color:#aaa;">HAS ENTERED THE BATTLEFIELD</div>
+                    <div style="font-weight:bold; color:var(--neon-green); font-size:14px;">${name}</div>
+                    <div style="font-size:10px; color:#ccc;">HAS ENTERED THE BATTLEFIELD</div>
                 </div>
             `;
             area.appendChild(toast);
@@ -584,13 +651,11 @@
 
         // --- 7. UI TOGGLES ---
         function toggleSheet(id, show) {
-            // Close all
             document.querySelectorAll('.modal-sheet').forEach(s => s.classList.remove('active'));
-            
             if(show) {
                 document.getElementById(id).classList.add('active');
                 if(id === 'recruitSheet') fetchMembers();
-                if(id === 'logsSheet') fetchState(); // Refresh logs
+                if(id === 'logsSheet') fetchState();
             }
         }
 
