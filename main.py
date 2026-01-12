@@ -15554,9 +15554,17 @@ async def black_market(i: discord.Interaction):
 
 
 #============== Global Cooldown Dictionary===================
+import discord
+from discord.ext import commands
+from discord import app_commands
+import datetime
+import asyncio
+import random
+
+# Global Cooldown Dict (Isse Code ke top par rakhna zaruri hai)
 wipeout_cooldowns = {}
 
-# --- 1. CONFIRMATION VIEW (The Safety Switch) ---
+# --- 1. CONFIRMATION VIEW (FIXED) ---
 class WipeoutConfirmView(discord.ui.View):
     def __init__(self, robber, victim, required_risk):
         super().__init__(timeout=30)
@@ -15574,15 +15582,15 @@ class WipeoutConfirmView(discord.ui.View):
         self.clicked = True
         for child in self.children: child.disabled = True
         
-        # 🟢 CRITICAL: DEFER (Ye crash hone se bachayega)
+        # 🟢 DEFER (Crash Proofing)
         await interaction.response.defer()
         
-        # --- LOADING EFFECT (Suspense) ---
+        # --- LOADING EFFECT ---
         embed = discord.Embed(description="⚙️ **Bypassing Security Systems...**", color=0x2f3136)
         await interaction.edit_original_response(embed=embed, view=None)
-        await asyncio.sleep(2) # 2 Second suspense
+        await asyncio.sleep(2) # Suspense
 
-        # --- EXECUTE RAID LOGIC ---
+        # --- EXECUTE RAID ---
         await self.execute_raid(interaction)
 
     @discord.ui.button(label="🏃 CANCEL", style=discord.ButtonStyle.secondary)
@@ -15595,21 +15603,22 @@ class WipeoutConfirmView(discord.ui.View):
 
     async def on_timeout(self):
         if not self.clicked:
-            # Disable buttons silently
-            try:
-                # Sirf view hata denge
-                pass 
+            try: pass 
             except: pass
 
-    # --- ⚔️ MAIN LOGIC HERE ---
+    # --- ⚔️ MAIN LOGIC (CRASH FIXED HERE) ---
     async def execute_raid(self, interaction):
+        # 👇 YE IMPORT ZARURI HAI (Warna code yahi atak jayega)
+        import datetime 
+        import random 
+
         user = self.robber
         victim = self.victim
         key = f"{user.id}-{victim.id}"
         now = datetime.datetime.now()
 
         try:
-            # 1. Fresh Database Fetch (Safety)
+            # 1. Fresh Database Fetch
             vic_data = supabase.table("economy").select("*").eq("user_id", str(victim.id)).execute().data
             rob_data = supabase.table("economy").select("*").eq("user_id", str(user.id)).execute().data
             
@@ -15621,13 +15630,13 @@ class WipeoutConfirmView(discord.ui.View):
             vic_inv = vic.get('inventory') or {}
             rob_inv = robber.get('inventory') or {}
 
-            # 2. Final Check (Paisa hai na?)
+            # 2. Final Check
             if robber['balance'] < self.required_risk:
                 return await interaction.edit_original_response(content="❌ **Error:** End moment par paise kam pad gaye!")
 
-            # --- 🛡️ TRAPS CHECK (Nuclear & Dog) ---
+            # --- 🛡️ TRAPS CHECK ---
             
-            # TRAP 1: NUCLEAR BOMB (Instant 100M Loss)
+            # TRAP 1: NUCLEAR BOMB
             if vic_inv.get('nuclear_bomb', 0) > 0:
                 vic_inv['nuclear_bomb'] -= 1
                 new_bal = max(0, robber['balance'] - self.required_risk)
@@ -15635,7 +15644,7 @@ class WipeoutConfirmView(discord.ui.View):
                 # Update DB
                 supabase.table("economy").update({"inventory": vic_inv}).eq("user_id", str(victim.id)).execute()
                 supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(user.id)).execute()
-                wipeout_cooldowns[key] = now # Set Cooldown
+                wipeout_cooldowns[key] = now 
                 
                 embed = discord.Embed(title="☢️ NUCLEAR DEFENSE TRIGGERED!", color=0x000000)
                 embed.description = (
@@ -15647,7 +15656,7 @@ class WipeoutConfirmView(discord.ui.View):
                 embed.set_image(url="https://media.tenor.com/2sEnpXg4w0QAAAAC/explosion-boom.gif")
                 return await interaction.edit_original_response(embed=embed)
 
-            # TRAP 2: GUARD DOG (70% Chance to Bite)
+            # TRAP 2: GUARD DOG
             if vic_inv.get('guard_dog', 0) > 0:
                 if random.randint(1, 100) <= 70:
                     new_bal = max(0, robber['balance'] - self.required_risk)
@@ -15663,7 +15672,6 @@ class WipeoutConfirmView(discord.ui.View):
                     return await interaction.edit_original_response(embed=embed)
 
             # --- 🎲 THE RNG (50% Win / 50% Fail) ---
-            import random
             if random.randint(1, 100) <= 50:
                 # ✅ WIN: STEAL EVERYTHING
                 
@@ -15702,13 +15710,14 @@ class WipeoutConfirmView(discord.ui.View):
                     f"━━━━━━━━━━━━━━━━━━━━━━\n"
                     f"💰 **TOTAL PROFIT:** `${total_loot:,}`"
                 )
-                embed.set_thumbnail(url=user.display_avatar.url)
+                try: embed.set_thumbnail(url=user.display_avatar.url)
+                except: pass
                 embed.set_image(url="https://media.tenor.com/O6aTqJkK3hQAAAAC/robber-running.gif")
                 await interaction.edit_original_response(embed=embed)
             
             else:
                 # ❌ FAIL: LOSE MONEY + KEY
-                rob_inv['master_key'] -= 1
+                rob_inv['master_key'] = max(0, rob_inv.get('master_key', 1) - 1)
                 new_bal = max(0, robber['balance'] - self.required_risk)
                 
                 supabase.table("economy").update({
@@ -15731,11 +15740,10 @@ class WipeoutConfirmView(discord.ui.View):
 
         except Exception as e:
             print(f"Wipeout Logic Error: {e}")
-            await interaction.edit_original_response(content="❌ **Critical Error:** Database failed during raid.")
+            await interaction.edit_original_response(content=f"❌ **System Error:** {str(e)}")
 
 # --- 2. MAIN COMMAND ---
 @bot.tree.command(name="wipeout", description="☠️ 100M RISK: Steal EVERYTHING (Wallet + Bank + Items)")
-@check_seized()
 async def wipeout(i: discord.Interaction, victim: discord.Member):
     user = i.user
     REQUIRED_RISK = 100000000 # 100M
@@ -15745,28 +15753,26 @@ async def wipeout(i: discord.Interaction, victim: discord.Member):
         return await i.response.send_message("❌ Invalid Target.", ephemeral=True)
 
     # 2. Cooldown Check
-    import datetime
-    from datetime import timedelta
     key = f"{user.id}-{victim.id}"
     now = datetime.datetime.now()
     
     if key in wipeout_cooldowns:
         last_time = wipeout_cooldowns[key]
-        if now < last_time + timedelta(hours=3):
-            remaining = (last_time + timedelta(hours=3)) - now
+        if now < last_time + datetime.timedelta(hours=3):
+            remaining = (last_time + datetime.timedelta(hours=3)) - now
             h, m = divmod(remaining.seconds // 60, 60)
             return await i.response.send_message(f"⏳ **Cooldown:** Wait **{h}h {m}m** before attacking {victim.name} again.", ephemeral=True)
 
-    # 3. Pre-Check Defer (Crash Fix)
+    # 3. Defer
     await i.response.defer(ephemeral=True)
 
     try:
-        # 4. Initial DB Check (Eligibility)
+        # 4. DB Check
         vic_data = supabase.table("economy").select("*").eq("user_id", str(victim.id)).execute().data
         rob_data = supabase.table("economy").select("*").eq("user_id", str(user.id)).execute().data
 
         if not vic_data: return await i.followup.send("❌ Victim ke paas account nahi hai.")
-        if not rob_data: return await i.followup.send("❌ Pehle apna account banao.")
+        if not rob_data: return await i.followup.send("❌ Pehle apna account banao (/balance).")
 
         vic = vic_data[0]
         robber = rob_data[0]
@@ -15778,13 +15784,13 @@ async def wipeout(i: discord.Interaction, victim: discord.Member):
             return await i.followup.send(f"🚫 **Too Poor:** Wipeout ke liye **$100M** cash chahiye (Risk Money).")
         
         if rob_inv.get('master_key', 0) < 1:
-            return await i.followup.send("🚫 **Locked:** Pura account saaf karne ke liye **'Master Key'** chahiye!")
+            return await i.followup.send("🚫 **Locked:** Pura account saaf karne ke liye **'Master Key'** chahiye! (Shop se kharido)")
 
         vic_bank = vic.get('bank', 0)
         if (vic['balance'] + vic_bank) < 1000 and not vic_inv:
              return await i.followup.send("⚠️ **Empty Target:** Iske paas lootne layak kuch nahi hai.")
 
-        # 6. SEND CONFIRMATION SCREEN
+        # 6. SEND VIEW
         embed = discord.Embed(title="☠️ CONFIRM WIPEOUT RAID", color=0xFF0000)
         embed.set_thumbnail(url=victim.display_avatar.url)
         embed.description = (
