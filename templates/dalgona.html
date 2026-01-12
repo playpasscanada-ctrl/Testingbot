@@ -110,7 +110,7 @@
                  class="relative bg-gray-900/80 backdrop-blur border {{ 'border-red-600' if id==10 else 'border-gray-700' }} p-4 rounded-xl active:scale-95 transition cursor-pointer">
                 <h2 class="text-lg font-bold {{ 'text-red-500' if id==10 else 'text-white' }}">{{ lvl.name }}</h2>
                 <div class="flex justify-between mt-2 text-xs">
-                    <span class="text-green-400">Win: ${{ "{:,}".format(lvl.prize_short if lvl.prize_short else lvl.prize/1000|int ~ 'k') }}</span>
+                    <span class="text-green-400">Win: ${{ "{:,}".format(lvl.prize) }}</span>
                 </div>
                 <div class="text-xs text-gray-500 mt-1">Fee: ${{ "{:,}".format(lvl.fee) }}</div>
                 {% if id == 10 %}<span class="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] px-2 py-0.5 rounded animate-pulse">NIGHTMARE</span>{% endif %}
@@ -273,7 +273,7 @@
             if(navigator.vibrate) navigator.vibrate([200, 100, 200]);
 
             fetch('/api/dalgona/fail', {method:'POST'});
-            setTimeout(() => location.reload(), 2000);
+            setTimeout(() => location.reload(), 2500);
         }
 
         function winGame() {
