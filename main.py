@@ -16780,8 +16780,6 @@ import db # Database connection
 import time # For Business logic
 from business_config import BUSINESSES # Import Business Settings
 
-app = Flask(__name__)
-
 # --- ⚙️ CONFIGURATION ---
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "vikas_bhai_super_secure_key_786")
 CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "1451451135813746700")
