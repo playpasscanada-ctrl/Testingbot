@@ -16472,19 +16472,27 @@ async def sell_items(i: discord.Interaction):
     await i.response.send_message(embed=embed, view=view)
                             
 # ================== OPTIMIZED FLASK BACKEND ==================
-from flask import Flask, jsonify
+import os
 import time
+import threading
 from datetime import datetime
+from flask import Flask, jsonify, render_template, request
+import discord
+from discord.ext import commands
+from discord import app_commands
+from supabase import create_client, Client
 
+# Initialize Flask
 app = Flask(__name__)
 
-# ========= CACHE =========
+# --- 2. OPTIMIZED CACHE SYSTEM (FROM YOUR CODE) ---
 USER_CACHE_TTL = 25
 SETTINGS_CACHE_TTL = 20
 
 user_cache = {}
 settings_cache = {"data": None, "time": 0}
 
+# --- 3. HELPER FUNCTIONS (FROM YOUR CODE) ---
 
 # ========= SAFE QUERY =========
 def safe_query(table, **filters):
@@ -16495,8 +16503,7 @@ def safe_query(table, **filters):
         return q.execute().data
     except Exception as e:
         print("DB ERROR:", e)
-        return None   # IMPORTANT
-
+        return None   # IMPORTANT: Return None on error for Fail Safe logic
 
 # ========= SETTINGS CACHE =========
 def get_settings():
@@ -16526,8 +16533,7 @@ def get_settings():
     settings_cache["time"] = now
     return settings_cache["data"]
 
-
-# ========= USER STATUS =========
+# ========= USER STATUS BUILDER =========
 def build_status(user_id):
     now = time.time()
 
@@ -16614,22 +16620,24 @@ def build_status(user_id):
             "kick": False
         }
 
+# --- 4. FLASK ROUTES (EXACTLY AS REQUESTED) ---
 
-# ========= ROUTES =========
 @app.route("/status/<uid>")
 def status(uid):
     return jsonify(build_status(uid))
-
 
 @app.route("/ping")
 def ping():
     return "pong"
 
-
 @app.route('/')
 def shop_home():
-    return render_template('index.html')  # <--- Ye line honi chahiye
-    
+    # Ensure 'templates/index.html' exists in your repo
+    try:
+        return render_template('index.html')
+    except Exception as e:
+        return f"Bot Active. Template Error: {e}"
+
 @app.route("/fakecheck/<uid>")
 def fakecheck(uid):
     try:
@@ -16695,6 +16703,7 @@ def stopstatus():
     except Exception as e:
         print("STOP CHECK ERROR:", e)
         return jsonify({"stop": False})       # fail-safe allow
+
         
 # ========= DISABLE SPAM LOG =========
 import logging
