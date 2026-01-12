@@ -16784,17 +16784,29 @@ GUILD_ID = "1257403231127076915"
 # --- 1. HOME ROUTE ---
 @app.route('/')
 def home():
+    # 1. Login Link Setup
     encoded_redirect = urllib.parse.quote(REDIRECT_URI)
     login_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
 
+    # 2. Agar user login nahi hai
     if 'user_info' not in session:
-        return render_template('dashboard.html', user=None, login_url=login_url)
-    
-    user_id = session['user_info']['id']
-    current_balance = db.get_user_balance(user_id)
-    session['user_info']['balance'] = current_balance
-    
-    return render_template('dashboard.html', user=session['user_info'], balance=current_balance)
+        try:
+            # Koshish karo dashboard.html dikhane ki
+            return render_template('dashboard.html', user=None, login_url=login_url)
+        except Exception as e:
+            # Agar dashboard.html nahi mila, to Error dikhao
+            return f"<h1>Error: Dashboard File Missing!</h1><p>Details: {e}</p><p>Try renaming 'index.html' to 'dashboard.html' or check templates folder.</p>"
+
+    # 3. Agar User Login hai
+    try:
+        user_id = session['user_info']['id']
+        current_balance = db.get_user_balance(user_id)
+        session['user_info']['balance'] = current_balance
+        
+        return render_template('dashboard.html', user=session['user_info'], balance=current_balance)
+    except Exception as e:
+        # Agar koi aur dikkat aayi
+        return f"<h1>Dashboard Error</h1><p>{e}</p>"
 
 # --- 2. SHOP ROUTE ---
 @app.route('/shop')
