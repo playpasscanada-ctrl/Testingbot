@@ -18100,10 +18100,7 @@ async def send_invite_msg(target_id, sender_name):
 
 # ==========================================
 # 🦑 DALGONA GAME PRO (REMASTERED)
-# ==========================================
-
-import time
-
+# ================================
 # PRICES & PRIZES REDUCED (Balanced)
 DALGONA_LEVELS = {
     1: {"name": "Circle",    "fee": 500,     "prize": 1000,      "time": 60, "shape": "circle",    "width": 15},
@@ -18126,24 +18123,25 @@ def start_dalgona():
     if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
     user_id = session['user_info']['id']
     
-    # 1. Active Game Check (Paise bachane ke liye)
-    if session.get('dalgona_active'):
-        return jsonify({"status":"error", "msg":"Game already running!"})
-
+    # ❌ PURANA BLOCKING CODE HATA DIYA ❌
+    # Ab ye check nahi karega ki game active hai ya nahi.
+    # Sidha naya game start karega (Purana session overwrite ho jayega).
+    
     try: level = int(request.json.get('level'))
     except: return jsonify({"status":"error", "msg":"Invalid Level"})
 
     config = DALGONA_LEVELS.get(level)
     if not config: return jsonify({"status":"error", "msg":"Level not found"})
     
-    # 2. Balance Deduct (Sirf Fee Kategi)
+    # Balance Check
     current_bal = db.get_user_balance(user_id)
     if current_bal < config['fee']:
         return jsonify({"status":"error", "msg": "Insufficient Funds!"})
     
+    # Paise Kato
     db.update_balance(user_id, -config['fee'])
     
-    # 3. Secure Session Start
+    # ✅ NEW SESSION START
     session['dalgona_active'] = True
     session['dalgona_level'] = level
     session['dalgona_start_time'] = time.time()
@@ -18152,9 +18150,10 @@ def start_dalgona():
         "status": "success",
         "time": config['time'],
         "shape": config['shape'],
-        "width": config['width'], # Shape ki motai level ke hisaab se
+        "width": config['width'],
         "new_balance": current_bal - config['fee']
     })
+
 
 @app.route('/api/dalgona/finish', methods=['POST'])
 def finish_dalgona():
