@@ -15733,6 +15733,76 @@ class WipeoutConfirmView(discord.ui.View):
             print(f"Wipeout Logic Error: {e}")
             await interaction.edit_original_response(content="❌ **Critical Error:** Database failed during raid.")
 
+# --- 2. MAIN COMMAND ---
+@bot.tree.command(name="wipeout", description="☠️ 100M RISK: Steal EVERYTHING (Wallet + Bank + Items)")
+@check_seized()
+async def wipeout(i: discord.Interaction, victim: discord.Member):
+    user = i.user
+    REQUIRED_RISK = 100000000 # 100M
+
+    # 1. Basic Checks
+    if user.id == victim.id or victim.bot:
+        return await i.response.send_message("❌ Invalid Target.", ephemeral=True)
+
+    # 2. Cooldown Check
+    import datetime
+    from datetime import timedelta
+    key = f"{user.id}-{victim.id}"
+    now = datetime.datetime.now()
+    
+    if key in wipeout_cooldowns:
+        last_time = wipeout_cooldowns[key]
+        if now < last_time + timedelta(hours=3):
+            remaining = (last_time + timedelta(hours=3)) - now
+            h, m = divmod(remaining.seconds // 60, 60)
+            return await i.response.send_message(f"⏳ **Cooldown:** Wait **{h}h {m}m** before attacking {victim.name} again.", ephemeral=True)
+
+    # 3. Pre-Check Defer (Crash Fix)
+    await i.response.defer(ephemeral=True)
+
+    try:
+        # 4. Initial DB Check (Eligibility)
+        vic_data = supabase.table("economy").select("*").eq("user_id", str(victim.id)).execute().data
+        rob_data = supabase.table("economy").select("*").eq("user_id", str(user.id)).execute().data
+
+        if not vic_data: return await i.followup.send("❌ Victim ke paas account nahi hai.")
+        if not rob_data: return await i.followup.send("❌ Pehle apna account banao.")
+
+        vic = vic_data[0]
+        robber = rob_data[0]
+        vic_inv = vic.get('inventory') or {}
+        rob_inv = robber.get('inventory') or {}
+
+        # 5. Requirement Checks
+        if robber['balance'] < REQUIRED_RISK:
+            return await i.followup.send(f"🚫 **Too Poor:** Wipeout ke liye **$100M** cash chahiye (Risk Money).")
+        
+        if rob_inv.get('master_key', 0) < 1:
+            return await i.followup.send("🚫 **Locked:** Pura account saaf karne ke liye **'Master Key'** chahiye!")
+
+        vic_bank = vic.get('bank', 0)
+        if (vic['balance'] + vic_bank) < 1000 and not vic_inv:
+             return await i.followup.send("⚠️ **Empty Target:** Iske paas lootne layak kuch nahi hai.")
+
+        # 6. SEND CONFIRMATION SCREEN
+        embed = discord.Embed(title="☠️ CONFIRM WIPEOUT RAID", color=0xFF0000)
+        embed.set_thumbnail(url=victim.display_avatar.url)
+        embed.description = (
+            f"⚠️ **HIGH STAKES WARNING**\n"
+            f"You are about to raid **{victim.name}** to steal **EVERYTHING**.\n\n"
+            f"📉 **Entry Cost:** `$100,000,000` (Taken if you fail)\n"
+            f"🗝️ **Item Risk:** Master Key might break.\n"
+            f"🎲 **Success Rate:** 50%\n\n"
+            f"**Do you want to proceed?**"
+        )
+        
+        view = WipeoutConfirmView(user, victim, REQUIRED_RISK)
+        await i.followup.send(embed=embed, view=view)
+
+    except Exception as e:
+        print(f"Wipeout Init Error: {e}")
+        await i.followup.send("❌ Database Error.")
+
 # --- 🛠️ FIX NAME COMMAND (ONLY FOR TOP 3 STAFF) ---
 from discord import app_commands
 import discord
@@ -15807,76 +15877,6 @@ async def fix_name_global(interaction: discord.Interaction):
         options = [opt for opt in options if int(opt.value) == interaction.user.id]
 
     await interaction.response.send_message("Staff list:", view=FixNameView(), ephemeral=True)
-
-# --- 2. MAIN COMMAND ---
-@bot.tree.command(name="wipeout", description="☠️ 100M RISK: Steal EVERYTHING (Wallet + Bank + Items)")
-@check_seized()
-async def wipeout(i: discord.Interaction, victim: discord.Member):
-    user = i.user
-    REQUIRED_RISK = 100000000 # 100M
-
-    # 1. Basic Checks
-    if user.id == victim.id or victim.bot:
-        return await i.response.send_message("❌ Invalid Target.", ephemeral=True)
-
-    # 2. Cooldown Check
-    import datetime
-    from datetime import timedelta
-    key = f"{user.id}-{victim.id}"
-    now = datetime.datetime.now()
-    
-    if key in wipeout_cooldowns:
-        last_time = wipeout_cooldowns[key]
-        if now < last_time + timedelta(hours=3):
-            remaining = (last_time + timedelta(hours=3)) - now
-            h, m = divmod(remaining.seconds // 60, 60)
-            return await i.response.send_message(f"⏳ **Cooldown:** Wait **{h}h {m}m** before attacking {victim.name} again.", ephemeral=True)
-
-    # 3. Pre-Check Defer (Crash Fix)
-    await i.response.defer(ephemeral=True)
-
-    try:
-        # 4. Initial DB Check (Eligibility)
-        vic_data = supabase.table("economy").select("*").eq("user_id", str(victim.id)).execute().data
-        rob_data = supabase.table("economy").select("*").eq("user_id", str(user.id)).execute().data
-
-        if not vic_data: return await i.followup.send("❌ Victim ke paas account nahi hai.")
-        if not rob_data: return await i.followup.send("❌ Pehle apna account banao.")
-
-        vic = vic_data[0]
-        robber = rob_data[0]
-        vic_inv = vic.get('inventory') or {}
-        rob_inv = robber.get('inventory') or {}
-
-        # 5. Requirement Checks
-        if robber['balance'] < REQUIRED_RISK:
-            return await i.followup.send(f"🚫 **Too Poor:** Wipeout ke liye **$100M** cash chahiye (Risk Money).")
-        
-        if rob_inv.get('master_key', 0) < 1:
-            return await i.followup.send("🚫 **Locked:** Pura account saaf karne ke liye **'Master Key'** chahiye!")
-
-        vic_bank = vic.get('bank', 0)
-        if (vic['balance'] + vic_bank) < 1000 and not vic_inv:
-             return await i.followup.send("⚠️ **Empty Target:** Iske paas lootne layak kuch nahi hai.")
-
-        # 6. SEND CONFIRMATION SCREEN
-        embed = discord.Embed(title="☠️ CONFIRM WIPEOUT RAID", color=0xFF0000)
-        embed.set_thumbnail(url=victim.display_avatar.url)
-        embed.description = (
-            f"⚠️ **HIGH STAKES WARNING**\n"
-            f"You are about to raid **{victim.name}** to steal **EVERYTHING**.\n\n"
-            f"📉 **Entry Cost:** `$100,000,000` (Taken if you fail)\n"
-            f"🗝️ **Item Risk:** Master Key might break.\n"
-            f"🎲 **Success Rate:** 50%\n\n"
-            f"**Do you want to proceed?**"
-        )
-        
-        view = WipeoutConfirmView(user, victim, REQUIRED_RISK)
-        await i.followup.send(embed=embed, view=view)
-
-    except Exception as e:
-        print(f"Wipeout Init Error: {e}")
-        await i.followup.send("❌ Database Error.")
 
 # --- 📊 COMMAND: STAFF LEADERBOARD (Premium & Fix) ---
 @bot.tree.command(name="staff_stats", description="👑 Check True Active Staff (Anti-Spam Enabled)")
