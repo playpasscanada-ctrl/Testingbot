@@ -16630,14 +16630,6 @@ def status(uid):
 def ping():
     return "pong"
 
-@app.route('/')
-def shop_home():
-    # Ensure 'templates/index.html' exists in your repo
-    try:
-        return render_template('index.html')
-    except Exception as e:
-        return f"Bot Active. Template Error: {e}"
-
 @app.route("/fakecheck/<uid>")
 def fakecheck(uid):
     try:
