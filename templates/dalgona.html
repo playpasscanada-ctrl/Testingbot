@@ -2,293 +2,293 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Dalgona Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Squid Game Mobile</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
     <style>
-        /* 1. BACKGROUND ANIMATION */
+        /* 1. MOBILE OPTIMIZATIONS */
         body {
             background-color: #050505;
             color: #fff;
             font-family: 'Roboto Mono', monospace;
-            overflow: hidden;
+            overflow: hidden; /* No Scroll */
+            touch-action: none; /* Mobile pe scroll band */
             background: radial-gradient(circle at center, #1a1100 0%, #000000 100%);
         }
-        .bg-particles {
-            position: absolute; top:0; left:0; width:100%; height:100%;
-            background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
-            opacity: 0.3; animation: float 60s linear infinite; z-index: -1;
-        }
-        @keyframes float { from {background-position: 0 0;} to {background-position: 1000px 1000px;} }
 
-        /* 2. REALISTIC COOKIE */
+        /* 2. REALISTIC COOKIE (Responsive) */
         .cookie {
-            width: 450px; height: 450px;
+            width: 85vw; height: 85vw; /* Mobile pe screen ka 85% */
+            max-width: 400px; max-height: 400px; /* PC pe limit */
             background: radial-gradient(circle, #eecfa1 30%, #cd853f 90%);
             border-radius: 50%;
             position: relative;
-            box-shadow: 
-                inset 0 0 50px rgba(139, 69, 19, 0.6),
-                0 10px 30px rgba(0,0,0,0.8);
+            box-shadow: inset 0 0 30px rgba(139, 69, 19, 0.6), 0 10px 30px rgba(0,0,0,0.8);
             display: flex; align-items: center; justify-content: center;
-            cursor: none; /* Mouse hide karega */
-            transition: transform 0.1s;
+            /* Texture */
         }
-        /* Cookie Texture */
         .cookie::before {
             content:''; position: absolute; inset:0; border-radius: 50%;
             background-image: url('https://www.transparenttextures.com/patterns/concrete-wall.png');
-            opacity: 0.4; mix-blend-mode: multiply;
+            opacity: 0.4; mix-blend-mode: multiply; pointer-events: none;
         }
 
         /* 3. SVG & PATHS */
-        svg { width: 320px; height: 320px; overflow: visible; transform: scale(1.1); z-index: 10; }
+        svg { width: 70%; height: 70%; overflow: visible; z-index: 10; }
         
-        /* Base Shape (Daba hua brown color) */
         .path-base {
-            fill: none; stroke: #8B4513; stroke-opacity: 0.6;
-            stroke-cap: round; stroke-join: round;
-            filter: drop-shadow(0px 1px 0px rgba(255,255,255,0.3));
+            fill: none; stroke: #654321; stroke-opacity: 0.7;
+            stroke-width: 10; /* Thoda patla base */
+            stroke-linecap: square; stroke-linejoin: miter; /* SHARP CORNERS */
+            filter: drop-shadow(0px 1px 0px rgba(255,255,255,0.4));
         }
         
-        /* Progress Path (Green Glow) */
         .path-progress {
             fill: none; stroke: #00ff41; stroke-width: 4;
-            stroke-cap: round; stroke-join: round;
-            filter: drop-shadow(0 0 5px #00ff41);
-            stroke-dasharray: 1000; stroke-dashoffset: 1000; /* Hidden initially */
+            stroke-linecap: square; stroke-linejoin: miter;
+            filter: drop-shadow(0 0 8px #00ff41);
+            stroke-dasharray: 1000; stroke-dashoffset: 1000;
             pointer-events: none;
         }
 
-        /* Hitbox (Invisible Wide Path for Mouse Detection) */
+        /* Hitbox (Touch Area) */
         .path-hitbox {
-            fill: none; stroke: transparent;
-            stroke-cap: round; stroke-join: round;
-            cursor: crosshair;
+            fill: none; stroke: transparent; stroke-width: 35; /* Touch area bada rakha hai */
+            stroke-linecap: round; stroke-linejoin: round;
         }
 
-        /* 4. NEEDLE */
+        /* 4. NEEDLE (Mobile Friendly) */
         #needle {
             position: fixed; width: 4px; height: 80px;
             background: linear-gradient(to bottom, #d3d3d3, #696969);
-            border-radius: 2px; pointer-events: none; z-index: 100;
+            border-radius: 2px; pointer-events: none; z-index: 9999;
             transform-origin: bottom center;
             transform: translate(-50%, -100%) rotate(-15deg);
             filter: drop-shadow(5px 5px 5px rgba(0,0,0,0.7));
             display: none;
         }
+        /* Needle Tip */
         #needle::after {
-            content:''; position: absolute; bottom: -5px; left: -3px;
-            width: 10px; height: 10px; background: #333; border-radius: 50%;
+            content:''; position: absolute; bottom: -2px; left: -2px;
+            width: 8px; height: 8px; background: #333; border-radius: 50%;
         }
 
-        /* 5. CRACK EFFECT */
-        .crack-overlay {
+        /* 5. EFFECTS */
+        #crack {
             position: absolute; inset: 0; border-radius: 50%;
-            background: url('https://i.imgur.com/3q1s7.png'); /* Crack IMG */
-            background-size: cover; mix-blend-mode: multiply;
-            opacity: 0; transition: opacity 0.2s; pointer-events: none;
+            background: url('https://i.imgur.com/3q1s7.png') no-repeat center/cover;
+            mix-blend-mode: multiply; opacity: 0; pointer-events: none;
         }
 
-        /* Warning Header */
         #warning-bar {
             position: fixed; top: 0; left: 0; width: 100%; height: 0;
-            background: rgba(255, 0, 0, 0.6); z-index: 200;
+            background: rgba(220, 20, 60, 0.9); z-index: 200;
             transition: height 0.1s; display: flex; align-items: center; justify-content: center;
-            font-family: 'Creepster', cursive; color: white; font-size: 2rem; overflow: hidden;
+            font-family: 'Creepster', cursive; color: white; font-size: 1.5rem; letter-spacing: 2px;
         }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen">
     
-    <div class="bg-particles"></div>
-    <div id="warning-bar">⚠️ CRACKING DETECTED! ⚠️</div>
+    <div id="warning-bar">⚠️ CRACK DETECTED ⚠️</div>
 
-    <div class="absolute top-5 w-full flex justify-between px-10 z-50">
-        <a href="/" class="text-green-400 border border-green-400 px-4 py-1 hover:bg-green-400 hover:text-black font-bold">EXIT</a>
-        <div class="text-2xl font-bold">WALLET: <span class="text-yellow-400">$<span id="balance">{{ "{:,}".format(balance) }}</span></span></div>
-    </div>
-
-    <h1 class="text-5xl md:text-6xl text-pink-500 font-bold mb-6" style="font-family: 'Creepster', cursive; text-shadow: 0 0 10px red;">SQUID GAME PRO</h1>
-
-    <div id="menu" class="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl z-10">
-        {% for id, lvl in levels.items() %}
-        <div onclick="startGame({{id}}, '{{lvl.name}}', {{lvl.fee}})" 
-             class="relative bg-gray-900 border-2 {{ 'border-red-600' if id==10 else 'border-gray-700' }} p-4 rounded-lg cursor-pointer hover:scale-105 transition hover:border-green-400 group">
-            <h2 class="text-xl font-bold {{ 'text-red-500' if id==10 else 'text-white' }}">{{ lvl.name }}</h2>
-            <p class="text-sm text-gray-400">Prize: ${{ "{:,}".format(lvl.prize) }}</p>
-            <p class="text-xs text-yellow-500 mt-1">Fee: ${{ "{:,}".format(lvl.fee) }}</p>
-            {% if id == 10 %}<span class="absolute -top-2 -right-2 bg-red-600 text-white text-xs px-2 rounded animate-pulse">HARD</span>{% endif %}
+    <div class="absolute top-4 w-full flex justify-between px-6 z-50">
+        <a href="/" class="text-xs bg-gray-800 border border-green-500 text-green-400 px-3 py-2 rounded uppercase font-bold tracking-widest">Exit</a>
+        <div class="text-sm font-bold bg-gray-900 px-3 py-2 rounded border border-yellow-600 text-yellow-500">
+            $<span id="balance">{{ "{:,}".format(balance) }}</span>
         </div>
-        {% endfor %}
     </div>
 
-    <div id="game-ui" class="hidden flex-col items-center">
-        <div class="text-4xl font-mono mb-4 text-green-400" id="timer">00:00</div>
+    <div id="menu" class="w-full max-w-md px-4 z-10 flex flex-col items-center">
+        <h1 class="text-6xl text-pink-600 mb-8" style="font-family: 'Creepster', cursive; text-shadow: 0 0 15px #ff007f;">SQUID GAME</h1>
+        
+        <div class="grid grid-cols-2 gap-3 w-full">
+            {% for id, lvl in levels.items() %}
+            <div onclick="startGame({{id}}, '{{lvl.name}}', {{lvl.fee}})" 
+                 class="relative bg-gray-900/80 backdrop-blur border {{ 'border-red-600' if id==10 else 'border-gray-700' }} p-4 rounded-xl active:scale-95 transition cursor-pointer">
+                <h2 class="text-lg font-bold {{ 'text-red-500' if id==10 else 'text-white' }}">{{ lvl.name }}</h2>
+                <div class="flex justify-between mt-2 text-xs">
+                    <span class="text-green-400">Win: ${{ "{:,}".format(lvl.prize_short if lvl.prize_short else lvl.prize/1000|int ~ 'k') }}</span>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">Fee: ${{ "{:,}".format(lvl.fee) }}</div>
+                {% if id == 10 %}<span class="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] px-2 py-0.5 rounded animate-pulse">NIGHTMARE</span>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="game-ui" class="hidden flex-col items-center w-full">
+        <div class="text-5xl font-mono mb-8 text-green-400 tracking-widest" id="timer">00:00</div>
         
         <div class="cookie" id="cookie-area">
-            <div class="crack-overlay" id="crack"></div>
+            <div id="crack"></div>
             <svg viewBox="0 0 100 100">
                 <path id="path-base" class="path-base" d="" />
                 <path id="path-progress" class="path-progress" d="" />
-                <path id="path-hitbox" class="path-hitbox" d="" 
-                      onmousemove="handleMove(event)" 
-                      onmouseleave="checkFail()" />
+                <path id="path-hitbox" class="path-hitbox" d="" /> 
             </svg>
         </div>
-        <p class="mt-4 text-gray-400 animate-pulse" id="status-text">CLICK START POINT TO BEGIN</p>
+        
+        <p class="mt-8 text-gray-400 text-center text-sm animate-pulse px-4" id="status-text">
+            HOLD & SLIDE FINGER ON THE SHAPE
+        </p>
     </div>
 
     <div id="needle"></div>
 
     <script>
-        // --- 1. SHAPE DATA (ACCURATE) ---
+        // --- 1. SHARPER SHAPES (NIGHTMARE UPDATED) ---
         const SHAPES = {
             'circle': 'M 50, 10 A 40,40 0 1,0 50,90 A 40,40 0 1,0 50,10',
-            'triangle': 'M 50,10 L 90,80 L 10,80 Z',
-            'square': 'M 20,20 L 80,20 L 80,80 L 20,80 Z',
-            'star': 'M 50,5 L 63,35 L 95,35 L 70,55 L 80,85 L 50,65 L 20,85 L 30,55 L 5,35 L 37,35 Z',
+            'triangle': 'M 50,10 L 90,85 L 10,85 L 50,10 Z', // Closed Z for sharp corners
+            'square': 'M 15,15 L 85,15 L 85,85 L 15,85 Z',
+            'star': 'M 50,5 L 61,38 L 95,38 L 68,58 L 79,90 L 50,70 L 21,90 L 32,58 L 5,38 L 39,38 Z',
             'umbrella': 'M 10,50 Q 50,-10 90,50 L 90,55 Q 80,45 70,55 Q 60,45 50,55 Q 40,45 30,55 Q 20,45 10,55 Z M 50,10 L 50,85 Q 50,95 60,95',
-            // NIGHTMARE TRIANGLE (Fractal Like - Highly Detailed)
-            'nightmare': 'M 50,5 L 95,90 L 5,90 L 50,5 M 50,25 L 75,75 L 25,75 L 50,25 M 50,40 L 60,60 L 40,60 L 50,40 M 50,15 L 55,25 L 45,25 L 50,15'
+            // NIGHTMARE TRIANGLE (Sharper & Detailed)
+            'nightmare': 'M 50,5 L 95,90 L 5,90 L 50,5 M 50,25 L 75,75 L 25,75 L 50,25 M 50,45 L 60,65 L 40,65 L 50,45'
         };
 
-        let active = false;
-        let started = false;
-        let totalLength = 0;
-        let progress = 0;
+        let active = false, started = false;
+        let progress = 0, totalLength = 0;
         let timerInt;
-        let startPoint = {x:0, y:0};
+        
+        // --- 2. MOBILE TOUCH LOGIC ---
+        const needle = document.getElementById('needle');
+        
+        // Handle Touch & Mouse Move
+        window.addEventListener('touchmove', handleMove, {passive: false});
+        window.addEventListener('mousemove', handleMove);
 
-        // Custom Needle Logic
-        document.addEventListener('mousemove', e => {
-            const n = document.getElementById('needle');
-            n.style.left = e.clientX + 'px';
-            n.style.top = e.clientY + 'px';
-        });
+        // Handle Touch End (Lift finger)
+        window.addEventListener('touchend', endInput);
+        window.addEventListener('mouseup', endInput);
+
+        function handleMove(e) {
+            if(!active) return;
+            e.preventDefault(); // Stop Scroll
+
+            // Get Coordinates (Touch or Mouse)
+            let clientX, clientY;
+            if(e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            // Move Needle (Offset thoda upar taaki ungli ke neeche na chupe)
+            needle.style.left = clientX + 'px';
+            needle.style.top = (clientY - 20) + 'px';
+
+            // Check Collision Logic only if game started or starting
+            checkCollision(clientX, clientY);
+        }
+
+        function endInput() {
+            // Agar ungli utha li aur game chal raha tha -> Pause or Fail? 
+            // Squid game rules: You can lift, but let's keep it simple.
+            // Agar lift kiya to kuch mat karo, bas slide ruk jayegi.
+        }
 
         function startGame(level, name, fee) {
-            if(!confirm(`Pay $${fee} to start Level ${name}?`)) return;
+            if(!confirm(`Start Level: ${name}?\nFee: $${fee}`)) return;
 
             fetch('/api/dalgona/start', {
                 method: 'POST', headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({level: level})
             }).then(r=>r.json()).then(d => {
                 if(d.status === 'error') { alert(d.msg); return; }
-                
-                // Setup Game
+
+                // UI Setup
                 document.getElementById('balance').innerText = d.new_balance.toLocaleString();
                 document.getElementById('menu').classList.add('hidden');
                 document.getElementById('game-ui').classList.remove('hidden');
                 document.getElementById('game-ui').classList.add('flex');
                 document.getElementById('needle').style.display = 'block';
 
-                // Load Shape
+                // Shape Setup
                 const pathStr = SHAPES[d.shape];
-                const base = document.getElementById('path-base');
-                const prog = document.getElementById('path-progress');
-                const hit = document.getElementById('path-hitbox');
+                document.getElementById('path-base').setAttribute('d', pathStr);
+                document.getElementById('path-progress').setAttribute('d', pathStr);
+                document.getElementById('path-hitbox').setAttribute('d', pathStr);
 
-                [base, prog, hit].forEach(p => p.setAttribute('d', pathStr));
-
-                // 🌟 THIN LINES LOGIC
-                // Base line patli
-                base.style.strokeWidth = d.width / 2; 
-                // Hitbox thoda mota (taaki user click kar sake)
-                hit.style.strokeWidth = d.width * 2.5; 
-                
-                // Progress Bar Setup
-                totalLength = base.getTotalLength();
-                prog.style.strokeDasharray = totalLength;
-                prog.style.strokeDashoffset = totalLength; // Hide fully
+                // Progress Setup
+                totalLength = document.getElementById('path-base').getTotalLength();
+                progress = totalLength;
+                document.getElementById('path-progress').style.strokeDasharray = totalLength;
+                document.getElementById('path-progress').style.strokeDashoffset = totalLength;
 
                 // Reset
+                document.getElementById('timer').innerText = d.time;
                 document.getElementById('crack').style.opacity = 0;
                 document.getElementById('warning-bar').style.height = '0';
-                document.getElementById('status-text').innerText = "CLICK THE SHAPE TO START";
-                document.getElementById('timer').innerText = d.time;
                 
-                active = true; started = false; progress = totalLength;
+                active = true; started = false;
             });
         }
 
-        // --- GAMEPLAY MECHANICS ---
+        // --- 3. COLLISION & SLIDE LOGIC ---
+        function checkCollision(x, y) {
+            // HTML element "Hitbox" ke upar hai ya nahi?
+            // `document.elementFromPoint` use karenge ye check karne ke liye 
+            // ki needle ki nok (tip) path-hitbox par hai ya nahi.
+            
+            // Adjust coordinates for elementFromPoint (Tip of needle)
+            const el = document.elementFromPoint(x, y - 20);
+            
+            if(el && el.id === 'path-hitbox') {
+                // ✅ ON PATH
+                if(!started) {
+                    started = true;
+                    document.getElementById('status-text').innerText = "TRACING... KEEP GOING!";
+                    document.getElementById('status-text').className = "mt-8 text-green-400 font-bold animate-pulse";
+                    startTimer();
+                }
 
-        function handleMove(e) {
-            if(!active) return;
-
-            // 1. Game Start Check (First Click/Hover logic)
-            if(!started && e.buttons === 1) { // User must hold click
-                started = true;
-                document.getElementById('status-text').innerText = "KEEP SLIDING... DON'T STOP!";
-                startTimer();
-            }
-
-            if(started) {
-                // 2. Calculate Progress (Slide Logic)
-                // Hum check karenge ki user path ke kitna close hai aur kitna cover kar liya
-                // Simple hack: Decrease offset as they move
-                
-                // Logic: Need exact point tracking. For simplicity in web:
-                // We reduce strokeDashoffset slowly as long as mouse is hovering & clicking
-                
-                progress -= 2.5; // Speed of carving
+                // Increase Progress
+                progress -= 4; // Mobile pe thoda fast
                 if(progress < 0) progress = 0;
-                
                 document.getElementById('path-progress').style.strokeDashoffset = progress;
 
-                // WIN CONDITION
-                if(progress <= 0) {
-                    winGame();
-                }
-            }
-        }
+                if(progress <= 0) winGame();
 
-        function checkFail() {
-            // Agar user ne start kar diya tha aur ab bahar nikal gaya (Needle slipped)
-            if(active && started && progress > 0) {
-                failGame("CRACK! YOU SLIPPED!");
+            } else {
+                // ❌ OFF PATH (CRACK)
+                if(started && active) {
+                    failGame("OFF TRACK! CRACKED!");
+                }
             }
         }
 
         function failGame(reason) {
             active = false; clearInterval(timerInt);
+            document.getElementById('crack').style.opacity = 1;
+            document.getElementById('warning-bar').style.height = '100vh'; // Full screen blood
+            document.getElementById('warning-bar').innerText = reason;
             
-            // Visuals
-            document.getElementById('crack').style.opacity = 1; // Cookie Crack
-            document.getElementById('warning-bar').style.height = '60px'; // Red Alert
-            document.getElementById('status-text').innerText = reason;
-            document.getElementById('status-text').className = "mt-4 text-red-600 text-3xl font-bold";
-            
-            // Shake Effect
-            const cookie = document.getElementById('cookie-area');
-            cookie.style.transform = "rotate(5deg)";
-            setTimeout(()=> cookie.style.transform = "rotate(-5deg)", 50);
-            setTimeout(()=> cookie.style.transform = "none", 100);
+            // Vibration
+            if(navigator.vibrate) navigator.vibrate([200, 100, 200]);
 
-            // Server Inform
             fetch('/api/dalgona/fail', {method:'POST'});
-
-            setTimeout(() => location.reload(), 2500);
+            setTimeout(() => location.reload(), 2000);
         }
 
         function winGame() {
             if(!active) return;
             active = false; clearInterval(timerInt);
-
-            // Confetti Blast
-            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-
-            document.getElementById('status-text').innerText = "PERFECT! SHAPE EXTRACTED";
-            document.getElementById('status-text').className = "mt-4 text-green-400 text-3xl font-bold";
+            
+            confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
+            document.getElementById('status-text').innerText = "SHAPE EXTRACTED!";
+            document.getElementById('status-text').className = "mt-8 text-yellow-400 font-bold text-2xl";
 
             fetch('/api/dalgona/finish', {method:'POST'})
             .then(r=>r.json()).then(d => {
-                if(d.status === 'win') {
-                    alert(`CONGRATULATIONS! WON $${d.prize.toLocaleString()}`);
-                    location.reload();
-                }
+                if(d.status === 'win') alert(`PASSED! +$${d.prize.toLocaleString()}`);
+                else alert(d.msg);
+                location.reload();
             });
         }
 
@@ -296,7 +296,7 @@
             let t = parseInt(document.getElementById('timer').innerText);
             timerInt = setInterval(() => {
                 t--;
-                document.getElementById('timer').innerText = t;
+                document.getElementById('timer').innerText = t < 10 ? `0${t}` : t;
                 if(t <= 0) failGame("TIME UP!");
             }, 1000);
         }
