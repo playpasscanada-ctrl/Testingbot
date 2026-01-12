@@ -18307,6 +18307,7 @@ async def handle_purchase_effects(uid, cid, item_name, price, result_text, old_b
 
 # --- BUSINESS COMMAND ---
 @bot.tree.command(name="business", description="Manage your GTA Empire (Passive Income)")
+@check_seized()
 async def business(interaction: discord.Interaction):
     biz_url = WEBSITE_URL + "/business"
     
