@@ -1175,15 +1175,13 @@ def emb(title, desc, color=0x5865F2):
  
 @bot.event
 async def on_ready():
-    # 1. Start Message (Updated wala)
-    print(f'✅ Logged in as {bot.user} (ID: {bot.user.id})')
+    print("BOT ONLINE")
     
-    # 2. Session Logic (Tumhara Purana Code)
+    # 👇 YE NAYA CODE HAI (Session Banane ke liye)
     if not hasattr(bot, 'session') or bot.session is None:
         bot.session = aiohttp.ClientSession()
         print("✅ Shared Session Created")
 
-    # 3. Background Tasks (Tumhara Purana Code)
     if not check_loans.is_running():
         check_loans.start()
         print("✅ Loan System Started")
@@ -1192,21 +1190,10 @@ async def on_ready():
         pay_staff_salary.start()
         print("✅ Staff Salary System Started")
     
-    # 4. Data Loaders (Tumhara Purana Code)
     await load_banned_words()        
     await load_bypass_users()
     await load_crush_users()
-
-    # 5. Command Syncing (Updated wala - Error Proof)
-    try:
-        synced = await bot.tree.sync()
-        print(f'✅ Synced {len(synced)} commands globally.')
-    except Exception as e:
-        print(f'❌ Error syncing commands: {e}')
-
-    # 6. Status Set (Optional - Style ke liye)
-    await bot.change_presence(activity=discord.Game(name="Roblox Security"))
-
+    await bot.tree.sync()
 
 # --- 📊 COMMAND TRACKING EVENT ---
 # Ise main.py me lagayein (Events section ke paas)
