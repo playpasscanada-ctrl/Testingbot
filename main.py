@@ -18099,22 +18099,19 @@ async def send_invite_msg(target_id, sender_name):
     await channel.send(f"<@{target_id}> 🚨 **INCOMING TRANSMISSION!**", embed=embed, view=view)
 
 # ==========================================
-# 🦑 DALGONA GAME CONFIGURATION (UPDATED)
+# 🦑 DALGONA GAME PRO (REMASTERED)
 # ==========================================
+
+# PRICES & PRIZES REDUCED (Balanced)
 DALGONA_LEVELS = {
-    1: {"name": "Circle",    "fee": 2000,    "prize": 10000,     "time": 45, "shape": "circle"},
-    2: {"name": "Triangle",  "fee": 5000,    "prize": 25000,     "time": 40, "shape": "triangle"},
-    3: {"name": "Square",    "fee": 10000,   "prize": 50000,     "time": 35, "shape": "square"},
-    4: {"name": "Star",      "fee": 25000,   "prize": 125000,    "time": 30, "shape": "star"},
-    5: {"name": "Diamond",   "fee": 50000,   "prize": 250000,    "time": 30, "shape": "diamond"},
-    6: {"name": "Heart",     "fee": 100000,  "prize": 500000,    "time": 25, "shape": "heart"},
-    7: {"name": "Spade",     "fee": 200000,  "prize": 1000000,   "time": 25, "shape": "spade"},
-    8: {"name": "Cloud",     "fee": 500000,  "prize": 2500000,   "time": 20, "shape": "cloud"},
-    9: {"name": "Lightning", "fee": 1000000, "prize": 5000000,   "time": 15, "shape": "bolt"},
-    10:{"name": "NIGHTMARE", "fee": 5000000, "prize": 50000000,  "time": 90, "shape": "nightmare"} # ☠️ PHOTO WALA
+    1: {"name": "Circle",    "fee": 500,     "prize": 1000,      "time": 60, "shape": "circle",    "width": 15},
+    2: {"name": "Triangle",  "fee": 1000,    "prize": 2500,      "time": 55, "shape": "triangle",  "width": 14},
+    3: {"name": "Square",    "fee": 2000,    "prize": 5000,      "time": 50, "shape": "square",    "width": 13},
+    4: {"name": "Star",      "fee": 5000,    "prize": 12000,     "time": 45, "shape": "star",      "width": 12},
+    5: {"name": "Umbrella",  "fee": 10000,   "prize": 25000,     "time": 40, "shape": "umbrella",  "width": 10},
+    10:{"name": "NIGHTMARE", "fee": 50000,   "prize": 1000000,   "time": 120,"shape": "nightmare", "width": 6} # ☠️ GOD LEVEL
 }
 
-# --- ROUTE: GAME PAGE ---
 @app.route('/games/dalgona')
 def dalgona_page():
     if 'user_info' not in session: return redirect('/')
@@ -18122,67 +18119,74 @@ def dalgona_page():
     balance = db.get_user_balance(user_id)
     return render_template('dalgona.html', user=session['user_info'], balance=balance, levels=DALGONA_LEVELS)
 
-# --- API: START LEVEL ---
 @app.route('/api/dalgona/start', methods=['POST'])
 def start_dalgona():
     if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
-    
     user_id = session['user_info']['id']
+    
+    # 1. Active Game Check (Paise bachane ke liye)
+    if session.get('dalgona_active'):
+        return jsonify({"status":"error", "msg":"Game already running!"})
+
     try: level = int(request.json.get('level'))
     except: return jsonify({"status":"error", "msg":"Invalid Level"})
 
     config = DALGONA_LEVELS.get(level)
     if not config: return jsonify({"status":"error", "msg":"Level not found"})
     
-    # Balance Check
+    # 2. Balance Deduct (Sirf Fee Kategi)
     current_bal = db.get_user_balance(user_id)
     if current_bal < config['fee']:
-        return jsonify({"status":"error", "msg": f"Need ${config['fee']:,} to Play!"})
+        return jsonify({"status":"error", "msg": "Insufficient Funds!"})
     
-    # Deduct Fee
     db.update_balance(user_id, -config['fee'])
     
-    # Store Start Time for Anti-Cheat
+    # 3. Secure Session Start
+    session['dalgona_active'] = True
     session['dalgona_level'] = level
-    session['dalgona_start'] = time.time()
+    session['dalgona_start_time'] = time.time()
     
     return jsonify({
         "status": "success",
-        "time_limit": config['time'],
+        "time": config['time'],
         "shape": config['shape'],
+        "width": config['width'], # Shape ki motai level ke hisaab se
         "new_balance": current_bal - config['fee']
     })
 
-# --- API: FINISH LEVEL (WIN) ---
 @app.route('/api/dalgona/finish', methods=['POST'])
 def finish_dalgona():
     if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
-    
     user_id = session['user_info']['id']
-    level = session.get('dalgona_level')
-    start_time = session.get('dalgona_start')
+
+    # 1. Security Check (Bina start kiye prize nahi milega)
+    if not session.get('dalgona_active'):
+        return jsonify({"status":"error", "msg":"Cheating Detected!"})
     
-    if not level or not start_time:
-        return jsonify({"status":"error", "msg":"Session Expired. Refresh page."})
-        
+    level = session.get('dalgona_level')
     config = DALGONA_LEVELS[level]
     
-    # Security: Time Check (Insaan ko kam se kam 5 second to lagenge hi)
-    time_taken = time.time() - start_time
-    if time_taken < 4: 
-        return jsonify({"status":"error", "msg":"Too Fast! Bot Detected?"})
-        
-    # Give Prize
+    # 2. Time Check (Bot Protection)
+    duration = time.time() - session.get('dalgona_start_time', 0)
+    if duration < 3: # Insaan ko kam se kam 3 sec to lagenge
+        session.pop('dalgona_active', None)
+        return jsonify({"status":"error", "msg":"Too Fast! Bot?"})
+
+    # 3. Give Prize & Close Session
     db.update_balance(user_id, config['prize'])
-    
-    # Session Clear
-    session.pop('dalgona_level', None)
+    session.pop('dalgona_active', None) # Game Khatam
     
     return jsonify({
         "status": "win",
         "prize": config['prize'],
         "new_balance": db.get_user_balance(user_id)
     })
+
+@app.route('/api/dalgona/fail', methods=['POST'])
+def fail_dalgona():
+    # Sirf session clear karne ke liye (Paise start me kat chuke hain)
+    session.pop('dalgona_active', None)
+    return jsonify({"status":"ok"})
 
 # --- 17. LOGOUT & RUN ---
 @app.route('/logout')
