@@ -18102,6 +18102,8 @@ async def send_invite_msg(target_id, sender_name):
 # 🦑 DALGONA GAME PRO (REMASTERED)
 # ==========================================
 
+import time
+
 # PRICES & PRIZES REDUCED (Balanced)
 DALGONA_LEVELS = {
     1: {"name": "Circle",    "fee": 500,     "prize": 1000,      "time": 60, "shape": "circle",    "width": 15},
