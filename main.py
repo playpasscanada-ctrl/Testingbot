@@ -1122,6 +1122,7 @@ LOG_CHANNEL_ID = 987654321098765432         # <-- apna logs channel
 # ================== DISCORD INTENTS ==================
 intents = discord.Intents.default()
 intents.message_content = True
+intents.guilds = True
 intents.members = True
 intents.presences = True # <--- YE LINE ADD KARNA ZAROORI HAI
 bot = commands.Bot(command_prefix="!", intents=intents)
