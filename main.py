@@ -16666,7 +16666,7 @@ from discord import app_commands
 from supabase import create_client, Client
 
 # Initialize Flask
-app = Flask(__name__, template_folder="templates", static_folder="templates/assets")
+app = Flask(__name__)
 
 # --- 2. OPTIMIZED CACHE SYSTEM (FROM YOUR CODE) ---
 USER_CACHE_TTL = 25
@@ -16982,18 +16982,6 @@ def home():
     except Exception as e:
         # Agar koi aur dikkat aayi
         return f"<h1>Dashboard Error</h1><p>{e}</p>"
-
-from flask import Flask, render_template, send_from_directory
-
-# RUNNER GAME PAGE
-@app.route("/runner")
-def runner():
-    return render_template("runner.html")
-
-# ASSETS (GLB, MP3, etc)
-@app.route("/assets/<path:filename>")
-def assets(filename):
-    return send_from_directory("templates/assets", filename)
 
 # --- 2. SHOP ROUTE ---
 @app.route('/shop')
