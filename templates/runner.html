@@ -6,64 +6,91 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <style>
 body{margin:0;overflow:hidden;background:#000;font-family:Arial;}
-#ui{position:absolute;top:0;left:0;width:100%;z-index:10;color:white;pointer-events:none;}
-.hud{display:flex;justify-content:space-between;padding:15px;}
+
+#ui{
+  position:absolute;
+  top:0;left:0;
+  width:100%;
+  height:100%;
+  z-index:10;
+  color:white;
+  pointer-events:auto;
+}
+
+.hud{
+  display:flex;
+  justify-content:space-between;
+  padding:15px;
+  pointer-events:none;
+}
+
 .badge{
-    background:rgba(0,0,0,.55);
-    border:2px solid #00f3ff;
-    padding:8px 18px;border-radius:30px;
-    box-shadow:0 0 15px #00f3ff;
-    font-weight:bold;
+  background:rgba(0,0,0,.55);
+  border:2px solid #00f3ff;
+  padding:8px 18px;border-radius:30px;
+  box-shadow:0 0 15px #00f3ff;
+  font-weight:bold;
 }
+
 .panel{
-    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-    background:rgba(0,0,0,.85);border:2px solid #00f3ff;
-    padding:25px;border-radius:20px;text-align:center;display:none;
-    pointer-events:auto;
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  background:rgba(0,0,0,.85);
+  border:2px solid #00f3ff;
+  padding:25px;
+  border-radius:20px;
+  text-align:center;
+  display:none;
+  pointer-events:auto;
+  width:260px;
 }
+
 button{
-    background:linear-gradient(135deg,#00f3ff,#ff00de);
-    border:none;padding:12px 25px;border-radius:30px;
-    color:white;font-size:16px;margin:10px;cursor:pointer;
-    box-shadow:0 0 15px #00f3ff;
+  background:linear-gradient(135deg,#00f3ff,#ff00de);
+  border:none;padding:12px 25px;
+  border-radius:30px;
+  color:white;font-size:16px;
+  margin:10px;cursor:pointer;
+  box-shadow:0 0 15px #00f3ff;
 }
 </style>
 </head>
 <body>
 
 <div id="ui">
-    <div class="hud">
-        <div class="badge">🪙 <span id="coins">0</span></div>
-        <div class="badge">❤️ <span id="life">3</span></div>
-        <div class="badge">⚡ <span id="power">NONE</span></div>
-    </div>
+  <div class="hud">
+    <div class="badge">🪙 <span id="coins">0</span></div>
+    <div class="badge">❤️ <span id="life">3</span></div>
+    <div class="badge">⚡ <span id="power">NONE</span></div>
+  </div>
 
-    <div id="start" class="panel" style="display:block;">
-        <h1>NEON RUNNER</h1>
-        <p>Cyberpunk Subway • Male Runner</p>
-        <button onclick="startGame()">PLAY</button>
-        <button onclick="openShop()">SHOP</button>
-    </div>
+  <div id="start" class="panel" style="display:block;">
+    <h1>NEON RUNNER</h1>
+    <p>Cyberpunk Subway • Male Runner</p>
+    <button onclick="startGame()">PLAY</button>
+    <button onclick="openShop()">SHOP</button>
+  </div>
 
-    <div id="shop" class="panel">
-        <h2>SKIN SHOP</h2>
-        <p>Coins: <span id="shopCoins">0</span></p>
-        <button onclick="buySkin('default')">Default (Free)</button>
-        <button onclick="buySkin('cyber')">Cyber Suit – 100</button>
-        <button onclick="buySkin('elite')">Elite Neon – 300</button>
-        <hr>
-        <button onclick="buyUpgrade('speed')">Speed + – 150</button>
-        <button onclick="buyUpgrade('shield')">Shield + – 200</button>
-        <br>
-        <button onclick="closeShop()">CLOSE</button>
-    </div>
+  <div id="shop" class="panel">
+    <h2>SKIN SHOP</h2>
+    <p>Coins: <span id="shopCoins">0</span></p>
+    <button onclick="buySkin('default')">Default (Free)</button>
+    <button onclick="buySkin('cyber')">Cyber Suit – 100</button>
+    <button onclick="buySkin('elite')">Elite Neon – 300</button>
+    <hr>
+    <button onclick="buyUpgrade('speed')">Speed + – 150</button>
+    <button onclick="buyUpgrade('shield')">Shield + – 200</button>
+    <br>
+    <button onclick="closeShop()">CLOSE</button>
+  </div>
 
-    <div id="gameover" class="panel">
-        <h2>GAME OVER</h2>
-        <p>Coins: <span id="finalCoins">0</span></p>
-        <p>Earnings: $<span id="finalMoney">0</span></p>
-        <button onclick="location.reload()">RESTART</button>
-    </div>
+  <div id="gameover" class="panel">
+    <h2>GAME OVER</h2>
+    <p>Coins: <span id="finalCoins">0</span></p>
+    <p>Earnings: $<span id="finalMoney">0</span></p>
+    <button onclick="location.reload()">RESTART</button>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
@@ -87,210 +114,247 @@ const loader = new THREE.GLTFLoader();
 /* ================= SETUP ================= */
 init();
 function init(){
-    scene=new THREE.Scene();
-    scene.fog=new THREE.Fog(0x050010,10,200);
+  scene=new THREE.Scene();
+  scene.fog=new THREE.Fog(0x050010,10,200);
 
-    camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,0.1,1000);
-    camera.position.set(0,5,10);
+  camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,0.1,1000);
+  camera.position.set(0,3,8);
+  camera.lookAt(0,1,0);
 
-    renderer=new THREE.WebGLRenderer({antialias:true});
-    renderer.setSize(innerWidth,innerHeight);
-    renderer.setClearColor(0x050010);
-    document.body.appendChild(renderer.domElement);
+  renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setClearColor(0x050010);
+  document.body.appendChild(renderer.domElement);
 
-    const light=new THREE.DirectionalLight(0x00f3ff,1);
-    light.position.set(10,20,10);
-    scene.add(light);
-    scene.add(new THREE.AmbientLight(0x8844ff,0.5));
+  window.addEventListener("resize",()=>{
+    camera.aspect=window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth,window.innerHeight);
+  });
 
-    createGround();
-    loadPlayer();
-    spawnEnemy();
+  const light=new THREE.DirectionalLight(0x00f3ff,1);
+  light.position.set(10,20,10);
+  scene.add(light);
+  scene.add(new THREE.AmbientLight(0x8844ff,0.5));
+
+  createGround();
+  loadPlayer();
+  spawnEnemy();
 }
 
 /* ================= GROUND ================= */
 function createGround(){
-    const geo=new THREE.PlaneGeometry(1000,1000);
-    const mat=new THREE.MeshStandardMaterial({color:0x111111});
-    const ground=new THREE.Mesh(geo,mat);
-    ground.rotation.x=-Math.PI/2;
-    ground.position.y = 0;   // ground height fix
-    scene.add(ground);
+  const geo=new THREE.PlaneGeometry(1000,1000);
+  const mat=new THREE.MeshStandardMaterial({color:0x111111});
+  const ground=new THREE.Mesh(geo,mat);
+  ground.rotation.x=-Math.PI/2;
+  ground.position.y=0;
+  scene.add(ground);
 }
 
-/* ================= PLAYER (GLTF) ================= */
+/* ================= PLAYER ================= */
 function loadPlayer(){
-    loader.load("assets/models/player.glb", gltf=>{
-        player=gltf.scene;
-        player.scale.set(1.4,1.4,1.4);
-        player.position.y = 0;
-        scene.add(player);
+  loader.load(
+    "assets/models/player.glb",
+    gltf=>{
+      player=gltf.scene;
+      player.scale.set(1.4,1.4,1.4);
+      player.position.set(0,0,0);
+      scene.add(player);
 
-        mixer=new THREE.AnimationMixer(player);
-        if(gltf.animations.length){
-            mixer.clipAction(gltf.animations[0]).play();
-        }
-    });
-}
-
-/* ================= COIN LINES (GLB) ================= */
-function spawnCoinLine(){
-    for(let i=0;i<12;i++){
-        loader.load("assets/models/coin.glb", gltf=>{
-            const c = gltf.scene;
-
-            // 🪙 COIN SIZE FIX
-            c.scale.set(0.4,0.4,0.4);
-            c.position.set(lane*2,1.2,-i*3-15);
-
-            scene.add(c);
-            coins.push(c);
-        });
+      mixer=new THREE.AnimationMixer(player);
+      if(gltf.animations.length){
+        mixer.clipAction(gltf.animations[0]).play();
+      }
+    },
+    undefined,
+    err=>{
+      console.log("❌ Player model load failed, using fallback cube",err);
+      const geo=new THREE.BoxGeometry(1,2,1);
+      const mat=new THREE.MeshStandardMaterial({color:0x00f3ff});
+      player=new THREE.Mesh(geo,mat);
+      scene.add(player);
     }
+  );
 }
 
-/* ================= OBSTACLES (GLB) ================= */
-function spawnObstacle(type="train"){
-    const modelPath = type==="train" 
-        ? "assets/models/train.glb" 
-        : "assets/models/barrier.glb";
-
-    loader.load(modelPath, gltf=>{
-        const o = gltf.scene;
-
-        // 🚧 OBSTACLE SIZE FIX
-        if(type==="train"){
-            o.scale.set(0.6,0.6,0.6);   // train size
-            o.position.set(lane*2,0.8,-30);
-        }else{
-            o.scale.set(0.8,0.8,0.8);   // barrier size
-            o.position.set(lane*2,0.5,-30);
-        }
-
-        o.userData.type=type;
-        scene.add(o);
-        obstacles.push(o);
+/* ================= COIN LINES ================= */
+function spawnCoinLine(){
+  for(let i=0;i<12;i++){
+    loader.load("assets/models/coin.glb",gltf=>{
+      const c=gltf.scene;
+      c.scale.set(0.4,0.4,0.4);
+      c.position.set(lane*2,1.2,-i*3-15);
+      scene.add(c);
+      coins.push(c);
     });
+  }
 }
 
-/* ================= BOSS / POLICE ================= */
+/* ================= OBSTACLES ================= */
+function spawnObstacle(type="train"){
+  const path=type==="train"?"assets/models/train.glb":"assets/models/barrier.glb";
+  loader.load(path,gltf=>{
+    const o=gltf.scene;
+    if(type==="train"){
+      o.scale.set(0.6,0.6,0.6);
+      o.position.set(lane*2,0.8,-30);
+    }else{
+      o.scale.set(0.8,0.8,0.8);
+      o.position.set(lane*2,0.5,-30);
+    }
+    o.userData.type=type;
+    scene.add(o);
+    obstacles.push(o);
+  });
+}
+
+/* ================= ENEMY ================= */
 function spawnEnemy(){
-    const geo=new THREE.BoxGeometry(2,3,2);
-    const mat=new THREE.MeshStandardMaterial({color:0xaa00ff,emissive:0x5500aa});
-    enemy=new THREE.Mesh(geo,mat);
-    enemy.position.set(0,1.5,-40);
-    scene.add(enemy);
+  const geo=new THREE.BoxGeometry(2,3,2);
+  const mat=new THREE.MeshStandardMaterial({color:0xaa00ff,emissive:0x5500aa});
+  enemy=new THREE.Mesh(geo,mat);
+  enemy.position.set(0,1.5,-40);
+  scene.add(enemy);
 }
 function enemyAI(){
-    if(!enemy||!player)return;
-    enemy.position.z+=0.05;
-    if(enemy.position.z>-2){
-        hitPlayer();
-        enemy.position.z=-40;
-    }
+  if(!enemy||!player)return;
+  enemy.position.z+=0.05;
+  if(enemy.position.z>-2){
+    hitPlayer();
+    enemy.position.z=-40;
+  }
 }
 
-/* ================= CONTROLS ================= */
+/* ================= KEYBOARD CONTROLS ================= */
 window.addEventListener("keydown",e=>{
-    if(!game)return;
-    if(e.key==="ArrowLeft")lane=Math.max(-1,lane-1);
-    if(e.key==="ArrowRight")lane=Math.min(1,lane+1);
-    if(e.key==="ArrowUp")jump();
-    if(e.key==="ArrowDown")slide();
+  if(!game)return;
+  if(e.key==="ArrowLeft")lane=Math.max(-1,lane-1);
+  if(e.key==="ArrowRight")lane=Math.min(1,lane+1);
+  if(e.key==="ArrowUp")jump();
+  if(e.key==="ArrowDown")slide();
 });
 
+/* ================= MOBILE SWIPE ================= */
+let touchStartX=0,touchStartY=0;
+window.addEventListener("touchstart",e=>{
+  const t=e.changedTouches[0];
+  touchStartX=t.clientX;
+  touchStartY=t.clientY;
+});
+window.addEventListener("touchend",e=>{
+  if(!game)return;
+  const t=e.changedTouches[0];
+  const dx=t.clientX-touchStartX;
+  const dy=t.clientY-touchStartY;
+
+  if(Math.abs(dx)>Math.abs(dy)){
+    if(dx>40) lane=Math.min(1,lane+1);
+    if(dx<-40) lane=Math.max(-1,lane-1);
+  }else{
+    if(dy<-40) jump();   // swipe up
+    if(dy>40) slide();  // swipe down
+  }
+});
+
+/* ================= JUMP / SLIDE ================= */
 let y=0,vy=0,jumping=false,sliding=false;
 function jump(){
-    if(!jumping){
-        vy=0.6;jumping=true;
-    }
+  if(!jumping){
+    vy=0.6;
+    jumping=true;
+  }
 }
 function slide(){
-    if(!sliding && !jumping){
-        sliding=true;
-        setTimeout(()=>sliding=false,500);
-    }
+  if(!sliding && !jumping){
+    sliding=true;
+    setTimeout(()=>sliding=false,500);
+  }
 }
 
 /* ================= COLLISION ================= */
 function hitPlayer(){
-    if(inventory.upgrades.shield>0){
-        inventory.upgrades.shield--;
-    }else{
-        life--;
-        document.getElementById("life").innerText=life;
-        if(life<=0)endGame();
-    }
+  if(inventory.upgrades.shield>0){
+    inventory.upgrades.shield--;
+  }else{
+    life--;
+    document.getElementById("life").innerText=life;
+    if(life<=0)endGame();
+  }
 }
 
 /* ================= SHOP ================= */
 function openShop(){
-    document.getElementById("shop").style.display="block";
-    document.getElementById("shopCoins").innerText=score;
+  document.getElementById("shop").style.display="block";
+  document.getElementById("shopCoins").innerText=score;
 }
 function closeShop(){document.getElementById("shop").style.display="none";}
 function buySkin(name){
-    if(name==="default"){currentSkin=name;}
-    if(name==="cyber"&&score>=100){score-=100;currentSkin=name;}
-    if(name==="elite"&&score>=300){score-=300;currentSkin=name;}
+  if(name==="default"){currentSkin=name;}
+  if(name==="cyber"&&score>=100){score-=100;currentSkin=name;}
+  if(name==="elite"&&score>=300){score-=300;currentSkin=name;}
 }
 function buyUpgrade(type){
-    if(type==="speed"&&score>=150){score-=150;inventory.upgrades.speed++;}
-    if(type==="shield"&&score>=200){score-=200;inventory.upgrades.shield++;}
+  if(type==="speed"&&score>=150){score-=150;inventory.upgrades.speed++;}
+  if(type==="shield"&&score>=200){score-=200;inventory.upgrades.shield++;}
 }
 
 /* ================= GAME ================= */
 function startGame(){
-    document.getElementById("start").style.display="none";
-    game=true;
-    spawnCoinLine();
-    spawnObstacle("train");
-    animate();
+  document.getElementById("start").style.display="none";
+  game=true;
+  spawnCoinLine();
+  spawnObstacle("train");
+  animate();
 }
 function endGame(){
-    game=false;
-    document.getElementById("gameover").style.display="block";
-    document.getElementById("finalCoins").innerText=score;
-    document.getElementById("finalMoney").innerText=(score*10).toLocaleString();
+  game=false;
+  document.getElementById("gameover").style.display="block";
+  document.getElementById("finalCoins").innerText=score;
+  document.getElementById("finalMoney").innerText=(score*10).toLocaleString();
 }
 
 /* ================= LOOP ================= */
 function animate(){
-    requestAnimationFrame(animate);
-    if(!game)return;
+  requestAnimationFrame(animate);
+  if(!game)return;
 
-    if(mixer)mixer.update(clock.getDelta());
+  if(mixer)mixer.update(clock.getDelta());
 
-    if(player){
-        player.position.x+=(lane*2-player.position.x)*0.1;
-        if(jumping){
-            y+=vy;vy-=0.03;
-            if(y<=0){y=0;jumping=false;}
-        }
-        player.position.y=y;
+  if(player){
+    player.position.x+=(lane*2-player.position.x)*0.1;
+    if(jumping){
+      y+=vy;vy-=0.03;
+      if(y<=0){y=0;jumping=false;}
     }
+    player.position.y=y;
+  }
 
-    coins.forEach((c,i)=>{
-        c.position.z+=speed;
-        if(c.position.z>2){
-            score++;
-            document.getElementById("coins").innerText=score;
-            scene.remove(c);
-            coins.splice(i,1);
-        }
-    });
+  camera.position.x=player?player.position.x:0;
+  camera.lookAt(player?player.position.x:0,1,0);
 
-    obstacles.forEach((o,i)=>{
-        o.position.z+=speed;
-        if(o.position.z>1){
-            hitPlayer();
-            scene.remove(o);
-            obstacles.splice(i,1);
-        }
-    });
+  coins.forEach((c,i)=>{
+    c.position.z+=speed;
+    if(c.position.z>2){
+      score++;
+      document.getElementById("coins").innerText=score;
+      scene.remove(c);
+      coins.splice(i,1);
+    }
+  });
 
-    enemyAI();
-    renderer.render(scene,camera);
+  obstacles.forEach((o,i)=>{
+    o.position.z+=speed;
+    if(o.position.z>1){
+      hitPlayer();
+      scene.remove(o);
+      obstacles.splice(i,1);
+    }
+  });
+
+  enemyAI();
+  renderer.render(scene,camera);
 }
 </script>
 </body>
