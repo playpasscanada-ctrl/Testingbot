@@ -82,6 +82,8 @@ let game=false;
 let inventory={skins:["default"],upgrades:{speed:0,shield:0}};
 let currentSkin="default";
 
+const loader = new THREE.GLTFLoader();
+
 /* ================= SETUP ================= */
 init();
 function init(){
@@ -112,47 +114,63 @@ function createGround(){
     const mat=new THREE.MeshStandardMaterial({color:0x111111});
     const ground=new THREE.Mesh(geo,mat);
     ground.rotation.x=-Math.PI/2;
+    ground.position.y = 0;   // ground height fix
     scene.add(ground);
 }
 
 /* ================= PLAYER (GLTF) ================= */
 function loadPlayer(){
-    const loader=new THREE.GLTFLoader();
-    loader.load(
-        "assets/models/player.glb", // ← tumhara male model yahan
-        gltf=>{
-            player=gltf.scene;
-            player.scale.set(1.4,1.4,1.4);
-            scene.add(player);
-            mixer=new THREE.AnimationMixer(player);
-            if(gltf.animations.length){
-                mixer.clipAction(gltf.animations[0]).play();
-            }
+    loader.load("assets/models/player.glb", gltf=>{
+        player=gltf.scene;
+        player.scale.set(1.4,1.4,1.4);
+        player.position.y = 0;
+        scene.add(player);
+
+        mixer=new THREE.AnimationMixer(player);
+        if(gltf.animations.length){
+            mixer.clipAction(gltf.animations[0]).play();
         }
-    );
+    });
 }
 
-/* ================= COIN LINES ================= */
+/* ================= COIN LINES (GLB) ================= */
 function spawnCoinLine(){
     for(let i=0;i<12;i++){
-        const geo=new THREE.TorusGeometry(0.3,0.15,8,16);
-        const mat=new THREE.MeshStandardMaterial({color:0xffd700,emissive:0xffaa00});
-        const c=new THREE.Mesh(geo,mat);
-        c.position.set(lane*2,1,-i*3-15);
-        scene.add(c);
-        coins.push(c);
+        loader.load("assets/models/coin.glb", gltf=>{
+            const c = gltf.scene;
+
+            // 🪙 COIN SIZE FIX
+            c.scale.set(0.4,0.4,0.4);
+            c.position.set(lane*2,1.2,-i*3-15);
+
+            scene.add(c);
+            coins.push(c);
+        });
     }
 }
 
-/* ================= OBSTACLES ================= */
+/* ================= OBSTACLES (GLB) ================= */
 function spawnObstacle(type="train"){
-    const geo=new THREE.BoxGeometry(2,2,4);
-    const mat=new THREE.MeshStandardMaterial({color:type==="train"?0xff0055:0x00f3ff});
-    const o=new THREE.Mesh(geo,mat);
-    o.position.set(lane*2,1,-30);
-    o.userData.type=type;
-    scene.add(o);
-    obstacles.push(o);
+    const modelPath = type==="train" 
+        ? "assets/models/train.glb" 
+        : "assets/models/barrier.glb";
+
+    loader.load(modelPath, gltf=>{
+        const o = gltf.scene;
+
+        // 🚧 OBSTACLE SIZE FIX
+        if(type==="train"){
+            o.scale.set(0.6,0.6,0.6);   // train size
+            o.position.set(lane*2,0.8,-30);
+        }else{
+            o.scale.set(0.8,0.8,0.8);   // barrier size
+            o.position.set(lane*2,0.5,-30);
+        }
+
+        o.userData.type=type;
+        scene.add(o);
+        obstacles.push(o);
+    });
 }
 
 /* ================= BOSS / POLICE ================= */
