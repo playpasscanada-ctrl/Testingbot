@@ -16607,9 +16607,13 @@ async def unauthorize(interaction: discord.Interaction, server_id: str):
     except Exception as e:
         await interaction.response.send_message(f"❌ **Error:** {e}", ephemeral=True)
 
-# --- 💰 3. PREMIUM SALARY SYSTEM (CONNECTED COMMAND) ---
+# --- 💰 3. PREMIUM SALARY SYSTEM (FIXED & CONNECTED) ---
+import pytz
+from datetime import datetime, time as dt_time # 👈 Fixed Import (Naam badal diya)
+
 india_tz = pytz.timezone("Asia/Kolkata")
-salary_time = time(hour=0, minute=0, tzinfo=india_tz) 
+# 👇 Yahan ab dt_time use hoga, taaki error na aaye
+salary_time = dt_time(hour=0, minute=0, tzinfo=india_tz) 
 
 # 👇 YE AAPKA MAIN CODE HAI (Jisko hum activate karenge) 👇
 async def run_salary_system():
@@ -16707,9 +16711,7 @@ async def checksalary(interaction: discord.Interaction):
             
     except Exception as e:
         await interaction.followup.send(f"❌ Error: {e}")
-
-
-                            
+                        
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
 import time
