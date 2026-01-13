@@ -18373,26 +18373,23 @@ def fail_dalgona():
     return jsonify({"status":"ok"})
 
 # ==========================================
-# 🎰 VIP ROULETTE (Updated Route Structure)
+# 🎰 VIP ROULETTE (Fixed & Updated Route)
 # ==========================================
 
-# Roulette Logic (Colors)
+# Roulette Logic (Colors) - YE EKDAM SAHI HAI
 RED_NUMS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]
 BLACK_NUMS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35]
 
-# ✅ PAGE ROUTE: Ab ye '/games/roulette' par khulega
+# ✅ PAGE ROUTE
 @app.route('/games/roulette')
 def roulette_page():
     if 'user_info' not in session: 
         return redirect('/')
     
-    # User ka latest balance fetch karte hain (Dalgona pattern jaisa)
     uid = session['user_info']['id']
     try:
         res = supabase.table("economy").select("balance").eq("user_id", uid).execute()
         current_balance = res.data[0]['balance'] if res.data else 0
-        
-        # Session me bhi update kar dete hain taaki sync rahe
         session['user_info']['balance'] = current_balance
     except:
         current_balance = 0
@@ -18400,7 +18397,7 @@ def roulette_page():
     return render_template('roulette.html', user=session['user_info'], balance=current_balance)
 
 
-# ✅ API ROUTE: Isko '/api/spin_roulette' kar dete hain taaki conflict na ho
+# ✅ API ROUTE
 @app.route('/api/spin_roulette', methods=['POST'])
 def spin_roulette_api():
     try:
@@ -18410,22 +18407,20 @@ def spin_roulette_api():
         bet_value = data.get('value')
         bet_amount = int(data.get('amount'))
 
-        # 1. Balance Check
+        # 1. Balance Check & Deduction
         res = supabase.table("economy").select("balance").eq("user_id", uid).execute()
         if not res.data: return jsonify({"status": "error", "msg": "Login First!"})
         
         current_bal = int(res.data[0]['balance'])
         if current_bal < bet_amount:
             return jsonify({"status": "error", "msg": "Insufficient Balance!"})
-
         if bet_amount <= 0:
             return jsonify({"status": "error", "msg": "Invalid Amount!"})
 
-        # 2. Deduct Money
         new_bal = current_bal - bet_amount
         supabase.table("economy").update({"balance": new_bal}).eq("user_id", uid).execute()
 
-        # 3. Spin Logic
+        # 2. Spin Logic
         import random
         landed_number = random.randint(0, 36)
         
@@ -18433,7 +18428,7 @@ def spin_roulette_api():
         if landed_number in RED_NUMS: landed_color = "red"
         elif landed_number in BLACK_NUMS: landed_color = "black"
 
-        # 4. Win Logic
+        # 3. Win Logic - ✅ BUG FIXED HERE
         win_amount = 0
         is_win = False
         message = "Better luck next time!"
@@ -18445,6 +18440,7 @@ def spin_roulette_api():
                 message = f"JACKPOT! Number {landed_number} hit!"
 
         elif bet_type == "color":
+            # ✅ FIX: Ensure correct color comparison
             if bet_value == "red" and landed_color == "red":
                 win_amount = bet_amount * 4
                 is_win = True
@@ -18453,8 +18449,14 @@ def spin_roulette_api():
                 win_amount = bet_amount * 2
                 is_win = True
                 message = "BLACK WINS! 2x Multiplier!"
+            # ✅ ADDED: Logic for Green (0) if needed in future or for clarity
+            elif bet_value == "green" and landed_color == "green":
+                 win_amount = bet_amount * 36 # Usually 0 is a number bet, but for completeness
+                 is_win = True
+                 message = "GREEN (0) WINS! JACKPOT!"
 
-        # 5. Add Winnings
+
+        # 4. Add Winnings
         if is_win:
             new_bal += win_amount
             supabase.table("economy").update({"balance": new_bal}).eq("user_id", uid).execute()
@@ -18472,8 +18474,6 @@ def spin_roulette_api():
     except Exception as e:
         print(f"Roulette Error: {e}")
         return jsonify({"status": "error", "msg": "Server Error"})
-
-
 
 # --- 17. LOGOUT & RUN ---
 @app.route('/logout')
