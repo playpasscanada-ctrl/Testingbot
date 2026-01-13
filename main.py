@@ -18372,84 +18372,108 @@ def fail_dalgona():
     session.pop('dalgona_active', None)
     return jsonify({"status":"ok"})
 
-# --- ROULETTE BACKEND LOGIC ---
+# ==========================================
+# 🎰 VIP ROULETTE (Updated Route Structure)
+# ==========================================
 
-# Roulette Configurations
-RED_NUMBERS = {1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36}
-BLACK_NUMBERS = {2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35}
+# Roulette Logic (Colors)
+RED_NUMS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]
+BLACK_NUMS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35]
 
-# 🛠️ YOUR CUSTOM MULTIPLIERS (Aapki marzi wale prize)
-PAYOUTS = {
-    "red": 4,      # Red par 4x
-    "black": 2,    # Black par 2x
-    "number": 3    # Number par 3x
-}
-
-@app.route('/api/spin-roulette', methods=['POST'])
-async def spin_roulette():
+# ✅ PAGE ROUTE: Ab ye '/games/roulette' par khulega
+@app.route('/games/roulette')
+def roulette_page():
+    if 'user_info' not in session: 
+        return redirect('/')
+    
+    # User ka latest balance fetch karte hain (Dalgona pattern jaisa)
+    uid = session['user_info']['id']
     try:
-        data = await request.get_json() # Agar Quart use kar rahe ho to 'await' lagega
+        res = supabase.table("economy").select("balance").eq("user_id", uid).execute()
+        current_balance = res.data[0]['balance'] if res.data else 0
         
-        # HTML se aa raha data
-        user_id = str(data.get('user_id'))
-        bet_type = data.get('bet_type') 
-        bet_value = data.get('bet_value') 
-        amount = int(data.get('amount'))
+        # Session me bhi update kar dete hain taaki sync rahe
+        session['user_info']['balance'] = current_balance
+    except:
+        current_balance = 0
 
-        # 1. DATABASE: Check User Balance
-        response = supabase.table("economy").select("balance").eq("user_id", user_id).execute()
+    return render_template('roulette.html', user=session['user_info'], balance=current_balance)
+
+
+# ✅ API ROUTE: Isko '/api/spin_roulette' kar dete hain taaki conflict na ho
+@app.route('/api/spin_roulette', methods=['POST'])
+def spin_roulette_api():
+    try:
+        data = request.json
+        uid = str(data.get('uid'))
+        bet_type = data.get('type') 
+        bet_value = data.get('value')
+        bet_amount = int(data.get('amount'))
+
+        # 1. Balance Check
+        res = supabase.table("economy").select("balance").eq("user_id", uid).execute()
+        if not res.data: return jsonify({"status": "error", "msg": "Login First!"})
         
-        if not response.data:
-            return jsonify({"error": "User account not found!"}), 400
-            
-        current_balance = response.data[0]['balance']
+        current_bal = int(res.data[0]['balance'])
+        if current_bal < bet_amount:
+            return jsonify({"status": "error", "msg": "Insufficient Balance!"})
 
-        # 2. Check: Paisa hai ya nahi?
-        if current_balance < amount:
-            return jsonify({"error": "Insufficient Funds! Recharge karo."}), 400
+        if bet_amount <= 0:
+            return jsonify({"status": "error", "msg": "Invalid Amount!"})
 
-        # 3. DATABASE: Paisa kato (Bet Amount Deduct)
-        temp_balance = current_balance - amount
-        supabase.table("economy").update({"balance": temp_balance}).eq("user_id", user_id).execute()
+        # 2. Deduct Money
+        new_bal = current_bal - bet_amount
+        supabase.table("economy").update({"balance": new_bal}).eq("user_id", uid).execute()
 
-        # 4. GAME LOGIC: Spin the Wheel
-        result_number = random.randint(0, 36)
-        winnings = 0
-        won = False
+        # 3. Spin Logic
+        import random
+        landed_number = random.randint(0, 36)
+        
+        landed_color = "green"
+        if landed_number in RED_NUMS: landed_color = "red"
+        elif landed_number in BLACK_NUMS: landed_color = "black"
 
-        # Winning Logic Check
+        # 4. Win Logic
+        win_amount = 0
+        is_win = False
+        message = "Better luck next time!"
+
         if bet_type == "number":
-            if int(bet_value) == result_number:
-                winnings = amount * PAYOUTS["number"]
-                won = True
-                
-        elif bet_type == "red":
-            if result_number in RED_NUMBERS:
-                winnings = amount * PAYOUTS["red"]
-                won = True
-                
-        elif bet_type == "black":
-            if result_number in BLACK_NUMBERS:
-                winnings = amount * PAYOUTS["black"]
-                won = True
+            if int(bet_value) == landed_number:
+                win_amount = bet_amount * 36
+                is_win = True
+                message = f"JACKPOT! Number {landed_number} hit!"
 
-        # 5. DATABASE: Agar jeeta to paise wapas add karo
-        final_balance = temp_balance
-        if won:
-            final_balance = temp_balance + winnings
-            supabase.table("economy").update({"balance": final_balance}).eq("user_id", user_id).execute()
+        elif bet_type == "color":
+            if bet_value == "red" and landed_color == "red":
+                win_amount = bet_amount * 4
+                is_win = True
+                message = "RED WINS! 4x Multiplier!"
+            elif bet_value == "black" and landed_color == "black":
+                win_amount = bet_amount * 2
+                is_win = True
+                message = "BLACK WINS! 2x Multiplier!"
 
-        # 6. Result Return karo (Frontend ko)
+        # 5. Add Winnings
+        if is_win:
+            new_bal += win_amount
+            supabase.table("economy").update({"balance": new_bal}).eq("user_id", uid).execute()
+
         return jsonify({
-            "result_number": result_number,
-            "winnings": winnings,
-            "new_balance": final_balance,
-            "status": "win" if won else "loss"
+            "status": "success",
+            "landed_number": landed_number,
+            "landed_color": landed_color,
+            "win_amount": win_amount,
+            "new_balance": new_bal,
+            "message": message,
+            "is_win": is_win
         })
 
     except Exception as e:
         print(f"Roulette Error: {e}")
-        return jsonify({"error": "Server Error"}), 500
+        return jsonify({"status": "error", "msg": "Server Error"})
+
+
 
 # --- 17. LOGOUT & RUN ---
 @app.route('/logout')
