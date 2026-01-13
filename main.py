@@ -16552,23 +16552,32 @@ async def sell_items(i: discord.Interaction):
     await i.response.send_message(embed=embed, view=view)
 
 import discord
-from discord import app_commands # <--- Ye line bahut zaroori hai
+from discord import app_commands
+from datetime import datetime
 
-# --- 👑 SLASH COMMAND: ADD SERVER ---
-@bot.tree.command(name="authorize", description="👑 Owner Only: Allow a server to use this bot")
-@app_commands.describe(server_id="Optional: Enter Server ID (Leave empty to authorize THIS server)")
+# --- 👑 SLASH COMMAND: AUTHORIZE (PREMIUM VERSION) ---
+@bot.tree.command(name="authorize", description="🛡️ Official Authority: Grant access to a server")
+@app_commands.describe(server_id="Enter Server ID (Leave empty for this server)")
 async def authorize(interaction: discord.Interaction, server_id: str = None):
     # 1. Security Check
     if interaction.user.id != OWNER_ID:
-        return await interaction.response.send_message("❌ **Access Denied:** Sirf Owner use kar sakta hai.", ephemeral=True)
+        embed = discord.Embed(title="🚫 ACCESS DENIED", description="Only the **Supreme Bot Owner** can grant authority.", color=0xff0000)
+        return await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    # 2. ID Decision (Agar ID di hai to wo lo, nahi to Current Server ki lo)
-    try:
-        target_id = int(server_id) if server_id else interaction.guild_id
-    except ValueError:
-        return await interaction.response.send_message("❌ **Error:** Please enter a valid Numeric Server ID.", ephemeral=True)
-    
-    await interaction.response.defer(ephemeral=True)
+    # 2. Target Server Logic
+    target_guild = None
+    if server_id:
+        try:
+            target_guild = bot.get_guild(int(server_id))
+            target_id = int(server_id)
+        except:
+            return await interaction.response.send_message("❌ **Invalid ID:** Please provide a numeric Server ID.", ephemeral=True)
+    else:
+        target_guild = interaction.guild
+        target_id = interaction.guild_id
+
+    # Defer (Visible to all because ephemeral=False)
+    await interaction.response.defer(ephemeral=False)
 
     try:
         # 3. Database Entry
@@ -16577,40 +16586,87 @@ async def authorize(interaction: discord.Interaction, server_id: str = None):
             "added_by": str(interaction.user.id)
         }).execute()
         
-        # 4. Cache Update (Taaki restart na karna pade)
+        # 4. Cache Update
         authorized_guilds_cache.add(target_id)
         
-        await interaction.followup.send(f"✅ **Success!** Server ID `{target_id}` is now Authorized.")
+        # --- 🏆 PREMIUM EMBED BUILDER ---
+        embed = discord.Embed(
+            title="🛡️ OFFICIAL SERVER AUTHORIZATION",
+            description=f"This server has been granted **Official Access** to use all premium systems of **{bot.user.name}**.",
+            color=0x00ff00, # Green for Success
+            timestamp=datetime.now()
+        )
+        
+        # Server Name and Icon
+        guild_name = target_guild.name if target_guild else f"Server ID: {target_id}"
+        embed.add_field(name="🏛️ Authorized Server", value=f"**{guild_name}**", inline=True)
+        embed.add_field(name="🆔 Server ID", value=f"`{target_id}`", inline=True)
+        
+        # Authorized By (Name + Avatar)
+        embed.add_field(name="👑 Authorized By", value=f"{interaction.user.mention}", inline=False)
+        
+        if target_guild and target_guild.icon:
+            embed.set_thumbnail(url=target_guild.icon.url)
+        
+        embed.set_author(name="Central Security Command", icon_url=bot.user.display_avatar.url)
+        embed.set_footer(text="Verified Authority Access • No Expiry", icon_url=interaction.user.display_avatar.url)
+        
+        await interaction.followup.send(embed=embed)
         
     except Exception as e:
-        await interaction.followup.send(f"⚠️ **Error:** Ye server shayad pehle se list me hai.\n`{e}`")
+        await interaction.followup.send(f"⚠️ **Notice:** This server is already within the Authorized Database.\n`System Log: {e}`", ephemeral=True)
 
-# --- 👑 SLASH COMMAND: REMOVE SERVER ---
-@bot.tree.command(name="unauthorize", description="👑 Owner Only: Remove a server from allowed list")
-@app_commands.describe(server_id="The Server ID you want to block")
+# --- 👑 SLASH COMMAND: UNAUTHORIZE (OFFICIAL VERSION) ---
+@bot.tree.command(name="unauthorize", description="🚫 Official Authority: Revoke server access")
+@app_commands.describe(server_id="The Server ID to be blocked")
 async def unauthorize(interaction: discord.Interaction, server_id: str):
-    # 1. Security Check
     if interaction.user.id != OWNER_ID:
-        return await interaction.response.send_message("❌ **Access Denied.**", ephemeral=True)
+        return await interaction.response.send_message("❌ **Authority Failure.**", ephemeral=True)
 
     try:
         target_id = int(server_id)
+        target_guild = bot.get_guild(target_id)
         
-        # 2. Database Delete
+        # DB & Cache Delete
         supabase.table("authorized_servers").delete().eq("server_id", str(target_id)).execute()
-        
-        # 3. Cache Removal
         if target_id in authorized_guilds_cache:
             authorized_guilds_cache.remove(target_id)
             
-        await interaction.response.send_message(f"🚫 **Blocked!** Server ID `{target_id}` removed from access list.", ephemeral=True)
+        # --- 🚫 PREMIUM REMOVAL EMBED ---
+        embed = discord.Embed(
+            title="⚠️ ACCESS REVOKED",
+            description="The security clearance for this server has been terminated by the Central Command.",
+            color=0xff0000, # Red for Removal
+            timestamp=datetime.now()
+        )
+        
+        guild_name = target_guild.name if target_guild else f"Server ID: {target_id}"
+        embed.add_field(name="🏛️ Blocked Server", value=f"**{guild_name}**", inline=True)
+        embed.add_field(name="🚨 Status", value="`UNAUTHORIZED`", inline=True)
+        
+        if target_guild and target_guild.icon:
+            embed.set_thumbnail(url=target_guild.icon.url)
+
+        embed.set_footer(text=f"Revoked by {interaction.user.name}", icon_url=interaction.user.display_avatar.url)
+        
+        await interaction.response.send_message(embed=embed, ephemeral=False)
+
     except Exception as e:
-        await interaction.response.send_message(f"❌ **Error:** {e}", ephemeral=True)
+        await interaction.response.send_message(f"❌ **System Error:** {e}", ephemeral=True)
+
 
 # --- 💰 3. PREMIUM SALARY SYSTEM (FIXED & CONNECTED) ---
 import pytz
-from datetime import datetime, time as dt_time # 👈 Fixed Import (Naam badal diya)
+from datetime import datetime, time as dt_time # 👈Fixed Import (Naam badal diya)
+import asyncio
+from discord.ext import tasks
 
+# --- CONFIG ---
+OWNER_ID = 804687084249284618   # Owner ID
+STAFF_ROLE_ID = 1459074209191039049  # Staff Role ID
+GUILD_ID = 1257403231127076915       # Server ID
+SALARY_LOG_CHANNEL_ID = 1457066104819028089 # Log Channel
+STAFF_SALARY = 50000000          # $50 Mill
 india_tz = pytz.timezone("Asia/Kolkata")
 # 👇 Yahan ab dt_time use hoga, taaki error na aaye
 salary_time = dt_time(hour=0, minute=0, tzinfo=india_tz) 
