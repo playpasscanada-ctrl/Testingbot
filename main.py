@@ -128,7 +128,7 @@ SHOP_ITEMS = {
     "lotto_god":  {"name": "🎰 GOD TICKET", "price": 100000000, "type": "lotto", "win": 50000000000, "chance": 1},
 }
 
-Import asyncio
+import asyncio
 import pytz
 from datetime import datetime, time
 from discord.ext import tasks
