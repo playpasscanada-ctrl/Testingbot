@@ -187,8 +187,8 @@
             sound.play();
 
             try {
-                // ✅ UPDATED API URL
-                const res = await fetch('/api/spin_vip', {
+                // ✅ FIXED: Updated API Route to match your new Python backend
+                const res = await fetch('/api/spin_roulette', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ uid: uid, type: selectedType, value: selectedValue, amount: amount })
@@ -220,7 +220,7 @@
                         document.getElementById('winSound').play();
                         showPopup("WINNER!", `+ $${data.win_amount.toLocaleString()}`, data.message);
                     } else {
-                        // Loss feedback
+                        // Loss feedback (optional)
                     }
 
                     document.getElementById('balance').innerText = data.new_balance.toLocaleString();
