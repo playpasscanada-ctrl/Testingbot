@@ -2,28 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Neon Rider – 3D Subway Edition</title>
+<title>Neon Runner – Cyberpunk Subway</title>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-
 <style>
 body{margin:0;overflow:hidden;background:#000;font-family:Arial;}
-#ui{
-    position:absolute;top:0;left:0;width:100%;z-index:10;color:white;
-    pointer-events:none;
-}
-.hud{
-    display:flex;justify-content:space-between;padding:15px;
-}
+#ui{position:absolute;top:0;left:0;width:100%;z-index:10;color:white;pointer-events:none;}
+.hud{display:flex;justify-content:space-between;padding:15px;}
 .badge{
-    background:rgba(0,0,0,0.55);
+    background:rgba(0,0,0,.55);
     border:2px solid #00f3ff;
     padding:8px 18px;border-radius:30px;
     box-shadow:0 0 15px #00f3ff;
     font-weight:bold;
 }
-#shop,#gameover,#start{
+.panel{
     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-    background:rgba(0,0,0,0.8);border:2px solid #00f3ff;
+    background:rgba(0,0,0,.85);border:2px solid #00f3ff;
     padding:25px;border-radius:20px;text-align:center;display:none;
     pointer-events:auto;
 }
@@ -44,27 +38,27 @@ button{
         <div class="badge">⚡ <span id="power">NONE</span></div>
     </div>
 
-    <div id="start">
-        <h1>NEON RIDER 3D</h1>
-        <p>Subway Surfers Style Runner</p>
+    <div id="start" class="panel" style="display:block;">
+        <h1>NEON RUNNER</h1>
+        <p>Cyberpunk Subway • Male Runner</p>
         <button onclick="startGame()">PLAY</button>
         <button onclick="openShop()">SHOP</button>
     </div>
 
-    <div id="shop">
+    <div id="shop" class="panel">
         <h2>SKIN SHOP</h2>
         <p>Coins: <span id="shopCoins">0</span></p>
         <button onclick="buySkin('default')">Default (Free)</button>
         <button onclick="buySkin('cyber')">Cyber Suit – 100</button>
-        <button onclick="buySkin('gold')">Golden Runner – 300</button>
-        <br>
-        <button onclick="buyUpgrade('speed')">Speed Upgrade – 150</button>
-        <button onclick="buyUpgrade('shield')">Shield Upgrade – 200</button>
+        <button onclick="buySkin('elite')">Elite Neon – 300</button>
+        <hr>
+        <button onclick="buyUpgrade('speed')">Speed + – 150</button>
+        <button onclick="buyUpgrade('shield')">Shield + – 200</button>
         <br>
         <button onclick="closeShop()">CLOSE</button>
     </div>
 
-    <div id="gameover">
+    <div id="gameover" class="panel">
         <h2>GAME OVER</h2>
         <p>Coins: <span id="finalCoins">0</span></p>
         <p>Earnings: $<span id="finalMoney">0</span></p>
@@ -77,64 +71,59 @@ button{
 
 <script>
 /* ================= CORE ================= */
-let scene, camera, renderer;
-let player, mixer, clock=new THREE.Clock();
-let coins=[], obstacles=[], enemy;
-let lane=0, speed=0.35;
-let score=0, life=3;
+let scene,camera,renderer;
+let player,mixer,clock=new THREE.Clock();
+let coins=[],obstacles=[],enemy;
+let lane=0,speed=0.4;
+let score=0,life=3;
 let power="NONE";
 let game=false;
 
-let upgrades={speed:0,shield:0};
-let ownedSkin="default";
+let inventory={skins:["default"],upgrades:{speed:0,shield:0}};
+let currentSkin="default";
 
 /* ================= SETUP ================= */
 init();
 function init(){
     scene=new THREE.Scene();
-    scene.fog=new THREE.Fog(0x87cefa,10,200);
+    scene.fog=new THREE.Fog(0x050010,10,200);
 
     camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,0.1,1000);
     camera.position.set(0,5,10);
 
     renderer=new THREE.WebGLRenderer({antialias:true});
     renderer.setSize(innerWidth,innerHeight);
-    renderer.setClearColor(0x87cefa);
+    renderer.setClearColor(0x050010);
     document.body.appendChild(renderer.domElement);
 
-    const light=new THREE.DirectionalLight(0xffffff,1);
+    const light=new THREE.DirectionalLight(0x00f3ff,1);
     light.position.set(10,20,10);
     scene.add(light);
-    scene.add(new THREE.AmbientLight(0xffffff,0.5));
+    scene.add(new THREE.AmbientLight(0x8844ff,0.5));
 
     createGround();
     loadPlayer();
     spawnEnemy();
-
-    document.getElementById("start").style.display="block";
 }
 
 /* ================= GROUND ================= */
 function createGround(){
     const geo=new THREE.PlaneGeometry(1000,1000);
-    const mat=new THREE.MeshStandardMaterial({color:0x444444});
+    const mat=new THREE.MeshStandardMaterial({color:0x111111});
     const ground=new THREE.Mesh(geo,mat);
     ground.rotation.x=-Math.PI/2;
     scene.add(ground);
 }
 
-/* ================= PLAYER (GLTF MODEL) ================= */
+/* ================= PLAYER (GLTF) ================= */
 function loadPlayer(){
     const loader=new THREE.GLTFLoader();
     loader.load(
-        // 👇 Replace with your own realistic character model
-        "https://models.babylonjs.com/CesiumMan/glTF/CesiumMan.gltf",
+        "assets/models/player.glb", // ← tumhara male model yahan
         gltf=>{
             player=gltf.scene;
-            player.scale.set(1.5,1.5,1.5);
-            player.position.set(0,0,0);
+            player.scale.set(1.4,1.4,1.4);
             scene.add(player);
-
             mixer=new THREE.AnimationMixer(player);
             if(gltf.animations.length){
                 mixer.clipAction(gltf.animations[0]).play();
@@ -145,38 +134,38 @@ function loadPlayer(){
 
 /* ================= COIN LINES ================= */
 function spawnCoinLine(){
-    for(let i=0;i<8;i++){
+    for(let i=0;i<12;i++){
         const geo=new THREE.TorusGeometry(0.3,0.15,8,16);
         const mat=new THREE.MeshStandardMaterial({color:0xffd700,emissive:0xffaa00});
-        const coin=new THREE.Mesh(geo,mat);
-        coin.position.set(lane*2,1,-i*3-15);
-        scene.add(coin);
-        coins.push(coin);
+        const c=new THREE.Mesh(geo,mat);
+        c.position.set(lane*2,1,-i*3-15);
+        scene.add(c);
+        coins.push(c);
     }
 }
 
-/* ================= OBSTACLE ================= */
-function spawnObstacle(){
-    const geo=new THREE.BoxGeometry(1.5,1.5,1.5);
-    const mat=new THREE.MeshStandardMaterial({color:0xff3333});
-    const obs=new THREE.Mesh(geo,mat);
-    obs.position.set(lane*2,0.75,-30);
-    scene.add(obs);
-    obstacles.push(obs);
+/* ================= OBSTACLES ================= */
+function spawnObstacle(type="train"){
+    const geo=new THREE.BoxGeometry(2,2,4);
+    const mat=new THREE.MeshStandardMaterial({color:type==="train"?0xff0055:0x00f3ff});
+    const o=new THREE.Mesh(geo,mat);
+    o.position.set(lane*2,1,-30);
+    o.userData.type=type;
+    scene.add(o);
+    obstacles.push(o);
 }
 
-/* ================= BOSS / ENEMY AI ================= */
+/* ================= BOSS / POLICE ================= */
 function spawnEnemy(){
     const geo=new THREE.BoxGeometry(2,3,2);
-    const mat=new THREE.MeshStandardMaterial({color:0x9900ff,emissive:0x5500aa});
+    const mat=new THREE.MeshStandardMaterial({color:0xaa00ff,emissive:0x5500aa});
     enemy=new THREE.Mesh(geo,mat);
     enemy.position.set(0,1.5,-40);
     scene.add(enemy);
 }
-
 function enemyAI(){
     if(!enemy||!player)return;
-    enemy.position.z+=0.05; // chase player
+    enemy.position.z+=0.05;
     if(enemy.position.z>-2){
         hitPlayer();
         enemy.position.z=-40;
@@ -186,14 +175,29 @@ function enemyAI(){
 /* ================= CONTROLS ================= */
 window.addEventListener("keydown",e=>{
     if(!game)return;
-    if(e.key==="ArrowLeft") lane=Math.max(-1,lane-1);
-    if(e.key==="ArrowRight") lane=Math.min(1,lane+1);
+    if(e.key==="ArrowLeft")lane=Math.max(-1,lane-1);
+    if(e.key==="ArrowRight")lane=Math.min(1,lane+1);
+    if(e.key==="ArrowUp")jump();
+    if(e.key==="ArrowDown")slide();
 });
+
+let y=0,vy=0,jumping=false,sliding=false;
+function jump(){
+    if(!jumping){
+        vy=0.6;jumping=true;
+    }
+}
+function slide(){
+    if(!sliding && !jumping){
+        sliding=true;
+        setTimeout(()=>sliding=false,500);
+    }
+}
 
 /* ================= COLLISION ================= */
 function hitPlayer(){
-    if(upgrades.shield>0){
-        upgrades.shield--;
+    if(inventory.upgrades.shield>0){
+        inventory.upgrades.shield--;
     }else{
         life--;
         document.getElementById("life").innerText=life;
@@ -207,14 +211,14 @@ function openShop(){
     document.getElementById("shopCoins").innerText=score;
 }
 function closeShop(){document.getElementById("shop").style.display="none";}
-function buySkin(s){
-    if(s==="default"){ownedSkin=s;alert("Default equipped");}
-    if(s==="cyber"&&score>=100){score-=100;ownedSkin=s;}
-    if(s==="gold"&&score>=300){score-=300;ownedSkin=s;}
+function buySkin(name){
+    if(name==="default"){currentSkin=name;}
+    if(name==="cyber"&&score>=100){score-=100;currentSkin=name;}
+    if(name==="elite"&&score>=300){score-=300;currentSkin=name;}
 }
-function buyUpgrade(u){
-    if(u==="speed"&&score>=150){score-=150;upgrades.speed++;}
-    if(u==="shield"&&score>=200){score-=200;upgrades.shield++;}
+function buyUpgrade(type){
+    if(type==="speed"&&score>=150){score-=150;inventory.upgrades.speed++;}
+    if(type==="shield"&&score>=200){score-=200;inventory.upgrades.shield++;}
 }
 
 /* ================= GAME ================= */
@@ -222,10 +226,9 @@ function startGame(){
     document.getElementById("start").style.display="none";
     game=true;
     spawnCoinLine();
-    spawnObstacle();
+    spawnObstacle("train");
     animate();
 }
-
 function endGame(){
     game=false;
     document.getElementById("gameover").style.display="block";
@@ -238,10 +241,15 @@ function animate(){
     requestAnimationFrame(animate);
     if(!game)return;
 
-    if(mixer) mixer.update(clock.getDelta());
+    if(mixer)mixer.update(clock.getDelta());
 
     if(player){
         player.position.x+=(lane*2-player.position.x)*0.1;
+        if(jumping){
+            y+=vy;vy-=0.03;
+            if(y<=0){y=0;jumping=false;}
+        }
+        player.position.y=y;
     }
 
     coins.forEach((c,i)=>{
