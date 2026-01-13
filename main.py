@@ -16,10 +16,6 @@ from deep_translator import GoogleTranslator
 from concurrent.futures import ThreadPoolExecutor
 import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
 
-
-# --- 🌐 WEBSITE CONFIGURATION (Final Fix) ---
-app = Flask(__name__)
-
 # IDs (Hardcoded as per your portal)
 CLIENT_ID = "1451451135813746700"
 CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
@@ -134,17 +130,23 @@ SHOP_ITEMS = {
 
 import asyncio
 import pytz
+import traceback
 from datetime import datetime, time
-from discord.ext import tasks
+from discord.ext import tasks, commands
+from discord import app_commands # Slash Command ke liye zaroori
 
 # --- CONFIG ---
-OWNER_ID = 804687084249284618   # Owner ID
-STAFF_ROLE_ID = 1459074209191039049  # Staff Role ID
-GUILD_ID = 1257403231127076915       # Server ID
-SALARY_LOG_CHANNEL_ID = 1457066104819028089 # Log Channel
-STAFF_SALARY = 50000000          # $50 Million
+OWNER_ID = 804687084249284618   
+STAFF_ROLE_ID = 1459074209191039049  
+GUILD_ID = 1257403231127076915       
+SALARY_LOG_CHANNEL_ID = 1457066104819028089 
+STAFF_SALARY = 50000000          
 
-# --- 🧠 SMART STAFF SYSTEM MEMORY ---
+# --- TIMEZONE SETUP ---
+india_tz = pytz.timezone("Asia/Kolkata")
+salary_time = time(hour=0, minute=0, tzinfo=india_tz) 
+
+# --- MEMORY ---
 xp_cooldowns = {} 
 
 # 1. TRACK COMMAND USAGE
@@ -152,144 +154,129 @@ async def track_command_usage(user_id):
     if user_id == OWNER_ID: return 
     
     current_time = datetime.now()
-    
-    # 🚫 ANTI-SPAM CHECK
     if user_id in xp_cooldowns:
         last_time = xp_cooldowns[user_id]
-        time_diff = (current_time - last_time).total_seconds()
-        if time_diff < 30: 
-            return # Spammer detected
+        if (current_time - last_time).total_seconds() < 30: return 
             
-    # ✅ Count Point
     xp_cooldowns[user_id] = current_time 
-    
-    # Database Update
-    res = supabase.table("economy").select("command_count").eq("user_id", str(user_id)).execute()
-    
-    if res.data:
-        current = res.data[0].get('command_count', 0) or 0
-        supabase.table("economy").update({"command_count": current + 1}).eq("user_id", str(user_id)).execute()
-    else:
-        supabase.table("economy").insert({"user_id": str(user_id), "balance": 0, "command_count": 1}).execute()
+    try:
+        res = supabase.table("economy").select("command_count").eq("user_id", str(user_id)).execute()
+        if res.data:
+            current = res.data[0].get('command_count', 0) or 0
+            supabase.table("economy").update({"command_count": current + 1}).eq("user_id", str(user_id)).execute()
+        else:
+            supabase.table("economy").insert({"user_id": str(user_id), "balance": 0, "command_count": 1}).execute()
+    except Exception as e:
+        print(f"Tracking Error: {e}")
 
-# --- 👑 2. AUTOMATED STAFF MANAGER (Fixed Lag) ---
+# 2. AUTO STAFF MANAGER
 async def update_staff_roles(guild):
-    # Top 3 Users fetch karein
-    data = supabase.table("economy").select("user_id, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
-    
-    if not data: return
-    top_3_ids = [int(u['user_id']) for u in data]
-    
-    staff_role = guild.get_role(STAFF_ROLE_ID)
-    if not staff_role: return
+    try:
+        data = supabase.table("economy").select("user_id, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
+        if not data: return
+        top_3_ids = [int(u['user_id']) for u in data]
+        staff_role = guild.get_role(STAFF_ROLE_ID)
+        if not staff_role: return
 
-    # Server ke har member ko check karo
-    for member in guild.members:
-        # 🟢 FIX: Ye line bot ko freeze hone se bachayegi (Warning Hat Jayegi)
-        await asyncio.sleep(0) 
+        for member in guild.members:
+            await asyncio.sleep(0) 
 
-        if member.bot or member.id == OWNER_ID: continue
-        
-        # --- PROMOTE LOGIC ---
-        if member.id in top_3_ids:
-            if staff_role not in member.roles:
+            if member.bot or member.id == OWNER_ID: continue
+            
+            # PROMOTE
+            if member.id in top_3_ids:
+                if staff_role not in member.roles:
+                    try:
+                        await member.add_roles(staff_role)
+                        await member.edit(nick=f"[BOT STAFF] {member.name[:25]}")
+                        embed = discord.Embed(title="🎉 PROMOTION!", color=0x00FF00)
+                        embed.description = f"Congrats **{member.name}**! You are now **{staff_role.name}**."
+                        await member.send(embed=embed)
+                    except: pass
+            
+            # DEMOTE
+            elif staff_role in member.roles:
                 try:
-                    await member.add_roles(staff_role)
-                    # Name Change
-                    new_nick = f"[BOT STAFF] {member.name[:25]}" 
-                    await member.edit(nick=new_nick)
-                    
-                    # DM Congratulation
-                    embed = discord.Embed(title="🎉 PROMOTION ALERT!", color=0x00FF00)
-                    embed.description = f"Congrats **{member.name}**! Aap Top 3 active players mein hain.\nAapko **{staff_role.name}** bana diya gaya hai."
+                    await member.remove_roles(staff_role)
+                    await member.edit(nick=None)
+                    embed = discord.Embed(title="📉 DEMOTION", color=0xFF0000)
+                    embed.description = "You are no longer in Top 3. Staff role removed."
                     await member.send(embed=embed)
                 except: pass
-        
-        # --- DEMOTE LOGIC ---
-        elif staff_role in member.roles:
-            try:
-                await member.remove_roles(staff_role)
-                # Name Reset
-                await member.edit(nick=None) 
-                
-                # DM Demotion
-                embed = discord.Embed(title="📉 DEMOTION ALERT", color=0xFF0000)
-                embed.description = "Aap Top 3 list se bahar ho gaye hain. Staff role hata diya gaya hai."
-                await member.send(embed=embed)
-            except: pass
+    except Exception as e:
+        print(f"Role Update Error: {e}")
 
-# --- 💰 3. PREMIUM SALARY SYSTEM (12:00 AM IST) ---
-india_tz = pytz.timezone("Asia/Kolkata")
-salary_time = time(hour=0, minute=0, tzinfo=india_tz) 
-
+# 3. SALARY LOOP (Automatic 12:00 AM)
 @tasks.loop(time=salary_time)
 async def pay_staff_salary():
-    guild = bot.get_guild(GUILD_ID)
-    channel = bot.get_channel(SALARY_LOG_CHANNEL_ID)
-    
-    if not guild: return
-
-    # Top 3 Data Fetch
-    data = supabase.table("economy").select("user_id, balance, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
-    
-    if not data: return
-
-    # --- PREMIUM EMBED BUILDER ---
-    embed = discord.Embed(
-        title="💸 DAILY STAFF PAYROLL PROCESSED",
-        description="The following **Top 3 Active Agents** have received their daily salary based on command usage.",
-        color=0xFFD700, # Gold Color
-        timestamp=datetime.now()
-    )
-    
-    top_member_avatar = None 
-
-    # Payment Loop
-    for idx, user in enumerate(data):
-        uid = int(user['user_id'])
-        old_bal = user['balance']
-        cmds = user['command_count']
-        
-        # Pay Salary
-        new_bal = old_bal + STAFF_SALARY
-        supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(uid)).execute()
-        
-        # Discord Info Fetch
-        member = guild.get_member(uid)
-        
-        # Formatting
-        rank_emoji = ["🥇", "🥈", "🥉"][idx] if idx < 3 else "🏅"
-        user_mention = member.mention if member else f"`User {uid}`"
-        
-        # Store Rank 1 Avatar
-        if idx == 0 and member:
-            top_member_avatar = member.display_avatar.url
-        
-        # Add Field
-        embed.add_field(
-            name=f"{rank_emoji} Rank #{idx+1} — {user_mention}",
-            value=f"📜 **Cmds:** `{cmds}`\n💰 **Paid:** `$50,000,000`\n💳 **New Bal:** `${new_bal:,}`",
-            inline=False
-        )
-
-    # Finishing Touches
-    embed.set_footer(text="Automated Payroll System • Next Payout in 24h")
-    
-    if top_member_avatar:
-        embed.set_thumbnail(url=top_member_avatar)
-    else:
-        embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
-
-    # Log Channel me bhejo
-    if channel:
-        await channel.send(embed=embed)
-        
-    # Roles Refresh (Fixed Lag)
-    await update_staff_roles(guild)
+    try:
+        print(f"[SYSTEM] Auto-Salary Started at {datetime.now(india_tz)}")
+        await run_salary_logic("DAILY AUTOMATED PAYROLL")
+    except Exception as e:
+        print(f"CRITICAL ERROR IN SALARY LOOP: {e}")
+        traceback.print_exc()
 
 @pay_staff_salary.before_loop
 async def before_salary():
     await bot.wait_until_ready()
+
+# --- 🛠️ CORE LOGIC FUNCTION (Dono jagah use hoga) ---
+async def run_salary_logic(title_text):
+    guild = bot.get_guild(GUILD_ID)
+    channel = bot.get_channel(SALARY_LOG_CHANNEL_ID)
+    
+    if not guild: return "Guild Not Found"
+
+    # Fetch Top 3
+    data = supabase.table("economy").select("user_id, balance, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
+    
+    if not data: return "No Data Found"
+
+    # --- PREMIUM GOLD EMBED ---
+    embed = discord.Embed(
+        title=f"💸 {title_text}",
+        description="The following **Top 3 Agents** have been rewarded for their hard work.",
+        color=0xFFD700, # Gold Color
+        timestamp=datetime.now()
+    )
+    embed.set_image(url="https://i.imgur.com/8N7j5Fj.gif") # Optional: Rich Line Separator
+    
+    top_member_avatar = None 
+
+    for idx, user in enumerate(data):
+        try:
+            uid = int(user['user_id'])
+            old_bal = user['balance']
+            cmds = user['command_count']
+            
+            # Pay
+            new_bal = old_bal + STAFF_SALARY
+            supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(uid)).execute()
+            
+            member = guild.get_member(uid)
+            rank_emoji = ["🥇", "🥈", "🥉"][idx] if idx < 3 else "🏅"
+            user_mention = member.mention if member else f"`ID: {uid}`"
+            
+            if idx == 0 and member: top_member_avatar = member.display_avatar.url
+            
+            # Fancy Field
+            embed.add_field(
+                name=f"{rank_emoji} Rank #{idx+1} — {user_mention}",
+                value=f"```yaml\n📜 Commands: {cmds}\n💰 Salary:   $50,000,000\n💳 Wallet:   ${new_bal:,}\n```",
+                inline=False
+            )
+        except Exception as e:
+            print(f"Error paying {uid}: {e}")
+            continue
+
+    embed.set_footer(text="Secure Payroll System • Verified Transaction", icon_url=guild.icon.url if guild.icon else None)
+    
+    if top_member_avatar: embed.set_thumbnail(url=top_member_avatar)
+    
+    if channel: await channel.send(embed=embed)
+    
+    await update_staff_roles(guild)
+    return "Success"
 
 
 # 🛡️ SYSTEM SAVER: Sirf 2 translation threads allow honge (Crash Fix)
@@ -15567,13 +15554,18 @@ import random
 
 wipeout_cooldowns = {}
 
-# 🟢 ASYNC DATABASE ENGINE
-async def safe_db(action_name, func, *args):
+# 🟢 ASYNC DATABASE ENGINE (FIXED)
+async def safe_db(action_name, query):
+    """
+    Fixed: Ab ye query object ko direct execute karega, function ki tarah call nahi karega.
+    """
     print(f"[SYSTEM] Executing DB Task: {action_name}...")
     try:
         def task():
-            return func(*args).execute()
+            # 🔥 FIX: func(*args) hata kar direct execute() lagaya hai
+            return query.execute()
 
+        # 10 Second Timeout
         result = await asyncio.wait_for(asyncio.to_thread(task), timeout=10.0)
         return result.data
 
@@ -15633,10 +15625,11 @@ class WipeoutView(discord.ui.View):
         user = self.robber
         victim = self.victim
         key = f"{user.id}-{victim.id}"
-        now = datetime.now()   # ✅ FIXED
+        now = datetime.now()
 
         try:
             # --- FETCH DATA ---
+            # safe_db ab sahi se query object lega
             vic_data = await safe_db("Fetch Vic", supabase.table("economy").select("*").eq("user_id", str(victim.id)))
             rob_data = await safe_db("Fetch Rob", supabase.table("economy").select("*").eq("user_id", str(user.id)))
 
@@ -15778,7 +15771,7 @@ async def wipeout(interaction: discord.Interaction, victim: discord.Member):
             return await interaction.followup.send("❌ Bot ko lootne ka koi faida nahi.", ephemeral=True)
 
         key = f"{user.id}-{victim.id}"
-        now = datetime.now()   # ✅ FIXED
+        now = datetime.now()
 
         if key in wipeout_cooldowns:
             last_time = wipeout_cooldowns[key]
@@ -15840,7 +15833,7 @@ async def wipeout(interaction: discord.Interaction, victim: discord.Member):
 
     except Exception as e:
         print(f"[ERROR] Command Init Failed: {e}")
-        await interaction.followup.send(f"❌ **System Error:** {str(e)}", ephemeral=True)             
+        await interaction.followup.send(f"❌ **System Error:** {str(e)}", ephemeral=True)       
 
 # --- 🛠️ FIX NAME COMMAND (ONLY FOR TOP 3 STAFF) ---
 from discord import app_commands
@@ -16291,7 +16284,27 @@ class DuelInviteView(discord.ui.View):
         if interaction.user.id != self.p2.id: return
         await interaction.message.delete()
 
+# --- 4. NEW SLASH COMMAND (Manual Check) ---
+@bot.tree.command(name="checksalary", description="👑 Owner Only: Force pay Top 3 Staff immediately.")
+async def checksalary(interaction: discord.Interaction):
+    # Security Check
+    if interaction.user.id != OWNER_ID:
+        return await interaction.response.send_message("❌ **Access Denied:** Sirf Owner ise chala sakta hai.", ephemeral=True)
 
+    await interaction.response.defer(ephemeral=True) # "Thinking..."
+    
+    try:
+        # Manually run the exact same logic
+        status = await run_salary_logic("MANUAL PAYROLL TRIGGERED")
+        
+        if status == "Success":
+            await interaction.followup.send("✅ **Salary Processed Successfully!** Log Channel check karein.")
+        else:
+            await interaction.followup.send(f"⚠️ **Issue:** {status}")
+            
+    except Exception as e:
+        await interaction.followup.send(f"❌ **Critical Error:** {e}")
+        
 # --- 5. MAIN COMMAND ---
 @bot.tree.command(name="dalgona_duel", description="🍪 Squid Game: 1v1 Tracing Battle")
 @app_commands.describe(opponent="Opponent", amount="Bet Amount")
