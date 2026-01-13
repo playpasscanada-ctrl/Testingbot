@@ -4,44 +4,26 @@
 <meta charset="UTF-8">
 <title>Neon Runner – Cyberpunk Subway</title>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-
 <style>
 body{margin:0;overflow:hidden;background:#000;font-family:Arial;}
 canvas{display:block;}
-
-#ui{
-  position:absolute;top:0;left:0;width:100%;height:100%;
-  z-index:10;color:white;pointer-events:none;
-}
-
-.hud{
-  display:flex;justify-content:space-between;padding:12px;
-}
-
+#ui{position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;color:white;pointer-events:none;}
+.hud{display:flex;justify-content:space-between;padding:12px;}
 .badge{
-  background:rgba(0,0,0,.55);
-  border:2px solid #00f3ff;
+  background:rgba(0,0,0,.55);border:2px solid #00f3ff;
   padding:8px 18px;border-radius:30px;
-  box-shadow:0 0 15px #00f3ff;
-  font-weight:bold;
+  box-shadow:0 0 15px #00f3ff;font-weight:bold;
 }
-
 .panel{
-  position:absolute;top:50%;left:50%;
-  transform:translate(-50%,-50%);
-  background:rgba(0,0,0,.85);
-  border:2px solid #00f3ff;
-  padding:25px;border-radius:20px;
-  text-align:center;display:none;
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(0,0,0,.85);border:2px solid #00f3ff;
+  padding:25px;border-radius:20px;text-align:center;display:none;
   pointer-events:auto;width:260px;
 }
-
 button{
   background:linear-gradient(135deg,#00f3ff,#ff00de);
-  border:none;padding:12px 25px;
-  border-radius:30px;
-  color:white;font-size:16px;
-  margin:10px;cursor:pointer;
+  border:none;padding:12px 25px;border-radius:30px;
+  color:white;font-size:16px;margin:10px;cursor:pointer;
   box-shadow:0 0 15px #00f3ff;
 }
 </style>
@@ -63,10 +45,11 @@ button{
   </div>
 
   <div id="shop" class="panel">
-    <h2>SKIN SHOP</h2>
+    <h2>SHOP</h2>
     <p>Coins: <span id="shopCoins">0</span></p>
     <button onclick="buyUpgrade('speed')">Speed + (150)</button>
     <button onclick="buyUpgrade('shield')">Shield + (200)</button>
+    <button onclick="buyUpgrade('magnet')">Magnet (250)</button>
     <br>
     <button onclick="closeShop()">CLOSE</button>
   </div>
@@ -83,6 +66,20 @@ button{
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
+/* ================= PATHS ================= */
+const MODEL_BASE = "https://raw.githubusercontent.com/playpasscanada-ctrl/Testingbot/main/templates/assets/models/";
+const AUDIO_BASE = "https://raw.githubusercontent.com/playpasscanada-ctrl/Testingbot/main/templates/assets/audio/";
+
+/* ================= AUDIO ================= */
+const sounds = {
+  bgm: new Audio(AUDIO_BASE+"bgm.mp3"),
+  coin: new Audio(AUDIO_BASE+"coin.mp3"),
+  hit: new Audio(AUDIO_BASE+"hit.mp3"),
+  power: new Audio(AUDIO_BASE+"power.mp3")
+};
+sounds.bgm.loop = true;
+sounds.bgm.volume = 0.5;
+
 /* ================= CORE ================= */
 let scene,camera,renderer;
 let player,mixer,clock=new THREE.Clock();
@@ -90,7 +87,7 @@ let coins=[],obstacles=[],enemy;
 let lane=0,speed=0.35;
 let score=0,life=3;
 let game=false;
-let inventory={upgrades:{speed:0,shield:0}};
+let inventory={upgrades:{speed:0,shield:0,magnet:0}};
 const loader=new THREE.GLTFLoader();
 
 /* ================= INIT ================= */
@@ -117,12 +114,12 @@ function init(){
   const light=new THREE.DirectionalLight(0x00f3ff,1);
   light.position.set(10,20,10);
   scene.add(light);
-  scene.add(new THREE.AmbientLight(0x8844ff,0.5));
+  scene.add(new THREE.AmbientLight(0x8844ff,0.6));
 
   createGround();
   loadPlayer();
   spawnEnemy();
-  animate(); // Render loop always ON
+  animate();
 }
 
 /* ================= GROUND ================= */
@@ -137,13 +134,12 @@ function createGround(){
 /* ================= PLAYER ================= */
 function loadPlayer(){
   loader.load(
-    "assets/models/player.glb",
+    MODEL_BASE+"player.glb",
     gltf=>{
       player=gltf.scene;
       player.scale.set(1.2,1.2,1.2);
       player.position.set(0,0,0);
       scene.add(player);
-
       mixer=new THREE.AnimationMixer(player);
       if(gltf.animations.length){
         mixer.clipAction(gltf.animations[0]).play();
@@ -159,10 +155,10 @@ function loadPlayer(){
   );
 }
 
-/* ================= COINS ================= */
+/* ================= COINS (LINE) ================= */
 function spawnCoinLine(){
-  for(let i=0;i<10;i++){
-    loader.load("assets/models/coin.glb",gltf=>{
+  for(let i=0;i<12;i++){
+    loader.load(MODEL_BASE+"coin.glb",gltf=>{
       const c=gltf.scene;
       c.scale.set(0.4,0.4,0.4);
       c.position.set(lane*2,1.2,-i*3-15);
@@ -174,7 +170,7 @@ function spawnCoinLine(){
 
 /* ================= OBSTACLES ================= */
 function spawnObstacle(type="train"){
-  const path=type==="train"?"assets/models/train.glb":"assets/models/barrier.glb";
+  const path = type==="train"? MODEL_BASE+"train.glb" : MODEL_BASE+"barrier.glb";
   loader.load(path,gltf=>{
     const o=gltf.scene;
     o.scale.set(0.6,0.6,0.6);
@@ -185,7 +181,7 @@ function spawnObstacle(type="train"){
   });
 }
 
-/* ================= ENEMY ================= */
+/* ================= BOSS / ENEMY ================= */
 function spawnEnemy(){
   const geo=new THREE.BoxGeometry(2,3,2);
   const mat=new THREE.MeshStandardMaterial({color:0xaa00ff,emissive:0x5500aa});
@@ -195,7 +191,7 @@ function spawnEnemy(){
 }
 function enemyAI(){
   if(!game)return;
-  enemy.position.z+=0.05;
+  enemy.position.z+=0.06;
   if(enemy.position.z>-2){
     hitPlayer();
     enemy.position.z=-40;
@@ -243,6 +239,7 @@ function slide(){
 
 /* ================= HIT ================= */
 function hitPlayer(){
+  sounds.hit.currentTime=0; sounds.hit.play();
   if(inventory.upgrades.shield>0){
     inventory.upgrades.shield--;
   }else{
@@ -259,8 +256,9 @@ function openShop(){
 }
 function closeShop(){document.getElementById("shop").style.display="none";}
 function buyUpgrade(type){
-  if(type==="speed"&&score>=150){score-=150;inventory.upgrades.speed++;}
-  if(type==="shield"&&score>=200){score-=200;inventory.upgrades.shield++;}
+  if(type==="speed"&&score>=150){score-=150;inventory.upgrades.speed++;sounds.power.play();}
+  if(type==="shield"&&score>=200){score-=200;inventory.upgrades.shield++;sounds.power.play();}
+  if(type==="magnet"&&score>=250){score-=250;inventory.upgrades.magnet++;sounds.power.play();}
 }
 
 /* ================= GAME ================= */
@@ -269,9 +267,11 @@ function startGame(){
   game=true;
   spawnCoinLine();
   spawnObstacle("train");
+  sounds.bgm.play();
 }
 function endGame(){
   game=false;
+  sounds.bgm.pause();
   document.getElementById("gameover").style.display="block";
   document.getElementById("finalCoins").innerText=score;
   document.getElementById("finalMoney").innerText=(score*10).toLocaleString();
@@ -294,8 +294,12 @@ function animate(){
 
   coins.forEach((c,i)=>{
     c.position.z+=speed;
+    if(inventory.upgrades.magnet>0){
+      c.position.x+=(player.position.x-c.position.x)*0.05;
+    }
     if(c.position.z>2){
       score++;
+      sounds.coin.currentTime=0; sounds.coin.play();
       document.getElementById("coins").innerText=score;
       scene.remove(c);
       coins.splice(i,1);
