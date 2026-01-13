@@ -16,6 +16,24 @@ from deep_translator import GoogleTranslator
 from concurrent.futures import ThreadPoolExecutor
 import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
 
+# --- 🛡️ SECURITY SYSTEM SETUP ---
+authorized_guilds_cache = set()
+
+# Ye function bot start hone par chalega aur saare allowed servers load karega
+async def load_authorized_servers():
+    global authorized_guilds_cache
+    try:
+        print("[AUTH] Loading Authorized Servers...")
+        # Database se saari IDs nikalo
+        data = supabase.table("authorized_servers").select("server_id").execute().data
+        
+        # Unhe set me convert karo (Fast checking ke liye)
+        authorized_guilds_cache = {int(row['server_id']) for row in data}
+        
+        print(f"✅ Loaded {len(authorized_guilds_cache)} Authorized Servers.")
+    except Exception as e:
+        print(f"⚠️ Auth Load Error: {e}")
+
 # IDs (Hardcoded as per your portal)
 CLIENT_ID = "1451451135813746700"
 CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
@@ -1137,22 +1155,31 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # ================== 🔒 MULTI-SERVER LOCK ==================
 
-# 1. Yahan un sabhi Servers ki ID daal do jahan bot chalna chahiye
-ALLOWED_SERVERS = [1257403231127076915] # Dusra ID yahan add karo
-
-async def global_server_check(interaction: discord.Interaction) -> bool:
-    # Check karega ki kya current server ID list mein hai?
-    if interaction.guild_id in ALLOWED_SERVERS:
+# --- 🛑 GLOBAL INTERACTION CHECK ---
+# Ye har slash command se pehle chalega
+@bot.tree.interaction_check
+async def global_auth_check(interaction: discord.Interaction):
+    # 1. Agar Owner use kar raha hai, to access de do (Testing ke liye)
+    if interaction.user.id == OWNER_ID:
         return True
-    
-    else:
-        await interaction.response.send_message(
-            "🚫 **Access Denied:** Ye bot sirf authorized servers me hi kaam karta hai!", 
-            ephemeral=True
-        )
+
+    # 2. Agar DM me use ho raha hai, to mana kar do
+    if not interaction.guild:
+        await interaction.response.send_message("❌ Commands sirf server me kaam karti hain.", ephemeral=True)
         return False
 
-bot.tree.interaction_check = global_server_check
+    # 3. Agar Server ID list me nahi hai -> BLOCK
+    if interaction.guild.id not in authorized_guilds_cache:
+        await interaction.response.send_message(
+            "🚫 **UNAUTHORIZED SERVER**\n"
+            "Ye Bot Private/Premium hai.\n"
+            "Is server ke paas access nahi hai.\n"
+            "👉 Access ke liye Owner se contact karein.", 
+            ephemeral=True
+        )
+        return False # Command yahi ruk jayegi
+
+    return True # Access Granted
  
 def owner(i):
     if i.user.id == OWNER_ID:
@@ -1171,25 +1198,38 @@ def emb(title, desc, color=0x5865F2):
  
 @bot.event
 async def on_ready():
-    print("BOT ONLINE")
+    print(f"Logged in as {bot.user} (BOT ONLINE)")
     
-    # 👇 YE NAYA CODE HAI (Session Banane ke liye)
+    # 1. SERVER AUTH LOAD (Ye Naya Hai) 👇
+    # Ye database se allowed servers ki list load karega
+    await load_authorized_servers()
+
+    # 2. SESSION CREATION (Aapka Purana Code)
     if not hasattr(bot, 'session') or bot.session is None:
         bot.session = aiohttp.ClientSession()
         print("✅ Shared Session Created")
 
+    # 3. LOAN SYSTEM
     if not check_loans.is_running():
         check_loans.start()
         print("✅ Loan System Started")
 
+    # 4. SALARY SYSTEM
     if not pay_staff_salary.is_running():
         pay_staff_salary.start()
         print("✅ Staff Salary System Started")
     
+    # 5. LOADERS
     await load_banned_words()        
     await load_bypass_users()
     await load_crush_users()
-    await bot.tree.sync()
+
+    # 6. COMMAND SYNC
+    try:
+        synced = await bot.tree.sync()
+        print(f"✅ Synced {len(synced)} Slash Commands.")
+    except Exception as e:
+        print(f"❌ Sync Error: {e}")
 
 # --- 📊 COMMAND TRACKING EVENT ---
 # Ise main.py me lagayein (Events section ke paas)
@@ -16292,27 +16332,6 @@ class DuelInviteView(discord.ui.View):
     async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.p2.id: return
         await interaction.message.delete()
-
-# --- 4. NEW SLASH COMMAND (Manual Check) ---
-@bot.tree.command(name="checksalary", description="👑 Owner Only: Force pay Top 3 Staff immediately.")
-async def checksalary(interaction: discord.Interaction):
-    # Security Check
-    if interaction.user.id != OWNER_ID:
-        return await interaction.response.send_message("❌ **Access Denied:** Sirf Owner ise chala sakta hai.", ephemeral=True)
-
-    await interaction.response.defer(ephemeral=True) # "Thinking..."
-    
-    try:
-        # Manually run the exact same logic
-        status = await run_salary_logic("MANUAL PAYROLL TRIGGERED")
-        
-        if status == "Success":
-            await interaction.followup.send("✅ **Salary Processed Successfully!** Log Channel check karein.")
-        else:
-            await interaction.followup.send(f"⚠️ **Issue:** {status}")
-            
-    except Exception as e:
-        await interaction.followup.send(f"❌ **Critical Error:** {e}")
         
 # --- 5. MAIN COMMAND ---
 @bot.tree.command(name="dalgona_duel", description="🍪 Squid Game: 1v1 Tracing Battle")
@@ -16531,6 +16550,165 @@ async def sell_items(i: discord.Interaction):
     
     embed = discord.Embed(title="🏪 SELL CART", description="Select an item from dropdown to add to cart.", color=0x2b2d31)
     await i.response.send_message(embed=embed, view=view)
+
+import discord
+from discord import app_commands # <--- Ye line bahut zaroori hai
+
+# --- 👑 SLASH COMMAND: ADD SERVER ---
+@bot.tree.command(name="authorize", description="👑 Owner Only: Allow a server to use this bot")
+@app_commands.describe(server_id="Optional: Enter Server ID (Leave empty to authorize THIS server)")
+async def authorize(interaction: discord.Interaction, server_id: str = None):
+    # 1. Security Check
+    if interaction.user.id != OWNER_ID:
+        return await interaction.response.send_message("❌ **Access Denied:** Sirf Owner use kar sakta hai.", ephemeral=True)
+
+    # 2. ID Decision (Agar ID di hai to wo lo, nahi to Current Server ki lo)
+    try:
+        target_id = int(server_id) if server_id else interaction.guild_id
+    except ValueError:
+        return await interaction.response.send_message("❌ **Error:** Please enter a valid Numeric Server ID.", ephemeral=True)
+    
+    await interaction.response.defer(ephemeral=True)
+
+    try:
+        # 3. Database Entry
+        supabase.table("authorized_servers").insert({
+            "server_id": str(target_id),
+            "added_by": str(interaction.user.id)
+        }).execute()
+        
+        # 4. Cache Update (Taaki restart na karna pade)
+        authorized_guilds_cache.add(target_id)
+        
+        await interaction.followup.send(f"✅ **Success!** Server ID `{target_id}` is now Authorized.")
+        
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ **Error:** Ye server shayad pehle se list me hai.\n`{e}`")
+
+# --- 👑 SLASH COMMAND: REMOVE SERVER ---
+@bot.tree.command(name="unauthorize", description="👑 Owner Only: Remove a server from allowed list")
+@app_commands.describe(server_id="The Server ID you want to block")
+async def unauthorize(interaction: discord.Interaction, server_id: str):
+    # 1. Security Check
+    if interaction.user.id != OWNER_ID:
+        return await interaction.response.send_message("❌ **Access Denied.**", ephemeral=True)
+
+    try:
+        target_id = int(server_id)
+        
+        # 2. Database Delete
+        supabase.table("authorized_servers").delete().eq("server_id", str(target_id)).execute()
+        
+        # 3. Cache Removal
+        if target_id in authorized_guilds_cache:
+            authorized_guilds_cache.remove(target_id)
+            
+        await interaction.response.send_message(f"🚫 **Blocked!** Server ID `{target_id}` removed from access list.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ **Error:** {e}", ephemeral=True)
+
+# --- 💰 3. PREMIUM SALARY SYSTEM (CONNECTED COMMAND) ---
+india_tz = pytz.timezone("Asia/Kolkata")
+salary_time = time(hour=0, minute=0, tzinfo=india_tz) 
+
+# 👇 YE AAPKA MAIN CODE HAI (Jisko hum activate karenge) 👇
+async def run_salary_system():
+    guild = bot.get_guild(GUILD_ID)
+    channel = bot.get_channel(SALARY_LOG_CHANNEL_ID)
+    
+    if not guild: return "❌ Guild Nahi Mila"
+
+    # Top 3 Data Fetch
+    data = supabase.table("economy").select("user_id, balance, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
+    
+    if not data: return "❌ Data Nahi Mila"
+
+    # --- PREMIUM EMBED BUILDER ---
+    embed = discord.Embed(
+        title="💸 STAFF PAYROLL PROCESSED",
+        description="The following **Top 3 Active Agents** have received their daily salary based on command usage.",
+        color=0xFFD700, # Gold Color
+        timestamp=datetime.now()
+    )
+    
+    top_member_avatar = None 
+
+    # Payment Loop
+    for idx, user in enumerate(data):
+        try:
+            uid = int(user['user_id'])
+            old_bal = user['balance']
+            cmds = user['command_count']
+            
+            # Pay Salary
+            new_bal = old_bal + STAFF_SALARY
+            supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(uid)).execute()
+            
+            # Discord Info Fetch
+            member = guild.get_member(uid)
+            
+            # Formatting
+            rank_emoji = ["🥇", "🥈", "🥉"][idx] if idx < 3 else "🏅"
+            user_mention = member.mention if member else f"`User {uid}`"
+            
+            # Store Rank 1 Avatar
+            if idx == 0 and member:
+                top_member_avatar = member.display_avatar.url
+            
+            # Add Field
+            embed.add_field(
+                name=f"{rank_emoji} Rank #{idx+1} — {user_mention}",
+                value=f"📜 **Cmds:** `{cmds}`\n💰 **Paid:** `$50,000,000`\n💳 **New Bal:** `${new_bal:,}`",
+                inline=False
+            )
+        except Exception as e:
+            print(f"Payment Error: {e}")
+            continue
+
+    # Finishing Touches
+    embed.set_footer(text="Automated Payroll System • Next Payout in 24h")
+    
+    if top_member_avatar:
+        embed.set_thumbnail(url=top_member_avatar)
+    else:
+        embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
+
+    # Log Channel me bhejo
+    if channel:
+        await channel.send(embed=embed)
+        
+    # Roles Refresh call karna
+    await update_staff_roles(guild)
+    return "✅ Success"
+
+# --- ⏰ AUTOMATIC LOOP (Raat ke 12:00 baje ye apne aap chalega) ---
+@tasks.loop(time=salary_time)
+async def pay_staff_salary():
+    # Ye upar wale code ko activate kar dega
+    await run_salary_system()
+
+@pay_staff_salary.before_loop
+async def before_salary():
+    await bot.wait_until_ready()
+
+# --- ⚡ MANUAL COMMAND (Jab aap chaho tab chalega) ---
+@bot.tree.command(name="checksalary", description="👑 Owner Only: Activate Salary System NOW")
+async def checksalary(interaction: discord.Interaction):
+    if interaction.user.id != OWNER_ID:
+        return await interaction.response.send_message("❌ Access Denied.", ephemeral=True)
+
+    await interaction.response.defer(ephemeral=True)
+    
+    try:
+        # 👇 BAS YE LINE US UPAR WALE CODE KO ACTIVATE KARTI HAI
+        status = await run_salary_system()
+        
+        await interaction.followup.send(f"Status: {status} (Check Log Channel)")
+            
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {e}")
+
+
                             
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
