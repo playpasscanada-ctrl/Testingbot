@@ -2,332 +2,250 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium Roulette - Big Daddy Style</title>
+    <title>VIP Roulette Arena</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;800&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Roboto:wght@300;500&display=swap');
-
+        :root { --gold: #FFD700; --dark: #050505; --red: #e74c3c; --black: #2c3e50; --green: #27ae60; }
         body {
-            background-color: #0d1117;
-            background-image: radial-gradient(circle, #1a2c22 0%, #050f09 100%);
-            color: white;
-            font-family: 'Roboto', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
+            background: radial-gradient(circle, #1a1a1a, #000);
+            color: white; font-family: 'Rajdhani', sans-serif;
+            text-align: center; margin: 0; min-height: 100vh; user-select: none;
             overflow-x: hidden;
         }
 
-        h1 {
-            font-family: 'Cinzel', serif;
-            color: #ffd700;
-            text-shadow: 0 0 10px #b8860b;
-            margin-top: 20px;
-            font-size: 2.5rem;
-        }
-
-        /* --- GAME CONTAINER --- */
-        .game-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 40px;
-            margin-top: 20px;
-            padding: 20px;
-        }
-
-        /* --- WHEEL SECTION --- */
+        h1 { color: var(--gold); text-shadow: 0 0 15px var(--gold); font-size: 3rem; margin-top: 20px; }
+        
+        /* --- 🎡 WHEEL UI --- */
         .wheel-container {
-            position: relative;
-            width: 400px;
-            height: 400px;
+            position: relative; width: 300px; height: 300px; margin: 20px auto;
+            border: 8px solid var(--gold); border-radius: 50%;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.2);
+            background: #222; overflow: hidden;
+        }
+        
+        .wheel {
+            width: 100%; height: 100%;
+            background: conic-gradient(
+                #27ae60 0deg 9.7deg, 
+                #e74c3c 9.7deg 19.4deg, #2c3e50 19.4deg 29.1deg, 
+                #e74c3c 29.1deg 38.8deg, #2c3e50 38.8deg 48.5deg,
+                #e74c3c 48.5deg 58.2deg, #2c3e50 58.2deg 67.9deg,
+                #e74c3c 67.9deg 77.6deg, #2c3e50 77.6deg 87.3deg,
+                #e74c3c 87.3deg 97.0deg, #2c3e50 97.0deg 106.7deg,
+                #e74c3c 106.7deg 116.4deg, #2c3e50 116.4deg 126.1deg,
+                #e74c3c 126.1deg 135.8deg, #2c3e50 135.8deg 145.5deg,
+                #e74c3c 145.5deg 155.2deg, #2c3e50 155.2deg 164.9deg,
+                #e74c3c 164.9deg 174.6deg, #2c3e50 174.6deg 184.3deg,
+                #e74c3c 184.3deg 194.0deg, #2c3e50 194.0deg 203.7deg,
+                #e74c3c 203.7deg 213.4deg, #2c3e50 213.4deg 223.1deg,
+                #e74c3c 223.1deg 232.8deg, #2c3e50 232.8deg 242.5deg,
+                #e74c3c 242.5deg 252.2deg, #2c3e50 252.2deg 261.9deg,
+                #e74c3c 261.9deg 271.6deg, #2c3e50 271.6deg 281.3deg,
+                #e74c3c 281.3deg 291.0deg, #2c3e50 291.0deg 300.7deg,
+                #e74c3c 300.7deg 310.4deg, #2c3e50 310.4deg 320.1deg,
+                #e74c3c 320.1deg 329.8deg, #2c3e50 329.8deg 339.5deg,
+                #e74c3c 339.5deg 349.2deg, #2c3e50 349.2deg 360deg
+            );
             border-radius: 50%;
-            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8), inset 0 0 20px #000;
-            border: 15px solid #4a2c0f; /* Wood Texture Color */
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        }
+        
+        .marker {
+            position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; border-left: 10px solid transparent;
+            border-right: 10px solid transparent; border-top: 20px solid var(--gold);
+            z-index: 10; filter: drop-shadow(0 0 5px var(--gold));
         }
 
-        canvas#wheel {
-            width: 100%;
-            height: 100%;
-            transition: transform 5s cubic-bezier(0.25, 0.1, 0.25, 1);
+        .center-dot {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 50px; height: 50px; background: #000; border: 4px solid var(--gold);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; font-weight: bold; z-index: 5;
         }
 
-        .pointer {
-            position: absolute;
-            top: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0; 
-            height: 0; 
-            border-left: 15px solid transparent;
-            border-right: 15px solid transparent;
-            border-top: 25px solid #ffd700;
-            z-index: 10;
-            filter: drop-shadow(0 4px 2px black);
+        /* --- 💸 BETTING BOARD --- */
+        .controls { margin-bottom: 20px; }
+        input.bet-input {
+            padding: 10px; border-radius: 5px; background: #111; color: var(--gold);
+            border: 1px solid var(--gold); text-align: center; font-family: 'Rajdhani';
+            font-size: 1.2rem; font-weight: bold; width: 150px;
         }
 
-        /* --- BETTING BOARD (European Layout) --- */
-        .betting-board {
-            background-color: #014421; /* Felt Green */
-            border: 8px solid #ffd700;
-            border-radius: 10px;
-            padding: 15px;
-            display: grid;
-            grid-template-columns: 40px repeat(3, 60px);
-            gap: 5px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        .board {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;
+            max-width: 400px; margin: 0 auto 50px auto; padding: 10px;
+            background: #111; border: 2px solid #333; border-radius: 10px;
         }
 
-        .bet-btn {
-            height: 50px;
-            border: 1px solid rgba(255,255,255,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            cursor: pointer;
-            color: white;
-            transition: 0.2s;
-            font-family: 'Cinzel', serif;
+        .board-btn {
+            padding: 15px; border: none; border-radius: 4px; font-weight: bold;
+            font-size: 1.1rem; cursor: pointer; color: white; transition: 0.2s;
+            position: relative;
         }
+        .board-btn:hover { transform: scale(1.05); filter: brightness(1.2); }
+        
+        .num-red { background: var(--red); }
+        .num-black { background: var(--black); }
+        .num-green { background: var(--green); grid-column: span 3; }
+        
+        .btn-red-bet { background: var(--red); grid-column: span 1.5; font-size: 1.2rem;}
+        .btn-black-bet { background: var(--black); grid-column: span 1.5; font-size: 1.2rem;}
 
-        .bet-btn:hover { filter: brightness(1.2); transform: scale(1.05); }
-        .bet-btn.active { box-shadow: 0 0 10px 2px #ffd700; z-index: 5; transform: scale(1.1); }
+        .selected { border: 3px solid var(--gold); box-shadow: 0 0 15px var(--gold); transform: scale(0.95); }
 
-        .red-num { background-color: #d81d28; }
-        .black-num { background-color: #222; }
-        .green-num { background-color: #08a308; grid-row: span 12; display: flex; align-items: center; }
-
-        /* Special Bets */
-        .special-bets {
-            grid-column: 2 / span 3;
-            display: flex;
-            gap: 5px;
-            margin-top: 10px;
+        .spin-btn {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            padding: 15px 50px; font-size: 1.5rem; background: var(--gold); color: black;
+            border: none; border-radius: 50px; font-weight: 900; cursor: pointer;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); z-index: 100;
         }
-        .color-btn { flex: 1; height: 40px; border: 2px solid #ffd700; }
+        .spin-btn:disabled { background: #555; cursor: not-allowed; }
 
-        /* --- CONTROLS --- */
-        .controls {
-            margin-top: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            background: rgba(0,0,0,0.6);
-            padding: 20px;
-            border-radius: 15px;
-            border: 1px solid #333;
-        }
-
-        input[type="number"] {
-            padding: 10px;
-            background: #222;
-            border: 1px solid #444;
-            color: #ffd700;
-            font-size: 1.2rem;
-            text-align: center;
-            border-radius: 5px;
-        }
-
-        button#spin-btn {
-            padding: 15px 40px;
-            font-size: 1.5rem;
-            background: linear-gradient(45deg, #ffd700, #b8860b);
-            border: none;
-            color: black;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
-            font-family: 'Cinzel', serif;
-        }
-        button#spin-btn:disabled { background: #555; cursor: not-allowed; }
-
-        #result-display {
-            font-size: 1.5rem;
-            margin-top: 10px;
-            min-height: 30px;
-            color: #fff;
+        .stats { font-size: 1.2rem; margin-bottom: 15px; }
+        .win-popup {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9); border: 2px solid var(--gold);
+            padding: 40px; z-index: 200; display: none; border-radius: 20px;
+            box-shadow: 0 0 50px var(--gold);
         }
     </style>
 </head>
 <body>
 
-    <h1>PREMIUM ROULETTE</h1>
-    <div id="balance-display">Wallet: $<span id="user-balance">Loading...</span></div>
+    <audio id="spinSound" src="https://www.soundjay.com/mechanical/sounds/ratchet-wheel-01.mp3"></audio>
+    <audio id="winSound" src="https://www.soundjay.com/misc/sounds/coins-in-hand-2.mp3"></audio>
 
-    <div class="game-container">
-        <div class="wheel-container">
-            <div class="pointer"></div>
-            <canvas id="wheel" width="400" height="400"></canvas>
-        </div>
+    <h1>💎 VIP ROULETTE</h1>
+    <div class="stats">
+        Balance: <span style="color:var(--green)">$<span id="balance">{{ "{:,.0f}".format(user.balance) }}</span></span>
+    </div>
 
-        <div>
-            <div class="betting-board" id="board">
-                </div>
-            
-            <div class="special-bets">
-                <button class="bet-btn color-btn" style="background: #d81d28;" onclick="selectBet('red')">RED (x4)</button>
-                <button class="bet-btn color-btn" style="background: #222;" onclick="selectBet('black')">BLACK (x2)</button>
-            </div>
-        </div>
+    <div class="wheel-container">
+        <div class="marker"></div>
+        <div class="wheel" id="wheel"></div>
+        <div class="center-dot" id="result-num">?</div>
     </div>
 
     <div class="controls">
-        <div>
-            <label>Selected Bet: <span id="selected-bet" style="color:#ffd700">None</span></label>
-        </div>
-        <input type="number" id="bet-amount" placeholder="Bet Amount" min="100">
-        <button id="spin-btn" onclick="spinWheel()">SPIN WHEEL</button>
-        <div id="result-display"></div>
+        <input type="number" id="betAmount" class="bet-input" placeholder="Bet Amount ($)" value="1000">
+        <div style="color:#666; font-size:0.8rem; margin-top:5px;">Select Number (36x) or Color (4x/2x)</div>
     </div>
 
-    <audio id="spinSound" src="https://www.soundjay.com/mechanical/sounds/ratchet-wheel-1.mp3"></audio>
-    <audio id="winSound" src="https://www.soundjay.com/human/sounds/applause-01.mp3"></audio>
+    <div class="board">
+        <button class="board-btn num-green" onclick="selectBet('number', '0', this)">0</button>
 
-<script>
-    // 1️⃣ YAHAN ADD KARO (URL se User ID nikalne ka code)
-    const urlParams = new URLSearchParams(window.location.search);
-    const userID = urlParams.get('uid'); // URL se ID lega
-
-    // --- SETUP ---
-    const wheelCanvas = document.getElementById('wheel');
-    const ctx = wheelCanvas.getContext('2d');
-    
-    // European Roulette Order
-    const numbers = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
-    const redNumbers = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-    
-    let currentBetType = null;
-    let currentBetValue = null;
-    let isSpinning = false;
-
-    // --- DRAW WHEEL ---
-    function drawWheel() {
-        const arc = (2 * Math.PI) / numbers.length;
-        const radius = wheelCanvas.width / 2;
-
-        ctx.translate(radius, radius);
-        
-        for (let i = 0; i < numbers.length; i++) {
-            const angle = i * arc;
-            const num = numbers[i];
-            
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.arc(0, 0, radius, angle, angle + arc);
-            
-            if (num === 0) ctx.fillStyle = "#08a308";
-            else if (redNumbers.includes(num)) ctx.fillStyle = "#d81d28";
-            else ctx.fillStyle = "#111";
-            
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.save();
-            ctx.rotate(angle + arc / 2);
-            ctx.fillStyle = "#fff";
-            ctx.font = "bold 16px Arial";
-            ctx.fillText(num, radius - 30, 5);
-            ctx.restore();
-        }
-    }
-    drawWheel();
-
-    // --- GENERATE BOARD UI ---
-    const board = document.getElementById('board');
-    const zeroBtn = document.createElement('div');
-    zeroBtn.className = 'bet-btn green-num';
-    zeroBtn.innerText = '0';
-    zeroBtn.onclick = () => selectBet('number', 0);
-    board.appendChild(zeroBtn);
-
-    for(let i=1; i<=36; i++) {
-        const btn = document.createElement('div');
-        btn.innerText = i;
-        btn.className = `bet-btn ${redNumbers.includes(i) ? 'red-num' : 'black-num'}`;
-        btn.onclick = () => selectBet('number', i);
-        board.appendChild(btn);
-    }
-
-    // --- LOGIC ---
-    function selectBet(type, value) {
-        if(isSpinning) return;
-        currentBetType = type; 
-        currentBetValue = value; 
-        
-        document.querySelectorAll('.bet-btn').forEach(b => b.classList.remove('active'));
-        if(type === 'number') {
-            event.target.classList.add('active');
-            document.getElementById('selected-bet').innerText = `Number ${value}`;
-        } else {
-            event.target.classList.add('active');
-            document.getElementById('selected-bet').innerText = value.toUpperCase();
-        }
-    }
-
-    async function spinWheel() {
-        const amount = document.getElementById('bet-amount').value;
-        if (!currentBetType || !amount || amount <= 0) return alert("Select a bet and enter amount!");
-        
-        // Check if User ID exists
-        if (!userID) return alert("Error: User ID missing in URL! (Link should have ?uid=...)");
-
-        isSpinning = true;
-        document.getElementById('spin-btn').disabled = true;
-        document.getElementById('result-display').innerText = "Rolling...";
-        
-        const audio = document.getElementById('spinSound');
-        audio.currentTime = 0;
-        audio.play();
-
-        // 2️⃣ YAHAN CHANGE KIYA HAI (User ID pass ho rahi hai)
-        const response = await fetch('/api/spin-roulette', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                user_id: userID, // <--- Ab ye URL wale ID ko backend bhejeg
-                bet_type: currentBetType, 
-                bet_value: currentBetValue, 
-                amount: parseInt(amount) 
-            })
-        });
-        const data = await response.json();
-        
-        if(data.error) {
-            alert(data.error);
-            isSpinning = false;
-            document.getElementById('spin-btn').disabled = false;
-            return;
-        }
-
-        const winningNumber = data.result_number;
-        const winningIndex = numbers.indexOf(winningNumber);
-        
-        // Random Spins logic
-        const arc = 360 / numbers.length;
-        const stopAngle = 360 * 5 - (winningIndex * arc) - 90; 
-
-        wheelCanvas.style.transform = `rotate(${stopAngle}deg)`;
-
-        setTimeout(() => {
-            isSpinning = false;
-            document.getElementById('spin-btn').disabled = false;
-            audio.pause();
-            
-            if(data.winnings > 0) {
-                document.getElementById('result-display').innerHTML = `🎉 Winner! <span style="color:#0f0">Number ${winningNumber}</span>. Won $${data.winnings}`;
-                document.getElementById('winSound').play();
-            } else {
-                document.getElementById('result-display').innerHTML = `❌ Lost. Ball landed on <span style="color:red">${winningNumber}</span>`;
+        <script>
+            const redNums = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+            for(let i=1; i<=36; i++) {
+                let colorClass = redNums.includes(i) ? 'num-red' : 'num-black';
+                document.write(`<button class="board-btn ${colorClass}" onclick="selectBet('number', '${i}', this)">${i}</button>`);
             }
-            document.getElementById('user-balance').innerText = data.new_balance;
-        }, 5000);
-    }
-</script>
+        </script>
+        
+        <button class="board-btn btn-red-bet" onclick="selectBet('color', 'red', this)">RED (4x)</button>
+        <button class="board-btn btn-black-bet" onclick="selectBet('color', 'black', this)">BLACK (2x)</button>
+    </div>
 
+    <button class="spin-btn" id="spinBtn" onclick="spin()">SPIN NOW</button>
+
+    <div class="win-popup" id="winPopup">
+        <h1 id="winTitle" style="margin:0">JACKPOT!</h1>
+        <p id="winMsg" style="font-size:1.5rem; color:white;">You won $5,000</p>
+        <button onclick="closePopup()" style="background:var(--gold); border:none; padding:10px 20px; font-weight:bold; cursor:pointer; margin-top:20px;">CLAIM</button>
+    </div>
+
+    <script>
+        let selectedType = null;
+        let selectedValue = null;
+        const uid = "{{ user.id }}";
+        let currentRotation = 0;
+
+        function selectBet(type, value, btn) {
+            document.querySelectorAll('.board-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedType = type;
+            selectedValue = value;
+            new Audio('https://www.soundjay.com/button/sounds/button-3.mp3').play().catch(e=>{});
+        }
+
+        async function spin() {
+            const amount = document.getElementById('betAmount').value;
+
+            if (!selectedType || !amount) {
+                alert("⚠️ Pehle Bet select karo aur Amount daalo!");
+                return;
+            }
+
+            const btn = document.getElementById('spinBtn');
+            btn.disabled = true;
+            btn.innerText = "SPINNING...";
+
+            const sound = document.getElementById('spinSound');
+            sound.currentTime = 0;
+            sound.loop = true;
+            sound.play();
+
+            try {
+                // ✅ UPDATED API URL
+                const res = await fetch('/api/spin_vip', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ uid: uid, type: selectedType, value: selectedValue, amount: amount })
+                });
+                const data = await res.json();
+
+                if (data.status === 'error') {
+                    alert(data.msg);
+                    sound.pause();
+                    btn.disabled = false;
+                    btn.innerText = "SPIN NOW";
+                    return;
+                }
+
+                // Animation
+                const extraSpins = 5 * 360; 
+                const randomOffset = Math.floor(Math.random() * 360); 
+                const totalDegree = currentRotation + extraSpins + randomOffset;
+                
+                const wheel = document.getElementById('wheel');
+                wheel.style.transform = `rotate(${totalDegree}deg)`;
+                currentRotation = totalDegree;
+
+                setTimeout(() => {
+                    sound.pause();
+                    document.getElementById('result-num').innerText = data.landed_number;
+                    
+                    if (data.is_win) {
+                        document.getElementById('winSound').play();
+                        showPopup("WINNER!", `+ $${data.win_amount.toLocaleString()}`, data.message);
+                    } else {
+                        // Loss feedback
+                    }
+
+                    document.getElementById('balance').innerText = data.new_balance.toLocaleString();
+                    btn.disabled = false;
+                    btn.innerText = "SPIN AGAIN";
+
+                }, 4000);
+
+            } catch (err) {
+                console.error(err);
+                sound.pause();
+                btn.disabled = false;
+                alert("Server Error");
+            }
+        }
+
+        function showPopup(title, amount, msg) {
+            document.getElementById('winTitle').innerText = title;
+            document.getElementById('winMsg').innerHTML = `${msg}<br><br><span style="color:var(--green); font-size:2rem;">${amount}</span>`;
+            document.getElementById('winPopup').style.display = 'block';
+        }
+
+        function closePopup() {
+            document.getElementById('winPopup').style.display = 'none';
+        }
+    </script>
 </body>
 </html>
