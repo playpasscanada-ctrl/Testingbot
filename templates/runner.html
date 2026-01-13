@@ -1,62 +1,271 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>TEST 3D</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Rider – 3D Subway Edition</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+
 <style>
-body { margin:0; overflow:hidden; background:black; }
+body{margin:0;overflow:hidden;background:#000;font-family:Arial;}
+#ui{
+    position:absolute;top:0;left:0;width:100%;z-index:10;color:white;
+    pointer-events:none;
+}
+.hud{
+    display:flex;justify-content:space-between;padding:15px;
+}
+.badge{
+    background:rgba(0,0,0,0.55);
+    border:2px solid #00f3ff;
+    padding:8px 18px;border-radius:30px;
+    box-shadow:0 0 15px #00f3ff;
+    font-weight:bold;
+}
+#shop,#gameover,#start{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(0,0,0,0.8);border:2px solid #00f3ff;
+    padding:25px;border-radius:20px;text-align:center;display:none;
+    pointer-events:auto;
+}
+button{
+    background:linear-gradient(135deg,#00f3ff,#ff00de);
+    border:none;padding:12px 25px;border-radius:30px;
+    color:white;font-size:16px;margin:10px;cursor:pointer;
+    box-shadow:0 0 15px #00f3ff;
+}
 </style>
 </head>
 <body>
 
+<div id="ui">
+    <div class="hud">
+        <div class="badge">🪙 <span id="coins">0</span></div>
+        <div class="badge">❤️ <span id="life">3</span></div>
+        <div class="badge">⚡ <span id="power">NONE</span></div>
+    </div>
+
+    <div id="start">
+        <h1>NEON RIDER 3D</h1>
+        <p>Subway Surfers Style Runner</p>
+        <button onclick="startGame()">PLAY</button>
+        <button onclick="openShop()">SHOP</button>
+    </div>
+
+    <div id="shop">
+        <h2>SKIN SHOP</h2>
+        <p>Coins: <span id="shopCoins">0</span></p>
+        <button onclick="buySkin('default')">Default (Free)</button>
+        <button onclick="buySkin('cyber')">Cyber Suit – 100</button>
+        <button onclick="buySkin('gold')">Golden Runner – 300</button>
+        <br>
+        <button onclick="buyUpgrade('speed')">Speed Upgrade – 150</button>
+        <button onclick="buyUpgrade('shield')">Shield Upgrade – 200</button>
+        <br>
+        <button onclick="closeShop()">CLOSE</button>
+    </div>
+
+    <div id="gameover">
+        <h2>GAME OVER</h2>
+        <p>Coins: <span id="finalCoins">0</span></p>
+        <p>Earnings: $<span id="finalMoney">0</span></p>
+        <button onclick="location.reload()">RESTART</button>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
-let scene = new THREE.Scene();
+/* ================= CORE ================= */
+let scene, camera, renderer;
+let player, mixer, clock=new THREE.Clock();
+let coins=[], obstacles=[], enemy;
+let lane=0, speed=0.35;
+let score=0, life=3;
+let power="NONE";
+let game=false;
 
-let camera = new THREE.PerspectiveCamera(
-  60,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
-camera.position.set(0, 3, 10);
-camera.lookAt(0, 0, 0);
+let upgrades={speed:0,shield:0};
+let ownedSkin="default";
 
-let renderer = new THREE.WebGLRenderer({ antialias:true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x000000);
-document.body.appendChild(renderer.domElement);
+/* ================= SETUP ================= */
+init();
+function init(){
+    scene=new THREE.Scene();
+    scene.fog=new THREE.Fog(0x87cefa,10,200);
 
-// Light
-const light = new THREE.DirectionalLight(0xffffff, 2);
-light.position.set(5, 10, 5);
-scene.add(light);
-scene.add(new THREE.AmbientLight(0xffffff, 1));
+    camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,0.1,1000);
+    camera.position.set(0,5,10);
 
-// Ground
-const groundGeo = new THREE.PlaneGeometry(50, 50);
-const groundMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-const ground = new THREE.Mesh(groundGeo, groundMat);
-ground.rotation.x = -Math.PI / 2;
-scene.add(ground);
+    renderer=new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(innerWidth,innerHeight);
+    renderer.setClearColor(0x87cefa);
+    document.body.appendChild(renderer.domElement);
 
-// Player Cube
-const playerGeo = new THREE.BoxGeometry(2, 2, 2);
-const playerMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-const player = new THREE.Mesh(playerGeo, playerMat);
-player.position.set(0, 1, 0);
-scene.add(player);
+    const light=new THREE.DirectionalLight(0xffffff,1);
+    light.position.set(10,20,10);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0xffffff,0.5));
 
-// Animate
-function animate(){
-  requestAnimationFrame(animate);
-  player.rotation.y += 0.01;
-  renderer.render(scene, camera);
+    createGround();
+    loadPlayer();
+    spawnEnemy();
+
+    document.getElementById("start").style.display="block";
 }
-animate();
-</script>
 
+/* ================= GROUND ================= */
+function createGround(){
+    const geo=new THREE.PlaneGeometry(1000,1000);
+    const mat=new THREE.MeshStandardMaterial({color:0x444444});
+    const ground=new THREE.Mesh(geo,mat);
+    ground.rotation.x=-Math.PI/2;
+    scene.add(ground);
+}
+
+/* ================= PLAYER (GLTF MODEL) ================= */
+function loadPlayer(){
+    const loader=new THREE.GLTFLoader();
+    loader.load(
+        // 👇 Replace with your own realistic character model
+        "https://models.babylonjs.com/CesiumMan/glTF/CesiumMan.gltf",
+        gltf=>{
+            player=gltf.scene;
+            player.scale.set(1.5,1.5,1.5);
+            player.position.set(0,0,0);
+            scene.add(player);
+
+            mixer=new THREE.AnimationMixer(player);
+            if(gltf.animations.length){
+                mixer.clipAction(gltf.animations[0]).play();
+            }
+        }
+    );
+}
+
+/* ================= COIN LINES ================= */
+function spawnCoinLine(){
+    for(let i=0;i<8;i++){
+        const geo=new THREE.TorusGeometry(0.3,0.15,8,16);
+        const mat=new THREE.MeshStandardMaterial({color:0xffd700,emissive:0xffaa00});
+        const coin=new THREE.Mesh(geo,mat);
+        coin.position.set(lane*2,1,-i*3-15);
+        scene.add(coin);
+        coins.push(coin);
+    }
+}
+
+/* ================= OBSTACLE ================= */
+function spawnObstacle(){
+    const geo=new THREE.BoxGeometry(1.5,1.5,1.5);
+    const mat=new THREE.MeshStandardMaterial({color:0xff3333});
+    const obs=new THREE.Mesh(geo,mat);
+    obs.position.set(lane*2,0.75,-30);
+    scene.add(obs);
+    obstacles.push(obs);
+}
+
+/* ================= BOSS / ENEMY AI ================= */
+function spawnEnemy(){
+    const geo=new THREE.BoxGeometry(2,3,2);
+    const mat=new THREE.MeshStandardMaterial({color:0x9900ff,emissive:0x5500aa});
+    enemy=new THREE.Mesh(geo,mat);
+    enemy.position.set(0,1.5,-40);
+    scene.add(enemy);
+}
+
+function enemyAI(){
+    if(!enemy||!player)return;
+    enemy.position.z+=0.05; // chase player
+    if(enemy.position.z>-2){
+        hitPlayer();
+        enemy.position.z=-40;
+    }
+}
+
+/* ================= CONTROLS ================= */
+window.addEventListener("keydown",e=>{
+    if(!game)return;
+    if(e.key==="ArrowLeft") lane=Math.max(-1,lane-1);
+    if(e.key==="ArrowRight") lane=Math.min(1,lane+1);
+});
+
+/* ================= COLLISION ================= */
+function hitPlayer(){
+    if(upgrades.shield>0){
+        upgrades.shield--;
+    }else{
+        life--;
+        document.getElementById("life").innerText=life;
+        if(life<=0)endGame();
+    }
+}
+
+/* ================= SHOP ================= */
+function openShop(){
+    document.getElementById("shop").style.display="block";
+    document.getElementById("shopCoins").innerText=score;
+}
+function closeShop(){document.getElementById("shop").style.display="none";}
+function buySkin(s){
+    if(s==="default"){ownedSkin=s;alert("Default equipped");}
+    if(s==="cyber"&&score>=100){score-=100;ownedSkin=s;}
+    if(s==="gold"&&score>=300){score-=300;ownedSkin=s;}
+}
+function buyUpgrade(u){
+    if(u==="speed"&&score>=150){score-=150;upgrades.speed++;}
+    if(u==="shield"&&score>=200){score-=200;upgrades.shield++;}
+}
+
+/* ================= GAME ================= */
+function startGame(){
+    document.getElementById("start").style.display="none";
+    game=true;
+    spawnCoinLine();
+    spawnObstacle();
+    animate();
+}
+
+function endGame(){
+    game=false;
+    document.getElementById("gameover").style.display="block";
+    document.getElementById("finalCoins").innerText=score;
+    document.getElementById("finalMoney").innerText=(score*10).toLocaleString();
+}
+
+/* ================= LOOP ================= */
+function animate(){
+    requestAnimationFrame(animate);
+    if(!game)return;
+
+    if(mixer) mixer.update(clock.getDelta());
+
+    if(player){
+        player.position.x+=(lane*2-player.position.x)*0.1;
+    }
+
+    coins.forEach((c,i)=>{
+        c.position.z+=speed;
+        if(c.position.z>2){
+            score++;
+            document.getElementById("coins").innerText=score;
+            scene.remove(c);
+            coins.splice(i,1);
+        }
+    });
+
+    obstacles.forEach((o,i)=>{
+        o.position.z+=speed;
+        if(o.position.z>1){
+            hitPlayer();
+            scene.remove(o);
+            obstacles.splice(i,1);
+        }
+    });
+
+    enemyAI();
+    renderer.render(scene,camera);
+}
+</script>
 </body>
 </html>
