@@ -2,113 +2,366 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>VIP Roulette Arena</title>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;800&display=swap" rel="stylesheet">
     <style>
-        :root { --gold: #FFD700; --dark: #050505; --red: #e74c3c; --black: #2c3e50; --green: #27ae60; }
-        body {
-            background: radial-gradient(circle, #1a1a1a, #000);
-            color: white; font-family: 'Rajdhani', sans-serif;
-            text-align: center; margin: 0; min-height: 100vh; user-select: none;
-            overflow-x: hidden;
+        :root {
+            --gold: #FFD700;
+            --dark-bg: #0a0a0a;
+            --red: #e74c3c;
+            --black: #2c3e50;
+            --green: #27ae60;
+            --neon-blue: #00f7ff;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
         }
 
-        h1 { color: var(--gold); text-shadow: 0 0 15px var(--gold); font-size: 3rem; margin-top: 20px; }
+        /* --- Premium Animated Background --- */
+        body {
+            background-color: var(--dark-bg);
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(0, 247, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
+                url('data:image/svg+xml,%3Csvg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zM32 63c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm57-13c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z" fill="%23ffffff" fill-opacity="0.05"/%3E%3C/svg%3E');
+            animation: bgScroll 60s linear infinite;
+            color: white;
+            font-family: 'Rajdhani', sans-serif;
+            text-align: center;
+            margin: 0;
+            min-height: 100vh;
+            user-select: none;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        @keyframes bgScroll {
+            from { background-position: 0 0, 0 0, 0 0; }
+            to { background-position: 0 0, 0 0, 0 -1000px; }
+        }
+
+        /* --- Touch Slide Trail Animation --- */
+        .trail {
+            position: absolute;
+            height: 10px; width: 10px;
+            border-radius: 50%;
+            background: var(--gold);
+            box-shadow: 0 0 10px var(--gold), 0 0 20px var(--gold);
+            pointer-events: none;
+            opacity: 0.8;
+            transition: transform 0.1s, opacity 0.5s;
+            z-index: 9999;
+        }
+
+        /* --- Header & Stats (Player Name & Balance) --- */
+        .header {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .player-name {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--gold);
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            display: flex;
+            align-items: center;
+        }
+        .player-name::before {
+            content: '👤';
+            margin-right: 8px;
+            font-size: 1.2rem;
+        }
+        .balance-container {
+            font-size: 1.3rem;
+            font-weight: 800;
+        }
+        .balance-amount {
+            color: var(--green);
+            text-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
+        }
+
+        h1 {
+            color: var(--gold);
+            text-shadow: 0 0 20px var(--gold), 0 0 40px var(--gold);
+            font-size: 3.5rem;
+            margin: 10px 0 25px;
+            letter-spacing: 2px;
+        }
         
-        /* --- 🎡 WHEEL UI --- */
+        /* --- 🎡 WHEEL UI (Bigger & Numbered) --- */
         .wheel-container {
-            position: relative; width: 300px; height: 300px; margin: 20px auto;
-            border: 8px solid var(--gold); border-radius: 50%;
-            box-shadow: 0 0 50px rgba(255, 215, 0, 0.2);
-            background: #222; overflow: hidden;
+            position: relative;
+            width: 90vw;
+            max-width: 400px;
+            aspect-ratio: 1 / 1;
+            margin: 0 auto 30px;
+            border: 12px solid var(--gold);
+            border-radius: 50%;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.4), inset 0 0 30px rgba(0,0,0,0.8);
+            background: #111;
+            overflow: hidden;
         }
         
         .wheel {
-            width: 100%; height: 100%;
-            background: conic-gradient(
-                #27ae60 0deg 9.7deg, 
-                #e74c3c 9.7deg 19.4deg, #2c3e50 19.4deg 29.1deg, 
-                #e74c3c 29.1deg 38.8deg, #2c3e50 38.8deg 48.5deg,
-                #e74c3c 48.5deg 58.2deg, #2c3e50 58.2deg 67.9deg,
-                #e74c3c 67.9deg 77.6deg, #2c3e50 77.6deg 87.3deg,
-                #e74c3c 87.3deg 97.0deg, #2c3e50 97.0deg 106.7deg,
-                #e74c3c 106.7deg 116.4deg, #2c3e50 116.4deg 126.1deg,
-                #e74c3c 126.1deg 135.8deg, #2c3e50 135.8deg 145.5deg,
-                #e74c3c 145.5deg 155.2deg, #2c3e50 155.2deg 164.9deg,
-                #e74c3c 164.9deg 174.6deg, #2c3e50 174.6deg 184.3deg,
-                #e74c3c 184.3deg 194.0deg, #2c3e50 194.0deg 203.7deg,
-                #e74c3c 203.7deg 213.4deg, #2c3e50 213.4deg 223.1deg,
-                #e74c3c 223.1deg 232.8deg, #2c3e50 232.8deg 242.5deg,
-                #e74c3c 242.5deg 252.2deg, #2c3e50 252.2deg 261.9deg,
-                #e74c3c 261.9deg 271.6deg, #2c3e50 271.6deg 281.3deg,
-                #e74c3c 281.3deg 291.0deg, #2c3e50 291.0deg 300.7deg,
-                #e74c3c 300.7deg 310.4deg, #2c3e50 310.4deg 320.1deg,
-                #e74c3c 320.1deg 329.8deg, #2c3e50 329.8deg 339.5deg,
-                #e74c3c 339.5deg 349.2deg, #2c3e50 349.2deg 360deg
-            );
+            width: 100%;
+            height: 100%;
             border-radius: 50%;
+            position: relative;
             transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+            /* Conic gradient for colors */
+            background: conic-gradient(
+                var(--green) 0deg 9.7deg, /* 0 */
+                var(--red) 9.7deg 19.4deg, var(--black) 19.4deg 29.1deg, /* 32, 15 */
+                var(--red) 29.1deg 38.8deg, var(--black) 38.8deg 48.5deg, /* 19, 4 */
+                var(--red) 48.5deg 58.2deg, var(--black) 58.2deg 67.9deg, /* 21, 2 */
+                var(--red) 67.9deg 77.6deg, var(--black) 77.6deg 87.3deg, /* 25, 17 */
+                var(--red) 87.3deg 97.0deg, var(--black) 97.0deg 106.7deg, /* 34, 6 */
+                var(--red) 106.7deg 116.4deg, var(--black) 116.4deg 126.1deg, /* 27, 13 */
+                var(--red) 126.1deg 135.8deg, var(--black) 135.8deg 145.5deg, /* 36, 11 */
+                var(--red) 145.5deg 155.2deg, var(--black) 155.2deg 164.9deg, /* 30, 8 */
+                var(--red) 164.9deg 174.6deg, var(--black) 174.6deg 184.3deg, /* 23, 10 */
+                var(--red) 184.3deg 194.0deg, var(--black) 194.0deg 203.7deg, /* 5, 24 */
+                var(--red) 203.7deg 213.4deg, var(--black) 213.4deg 223.1deg, /* 16, 33 */
+                var(--red) 223.1deg 232.8deg, var(--black) 232.8deg 242.5deg, /* 1, 20 */
+                var(--red) 242.5deg 252.2deg, var(--black) 252.2deg 261.9deg, /* 14, 31 */
+                var(--red) 261.9deg 271.6deg, var(--black) 271.6deg 281.3deg, /* 9, 22 */
+                var(--red) 281.3deg 291.0deg, var(--black) 291.0deg 300.7deg, /* 18, 29 */
+                var(--red) 300.7deg 310.4deg, var(--black) 310.4deg 320.1deg, /* 7, 28 */
+                var(--red) 320.1deg 329.8deg, var(--black) 329.8deg 339.5deg, /* 12, 35 */
+                var(--red) 339.5deg 349.2deg, var(--black) 349.2deg 360deg  /* 3, 26 */
+            );
+        }
+
+        /* Numbers on the wheel */
+        .wheel-number {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: 50% 50%;
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+            /* Calculate position based on angle */
+            /* This is a simplification for visual representation */
         }
         
         .marker {
-            position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
-            width: 0; height: 0; border-left: 10px solid transparent;
-            border-right: 10px solid transparent; border-top: 20px solid var(--gold);
-            z-index: 10; filter: drop-shadow(0 0 5px var(--gold));
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0; height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 30px solid var(--gold);
+            z-index: 10;
+            filter: drop-shadow(0 0 10px var(--gold));
         }
 
         .center-dot {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 50px; height: 50px; background: #000; border: 4px solid var(--gold);
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem; font-weight: bold; z-index: 5;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 70px; height: 70px;
+            background: radial-gradient(circle, #333, #000);
+            border: 5px solid var(--gold);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 900;
+            z-index: 5;
+            box-shadow: 0 0 20px var(--gold);
+            color: var(--gold);
         }
 
-        /* --- 💸 BETTING BOARD --- */
-        .controls { margin-bottom: 20px; }
+        /* --- 💸 BETTING BOARD (Bigger & Glowing) --- */
+        .controls {
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
         input.bet-input {
-            padding: 10px; border-radius: 5px; background: #111; color: var(--gold);
-            border: 1px solid var(--gold); text-align: center; font-family: 'Rajdhani';
-            font-size: 1.2rem; font-weight: bold; width: 150px;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.5);
+            color: var(--gold);
+            border: 2px solid var(--gold);
+            text-align: center;
+            font-family: 'Rajdhani';
+            font-size: 1.5rem;
+            font-weight: bold;
+            width: 100%;
+            box-sizing: border-box;
+            transition: 0.3s;
+        }
+        input.bet-input:focus {
+            outline: none;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+        .bet-label {
+            color: #aaa;
+            font-size: 1rem;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .board {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;
-            max-width: 400px; margin: 0 auto 50px auto; padding: 10px;
-            background: #111; border: 2px solid #333; border-radius: 10px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto 80px; /* Added bottom margin for spin button */
+            padding: 15px;
+            background: var(--glass-bg);
+            border: 2px solid var(--glass-border);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
         }
 
         .board-btn {
-            padding: 15px; border: none; border-radius: 4px; font-weight: bold;
-            font-size: 1.1rem; cursor: pointer; color: white; transition: 0.2s;
+            padding: 20px 10px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 800;
+            font-size: 1.3rem;
+            cursor: pointer;
+            color: white;
+            transition: all 0.2s;
             position: relative;
+            overflow: hidden;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
         }
-        .board-btn:hover { transform: scale(1.05); filter: brightness(1.2); }
+        .board-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.5s;
+        }
+        .board-btn:hover::before {
+            left: 100%;
+        }
+        .board-btn:active {
+            transform: scale(0.95);
+        }
         
-        .num-red { background: var(--red); }
-        .num-black { background: var(--black); }
-        .num-green { background: var(--green); grid-column: span 3; }
+        .num-red { background: linear-gradient(145deg, var(--red), #c0392b); box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
+        .num-black { background: linear-gradient(145deg, var(--black), #1a252f); box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
+        .num-green { background: linear-gradient(145deg, var(--green), #219653); grid-column: span 3; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
         
-        .btn-red-bet { background: var(--red); grid-column: span 1.5; font-size: 1.2rem;}
-        .btn-black-bet { background: var(--black); grid-column: span 1.5; font-size: 1.2rem;}
+        .btn-red-bet { background: linear-gradient(145deg, var(--red), #c0392b); grid-column: span 1.5; font-size: 1.4rem; padding: 25px 10px; }
+        .btn-black-bet { background: linear-gradient(145deg, var(--black), #1a252f); grid-column: span 1.5; font-size: 1.4rem; padding: 25px 10px; }
 
-        .selected { border: 3px solid var(--gold); box-shadow: 0 0 15px var(--gold); transform: scale(0.95); }
+        .selected {
+            border: 3px solid var(--gold);
+            box-shadow: 0 0 25px var(--gold), inset 0 0 10px var(--gold);
+            transform: scale(1.05);
+            z-index: 10;
+        }
 
+        /* --- Spin Button (Premium Glow) --- */
+        .spin-btn-container {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            padding: 10px;
+            box-sizing: border-box;
+            z-index: 100;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+        }
         .spin-btn {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            padding: 15px 50px; font-size: 1.5rem; background: var(--gold); color: black;
-            border: none; border-radius: 50px; font-weight: 900; cursor: pointer;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); z-index: 100;
+            padding: 20px 60px;
+            font-size: 1.8rem;
+            background: linear-gradient(45deg, var(--gold), #ff8c00);
+            color: black;
+            border: none;
+            border-radius: 50px;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.6), 0 0 60px rgba(255, 215, 0, 0.3);
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            width: 100%;
+            max-width: 500px;
         }
-        .spin-btn:disabled { background: #555; cursor: not-allowed; }
+        .spin-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.8), 0 0 80px rgba(255, 215, 0, 0.5);
+        }
+        .spin-btn:active {
+            transform: scale(0.98);
+        }
+        .spin-btn:disabled {
+            background: #555;
+            color: #888;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
 
-        .stats { font-size: 1.2rem; margin-bottom: 15px; }
+        /* --- Win Popup (Premium) --- */
         .win-popup {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.9); border: 2px solid var(--gold);
-            padding: 40px; z-index: 200; display: none; border-radius: 20px;
-            box-shadow: 0 0 50px var(--gold);
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(0,0,0,0.95);
+            border: 3px solid var(--gold);
+            padding: 40px; z-index: 200; display: none; border-radius: 25px;
+            box-shadow: 0 0 50px var(--gold), 0 0 100px rgba(255, 215, 0, 0.5);
+            backdrop-filter: blur(20px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            width: 90%;
+            max-width: 400px;
         }
+        .win-popup.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+        .claim-btn {
+            background: linear-gradient(45deg, var(--gold), #ff8c00);
+            border: none; padding: 15px 40px; font-weight: 900; cursor: pointer;
+            margin-top: 25px; font-size: 1.3rem; border-radius: 50px; color: black;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            transition: 0.3s;
+        }
+        .claim-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+        }
+
+        /* Wheel numbers positioning (Simplified for visual impact) */
+        /* In a real 3D roulette, this would be complex. For 2D, we can simulate it. */
+        /* We'll add numbers dynamically via JS for better control */
+
     </style>
 </head>
 <body>
@@ -116,43 +369,79 @@
     <audio id="spinSound" src="https://www.soundjay.com/mechanical/sounds/ratchet-wheel-01.mp3"></audio>
     <audio id="winSound" src="https://www.soundjay.com/misc/sounds/coins-in-hand-2.mp3"></audio>
 
-    <h1>💎 VIP ROULETTE</h1>
-    <div class="stats">
-        Balance: <span style="color:var(--green)">$<span id="balance">{{ "{:,.0f}".format(user.balance) }}</span></span>
+    <div class="header">
+        <div class="player-name">{{ user.username }}</div>
+        <div class="balance-container">
+            Balance: <span class="balance-amount">$<span id="balance">{{ "{:,.0f}".format(balance) }}</span></span>
+        </div>
     </div>
+
+    <h1>💎 VIP ROULETTE</h1>
 
     <div class="wheel-container">
         <div class="marker"></div>
-        <div class="wheel" id="wheel"></div>
+        <div class="wheel" id="wheel">
+            </div>
         <div class="center-dot" id="result-num">?</div>
     </div>
 
     <div class="controls">
         <input type="number" id="betAmount" class="bet-input" placeholder="Bet Amount ($)" value="1000">
-        <div style="color:#666; font-size:0.8rem; margin-top:5px;">Select Number (36x) or Color (4x/2x)</div>
+        <div class="bet-label">Select Number (36x) or Color (4x/2x)</div>
     </div>
 
     <div class="board">
         <button class="board-btn num-green" onclick="selectBet('number', '0', this)">0</button>
 
         <script>
+            // Roulette Number Layout (European)
+            const rouletteLayout = [
+                3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36,
+                2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35,
+                1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34
+            ];
             const redNums = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
-            for(let i=1; i<=36; i++) {
-                let colorClass = redNums.includes(i) ? 'num-red' : 'num-black';
-                document.write(`<button class="board-btn ${colorClass}" onclick="selectBet('number', '${i}', this)">${i}</button>`);
+            
+            // Generate Board row by row for correct layout
+            for(let i=0; i<3; i++) { // 3 rows
+                for(let j=0; j<12; j++) { // 12 columns
+                    let num = rouletteLayout[i*12 + j];
+                    let colorClass = redNums.includes(num) ? 'num-red' : 'num-black';
+                    document.write(`<button class="board-btn ${colorClass}" onclick="selectBet('number', '${num}', this)">${num}</button>`);
+                }
             }
+
+            // ✅ ADD NUMBERS TO WHEEL (Visual Simulation)
+            const wheelEl = document.getElementById('wheel');
+            // Sequence on the wheel (European)
+            const wheelNumbers = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+            const sliceAngle = 360 / 37;
+
+            wheelNumbers.forEach((num, index) => {
+                const numberEl = document.createElement('div');
+                numberEl.classList.add('wheel-number');
+                numberEl.innerText = num;
+                // Rotate and position the number. Adjust radius (e.g., 40%) as needed.
+                const angle = index * sliceAngle;
+                numberEl.style.transform = `rotate(${angle}deg) translate(0, -42%) rotate(-${angle}deg)`; // Adjust translate Y for distance from center
+                wheelEl.appendChild(numberEl);
+            });
+
         </script>
         
         <button class="board-btn btn-red-bet" onclick="selectBet('color', 'red', this)">RED (4x)</button>
         <button class="board-btn btn-black-bet" onclick="selectBet('color', 'black', this)">BLACK (2x)</button>
     </div>
 
-    <button class="spin-btn" id="spinBtn" onclick="spin()">SPIN NOW</button>
+    <div class="spin-btn-container">
+        <button class="spin-btn" id="spinBtn" onclick="spin()">SPIN NOW</button>
+    </div>
 
     <div class="win-popup" id="winPopup">
-        <h1 id="winTitle" style="margin:0">JACKPOT!</h1>
-        <p id="winMsg" style="font-size:1.5rem; color:white;">You won $5,000</p>
-        <button onclick="closePopup()" style="background:var(--gold); border:none; padding:10px 20px; font-weight:bold; cursor:pointer; margin-top:20px;">CLAIM</button>
+        <h1 id="winTitle" style="margin:0; font-size: 2.5rem;">JACKPOT!</h1>
+        <p id="winMsg" style="font-size:1.5rem; color:white; margin: 20px 0;">You won</p>
+        <div id="winAmountDisplay" style="color:var(--gold); font-size:3rem; font-weight:900; text-shadow: 0 0 20px var(--gold);">$5,000</div>
+        <button class="claim-btn" onclick="closePopup()">CLAIM REWARD</button>
     </div>
 
     <script>
@@ -161,19 +450,38 @@
         const uid = "{{ user.id }}";
         let currentRotation = 0;
 
+        // ✅ Touch Trail Animation
+        document.addEventListener('mousemove', function(e) { createTrail(e.clientX, e.clientY); });
+        document.addEventListener('touchmove', function(e) { createTrail(e.touches[0].clientX, e.touches[0].clientY); });
+
+        function createTrail(x, y) {
+            const trail = document.createElement('div');
+            trail.classList.add('trail');
+            trail.style.left = (x - 5) + 'px';
+            trail.style.top = (y - 5) + 'px';
+            document.body.appendChild(trail);
+            setTimeout(() => {
+                trail.style.transform = 'scale(0)';
+                trail.style.opacity = '0';
+            }, 50);
+            setTimeout(() => { trail.remove(); }, 500);
+        }
+
         function selectBet(type, value, btn) {
             document.querySelectorAll('.board-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
             selectedType = type;
             selectedValue = value;
             new Audio('https://www.soundjay.com/button/sounds/button-3.mp3').play().catch(e=>{});
+            // Vibrate on mobile
+            if (navigator.vibrate) navigator.vibrate(50);
         }
 
         async function spin() {
             const amount = document.getElementById('betAmount').value;
 
-            if (!selectedType || !amount) {
-                alert("⚠️ Pehle Bet select karo aur Amount daalo!");
+            if (!selectedType || !amount || amount <= 0) {
+                alert("⚠️ Please select a valid Bet and Amount!");
                 return;
             }
 
@@ -187,7 +495,7 @@
             sound.play();
 
             try {
-                // ✅ FIXED: Updated API Route to match your new Python backend
+                // ✅ CORRECT API ENDPOINT
                 const res = await fetch('/api/spin_roulette', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -205,12 +513,21 @@
 
                 // Animation
                 const extraSpins = 5 * 360; 
-                const randomOffset = Math.floor(Math.random() * 360); 
-                const totalDegree = currentRotation + extraSpins + randomOffset;
+                // Calculate the angle to land on the correct number.
+                // Each slice is 360/37 degrees. Wheel index of the number needs to be found.
+                const wheelIndex = wheelNumbers.indexOf(data.landed_number);
+                // Target angle is negative because wheel spins clockwise.
+                // Add a small offset to center the number under the marker.
+                const targetAngle = -(wheelIndex * sliceAngle) - (sliceAngle / 2); 
+                
+                // Add some randomness to the final position within the slice
+                const randomOffset = (Math.random() - 0.5) * (sliceAngle * 0.8);
+                
+                const totalDegree = currentRotation + extraSpins + targetAngle + randomOffset;
                 
                 const wheel = document.getElementById('wheel');
                 wheel.style.transform = `rotate(${totalDegree}deg)`;
-                currentRotation = totalDegree;
+                currentRotation = totalDegree % 360; // Keep rotation manageable
 
                 setTimeout(() => {
                     sound.pause();
@@ -218,9 +535,11 @@
                     
                     if (data.is_win) {
                         document.getElementById('winSound').play();
-                        showPopup("WINNER!", `+ $${data.win_amount.toLocaleString()}`, data.message);
+                        showPopup("WINNER!", `$${data.win_amount.toLocaleString()}`, data.message);
+                        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
                     } else {
-                        // Loss feedback (optional)
+                         if (navigator.vibrate) navigator.vibrate(200);
+                        // Optional loss feedback
                     }
 
                     document.getElementById('balance').innerText = data.new_balance.toLocaleString();
@@ -233,18 +552,28 @@
                 console.error(err);
                 sound.pause();
                 btn.disabled = false;
-                alert("Server Error");
+                btn.innerText = "SPIN NOW";
+                alert("Server Error. Please try again.");
             }
         }
 
         function showPopup(title, amount, msg) {
             document.getElementById('winTitle').innerText = title;
-            document.getElementById('winMsg').innerHTML = `${msg}<br><br><span style="color:var(--green); font-size:2rem;">${amount}</span>`;
-            document.getElementById('winPopup').style.display = 'block';
+            document.getElementById('winMsg').innerText = msg;
+            document.getElementById('winAmountDisplay').innerText = amount;
+            const popup = document.getElementById('winPopup');
+            popup.style.display = 'block';
+            // Trigger reflow to enable transition
+            popup.offsetHeight; 
+            popup.classList.add('show');
         }
 
         function closePopup() {
-            document.getElementById('winPopup').style.display = 'none';
+            const popup = document.getElementById('winPopup');
+            popup.classList.remove('show');
+            setTimeout(() => {
+                popup.style.display = 'none';
+            }, 300); // Wait for transition to finish
         }
     </script>
 </body>
