@@ -18394,7 +18394,7 @@ def roulette_page():
 
 
 # ==========================================
-# 🎰 VIP ROULETTE API (Updated Logic)
+# 🎰 VIP ROULETTE API (Fixed Bet Costs)
 # ==========================================
 
 @app.route('/api/spin_roulette', methods=['POST'])
@@ -18404,65 +18404,77 @@ def spin_roulette_api():
         uid = str(data.get('uid'))
         bet_type = data.get('type')     # 'number' or 'color'
         bet_value = data.get('value')   # '14', 'red', 'black'
-        bet_amount = int(data.get('amount'))
+        
+        # User ne jo input box me dala (Number bet ke liye use hoga)
+        input_amount = int(data.get('amount', 0)) 
 
-        # --- 1. CONFIGURATION (Colors) ---
+        # --- 1. CONFIGURATION ---
         RED_NUMS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]
         BLACK_NUMS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35]
 
-        # --- 2. BALANCE CHECK ---
+        # --- 2. DETERMINE BET COST (Fixed Logic) ---
+        bet_cost = 0
+
+        if bet_type == "color":
+            if bet_value == "red":
+                bet_cost = 500000  # 🔥 RED = 500k Fixed Cost
+            elif bet_value == "black":
+                bet_cost = 50000   # ♠️ BLACK = 50k Fixed Cost
+            else:
+                return jsonify({"status": "error", "msg": "Invalid Color!"})
+        
+        elif bet_type == "number":
+            # Number pe abhi bhi apni marzi ka paisa laga sakte hain
+            bet_cost = input_amount
+            if bet_cost <= 0:
+                return jsonify({"status": "error", "msg": "Amount must be positive!"})
+
+        # --- 3. BALANCE CHECK ---
         res = supabase.table("economy").select("balance").eq("user_id", uid).execute()
         if not res.data: 
             return jsonify({"status": "error", "msg": "Account not found!"})
         
         current_bal = int(res.data[0]['balance'])
 
-        if bet_amount <= 0:
-            return jsonify({"status": "error", "msg": "Invalid Amount!"})
-        if current_bal < bet_amount:
-            return jsonify({"status": "error", "msg": "Insufficient Funds!"})
+        if current_bal < bet_cost:
+            return jsonify({"status": "error", "msg": f"Garib! Need ${bet_cost:,} for this bet!"})
 
-        # --- 3. DEDUCT MONEY FIRST ---
-        new_bal = current_bal - bet_amount
+        # --- 4. DEDUCT MONEY ---
+        new_bal = current_bal - bet_cost
         supabase.table("economy").update({"balance": new_bal}).eq("user_id", uid).execute()
 
-        # --- 4. SPIN LOGIC ---
+        # --- 5. SPIN LOGIC ---
         import random
         landed_number = random.randint(0, 36)
         
         landed_color = "green"
-        if landed_number in RED_NUMS: 
-            landed_color = "red"
-        elif landed_number in BLACK_NUMS: 
-            landed_color = "black"
+        if landed_number in RED_NUMS: landed_color = "red"
+        elif landed_number in BLACK_NUMS: landed_color = "black"
 
-        # --- 5. WIN CALCULATION (Updated Prices) ---
+        # --- 6. WIN CALCULATION (Fixed Prizes) ---
         win_amount = 0
         is_win = False
         message = "Better luck next time!"
 
-        # A. NUMBER BET (36x Multiplier) - Same as before
         if bet_type == "number":
             if int(bet_value) == landed_number:
-                win_amount = bet_amount * 36
+                win_amount = bet_cost * 36
                 is_win = True
                 message = f"JACKPOT! Number {landed_number} Hit!"
 
-        # B. COLOR BETS (Fixed Prizes as per User Request)
         elif bet_type == "color":
-            # 🔴 RED WIN = $1,000,000 FIXED
+            # Prize Logic (Jo aapne pehle set karwaya tha)
             if bet_value == "red" and landed_color == "red":
-                win_amount = 1000000  
+                win_amount = 1000000 # Win 1 Million
                 is_win = True
                 message = "🔥 RED HIT! WON $1,000,000!"
             
-            # ⚫ BLACK WIN = $100,000 FIXED
             elif bet_value == "black" and landed_color == "black":
-                win_amount = 100000
+                win_amount = 100000 # Win 100k
                 is_win = True
                 message = "♠️ BLACK HIT! WON $100,000!"
 
-        # --- 6. ADD WINNINGS & SAVE ---
+        # --- 7. ADD WINNINGS ---
         if is_win:
             new_bal += win_amount
             supabase.table("economy").update({"balance": new_bal}).eq("user_id", uid).execute()
@@ -18479,7 +18491,7 @@ def spin_roulette_api():
 
     except Exception as e:
         print(f"Roulette Error: {e}")
-        return jsonify({"status": "error", "msg": f"Server Error: {str(e)}"})
+        return jsonify({"status": "error", "msg": "Server Error"})
 
 
 # --- 17. LOGOUT & RUN ---
