@@ -1,390 +1,340 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Surf Ultimate</title>
-    <link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Rajdhani:wght@700&display=swap" rel="stylesheet">
-    <style>
-        body { 
-            margin: 0; overflow: hidden; background: #120024; 
-            font-family: 'Rajdhani', sans-serif; touch-action: none; 
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Neon Rider 3D Premium</title>
+<link href="https://fonts.googleapis.com/css2?family=Audiowide&family=Rajdhani:wght@600;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+body{
+    margin:0; overflow:hidden;
+    font-family:'Rajdhani',sans-serif;
+    background:black; color:white;
+    touch-action:none;
+}
+canvas{display:block;width:100%;height:100%;}
 
-        /* --- UI LAYERS --- */
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+#ui-layer{position:absolute;inset:0;z-index:10;pointer-events:none;}
+.hud{display:flex;justify-content:space-between;padding:16px;pointer-events:auto;}
+.badge{
+    background:linear-gradient(135deg,#00f3ff,#ff00de);
+    padding:10px 22px;border-radius:50px;
+    border:2px solid rgba(255,255,255,.6);
+    box-shadow:0 0 20px rgba(0,243,255,.8);
+    font-weight:900;font-size:18px;
+    display:flex;gap:8px;align-items:center;
+    text-shadow:2px 2px 0 black;
+}
 
-        /* HUD */
-        .hud-bar {
-            display: flex; justify-content: space-between; padding: 20px;
-            pointer-events: auto;
-        }
-        .stat-badge {
-            background: linear-gradient(180deg, #ff00de, #6e00ff);
-            padding: 8px 25px; border-radius: 50px; border: 2px solid #fff;
-            box-shadow: 0 0 20px #ff00de; color: white;
-            font-size: 22px; font-weight: 900; display: flex; align-items: center; gap: 8px;
-            text-shadow: 2px 2px 0px black;
-        }
-
-        /* GAME OVER */
-        #game-over {
-            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #1a0b2e 0%, #000 100%);
-            border: 3px solid #00f3ff; padding: 30px; text-align: center;
-            border-radius: 20px; box-shadow: 0 0 60px rgba(0, 243, 255, 0.5); 
-            width: 320px; pointer-events: auto;
-        }
-        
-        .result-row { display: flex; justify-content: space-between; margin: 15px 0; font-size: 18px; color: #ccc; border-bottom: 1px solid #333; padding-bottom: 5px; }
-        .result-val { color: #ffd700; font-size: 24px; font-weight: bold; }
-        .total-val { color: #00f3ff; font-size: 30px; font-family: 'Audiowide'; }
-
-        .btn-action {
-            background: #ffd700; border: none; padding: 15px 0; width: 100%;
-            font-family: 'Audiowide'; font-size: 20px; color: #000;
-            border-radius: 50px; cursor: pointer; margin-top: 20px;
-            box-shadow: 0 0 20px #ffd700; transition: 0.2s;
-        }
-        .btn-action:active { transform: scale(0.95); }
-
-        /* START SCREEN */
-        #start-screen {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); 
-            text-align: center; pointer-events: auto; width: 100%;
-        }
-        .logo {
-            font-family: 'Audiowide'; font-size: 55px; line-height: 1;
-            background: linear-gradient(to bottom, #00f3ff, #ff00de);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 25px rgba(0,243,255,0.8)); margin-bottom: 10px;
-        }
-        .tut { color: #fff; font-size: 16px; margin-bottom: 30px; opacity: 0.8; letter-spacing: 2px; }
-
-        canvas { display: block; width: 100%; height: 100%; }
-    </style>
+#start,#gameover{
+    position:absolute;top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    text-align:center;pointer-events:auto;
+}
+#gameover{display:none;width:320px;padding:25px;
+    border-radius:20px;border:3px solid #00f3ff;
+    background:linear-gradient(135deg,#12002a,#02000a);
+    box-shadow:0 0 60px rgba(0,243,255,.7);
+}
+.logo{
+    font-family:'Audiowide';
+    font-size:60px;line-height:1;
+    background:linear-gradient(180deg,#00f3ff,#ff00de);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 30px #00f3ff);
+}
+.btn{
+    margin-top:20px;
+    background:linear-gradient(135deg,#fff,#ffd700);
+    border:none;border-radius:40px;
+    padding:14px 0;width:220px;
+    font-family:'Audiowide';font-size:18px;
+    cursor:pointer;
+    box-shadow:0 0 25px #ffd700;
+}
+.btn:active{transform:scale(.95);}
+</style>
 </head>
 <body>
 
-    <div id="ui-layer">
-        <div class="hud-bar" id="hud" style="display:none;">
-            <div class="stat-badge">🪙 <span id="coin-display">0</span></div>
-            <div class="stat-badge">💼 <span id="bal-display">{{ "{:,}".format(balance) }}</span></div>
-        </div>
-
-        <div id="game-over">
-            <h1 style="color:#ff4444; font-family:'Audiowide'; margin:0; font-size: 36px;">WIPEOUT!</h1>
-            
-            <div style="margin-top: 20px;">
-                <div class="result-row">
-                    <span>COINS</span>
-                    <span class="result-val" id="final-coins">0</span>
-                </div>
-                <div class="result-row">
-                    <span>RATE</span>
-                    <span class="result-val" style="color:#aaa;">$10</span>
-                </div>
-                <div style="margin-top: 15px;">
-                    <div style="color:white; font-size:14px;">TOTAL EARNINGS</div>
-                    <div class="total-val">$<span id="final-money">0</span></div>
-                </div>
-            </div>
-
-            <button onclick="claimReward()" id="claim-btn" class="btn-action">CLAIM & RESTART</button>
-            <p id="status-msg" style="font-size:12px; color:gray; margin-top:10px;">Server Status: Connected</p>
-        </div>
-
-        <div id="start-screen">
-            <div class="logo">NEON<br>RIDER</div>
-            <div class="tut">SWIPE TO DODGE & JUMP</div>
-            <button class="btn-action" style="width: 200px; background: white;" onclick="startGame()">PLAY</button>
-        </div>
+<div id="ui-layer">
+    <div class="hud" id="hud" style="display:none;">
+        <div class="badge">🪙 <span id="coin-ui">0</span></div>
+        <div class="badge">⚡ <span id="power-ui">NONE</span></div>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
+    <div id="start">
+        <div class="logo">NEON<br>RIDER</div>
+        <div style="letter-spacing:3px;opacity:.85;margin:20px 0;">SWIPE / ARROWS TO MOVE • UP TO JUMP</div>
+        <button class="btn" onclick="startGame()">PLAY</button>
+    </div>
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+    <div id="gameover">
+        <h1 style="color:#ff4444;font-family:'Audiowide';margin:0;">WIPEOUT</h1>
+        <p>COINS: <b id="final-coins">0</b></p>
+        <p>RATE: $10</p>
+        <h2 style="color:#00f3ff;">TOTAL: $<span id="final-money">0</span></h2>
+        <button class="btn" id="claim-btn" onclick="claimReward()">CLAIM & RESTART</button>
+    </div>
+</div>
 
-        let width, height;
-        let gameActive = false;
-        let frame = 0;
-        let score = 0;
-        let speed = 12;
+<canvas id="game"></canvas>
 
-        // --- CAMERA & WORLD SETTINGS (HIGH ANGLE) ---
-        const CAM_HEIGHT = 350; // Higher Camera = Look down more
-        const HORIZON = 0.3;    // Horizon position (0 to 1)
-        const FOV = 450;        // Field of View
-        const LANE_W = 200;     // Lane Width
+<!-- AUDIO -->
+<audio id="bgm" loop>
+    <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_8c8b3a1c54.mp3?filename=cyberpunk-110624.mp3">
+</audio>
+<audio id="coin-sfx" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_5fa4b27c10.mp3?filename=collect-coin-110634.mp3"></audio>
+<audio id="hit-sfx" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_79897f95c6.mp3?filename=error-110437.mp3"></audio>
+<audio id="power-sfx" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_3d9b51d6b2.mp3?filename=powerup-110640.mp3"></audio>
 
-        // --- PLAYER ---
-        const player = {
-            lane: 0,
-            x: 0,
-            y: 0,
-            vy: 0,
-            gravity: 1.8,
-            jumpPower: 30,
-            isJumping: false,
-            runCycle: 0
-        };
+<script>
+/* ================= CORE ================= */
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+let W,H;
+function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight;}
+window.addEventListener("resize",resize);resize();
 
-        let objects = [];
-        let stars = [];
+let game=false,frame=0,score=0,speed=14;
 
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-            // Init Stars
-            stars = [];
-            for(let i=0; i<50; i++) stars.push({
-                x: Math.random()*width, y: Math.random()*height*HORIZON, 
-                s: Math.random()*2, alpha: Math.random()
-            });
-        }
-        window.addEventListener('resize', resize);
-        resize();
+/* ================= CAMERA ================= */
+const FOV=480, CAM_H=380, HORIZON=0.32, LANE_W=200;
 
-        // --- INPUTS ---
-        let tX = 0, tY = 0;
-        document.addEventListener('touchstart', e => { tX = e.changedTouches[0].screenX; tY = e.changedTouches[0].screenY; });
-        document.addEventListener('touchend', e => {
-            if(!gameActive) return;
-            let dx = e.changedTouches[0].screenX - tX;
-            let dy = e.changedTouches[0].screenY - tY;
-            if(Math.abs(dy) > Math.abs(dx) && dy < -40) jump();
-            else if(Math.abs(dx) > 40) move(dx > 0 ? 1 : -1);
-        });
-        document.addEventListener('keydown', e => {
-            if(!gameActive) return;
-            if(["ArrowUp","Space"].includes(e.code)) e.preventDefault(); // Stop Scroll
-            if(e.key === 'ArrowLeft') move(-1);
-            if(e.key === 'ArrowRight') move(1);
-            if(e.key === 'ArrowUp' || e.key === ' ') jump();
-        });
+/* ================= AUDIO ================= */
+const bgm=document.getElementById("bgm");
+const coinSFX=document.getElementById("coin-sfx");
+const hitSFX=document.getElementById("hit-sfx");
+const powerSFX=document.getElementById("power-sfx");
 
-        function move(dir) {
-            let target = player.lane + dir;
-            if(target >= -1 && target <= 1) player.lane = target;
-        }
-        function jump() {
-            if(!player.isJumping) { player.isJumping = true; player.vy = player.jumpPower; }
-        }
+/* ================= PLAYER ================= */
+const player={
+    lane:0,x:0,y:0,vy:0,
+    gravity:1.6,jumpPower:28,
+    jumping:false,run:0,
+    shield:false,magnet:false,slow:false,
+    powerTimer:0
+};
 
-        // --- GAME CLASSES ---
-        class GameObject {
-            constructor() {
-                this.lane = Math.floor(Math.random() * 3) - 1; 
-                this.z = 3000; 
-                this.type = Math.random() < 0.3 ? 'coin' : 'obstacle';
-                if(this.type === 'obstacle') this.obsType = Math.random() < 0.5 ? 'barrier' : 'wall';
-                this.active = true;
+/* ================= BACKGROUND MODES ================= */
+const BG_MODES=["CYBER","DESERT","SPACE"];
+let bgMode=0;
+
+/* ================= INPUT ================= */
+let tx=0,ty=0;
+document.addEventListener("touchstart",e=>{tx=e.changedTouches[0].screenX;ty=e.changedTouches[0].screenY;});
+document.addEventListener("touchend",e=>{
+    if(!game)return;
+    let dx=e.changedTouches[0].screenX-tx;
+    let dy=e.changedTouches[0].screenY-ty;
+    if(Math.abs(dy)>Math.abs(dx)&&dy<-40)jump();
+    else if(Math.abs(dx)>40)move(dx>0?1:-1);
+});
+document.addEventListener("keydown",e=>{
+    if(!game)return;
+    if(e.key==="ArrowLeft")move(-1);
+    if(e.key==="ArrowRight")move(1);
+    if(e.key==="ArrowUp"||e.key===" ")jump();
+});
+function move(d){let t=player.lane+d;if(t>=-1&&t<=1)player.lane=t;}
+function jump(){if(!player.jumping){player.jumping=true;player.vy=player.jumpPower;}}
+
+/* ================= OBJECTS ================= */
+let objects=[];
+class Obj{
+    constructor(){
+        this.lane=Math.floor(Math.random()*3)-1;
+        this.z=3000;
+        const r=Math.random();
+        if(r<0.25)this.type="coin";
+        else if(r<0.35)this.type="power";
+        else this.type="obs";
+        this.kind=Math.random()<.5?"barrier":"wall";
+        this.active=true;
+    }
+    update(){
+        this.z-=player.slow?speed*.5:speed;
+        if(this.z<-300)this.active=false;
+
+        if(this.active && this.z<240 && this.z>120 && this.lane===player.lane){
+            if(this.type==="coin"){
+                this.active=false;score++;
+                coinSFX.currentTime=0;coinSFX.play();
+                document.getElementById("coin-ui").innerText=score;
             }
-            update() {
-                this.z -= speed;
-                if(this.z < -300) this.active = false;
-
-                // --- COLLISION LOGIC ---
-                // Player is logically at Z = 200.
-                if(this.active && this.z < 250 && this.z > 100 && this.lane === player.lane) {
-                    if(this.type === 'coin') {
-                        this.active = false; score++;
-                        document.getElementById('coin-display').innerText = score;
-                    } else {
-                        if(this.obsType === 'barrier' && player.y > 60) { /* Jumped Over */ }
-                        else gameOver();
-                    }
-                }
+            else if(this.type==="power"){
+                this.active=false;
+                activatePower();
             }
-            draw() {
-                const scale = FOV / (FOV + this.z);
-                const x = width/2 + (this.lane * LANE_W * scale);
-                const y = (height * HORIZON) + (CAM_HEIGHT * scale);
-                const s = 150 * scale; // Size
-
-                if(this.type === 'coin') {
-                    const float = Math.sin(frame*0.15)*20*scale;
-                    ctx.fillStyle = '#ffd700'; ctx.shadowBlur = 15; ctx.shadowColor = 'gold';
-                    ctx.beginPath(); ctx.arc(x, y - s*0.6 - float, s*0.3, 0, Math.PI*2); ctx.fill();
-                    ctx.shadowBlur = 0; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-                } else {
-                    // OBSTACLE
-                    const h = this.obsType === 'barrier' ? s*0.5 : s*1.3;
-                    const c = this.obsType === 'barrier' ? '#ff3333' : '#ff8800';
-                    const baseY = y;
-                    
-                    // Draw Box (Simple 3D)
-                    ctx.fillStyle = c;
-                    ctx.fillRect(x - s/2, baseY - h, s, h); // Front
-                    ctx.fillStyle = '#550000'; // Top Dark
-                    ctx.fillRect(x - s/2, baseY - h, s, s*0.1); 
-                    
-                    if(this.obsType === 'barrier') {
-                        ctx.fillStyle = 'yellow';
-                        ctx.fillRect(x - s/4, baseY - h*0.8, s/2, h*0.2);
-                    }
+            else{
+                if(player.shield){
+                    player.shield=false;
+                    document.getElementById("power-ui").innerText="NONE";
+                }else{
+                    hitSFX.play();
+                    gameOver();
                 }
             }
         }
+    }
+    draw(){
+        const sc=FOV/(FOV+this.z);
+        const x=W/2+(this.lane*LANE_W*sc);
+        const y=(H*HORIZON)+(CAM_H*sc);
+        const s=140*sc;
 
-        // --- RENDER ---
-        function drawBackground() {
-            // Retro Gradient
-            let grd = ctx.createLinearGradient(0, 0, 0, height);
-            grd.addColorStop(0, "#0a001a");
-            grd.addColorStop(HORIZON, "#5e1857");
-            grd.addColorStop(HORIZON, "#1f0033");
-            grd.addColorStop(1, "#0a001a");
-            ctx.fillStyle = grd; ctx.fillRect(0, 0, width, height);
-
-            // Retro Sun
-            const sunY = height * HORIZON - 50;
-            let sunGrd = ctx.createLinearGradient(0, sunY-100, 0, sunY+100);
-            sunGrd.addColorStop(0, "#ffd700"); sunGrd.addColorStop(1, "#ff0055");
-            ctx.fillStyle = sunGrd; ctx.shadowBlur = 40; ctx.shadowColor = 'orange';
-            ctx.beginPath(); ctx.arc(width/2, sunY, 120, 0, Math.PI*2); ctx.fill();
-            ctx.shadowBlur = 0;
-
-            // Stripes on Sun
-            ctx.fillStyle = "rgba(94, 24, 87, 0.8)";
-            for(let i=0; i<10; i++) {
-                ctx.fillRect(width/2 - 130, sunY + (i*15) - 30, 260, 5 + (i*1.5));
-            }
-
-            // Stars
-            ctx.fillStyle = 'white';
-            stars.forEach(s => {
-                ctx.globalAlpha = s.alpha;
-                ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, Math.PI*2); ctx.fill();
-            });
-            ctx.globalAlpha = 1;
+        if(this.type==="coin"){
+            ctx.fillStyle="#ffd700";ctx.shadowBlur=25;ctx.shadowColor="gold";
+            ctx.beginPath();ctx.arc(x,y-s*.5,s*.3,0,Math.PI*2);ctx.fill();
+            ctx.shadowBlur=0;
         }
-
-        function drawRoad() {
-            const hy = height * HORIZON;
-            
-            // Grid Lines
-            ctx.strokeStyle = "rgba(0, 243, 255, 0.5)";
-            ctx.lineWidth = 2;
-            
-            // Vertical Lines (Perspective)
-            const cx = width/2;
-            for(let i=-3; i<=3; i++) {
-                ctx.beginPath();
-                ctx.moveTo(cx + (i*20), hy); // Vanishing Point near center
-                ctx.lineTo(cx + (i * width * 0.6), height);
-                ctx.stroke();
-            }
-
-            // Horizontal Moving Lines
-            const move = (frame * speed * 3) % 150;
-            for(let z=0; z<height; z+=100) {
-                let y = hy + Math.pow(z + move, 1.25) / 50; // Exponential spacing
-                if(y > height) continue;
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-            }
+        else if(this.type==="power"){
+            ctx.fillStyle="#00f3ff";ctx.shadowBlur=25;ctx.shadowColor="#00f3ff";
+            ctx.fillRect(x-s/2,y-s,s,s);
+            ctx.shadowBlur=0;
         }
-
-        function drawPlayer() {
-            // Smooth X
-            const targetX = player.lane * LANE_W;
-            player.x += (targetX - player.x) * 0.2;
-
-            // Projection
-            const scale = FOV / (FOV + 200); // Player at Z=200
-            const x = width/2 + (player.x * scale);
-            const y = (height * HORIZON) + (CAM_HEIGHT * scale) - (player.y * scale);
-            const s = 120 * scale; // Player Size
-
-            // SHADOW
-            ctx.fillStyle = 'rgba(0,0,0,0.5)';
-            ctx.beginPath(); ctx.ellipse(x, (height * HORIZON) + (CAM_HEIGHT * scale), s*0.4, s*0.15, 0, 0, Math.PI*2); ctx.fill();
-
-            // --- HUMANOID DRAWING ---
-            player.runCycle += 0.3;
-            const legL = player.isJumping ? -10 : Math.sin(player.runCycle) * 20;
-            const legR = player.isJumping ? 10 : Math.sin(player.runCycle + Math.PI) * 20;
-
-            // Legs
-            ctx.strokeStyle = '#222'; ctx.lineWidth = 15 * scale; ctx.lineCap = 'round';
-            ctx.beginPath(); ctx.moveTo(x - 10*scale, y - s*0.4); ctx.lineTo(x - 10*scale, y + legL); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(x + 10*scale, y - s*0.4); ctx.lineTo(x + 10*scale, y + legR); ctx.stroke();
-
-            // Body (Vest)
-            ctx.fillStyle = '#ff6600';
-            ctx.fillRect(x - s*0.25, y - s*0.9, s*0.5, s*0.6);
-            ctx.fillStyle = 'yellow'; // Stripe
-            ctx.fillRect(x - s*0.1, y - s*0.9, s*0.2, s*0.6);
-
-            // Head
-            ctx.fillStyle = '#ffccaa';
-            ctx.beginPath(); ctx.arc(x, y - s, s*0.2, 0, Math.PI*2); ctx.fill();
-            
-            // Arms (Swing)
-            ctx.strokeStyle = '#ffccaa'; ctx.lineWidth = 12 * scale;
-            ctx.beginPath(); ctx.moveTo(x - s*0.3, y - s*0.8); ctx.lineTo(x - s*0.5, y - s*0.5 + legR); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(x + s*0.3, y - s*0.8); ctx.lineTo(x + s*0.5, y - s*0.5 + legL); ctx.stroke();
+        else{
+            ctx.fillStyle=this.kind==="barrier"?"#ff3333":"#ff8800";
+            ctx.fillRect(x-s/2,y-s,s,s);
         }
+    }
+}
 
-        // --- SYSTEM ---
-        function startGame() {
-            document.getElementById('start-screen').style.display = 'none';
-            document.getElementById('hud').style.display = 'flex';
-            gameActive = true; score = 0; frame = 0; speed = 15;
-            objects = []; player.lane = 0; player.y = 0;
-            update();
-        }
+/* ================= POWERUPS ================= */
+function activatePower(){
+    powerSFX.play();
+    const r=Math.random();
+    if(r<.33){player.shield=true;player.magnet=false;player.slow=false;setPower("SHIELD");}
+    else if(r<.66){player.magnet=true;player.shield=false;player.slow=false;setPower("MAGNET");}
+    else{player.slow=true;player.shield=false;player.magnet=false;setPower("SLOW");}
+    player.powerTimer=600;
+}
+function setPower(t){document.getElementById("power-ui").innerText=t;}
 
-        function gameOver() {
-            gameActive = false;
-            document.getElementById('hud').style.display = 'none';
-            document.getElementById('game-over').style.display = 'block';
-            
-            // EARNINGS LOGIC - FIXED
-            const earned = score * 10;
-            document.getElementById('final-coins').innerText = score;
-            document.getElementById('final-money').innerText = earned.toLocaleString();
-        }
+/* ================= DRAW BACKGROUND ================= */
+function drawBackground(){
+    if(BG_MODES[bgMode]==="CYBER"){
+        let g=ctx.createLinearGradient(0,0,0,H);
+        g.addColorStop(0,"#20004a");
+        g.addColorStop(HORIZON,"#ff00de");
+        g.addColorStop(1,"#05000d");
+        ctx.fillStyle=g;
+    }
+    if(BG_MODES[bgMode]==="DESERT"){
+        let g=ctx.createLinearGradient(0,0,0,H);
+        g.addColorStop(0,"#ffcc66");
+        g.addColorStop(1,"#ff6600");
+        ctx.fillStyle=g;
+    }
+    if(BG_MODES[bgMode]==="SPACE"){
+        ctx.fillStyle="black";
+    }
+    ctx.fillRect(0,0,W,H);
+}
 
-        function update() {
-            if(!gameActive) return;
+/* ================= ROAD ================= */
+function drawRoad(){
+    const hy=H*HORIZON;
+    ctx.strokeStyle="rgba(0,243,255,.6)";
+    ctx.lineWidth=2;
+    const cx=W/2;
+    for(let i=-3;i<=3;i++){
+        ctx.beginPath();
+        ctx.moveTo(cx+i*20,hy);
+        ctx.lineTo(cx+i*W*.6,H);
+        ctx.stroke();
+    }
+}
 
-            // Physics
-            if(player.isJumping) {
-                player.y += player.vy; player.vy -= player.gravity;
-                if(player.y <= 0) { player.y = 0; player.isJumping = false; }
-            }
+/* ================= PLAYER (REALISTIC HUMANOID) ================= */
+function drawPlayer(){
+    const tx=player.lane*LANE_W;
+    player.x+=(tx-player.x)*.25;
+    const sc=FOV/(FOV+200);
+    const x=W/2+(player.x*sc);
+    const y=(H*HORIZON)+(CAM_H*sc)-(player.y*sc);
+    const s=120*sc;
 
-            ctx.clearRect(0,0,width,height);
-            drawBackground();
-            drawRoad();
+    ctx.fillStyle="rgba(0,0,0,.5)";
+    ctx.beginPath();ctx.ellipse(x,(H*HORIZON)+(CAM_H*sc),s*.45,s*.18,0,0,Math.PI*2);ctx.fill();
 
-            if(frame % 35 === 0) objects.push(new GameObject());
-            objects.sort((a,b) => b.z - a.z);
-            objects.forEach(o => { o.update(); o.draw(); });
-            objects = objects.filter(o => o.active);
+    player.run+=.25;
+    const legL=player.jumping?-10:Math.sin(player.run)*22;
+    const legR=player.jumping?10:Math.sin(player.run+Math.PI)*22;
 
-            drawPlayer();
+    ctx.strokeStyle="#222";ctx.lineWidth=16*sc;ctx.lineCap="round";
+    ctx.beginPath();ctx.moveTo(x-12*sc,y-s*.3);ctx.lineTo(x-12*sc,y+legL);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x+12*sc,y-s*.3);ctx.lineTo(x+12*sc,y+legR);ctx.stroke();
 
-            frame++; speed += 0.003;
-            requestAnimationFrame(update);
-        }
+    ctx.fillStyle=player.shield?"#00ffcc":"#00f3ff";
+    ctx.shadowBlur=20;ctx.shadowColor=ctx.fillStyle;
+    ctx.fillRect(x-s*.28,y-s*.9,s*.56,s*.6);
+    ctx.shadowBlur=0;
 
-        async function claimReward() {
-            const btn = document.getElementById('claim-btn');
-            btn.innerText = "SAVING..."; btn.disabled = true;
-            try {
-                const res = await fetch('/api/games/runner/payout', {
-                    method: 'POST', headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({ coins: score })
-                });
-                const data = await res.json();
-                if(data.status === 'success') location.reload();
-                else { alert('Save Failed'); btn.disabled = false; }
-            } catch(e) { alert('Offline'); btn.disabled = false; }
-        }
-    </script>
+    ctx.fillStyle="#ffccaa";
+    ctx.beginPath();ctx.arc(x,y-s,s*.22,0,Math.PI*2);ctx.fill();
+}
+
+/* ================= GAME ================= */
+function startGame(){
+    document.getElementById("start").style.display="none";
+    document.getElementById("hud").style.display="flex";
+    document.getElementById("gameover").style.display="none";
+    bgMode=(bgMode+1)%BG_MODES.length;
+    game=true;frame=0;score=0;speed=15;
+    objects=[];player.lane=0;player.y=0;
+    bgm.volume=.5;bgm.play();
+    loop();
+}
+function gameOver(){
+    game=false;
+    bgm.pause();
+    document.getElementById("hud").style.display="none";
+    document.getElementById("gameover").style.display="block";
+    document.getElementById("final-coins").innerText=score;
+    document.getElementById("final-money").innerText=(score*10).toLocaleString();
+}
+function loop(){
+    if(!game)return;
+
+    if(player.jumping){
+        player.y+=player.vy;player.vy-=player.gravity;
+        if(player.y<=0){player.y=0;player.jumping=false;}
+    }
+    if(player.powerTimer>0){player.powerTimer--;}
+    else{player.shield=player.magnet=player.slow=false;setPower("NONE");}
+
+    ctx.clearRect(0,0,W,H);
+    drawBackground();
+    drawRoad();
+
+    if(frame%35===0)objects.push(new Obj());
+    objects.sort((a,b)=>b.z-a.z);
+    objects.forEach(o=>{o.update();o.draw();});
+    objects=objects.filter(o=>o.active);
+
+    drawPlayer();
+    frame++;speed+=.002;
+    requestAnimationFrame(loop);
+}
+
+/* ================= API ================= */
+async function claimReward(){
+    const btn=document.getElementById("claim-btn");
+    btn.innerText="SAVING...";btn.disabled=true;
+    try{
+        const res=await fetch("/api/games/runner/payout",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({coins:score})
+        });
+        const data=await res.json();
+        if(data.status==="success")location.reload();
+        else{alert("Save Failed");btn.disabled=false;}
+    }catch(e){alert("Offline");btn.disabled=false;}
+}
+</script>
 </body>
 </html>
