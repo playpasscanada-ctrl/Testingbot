@@ -113,6 +113,8 @@ const loader = new THREE.GLTFLoader();
 
 /* ================= SETUP ================= */
 init();
+animate(); // 👈 LOOP ALWAYS RUN (BLACK SCREEN FIX)
+
 function init(){
   scene=new THREE.Scene();
   scene.fog=new THREE.Fog(0x050010,10,200);
@@ -174,6 +176,7 @@ function loadPlayer(){
       const geo=new THREE.BoxGeometry(1,2,1);
       const mat=new THREE.MeshStandardMaterial({color:0x00f3ff});
       player=new THREE.Mesh(geo,mat);
+      player.position.set(0,1,0);
       scene.add(player);
     }
   );
@@ -210,7 +213,7 @@ function spawnObstacle(type="train"){
   });
 }
 
-/* ================= ENEMY ================= */
+/* ================= ENEMY / BOSS ================= */
 function spawnEnemy(){
   const geo=new THREE.BoxGeometry(2,3,2);
   const mat=new THREE.MeshStandardMaterial({color:0xaa00ff,emissive:0x5500aa});
@@ -227,7 +230,7 @@ function enemyAI(){
   }
 }
 
-/* ================= KEYBOARD CONTROLS ================= */
+/* ================= CONTROLS ================= */
 window.addEventListener("keydown",e=>{
   if(!game)return;
   if(e.key==="ArrowLeft")lane=Math.max(-1,lane-1);
@@ -253,8 +256,8 @@ window.addEventListener("touchend",e=>{
     if(dx>40) lane=Math.min(1,lane+1);
     if(dx<-40) lane=Math.max(-1,lane-1);
   }else{
-    if(dy<-40) jump();   // swipe up
-    if(dy>40) slide();  // swipe down
+    if(dy<-40) jump();
+    if(dy>40) slide();
   }
 });
 
@@ -306,7 +309,6 @@ function startGame(){
   game=true;
   spawnCoinLine();
   spawnObstacle("train");
-  animate();
 }
 function endGame(){
   game=false;
@@ -318,11 +320,10 @@ function endGame(){
 /* ================= LOOP ================= */
 function animate(){
   requestAnimationFrame(animate);
-  if(!game)return;
 
   if(mixer)mixer.update(clock.getDelta());
 
-  if(player){
+  if(game && player){
     player.position.x+=(lane*2-player.position.x)*0.1;
     if(jumping){
       y+=vy;vy-=0.03;
@@ -331,8 +332,10 @@ function animate(){
     player.position.y=y;
   }
 
-  camera.position.x=player?player.position.x:0;
-  camera.lookAt(player?player.position.x:0,1,0);
+  if(player){
+    camera.position.x=player.position.x;
+    camera.lookAt(player.position.x,1,0);
+  }
 
   coins.forEach((c,i)=>{
     c.position.z+=speed;
