@@ -3,445 +3,387 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VIP Roulette Arena</title>
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700;800&display=swap" rel="stylesheet">
+    <title>ULTIMATE VIP ROULETTE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700;900&display=swap" rel="stylesheet">
     <style>
+        /* =========================================
+           1. ROOT VARIABLES & RESET
+           ========================================= */
         :root {
             --gold: #FFD700;
-            --gold-dim: #b8860b;
+            --gold-shadow: #b8860b;
             --dark-bg: #050505;
-            --red: #c0392b;
-            --black: #151515;
-            --green: #27ae60;
-            --neon-glow: rgba(255, 215, 0, 0.3);
-            --glass: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.08);
+            --panel-bg: rgba(20, 20, 20, 0.95);
+            --red: #D32F2F;
+            --black: #1a1a1a;
+            --green: #2E7D32;
+            --neon-blue: #00e5ff;
+            --text-main: #ffffff;
+            --border-glow: rgba(255, 215, 0, 0.5);
         }
 
-        /* --- 1. ULTIMATE BACKGROUND (Lag Free) --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+
         body {
             background-color: var(--dark-bg);
-            /* Premium Mesh Gradient Animation */
+            /* Premium Dark Mesh Gradient */
             background-image: 
-                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-                radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
-                radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
-            background-size: 200% 200%;
-            animation: bg-pulse 15s ease infinite;
-            color: white;
+                radial-gradient(circle at 15% 50%, rgba(211, 47, 47, 0.08), transparent 25%), 
+                radial-gradient(circle at 85% 30%, rgba(255, 215, 0, 0.05), transparent 25%);
+            color: var(--text-main);
             font-family: 'Rajdhani', sans-serif;
-            margin: 0;
             min-height: 100vh;
-            overflow-x: hidden; /* Fix Overflow */
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding-bottom: 40px; /* Space for button */
+            overflow-x: hidden;
+            padding-bottom: 120px; /* Space for fixed footer */
         }
 
-        /* Subtle animated dust particles using pure CSS */
-        body::before {
-            content: "";
+        /* Scanline Effect */
+        body::after {
+            content: " ";
+            display: block;
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
-            opacity: 0.4;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
             pointer-events: none;
-            z-index: -1;
         }
 
-        @keyframes bg-pulse {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        /* --- 2. HEADER UI --- */
-        .header {
-            width: 90%;
-            max-width: 500px;
+        /* =========================================
+           2. HEADER & STATS
+           ========================================= */
+        .header-bar {
+            width: 95%;
+            max-width: 600px;
+            margin-top: 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin: 20px 0;
             padding: 15px 20px;
-            background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: linear-gradient(145deg, #1a1a1a, #0d0d0d);
+            border: 1px solid #333;
+            border-radius: 16px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            z-index: 10;
         }
-        
-        .player-info {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        
-        .player-label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-        .player-name { font-size: 1.2rem; font-weight: 800; color: white; }
 
-        .balance-info { text-align: right; }
-        .balance-amount { 
+        .user-profile { display: flex; align-items: center; gap: 10px; }
+        .user-icon { font-size: 1.5rem; filter: drop-shadow(0 0 5px var(--gold)); }
+        .username { font-size: 1.1rem; font-weight: 700; color: #ccc; letter-spacing: 1px; }
+
+        .wallet-display { text-align: right; }
+        .wallet-label { font-size: 0.7rem; color: #666; text-transform: uppercase; margin-bottom: 2px; }
+        .wallet-amount { 
             font-size: 1.4rem; 
-            font-weight: 800; 
-            color: var(--gold);
-            text-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+            font-weight: 900; 
+            color: var(--green); 
+            text-shadow: 0 0 10px rgba(46, 125, 50, 0.4);
         }
 
-        h1 {
-            font-size: 2.5rem;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            background: linear-gradient(to bottom, #fff, var(--gold));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin: 0 0 20px 0;
-            filter: drop-shadow(0 0 10px rgba(255,215,0,0.3));
-        }
-
-        /* --- 3. 3D WHEEL (Fixed Numbers & Look) --- */
-        .wheel-wrapper {
+        /* =========================================
+           3. 3D ROULETTE WHEEL AREA
+           ========================================= */
+        .game-area {
             position: relative;
-            width: 95vw; /* Fixed Width */
-            max-width: 380px; /* Max constraint */
-            aspect-ratio: 1/1;
-            margin-bottom: 30px;
-            /* 3D Container Effect */
+            margin: 30px 0;
+            width: 360px;
+            height: 360px;
+            /* Creates the 3D perspective */
+            perspective: 1000px;
+        }
+
+        /* Outer Casing */
+        .wheel-outer-rim {
+            width: 100%;
+            height: 100%;
             border-radius: 50%;
-            padding: 15px; /* Creates the outer rim thickness */
-            background: linear-gradient(135deg, #444, #111, #444);
+            background: linear-gradient(135deg, #222 0%, #000 100%);
             box-shadow: 
-                0 20px 50px rgba(0,0,0,0.8),
-                inset 0 0 0 2px rgba(0,0,0,0.5);
+                0 0 0 8px #111,
+                0 0 0 12px var(--gold-shadow), 
+                0 0 50px rgba(0,0,0,0.8);
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
-        .wheel-rim {
-            width: 100%;
-            height: 100%;
+        /* The Gold Rim inside */
+        .wheel-inner-rim {
+            width: 92%;
+            height: 92%;
             border-radius: 50%;
-            padding: 5px; /* Inner Gold Rim */
-            background: linear-gradient(to bottom, var(--gold), var(--gold-dim), var(--gold));
-            box-shadow: 
-                0 0 20px rgba(255, 215, 0, 0.2),
-                inset 0 0 10px rgba(0,0,0,0.8);
-            position: relative;
-        }
-
-        .wheel-container {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            overflow: hidden;
-            position: relative;
-            /* Inner depth shadow */
-            box-shadow: inset 0 0 30px 10px rgba(0,0,0,0.8);
-            background: #000;
-        }
-        
-        .wheel {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            position: relative;
-            /* Hardware Acceleration for smooth spin */
-            will-change: transform;
-            transition: transform 4s cubic-bezier(0.15, 0.80, 0.10, 1.0); 
-            
-            /* The Conic Gradient (Generated via JS to match numbers perfectly) */
             background: conic-gradient(
-                var(--green) 0deg 9.73deg,
-                var(--red) 9.73deg 19.46deg,
-                var(--black) 19.46deg 29.19deg,
-                var(--red) 29.19deg 38.92deg,
-                var(--black) 38.92deg 48.65deg,
-                var(--red) 48.65deg 58.38deg,
-                var(--black) 58.38deg 68.11deg,
-                var(--red) 68.11deg 77.84deg,
-                var(--black) 77.84deg 87.57deg,
-                var(--red) 87.57deg 97.30deg,
-                var(--black) 97.30deg 107.03deg,
-                var(--red) 107.03deg 116.76deg,
-                var(--black) 116.76deg 126.49deg,
-                var(--red) 126.49deg 136.22deg,
-                var(--black) 136.22deg 145.95deg,
-                var(--red) 145.95deg 155.68deg,
-                var(--black) 155.68deg 165.41deg,
-                var(--red) 165.41deg 175.14deg,
-                var(--black) 175.14deg 184.87deg,
-                var(--red) 184.87deg 194.60deg,
-                var(--black) 194.60deg 204.33deg,
-                var(--red) 204.33deg 214.06deg,
-                var(--black) 214.06deg 223.79deg,
-                var(--red) 223.79deg 233.52deg,
-                var(--black) 233.52deg 243.25deg,
-                var(--red) 243.25deg 252.98deg,
-                var(--black) 252.98deg 262.71deg,
-                var(--red) 262.71deg 272.44deg,
-                var(--black) 272.44deg 282.17deg,
-                var(--red) 282.17deg 291.90deg,
-                var(--black) 291.90deg 301.63deg,
-                var(--red) 301.63deg 311.36deg,
-                var(--black) 311.36deg 321.09deg,
-                var(--red) 321.09deg 330.82deg,
-                var(--black) 330.82deg 340.55deg,
-                var(--red) 340.55deg 350.28deg,
-                var(--black) 350.28deg 360deg
+                #FFD700, #FDB931, #FFD700, #B8860B, #FFD700
             );
+            padding: 4px; /* Thickness of gold rim */
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
         }
 
-        /* Number Slices */
+        /* The Rotating Part */
+        .wheel-spinner {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+            transition: transform 5s cubic-bezier(0.1, 0.8, 0.1, 1.0); /* Smooth easing */
+            will-change: transform;
+            /* IMPORTANT: This holds the slices */
+        }
+
+        /* Numbers and Slices Container */
+        .slice-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        /* Individual Slice Number */
         .wheel-number {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 20px;
-            height: 150px; /* Radius length */
-            transform-origin: top center;
+            top: 50%; left: 50%;
+            transform-origin: center;
+            width: 30px; 
+            height: 50%; /* Height is radius */
+            /* We align text to the top (outer edge) */
+            padding-top: 15px; 
             text-align: center;
-            font-size: 0.9rem;
+            font-size: 12px;
             font-weight: 800;
-            color: white;
-            text-shadow: 1px 1px 0px rgba(0,0,0,0.8);
-            /* Important: This moves the text to the edge */
-            padding-top: 10px; 
-            z-index: 2;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,1);
+            z-index: 5;
+            /* Pointer events none to avoid blocking */
+            pointer-events: none;
         }
 
-        /* 3D Hub (Center) */
-        .center-hub {
+        /* Center Hub */
+        .wheel-hub {
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 60px; height: 60px;
-            background: radial-gradient(circle, #ddd, #555);
+            width: 80px; height: 80px;
+            background: radial-gradient(circle at 30% 30%, #444, #000);
             border: 4px solid var(--gold);
             border-radius: 50%;
             z-index: 10;
-            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+            box-shadow: 0 0 20px rgba(0,0,0,0.9);
             display: flex;
             justify-content: center;
             align-items: center;
         }
-        .center-hub::after {
-            content: "";
-            width: 20px; height: 20px;
-            background: var(--gold);
-            border-radius: 50%;
-            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+        
+        /* The result text inside the hub */
+        .hub-display {
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: var(--gold);
         }
 
-        /* The Pointer */
+        /* The Pointer (Fixed) */
         .marker {
             position: absolute;
-            top: -15px;
+            top: -25px; /* Sits on top */
             left: 50%;
             transform: translateX(-50%);
-            width: 30px;
-            height: 40px;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FFD700'%3E%3Cpath d='M12 2L2 22h20L12 2z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
+            width: 0; 
+            height: 0; 
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 35px solid var(--gold); /* Points DOWN */
             filter: drop-shadow(0 5px 5px rgba(0,0,0,0.8));
             z-index: 20;
         }
-
-        /* --- 4. CONTROLS (Glowy) --- */
-        .controls-panel {
-            width: 90%;
-            max-width: 500px;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: var(--glass);
-            border-radius: 15px;
-            border: 1px solid var(--glass-border);
+        /* Little shine on marker */
+        .marker::after {
+            content: '';
+            position: absolute;
+            top: -35px; left: -10px;
+            width: 0; height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 20px solid rgba(255,255,255,0.3);
         }
 
-        .input-group {
-            position: relative;
-            margin-bottom: 10px;
-        }
-        
-        input.bet-input {
-            width: 100%;
-            padding: 15px;
-            background: rgba(0,0,0,0.6);
-            border: 2px solid #444;
-            border-radius: 10px;
-            color: var(--gold);
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
-            text-align: center;
-            transition: 0.3s;
-            box-sizing: border-box; /* Fix Overflow */
-        }
-        
-        input.bet-input:focus {
-            outline: none;
-            border-color: var(--gold);
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
-        }
-
-        .helper-text {
-            text-align: center;
-            color: #777;
-            font-size: 0.9rem;
-            margin-top: 5px;
-        }
-
-        /* --- 5. BETTING BOARD (Better Fit) --- */
-        .board {
+        /* =========================================
+           4. CONTROLS & BOARD
+           ========================================= */
+        .controls-wrapper {
             width: 95%;
             max-width: 500px;
+            background: var(--panel-bg);
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        /* Bet Input Area */
+        .bet-input-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: #000;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        .currency-symbol {
+            color: var(--gold);
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+        }
+        input#betAmount {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 800;
+            width: 100%;
+            font-family: 'Rajdhani', sans-serif;
+        }
+        input#betAmount:focus { outline: none; }
+
+        /* The Number Grid */
+        .grid-board {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 6px;
-            margin-bottom: 100px; /* Space for fixed button */
-            padding: 10px;
-            background: #111;
-            border-radius: 12px;
-            border: 2px solid #333;
-            box-sizing: border-box; /* Fix Overflow */
         }
 
-        .board-btn {
-            position: relative;
-            padding: 15px 5px;
+        .g-btn {
+            padding: 18px 0;
             font-family: 'Rajdhani', sans-serif;
+            font-weight: 800;
             font-size: 1.2rem;
-            font-weight: 700;
             color: white;
-            background: #222;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
+            position: relative;
             overflow: hidden;
-            transition: transform 0.1s;
+            transition: all 0.1s;
         }
         
-        .board-btn:active { transform: scale(0.95); }
-        
-        /* Specific Colors */
-        .b-red { background: linear-gradient(180deg, #e74c3c, #c0392b); box-shadow: 0 2px 0 #922b21; }
-        .b-black { background: linear-gradient(180deg, #34495e, #2c3e50); box-shadow: 0 2px 0 #1a252f; }
-        .b-green { 
-            grid-column: span 3; 
-            background: linear-gradient(180deg, #2ecc71, #27ae60); 
-            box-shadow: 0 2px 0 #1e8449; 
-            font-size: 1.4rem;
-        }
+        .g-btn:active { transform: scale(0.95); }
+        .g-green { background: linear-gradient(to bottom, #2ecc71, #27ae60); grid-column: span 3; box-shadow: 0 4px 0 #1e8449; }
+        .g-red { background: linear-gradient(to bottom, #e74c3c, #c0392b); box-shadow: 0 4px 0 #922b21; }
+        .g-black { background: linear-gradient(to bottom, #34495e, #2c3e50); box-shadow: 0 4px 0 #1a252f; }
 
-        /* Large Action Buttons */
-        .action-row {
+        /* Multiplier Buttons */
+        .multiplier-row {
             grid-column: span 3;
             display: flex;
             gap: 10px;
-            margin-top: 5px;
+            margin-top: 10px;
         }
-        .btn-action {
+        .m-btn {
             flex: 1;
-            padding: 20px;
-            font-size: 1.1rem;
+            padding: 20px 0;
+            font-size: 1rem;
+            font-weight: 900;
             text-transform: uppercase;
-            font-weight: 800;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.1);
         }
-        .act-red { background: linear-gradient(45deg, #e74c3c, #a93226); border: 1px solid #e74c3c; }
-        .act-black { background: linear-gradient(45deg, #34495e, #1c2833); border: 1px solid #34495e;}
+        .m-red { background: #922b21; color: #ffadad; box-shadow: 0 4px 0 #58160f;}
+        .m-black { background: #212f3c; color: #aab7b8; box-shadow: 0 4px 0 #111;}
 
-        /* Selected State (Glow) */
+        /* Selected State */
         .selected {
             border: 2px solid var(--gold);
-            box-shadow: 0 0 15px var(--gold);
-            z-index: 2;
-            transform: scale(1.05);
+            filter: brightness(1.3);
+            transform: translateY(2px);
+            box-shadow: none !important;
         }
 
-        /* --- 6. FIXED SPIN BUTTON --- */
-        .bottom-bar {
+        /* =========================================
+           5. FIXED FOOTER (SPIN BUTTON)
+           ========================================= */
+        .footer-action {
             position: fixed;
             bottom: 0; left: 0; width: 100%;
-            background: rgba(0,0,0,0.9);
-            padding: 15px;
+            background: rgba(0,0,0,0.95);
+            padding: 15px 20px;
             display: flex;
             justify-content: center;
-            border-top: 1px solid #333;
+            border-top: 1px solid var(--gold-shadow);
             z-index: 100;
-            box-sizing: border-box;
             backdrop-filter: blur(5px);
         }
 
-        .spin-btn {
+        .spin-button {
             width: 100%;
-            max-width: 400px;
+            max-width: 500px;
             padding: 18px;
-            font-size: 1.5rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            color: #000;
-            background: linear-gradient(90deg, #FFD700, #FDB931, #FFD700);
+            background: linear-gradient(90deg, #FFD700 0%, #FFA000 50%, #FFD700 100%);
             background-size: 200% auto;
             border: none;
             border-radius: 50px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: #000;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
             cursor: pointer;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
-            animation: shine 3s linear infinite;
-            transition: 0.3s;
+            animation: shine 2s linear infinite;
         }
         
-        @keyframes shine {
-            to { background-position: 200% center; }
-        }
+        @keyframes shine { to { background-position: 200% center; } }
         
-        .spin-btn:active { transform: scale(0.98); }
-        .spin-btn:disabled { 
-            filter: grayscale(1); 
-            opacity: 0.5; 
-            cursor: not-allowed; 
-            animation: none;
+        .spin-button:disabled {
+            background: #444; color: #888;
+            box-shadow: none; cursor: not-allowed; animation: none;
         }
 
-        /* --- 7. WIN POPUP (3D) --- */
-        .popup-overlay {
+        /* =========================================
+           6. WIN POPUP (OVERLAY)
+           ========================================= */
+        .overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85);
-            z-index: 999;
+            background: rgba(0,0,0,0.9);
+            z-index: 200;
             display: none;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(10px);
         }
-        
+
         .win-card {
-            background: linear-gradient(135deg, #222, #000);
-            border: 2px solid var(--gold);
-            padding: 30px;
+            background: linear-gradient(135deg, #111, #222);
+            border: 4px solid var(--gold);
+            padding: 40px;
             border-radius: 20px;
             text-align: center;
-            box-shadow: 0 0 50px var(--gold);
-            transform: scale(0.5);
+            box-shadow: 0 0 100px var(--gold);
+            transform: scale(0.8);
             opacity: 0;
-            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            width: 80%;
-            max-width: 350px;
+            transition: all 0.3s ease;
         }
+        .overlay.active .win-card { transform: scale(1); opacity: 1; }
         
-        .popup-overlay.show .win-card {
-            transform: scale(1);
-            opacity: 1;
-        }
-        
-        .win-title { font-size: 2.5rem; color: var(--gold); margin: 0; text-shadow: 0 0 10px var(--gold); }
-        .win-amount { font-size: 3rem; color: var(--green); font-weight: 900; margin: 10px 0; }
-        .win-msg { color: #ccc; font-size: 1.2rem; }
-        
-        .claim-btn {
-            margin-top: 20px;
-            padding: 12px 30px;
+        .win-title { font-size: 3rem; color: var(--gold); margin: 0; text-shadow: 0 0 20px var(--gold); }
+        .win-amt { font-size: 4rem; color: var(--green); margin: 10px 0; font-weight: 900; }
+        .win-desc { color: #fff; font-size: 1.2rem; }
+
+        .collect-btn {
+            margin-top: 30px;
+            padding: 15px 50px;
             background: var(--gold);
             border: none;
-            border-radius: 30px;
-            font-weight: 800;
+            font-weight: 900;
             font-size: 1.2rem;
+            border-radius: 10px;
             cursor: pointer;
         }
 
@@ -449,280 +391,299 @@
 </head>
 <body>
 
-    <audio id="spinSound" preload="auto">
-        <source src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="winSound" preload="auto">
-        <source src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3" type="audio/mpeg">
-    </audio>
+    <audio id="sfx-spin" src="https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3"></audio>
+    <audio id="sfx-win" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
 
-    <div class="header">
-        <div class="player-info">
-            <span class="player-label">Player</span>
-            <span class="player-name">{{ user.username }}</span>
+    <div class="header-bar">
+        <div class="user-profile">
+            <span class="user-icon">👤</span>
+            <span class="username">{{ user.username }}</span>
         </div>
-        <div class="balance-info">
-            <span class="player-label">Wallet</span>
-            <div class="balance-amount">$<span id="balance">{{ "{:,.0f}".format(balance) }}</span></div>
+        <div class="wallet-display">
+            <div class="wallet-label">BALANCE</div>
+            <div class="wallet-amount">$<span id="balance">{{ "{:,.0f}".format(balance) }}</span></div>
         </div>
     </div>
 
-    <h1>VIP ROULETTE</h1>
-
-    <div class="wheel-wrapper">
+    <div class="game-area">
         <div class="marker"></div>
-        <div class="wheel-rim">
-            <div class="wheel-container">
-                <div class="wheel" id="wheel">
+
+        <div class="wheel-outer-rim">
+            <div class="wheel-inner-rim">
+                <div class="wheel-spinner" id="wheel">
                     </div>
-                <div class="center-hub"></div>
+            </div>
+        </div>
+        
+        <div class="wheel-hub">
+            <div class="hub-display" id="hubValue">?</div>
+        </div>
+    </div>
+
+    <div class="controls-wrapper">
+        <div class="bet-input-box">
+            <span class="currency-symbol">$</span>
+            <input type="number" id="betAmount" value="1000" placeholder="0">
+        </div>
+
+        <div class="grid-board">
+            <button class="g-btn g-green" onclick="placeBet('number', '0', this)">0</button>
+
+            <script>
+                // Standard European Layout
+                const gridOrder = [
+                    3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36,
+                    2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35,
+                    1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34
+                ];
+                const reds = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+
+                for(let i=0; i<3; i++) {
+                    for(let j=0; j<12; j++) {
+                        let n = gridOrder[i*12+j];
+                        let c = reds.includes(n) ? 'g-red' : 'g-black';
+                        document.write(`<button class="g-btn ${c}" onclick="placeBet('number', '${n}', this)">${n}</button>`);
+                    }
+                }
+            </script>
+
+            <div class="multiplier-row">
+                <button class="m-btn m-red" onclick="placeBet('color', 'red', this)">
+                    RED (1M PRIZE)
+                </button>
+                <button class="m-btn m-black" onclick="placeBet('color', 'black', this)">
+                    BLACK (100K PRIZE)
+                </button>
             </div>
         </div>
     </div>
 
-    <div class="controls-panel">
-        <div class="input-group">
-            <input type="number" id="betAmount" class="bet-input" placeholder="ENTER AMOUNT" value="1000">
-        </div>
-        <div class="helper-text">MIN: $100 • MAX: $10,000,000</div>
+    <div class="footer-action">
+        <button class="spin-button" id="spinBtn" onclick="spinWheel()">SPIN NOW</button>
     </div>
 
-    <div class="board">
-        <button class="board-btn b-green" onclick="selectBet('number', '0', this)">0</button>
-
-        <script>
-            // Standard European Layout for Grid
-            const gridLayout = [
-                3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36,
-                2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35,
-                1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34
-            ];
-            const redNumbers = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
-
-            for(let i=0; i<3; i++) {
-                for(let j=0; j<12; j++) {
-                    let num = gridLayout[i*12 + j];
-                    let cls = redNumbers.includes(num) ? 'b-red' : 'b-black';
-                    document.write(`<button class="board-btn ${cls}" onclick="selectBet('number', '${num}', this)">${num}</button>`);
-                }
-            }
-        </script>
-
-        <div class="action-row">
-            <button class="board-btn btn-action act-red" onclick="selectBet('color', 'red', this)">RED x4</button>
-            <button class="board-btn btn-action act-black" onclick="selectBet('color', 'black', this)">BLACK x2</button>
-        </div>
-    </div>
-
-    <div class="bottom-bar">
-        <button class="spin-btn" id="spinBtn" onclick="spin()">SPIN NOW</button>
-    </div>
-
-    <div class="popup-overlay" id="winOverlay">
+    <div class="overlay" id="winOverlay">
         <div class="win-card">
             <h2 class="win-title">YOU WON!</h2>
-            <div class="win-msg" id="winMsg">Red 14 Hit!</div>
-            <div class="win-amount" id="winAmount">$5,000</div>
-            <button class="claim-btn" onclick="closePopup()">COLLECT CASH</button>
+            <div class="win-amt" id="winAmountDisplay">$0</div>
+            <div class="win-desc" id="winMsgDisplay">Target Hit</div>
+            <button class="collect-btn" onclick="closeOverlay()">COLLECT</button>
         </div>
     </div>
 
     <script>
-        // --- 1. CONFIGURATION ---
+        // --- CONFIGURATION ---
         const uid = "{{ user.id }}";
-        // Correct Wheel Sequence (Clockwise starting from 0)
-        // This matches the visual CSS conic gradient logic
-        const wheelOrder = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
         
-        const sliceAngle = 360 / 37; // ~9.73 degrees per slice
-        let currentRotation = 0;
+        // 1. Wheel Sequence (European Roulette Order - Clockwise)
+        // This MUST match the visual order on the wheel for math to work.
+        const wheelNumbers = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+        
+        const sliceAngle = 360 / 37;
+        let currentDeg = 0;
         let selectedType = null;
         let selectedValue = null;
 
-        // --- 2. SETUP WHEEL NUMBERS (VISUALS) ---
-        const wheelEl = document.getElementById('wheel');
-        
-        wheelOrder.forEach((num, i) => {
-            const el = document.createElement('div');
+        // --- 2. BUILD WHEEL VISUALLY (JS Generates Gradient & Numbers) ---
+        const wheelDiv = document.getElementById('wheel');
+        const redSet = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+
+        // A. Generate Conic Gradient String
+        let gradientParts = [];
+        wheelNumbers.forEach((num, i) => {
+            let color = (num === 0) ? '#2E7D32' : (redSet.has(num) ? '#D32F2F' : '#1a1a1a');
+            let start = i * sliceAngle;
+            let end = (i + 1) * sliceAngle;
+            gradientParts.push(`${color} ${start}deg ${end}deg`);
+        });
+        wheelDiv.style.background = `conic-gradient(${gradientParts.join(', ')})`;
+
+        // B. Place Numbers
+        wheelNumbers.forEach((num, i) => {
+            let el = document.createElement('div');
             el.className = 'wheel-number';
             el.innerText = num;
             
-            // Math to position numbers in a circle
-            // We rotate the slice, then calculate height
-            const angle = i * sliceAngle;
-            el.style.transform = `rotate(${angle}deg)`;
+            // Calculate Rotation: center of the slice
+            let midAngle = (i * sliceAngle) + (sliceAngle / 2);
+            el.style.transform = `rotate(${midAngle}deg) translateY(-50%)`; 
+            // translateY adjusts distance from center. Since height is 50% (radius),
+            // and origin is center, this just rotates it.
+            // Wait, we need the text to be at the EDGE.
             
-            // To prevent text from being upside down at the bottom
-            // This is a simple implementation. Ideally, we just rotate container.
+            // Correction:
+            // Rotate the DIV container to angle
+            // Inside text needs to be upright? No, numbers rotate with wheel.
+            // Just need to push it out.
             
-            wheelEl.appendChild(el);
+            // Reset transform for simplicity:
+            // 1. Rotate to angle
+            // 2. Move out (TranslateY)
+            el.style.transform = `rotate(${midAngle}deg) translateY(-140px)`;
+            
+            wheelDiv.appendChild(el);
         });
 
-        // --- 3. BETTING LOGIC ---
-        function selectBet(type, value, btn) {
-            // Reset UI
-            document.querySelectorAll('.board-btn').forEach(b => b.classList.remove('selected'));
-            
-            // Set Selection
+
+        // --- 3. GAME LOGIC ---
+        function placeBet(type, val, btn) {
+            // UI Update
+            document.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
-            selectedType = type;
-            selectedValue = value;
             
-            // Haptic Feedback
-            if(navigator.vibrate) navigator.vibrate(30);
+            selectedType = type;
+            selectedValue = val;
+            
+            // Vibration
+            if(navigator.vibrate) navigator.vibrate(40);
         }
 
-        // --- 4. SPIN LOGIC ---
-        async function spin() {
-            const amountInput = document.getElementById('betAmount');
-            const amount = amountInput.value;
+        async function spinWheel() {
+            const amtInp = document.getElementById('betAmount');
             const btn = document.getElementById('spinBtn');
-
-            if (!selectedType || !amount || amount <= 0) {
-                alert("⚠️ Please place a bet first!");
+            const hub = document.getElementById('hubValue');
+            
+            if(!selectedType || amtInp.value <= 0) {
+                alert("⚠️ Please place a valid bet!");
                 return;
             }
 
             // Lock UI
             btn.disabled = true;
             btn.innerText = "SPINNING...";
-            amountInput.disabled = true;
+            amtInp.disabled = true;
+            hub.innerText = "...";
 
-            // Play Sound
-            const audio = document.getElementById('spinSound');
-            audio.currentTime = 0;
-            audio.play().catch(e => console.log("Audio prevent"));
+            // Audio
+            const spinSfx = document.getElementById('sfx-spin');
+            spinSfx.currentTime = 0;
+            spinSfx.play().catch(e=>{});
 
             try {
-                // API CALL
+                // Call API
                 const res = await fetch('/api/spin_roulette', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ uid: uid, type: selectedType, value: selectedValue, amount: amount })
+                    body: JSON.stringify({
+                        uid: uid,
+                        type: selectedType,
+                        value: selectedValue,
+                        amount: amtInp.value
+                    })
                 });
                 const data = await res.json();
 
-                if (data.status === 'error') {
-                    throw new Error(data.msg);
-                }
+                if(data.status === 'error') throw new Error(data.msg);
 
-                // --- CALCULATE ROTATION ---
-                // Find index of winning number
-                const winningIndex = wheelOrder.indexOf(data.landed_number);
+                // --- CALCULATION OF SPIN ---
+                // We need the 'data.landed_number' to be at the TOP (0 deg or 360 deg)
+                // But our Marker is at Top (0 deg).
+                // Our wheel numbers array starts at 0 index (0 deg) going clockwise.
+                // So index 0 is at 0 deg. Index 1 (32) is at +9.7 deg.
                 
-                // Calculate target angle (Negative because we rotate clockwise to move item to top)
-                // Offset by half a slice to center it under marker
-                const targetAngle = -(winningIndex * sliceAngle); 
+                // To bring Index 1 to Top, we must rotate Counter-Clockwise 9.7 deg?
+                // Or Clockwise by (360 - 9.7)?
+                // Let's use negative rotation for standard clockwise spin visual.
                 
-                // Add lots of spins (e.g., 5 full rotations)
-                const spins = 360 * 5;
+                const targetIndex = wheelNumbers.indexOf(data.landed_number);
+                // Angle of the center of that slice
+                const sliceCenter = (targetIndex * sliceAngle) + (sliceAngle / 2);
                 
-                // Random jitter within the slice for realism (+/- 4 degrees)
-                const jitter = (Math.random() - 0.5) * 8; 
-
-                const finalRotation = currentRotation + spins + targetAngle + jitter;
+                // We want this angle to end up at 0 (Top).
+                // Target Rotation = -sliceCenter.
+                
+                // Add lots of spins (e.g. 5 full rounds = 1800 deg)
+                // Add some randomness to land inside the slice, not dead center
+                const fuzz = (Math.random() * 4) - 2; // +/- 2 deg
+                
+                const extraSpins = 360 * 5;
+                const newAngle = -(sliceCenter + extraSpins + fuzz);
                 
                 // Apply Transform
-                wheelEl.style.transform = `rotate(${finalRotation}deg)`;
+                // Note: We accumulate rotation so it doesn't snap back
+                // But simplified: just set a massive negative value based on current mod?
+                // Let's just set the style directly.
                 
-                // Update tracker so next spin is smooth
-                // We actually want the CSS to handle the transition relative to current
-                // Note: To keep spins additive, we calculate relative to 0 but add to prev
-                // Actually, simplest way: Just keep adding to currentRotation global
-                // We need to calculate how much to add to REACH the target visual.
+                // Reset to 0 for a sec? No, that jerks.
+                // We need to add to CURRENT rotation.
                 
-                // Resetting logic:
-                // We need the wheel to end up at 'targetAngle' relative to 0.
-                // But currentRotation is likely huge (e.g. 5000).
-                // New Position = (Current - (Current % 360)) + spins + targetAngle
-                // Wait, easier approach:
-                // Just add the difference needed to reach the target index.
+                // Current rotation (we need to track it)
+                // Since we start at 0, newAngle is absolute.
+                // But if we spin again, we need to go from NewAngle to NextAngle.
+                // Let's force a reset or track it.
+                // Tracking is better.
                 
-                // Let's use the simple additive approach which is robust
-                // We simply add 5 spins + distance to target
+                // Adjust calculation:
+                // We are at `currentDeg`. We want to reach `newAngle` (modulo 360).
+                // Actually, let's just use the absolute calculation and add it to a base.
                 
-                // Current visual angle mod 360
-                const currentMod = currentRotation % 360;
-                // Target is targetAngle. 
-                // Diff needed
-                let diff = targetAngle - currentMod;
-                // Ensure positive spin direction mostly, or just massive add
-                // Actually, let's just stick to the computed `finalRotation` above?
-                // No, because `targetAngle` is absolute (0 to -360).
-                // We need to add `spins` + (`targetAngle` - `currentRotation` % 360)
+                // Simple Logic:
+                // 1. Reset transition
+                // 2. Set rotation to `currentDeg % 360` (instant)
+                // 3. Enable transition
+                // 4. Rotate to `currentDeg + 1800 + diff`
                 
-                // RECALCULATION FOR PERFECT ALIGNMENT:
-                // 1. Where are we now? `currentRotation`
-                // 2. Where do we want to be? `winningIndex * sliceAngle` (negative)
-                // 3. Add 5 full rotations (1800 deg)
+                // Let's try the absolute huge number method, it's easier.
+                // Just keep subtracting.
                 
-                const step1 = currentRotation % 360; // Normalize current
-                const step2 = -(winningIndex * sliceAngle); // Target normalized
-                let dist = step2 - step1; 
+                // Calculate difference needed to align top
+                // Current visual angle is usually negative.
                 
-                // Ensure we always spin forward (negative direction for clockwise)
-                if (dist > 0) dist -= 360; 
+                // Let's just create a new target based on the data.
+                // Target is -(sliceCenter).
+                // We are at 'currentDeg'.
+                // We need to decrease currentDeg until (currentDeg % 360) approx equals -sliceCenter
                 
-                const totalSpin = dist - (360 * 5); // Spin 5 times clockwise
+                const targetMod = -sliceCenter;
+                const currentMod = currentDeg % 360;
+                let diff = targetMod - currentMod;
+                // Ensure we spin at least 5 times (1800 deg) in negative direction
+                if (diff > 0) diff -= 360; 
+                diff -= 1800; // Add 5 spins
                 
-                currentRotation += totalSpin;
-                wheelEl.style.transform = `rotate(${currentRotation}deg)`;
-
-
-                // --- FINISH ---
+                currentDeg += diff;
+                
+                wheelDiv.style.transform = `rotate(${currentDeg}deg)`;
+                
+                // Finish
                 setTimeout(() => {
-                    audio.pause();
+                    spinSfx.pause();
+                    hub.innerText = data.landed_number;
                     
-                    if (data.is_win) {
-                        document.getElementById('winSound').play();
+                    if(data.is_win) {
+                        document.getElementById('sfx-win').play();
                         showWin(data.message, data.win_amount);
-                        if(navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
-                    } else {
-                        // Just update balance silently
+                        if(navigator.vibrate) navigator.vibrate([100,50,100,50,200]);
                     }
-
-                    document.getElementById('balance').innerText = data.new_balance.toLocaleString();
                     
-                    // Reset Controls
+                    document.getElementById('balance').innerText = data.new_balance.toLocaleString();
                     btn.disabled = false;
                     btn.innerText = "SPIN NOW";
-                    amountInput.disabled = false;
+                    amtInp.disabled = false;
+                    
+                }, 5000); // 5s match css transition
 
-                }, 4000); // Matches CSS transition time
-
-            } catch (err) {
-                alert(err.message || "Server Error");
+            } catch(e) {
+                alert(e.message || "Error");
                 btn.disabled = false;
                 btn.innerText = "SPIN NOW";
-                amountInput.disabled = false;
+                amtInp.disabled = false;
             }
         }
 
-        function showWin(msg, amount) {
-            document.getElementById('winMsg').innerText = msg;
-            document.getElementById('winAmount').innerText = "+$" + amount.toLocaleString();
-            const overlay = document.getElementById('winOverlay');
-            overlay.style.display = 'flex';
+        function showWin(msg, amt) {
+            const ov = document.getElementById('winOverlay');
+            document.getElementById('winMsgDisplay').innerText = msg;
+            document.getElementById('winAmountDisplay').innerText = "+$" + amt.toLocaleString();
             
-            // Trigger animation
-            setTimeout(() => {
-                overlay.classList.add('show');
-                createConfetti();
-            }, 10);
+            ov.style.display = 'flex';
+            setTimeout(() => ov.classList.add('active'), 10);
         }
 
-        function closePopup() {
-            const overlay = document.getElementById('winOverlay');
-            overlay.classList.remove('show');
-            setTimeout(() => {
-                overlay.style.display = 'none';
-            }, 400);
-        }
-
-        // Simple CSS Confetti (Performance Friendly)
-        function createConfetti() {
-            // Optional: Add simple particle effects here if needed
-            // Keeping it clean for lag-free experience as requested
+        function closeOverlay() {
+            const ov = document.getElementById('winOverlay');
+            ov.classList.remove('active');
+            setTimeout(() => ov.style.display = 'none', 300);
         }
 
     </script>
