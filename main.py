@@ -128,25 +128,19 @@ SHOP_ITEMS = {
     "lotto_god":  {"name": "🎰 GOD TICKET", "price": 100000000, "type": "lotto", "win": 50000000000, "chance": 1},
 }
 
-import asyncio
+Import asyncio
 import pytz
-import traceback
 from datetime import datetime, time
-from discord.ext import tasks, commands
-from discord import app_commands # Slash Command ke liye zaroori
+from discord.ext import tasks
 
 # --- CONFIG ---
-OWNER_ID = 804687084249284618   
-STAFF_ROLE_ID = 1459074209191039049  
-GUILD_ID = 1257403231127076915       
-SALARY_LOG_CHANNEL_ID = 1457066104819028089 
-STAFF_SALARY = 50000000          
+OWNER_ID = 804687084249284618   # Owner ID
+STAFF_ROLE_ID = 1459074209191039049  # Staff Role ID
+GUILD_ID = 1257403231127076915       # Server ID
+SALARY_LOG_CHANNEL_ID = 1457066104819028089 # Log Channel
+STAFF_SALARY = 50000000          # $50 Million
 
-# --- TIMEZONE SETUP ---
-india_tz = pytz.timezone("Asia/Kolkata")
-salary_time = time(hour=0, minute=0, tzinfo=india_tz) 
-
-# --- MEMORY ---
+# --- 🧠 SMART STAFF SYSTEM MEMORY ---
 xp_cooldowns = {} 
 
 # 1. TRACK COMMAND USAGE
@@ -154,130 +148,144 @@ async def track_command_usage(user_id):
     if user_id == OWNER_ID: return 
     
     current_time = datetime.now()
+    
+    # 🚫 ANTI-SPAM CHECK
     if user_id in xp_cooldowns:
         last_time = xp_cooldowns[user_id]
-        if (current_time - last_time).total_seconds() < 30: return 
+        time_diff = (current_time - last_time).total_seconds()
+        if time_diff < 30: 
+            return # Spammer detected
             
+    # ✅ Count Point
     xp_cooldowns[user_id] = current_time 
-    try:
-        res = supabase.table("economy").select("command_count").eq("user_id", str(user_id)).execute()
-        if res.data:
-            current = res.data[0].get('command_count', 0) or 0
-            supabase.table("economy").update({"command_count": current + 1}).eq("user_id", str(user_id)).execute()
-        else:
-            supabase.table("economy").insert({"user_id": str(user_id), "balance": 0, "command_count": 1}).execute()
-    except Exception as e:
-        print(f"Tracking Error: {e}")
+    
+    # Database Update
+    res = supabase.table("economy").select("command_count").eq("user_id", str(user_id)).execute()
+    
+    if res.data:
+        current = res.data[0].get('command_count', 0) or 0
+        supabase.table("economy").update({"command_count": current + 1}).eq("user_id", str(user_id)).execute()
+    else:
+        supabase.table("economy").insert({"user_id": str(user_id), "balance": 0, "command_count": 1}).execute()
 
-# 2. AUTO STAFF MANAGER
+# --- 👑 2. AUTOMATED STAFF MANAGER (Fixed Lag) ---
 async def update_staff_roles(guild):
-    try:
-        data = supabase.table("economy").select("user_id, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
-        if not data: return
-        top_3_ids = [int(u['user_id']) for u in data]
-        staff_role = guild.get_role(STAFF_ROLE_ID)
-        if not staff_role: return
+    # Top 3 Users fetch karein
+    data = supabase.table("economy").select("user_id, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
+    
+    if not data: return
+    top_3_ids = [int(u['user_id']) for u in data]
+    
+    staff_role = guild.get_role(STAFF_ROLE_ID)
+    if not staff_role: return
 
-        for member in guild.members:
-            await asyncio.sleep(0) 
+    # Server ke har member ko check karo
+    for member in guild.members:
+        # 🟢 FIX: Ye line bot ko freeze hone se bachayegi (Warning Hat Jayegi)
+        await asyncio.sleep(0) 
 
-            if member.bot or member.id == OWNER_ID: continue
-            
-            # PROMOTE
-            if member.id in top_3_ids:
-                if staff_role not in member.roles:
-                    try:
-                        await member.add_roles(staff_role)
-                        await member.edit(nick=f"[BOT STAFF] {member.name[:25]}")
-                        embed = discord.Embed(title="🎉 PROMOTION!", color=0x00FF00)
-                        embed.description = f"Congrats **{member.name}**! You are now **{staff_role.name}**."
-                        await member.send(embed=embed)
-                    except: pass
-            
-            # DEMOTE
-            elif staff_role in member.roles:
+        if member.bot or member.id == OWNER_ID: continue
+        
+        # --- PROMOTE LOGIC ---
+        if member.id in top_3_ids:
+            if staff_role not in member.roles:
                 try:
-                    await member.remove_roles(staff_role)
-                    await member.edit(nick=None)
-                    embed = discord.Embed(title="📉 DEMOTION", color=0xFF0000)
-                    embed.description = "You are no longer in Top 3. Staff role removed."
+                    await member.add_roles(staff_role)
+                    # Name Change
+                    new_nick = f"[BOT STAFF] {member.name[:25]}" 
+                    await member.edit(nick=new_nick)
+                    
+                    # DM Congratulation
+                    embed = discord.Embed(title="🎉 PROMOTION ALERT!", color=0x00FF00)
+                    embed.description = f"Congrats **{member.name}**! Aap Top 3 active players mein hain.\nAapko **{staff_role.name}** bana diya gaya hai."
                     await member.send(embed=embed)
                 except: pass
-    except Exception as e:
-        print(f"Role Update Error: {e}")
+        
+        # --- DEMOTE LOGIC ---
+        elif staff_role in member.roles:
+            try:
+                await member.remove_roles(staff_role)
+                # Name Reset
+                await member.edit(nick=None) 
+                
+                # DM Demotion
+                embed = discord.Embed(title="📉 DEMOTION ALERT", color=0xFF0000)
+                embed.description = "Aap Top 3 list se bahar ho gaye hain. Staff role hata diya gaya hai."
+                await member.send(embed=embed)
+            except: pass
 
-# 3. SALARY LOOP (Automatic 12:00 AM)
+# --- 💰 3. PREMIUM SALARY SYSTEM (12:00 AM IST) ---
+india_tz = pytz.timezone("Asia/Kolkata")
+salary_time = time(hour=0, minute=0, tzinfo=india_tz) 
+
 @tasks.loop(time=salary_time)
 async def pay_staff_salary():
-    try:
-        print(f"[SYSTEM] Auto-Salary Started at {datetime.now(india_tz)}")
-        await run_salary_logic("DAILY AUTOMATED PAYROLL")
-    except Exception as e:
-        print(f"CRITICAL ERROR IN SALARY LOOP: {e}")
-        traceback.print_exc()
+    guild = bot.get_guild(GUILD_ID)
+    channel = bot.get_channel(SALARY_LOG_CHANNEL_ID)
+    
+    if not guild: return
+
+    # Top 3 Data Fetch
+    data = supabase.table("economy").select("user_id, balance, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
+    
+    if not data: return
+
+    # --- PREMIUM EMBED BUILDER ---
+    embed = discord.Embed(
+        title="💸 DAILY STAFF PAYROLL PROCESSED",
+        description="The following **Top 3 Active Agents** have received their daily salary based on command usage.",
+        color=0xFFD700, # Gold Color
+        timestamp=datetime.now()
+    )
+    
+    top_member_avatar = None 
+
+    # Payment Loop
+    for idx, user in enumerate(data):
+        uid = int(user['user_id'])
+        old_bal = user['balance']
+        cmds = user['command_count']
+        
+        # Pay Salary
+        new_bal = old_bal + STAFF_SALARY
+        supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(uid)).execute()
+        
+        # Discord Info Fetch
+        member = guild.get_member(uid)
+        
+        # Formatting
+        rank_emoji = ["🥇", "🥈", "🥉"][idx] if idx < 3 else "🏅"
+        user_mention = member.mention if member else f"`User {uid}`"
+        
+        # Store Rank 1 Avatar
+        if idx == 0 and member:
+            top_member_avatar = member.display_avatar.url
+        
+        # Add Field
+        embed.add_field(
+            name=f"{rank_emoji} Rank #{idx+1} — {user_mention}",
+            value=f"📜 **Cmds:** `{cmds}`\n💰 **Paid:** `$50,000,000`\n💳 **New Bal:** `${new_bal:,}`",
+            inline=False
+        )
+
+    # Finishing Touches
+    embed.set_footer(text="Automated Payroll System • Next Payout in 24h")
+    
+    if top_member_avatar:
+        embed.set_thumbnail(url=top_member_avatar)
+    else:
+        embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
+
+    # Log Channel me bhejo
+    if channel:
+        await channel.send(embed=embed)
+        
+    # Roles Refresh (Fixed Lag)
+    await update_staff_roles(guild)
 
 @pay_staff_salary.before_loop
 async def before_salary():
     await bot.wait_until_ready()
-
-# --- 🛠️ CORE LOGIC FUNCTION (Dono jagah use hoga) ---
-async def run_salary_logic(title_text):
-    guild = bot.get_guild(GUILD_ID)
-    channel = bot.get_channel(SALARY_LOG_CHANNEL_ID)
-    
-    if not guild: return "Guild Not Found"
-
-    # Fetch Top 3
-    data = supabase.table("economy").select("user_id, balance, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
-    
-    if not data: return "No Data Found"
-
-    # --- PREMIUM GOLD EMBED ---
-    embed = discord.Embed(
-        title=f"💸 {title_text}",
-        description="The following **Top 3 Agents** have been rewarded for their hard work.",
-        color=0xFFD700, # Gold Color
-        timestamp=datetime.now()
-    )
-    embed.set_image(url="https://i.imgur.com/8N7j5Fj.gif") # Optional: Rich Line Separator
-    
-    top_member_avatar = None 
-
-    for idx, user in enumerate(data):
-        try:
-            uid = int(user['user_id'])
-            old_bal = user['balance']
-            cmds = user['command_count']
-            
-            # Pay
-            new_bal = old_bal + STAFF_SALARY
-            supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(uid)).execute()
-            
-            member = guild.get_member(uid)
-            rank_emoji = ["🥇", "🥈", "🥉"][idx] if idx < 3 else "🏅"
-            user_mention = member.mention if member else f"`ID: {uid}`"
-            
-            if idx == 0 and member: top_member_avatar = member.display_avatar.url
-            
-            # Fancy Field
-            embed.add_field(
-                name=f"{rank_emoji} Rank #{idx+1} — {user_mention}",
-                value=f"```yaml\n📜 Commands: {cmds}\n💰 Salary:   $50,000,000\n💳 Wallet:   ${new_bal:,}\n```",
-                inline=False
-            )
-        except Exception as e:
-            print(f"Error paying {uid}: {e}")
-            continue
-
-    embed.set_footer(text="Secure Payroll System • Verified Transaction", icon_url=guild.icon.url if guild.icon else None)
-    
-    if top_member_avatar: embed.set_thumbnail(url=top_member_avatar)
-    
-    if channel: await channel.send(embed=embed)
-    
-    await update_staff_roles(guild)
-    return "Success"
-
 
 # 🛡️ SYSTEM SAVER: Sirf 2 translation threads allow honge (Crash Fix)
 roast_executor = ThreadPoolExecutor(max_workers=2)
