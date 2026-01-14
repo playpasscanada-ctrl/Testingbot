@@ -3,307 +3,407 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Squid Game Mobile</title>
+    <title>Squid Game - Dalgona Challenge</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
     <style>
+        /* --- ULTIMATE BACKGROUND --- */
         body {
-            background-color: #050505;
+            background-color: #000;
             color: #fff;
             font-family: 'Roboto Mono', monospace;
             overflow: hidden;
             touch-action: none;
-            background: radial-gradient(circle at center, #1a1100 0%, #000000 100%);
+            position: relative;
         }
 
-        /* COOKIE */
+        /* Moving Fog/Smoke */
+        .fog {
+            position: fixed; top: 0; left: 0; width: 200%; height: 100%;
+            background: linear-gradient(to right, #000 0%, #1a1110 50%, #000 100%);
+            opacity: 0.8; z-index: -2;
+            animation: fogMove 20s infinite linear;
+        }
+        @keyframes fogMove { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+        /* Floating Squid Game Shapes */
+        .shape-bg {
+            position: absolute; opacity: 0.15; z-index: -1;
+            animation: floatShape 10s infinite ease-in-out;
+            border: 2px solid #ed1b76; box-shadow: 0 0 15px #ed1b76;
+        }
+        .shape-circle { width: 60px; height: 60px; border-radius: 50%; top: 10%; left: 10%; animation-duration: 12s; }
+        .shape-triangle { 
+            width: 0; height: 0; border: none; box-shadow: none;
+            border-left: 30px solid transparent; border-right: 30px solid transparent;
+            border-bottom: 52px solid #ed1b76; top: 50%; right: 10%; animation-duration: 15s; filter: drop-shadow(0 0 10px #ed1b76);
+            background: transparent; opacity: 0.15;
+        }
+        .shape-square { width: 50px; height: 50px; bottom: 15%; left: 30%; animation-duration: 18s; }
+
+        @keyframes floatShape {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-40px) rotate(20deg); }
+        }
+
+        /* COOKIE TIN */
+        .cookie-container {
+            filter: drop-shadow(0 20px 30px rgba(0,0,0,0.9));
+        }
+
+        /* REALISTIC COOKIE TEXTURE */
         .cookie {
             width: 85vw; height: 85vw;
-            max-width: 400px; max-height: 400px;
-            background: radial-gradient(circle, #eecfa1 30%, #cd853f 90%);
+            max-width: 380px; max-height: 380px;
+            background: radial-gradient(circle, #eecfa1 20%, #c68c53 90%);
             border-radius: 50%;
             position: relative;
-            box-shadow: inset 0 0 30px rgba(139, 69, 19, 0.6), 0 10px 30px rgba(0,0,0,0.8);
+            box-shadow: 
+                inset 0 0 40px rgba(88, 46, 12, 0.8),
+                0 10px 20px rgba(0,0,0,0.8);
             display: flex; align-items: center; justify-content: center;
         }
-        .cookie::before {
-            content:''; position: absolute; inset:0; border-radius: 50%;
-            background-image: url('https://www.transparenttextures.com/patterns/concrete-wall.png');
-            opacity: 0.35; mix-blend-mode: multiply; pointer-events: none;
+        /* Sugar Texture */
+        .cookie::after {
+            content: ''; position: absolute; inset: 0; border-radius: 50%;
+            background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
+            opacity: 0.4; pointer-events: none; mix-blend-mode: overlay;
         }
 
-        /* SVG */
-        svg { width: 70%; height: 70%; overflow: visible; z-index: 10; }
+        /* SVG PATHS */
+        svg { width: 65%; height: 65%; overflow: visible; z-index: 10; }
 
         .path-base {
-            fill: none; 
-            stroke: #5c3a1a; 
-            stroke-opacity: 0.9;
-            stroke-width: 7;              /* thinner corners */
-            stroke-linecap: butt;        /* sharp edges */
-            stroke-linejoin: miter;      /* sharp corners */
-            filter: drop-shadow(0px 1px 0px rgba(255,255,255,0.3));
+            fill: none; stroke: #6b4423; stroke-width: 8;
+            stroke-linecap: round; stroke-linejoin: round;
+            opacity: 0.6; filter: blur(0.5px);
         }
 
+        /* The Cut Line */
         .path-progress {
-            fill: none; 
-            stroke: #00ff41; 
-            stroke-width: 4;
-            stroke-linecap: butt;
-            stroke-linejoin: miter;
-            filter: drop-shadow(0 0 10px #00ff41);
-            stroke-dasharray: 1000; 
-            stroke-dashoffset: 1000;
+            fill: none; stroke: #fff; stroke-width: 3;
+            stroke-linecap: round; stroke-linejoin: round;
+            filter: drop-shadow(0 0 5px #fff);
+            stroke-dasharray: 1000; stroke-dashoffset: 1000;
             pointer-events: none;
         }
 
-        .path-hitbox {
-            fill: none; 
-            stroke: transparent; 
-            stroke-width: 32;
-            stroke-linecap: round; 
-            stroke-linejoin: round;
-        }
-
-        /* NEEDLE (REALISTIC) */
-        #needle {
-            position: fixed; 
-            width: 6px; 
-            height: 90px;
-            background: linear-gradient(to bottom, #f5f5f5 0%, #bdbdbd 40%, #5a5a5a 100%);
-            border-radius: 3px;
-            pointer-events: none; 
-            z-index: 9999;
-            transform-origin: bottom center;
-            transform: translate(-50%, -100%) rotate(-20deg);
-            box-shadow: 0 0 10px rgba(255,255,255,0.3), 4px 4px 12px rgba(0,0,0,0.8);
+        /* Guide Dot (Target) */
+        .guide-dot {
+            position: fixed; width: 10px; height: 10px;
+            background: #00ff41; border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none; z-index: 50;
+            box-shadow: 0 0 10px #00ff41;
             display: none;
         }
-        #needle::before {
-            content:''; position: absolute; top: 8px; left: 1px;
-            width: 2px; height: 60px;
-            background: rgba(255,255,255,0.6);
-            border-radius: 2px;
+
+        /* NEEDLE */
+        #needle {
+            position: fixed; width: 4px; height: 80px;
+            background: linear-gradient(to bottom, #ddd 0%, #888 100%);
+            pointer-events: none; z-index: 9999;
+            transform-origin: bottom center;
+            transform: translate(-50%, -100%) rotate(-15deg);
+            filter: drop-shadow(5px 5px 5px rgba(0,0,0,0.5));
+            display: none;
         }
         #needle::after {
-            content:''; position: absolute; bottom: -8px; left: -5px;
-            width: 16px; height: 16px;
-            background: radial-gradient(circle at center, #555 20%, #111 70%);
-            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            content:''; position: absolute; bottom: -5px; left: -3px;
+            width: 10px; height: 20px; background: #333;
         }
 
-        /* CRACK */
+        /* CRACK OVERLAY */
         #crack {
             position: absolute; inset: 0; border-radius: 50%;
             background: url('https://i.imgur.com/3q1s7.png') no-repeat center/cover;
             mix-blend-mode: multiply; opacity: 0; pointer-events: none;
+            transition: opacity 0.1s;
         }
 
-        /* WARNING */
-        #warning-bar {
-            position: fixed; top: 0; left: 0; width: 100%; height: 0;
-            background: radial-gradient(circle at center, rgba(220,20,60,0.95), rgba(0,0,0,0.95));
-            z-index: 200;
-            transition: height 0.2s;
-            display: flex; align-items: center; justify-content: center;
-            font-family: 'Creepster', cursive; color: white; 
-            font-size: 3rem; letter-spacing: 3px;
-            text-shadow: 0 0 20px red;
+        /* DEATH SCREEN */
+        #death-screen {
+            position: fixed; inset: 0; background: rgba(180, 0, 0, 0.9);
+            z-index: 200; display: none; align-items: center; justify-content: center;
+            flex-direction: column;
         }
-
-        .shake {
-            animation: shake 0.3s infinite;
-        }
-        @keyframes shake {
-            0% { transform: translate(0,0); }
-            25% { transform: translate(-3px,2px); }
-            50% { transform: translate(3px,-2px); }
-            75% { transform: translate(-2px,-3px); }
-            100% { transform: translate(0,0); }
+        .blood-drip {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            background: radial-gradient(circle, transparent 20%, #500 90%);
+            pointer-events: none;
         }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen">
 
-    <div id="warning-bar">YOU LOST</div>
+    <div class="fog"></div>
+    <div class="shape-bg shape-circle"></div>
+    <div class="shape-bg shape-triangle"></div>
+    <div class="shape-bg shape-square"></div>
 
     <div class="absolute top-4 w-full flex justify-between px-6 z-50">
-        <a href="/" class="text-xs bg-gray-800 border border-green-500 text-green-400 px-3 py-2 rounded uppercase font-bold tracking-widest">Exit</a>
-        <div class="text-sm font-bold bg-gray-900 px-3 py-2 rounded border border-yellow-600 text-yellow-500">
+        <a href="/" class="text-xs bg-black/50 border border-green-600 text-green-500 px-4 py-2 rounded font-bold hover:bg-green-900/50 transition">EXIT</a>
+        <div class="text-sm font-bold bg-black/50 px-4 py-2 rounded border border-yellow-600 text-yellow-400 shadow-[0_0_10px_rgba(255,215,0,0.3)]">
             $<span id="balance">{{ "{:,}".format(balance) }}</span>
         </div>
     </div>
 
-    <div id="menu" class="w-full max-w-md px-4 z-10 flex flex-col items-center">
-        <h1 class="text-6xl text-pink-600 mb-8" style="font-family: 'Creepster', cursive; text-shadow: 0 0 15px #ff007f;">SQUID GAME</h1>
+    <div id="menu" class="w-full max-w-md px-4 z-20 flex flex-col items-center">
+        <h1 class="text-7xl mb-2 text-pink-600 tracking-widest" style="font-family: 'Creepster', cursive; text-shadow: 4px 4px 0 #000;">DALGONA</h1>
+        <p class="text-gray-400 mb-8 tracking-widest text-xs">CHOOSE YOUR FATE</p>
 
-        <div class="grid grid-cols-2 gap-3 w-full">
+        <div class="grid grid-cols-2 gap-4 w-full">
             {% for id, lvl in levels.items() %}
-            <div onclick="startGame({{id}}, '{{lvl.name}}', {{lvl.fee}})" 
-                 class="relative bg-gray-900/80 backdrop-blur border {{ 'border-red-600' if id==10 else 'border-gray-700' }} p-4 rounded-xl active:scale-95 transition cursor-pointer">
-                <h2 class="text-lg font-bold {{ 'text-red-500' if id==10 else 'text-white' }}">{{ lvl.name }}</h2>
-                <div class="flex justify-between mt-2 text-xs">
-                    <span class="text-green-400">Win: ${{ "{:,}".format(lvl.prize) }}</span>
-                </div>
-                <div class="text-xs text-gray-500 mt-1">Fee: ${{ "{:,}".format(lvl.fee) }}</div>
-                {% if id == 10 %}<span class="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] px-2 py-0.5 rounded animate-pulse">NIGHTMARE</span>{% endif %}
+            <div onclick="initGame({{id}}, '{{lvl.name}}', {{lvl.fee}})" 
+                 class="relative bg-gray-900/90 border border-gray-700 hover:border-pink-600 p-5 rounded-sm group cursor-pointer transition-all duration-300 hover:scale-105 shadow-xl">
+                <div class="absolute inset-0 bg-pink-600/5 opacity-0 group-hover:opacity-100 transition"></div>
+                <h2 class="text-xl font-bold text-white group-hover:text-pink-500">{{ lvl.name }}</h2>
+                <div class="mt-2 text-xs text-gray-400">Prize: <span class="text-green-400 font-bold">${{ "{:,}".format(lvl.prize) }}</span></div>
+                <div class="text-[10px] text-gray-600 mt-1 uppercase tracking-wider">Entry: ${{ "{:,}".format(lvl.fee) }}</div>
             </div>
             {% endfor %}
         </div>
     </div>
 
-    <div id="game-ui" class="hidden flex-col items-center w-full">
-        <div class="text-5xl font-mono mb-8 text-green-400 tracking-widest" id="timer">00:00</div>
+    <div id="game-ui" class="hidden flex-col items-center w-full z-20">
+        <div class="text-6xl font-mono mb-6 text-red-500 tracking-widest drop-shadow-[0_0_10px_rgba(255,0,0,0.8)]" id="timer">00:00</div>
 
-        <div class="cookie" id="cookie-area">
-            <div id="crack"></div>
-            <svg viewBox="0 0 100 100">
-                <path id="path-base" class="path-base" d="" />
-                <path id="path-progress" class="path-progress" d="" />
-                <path id="path-hitbox" class="path-hitbox" d="" />
-            </svg>
+        <div class="cookie-container">
+            <div class="cookie" id="cookie-area">
+                <div id="crack"></div>
+                <svg viewBox="0 0 100 100" id="svg-el">
+                    <path id="path-base" class="path-base" d="" />
+                    <path id="path-progress" class="path-progress" d="" />
+                </svg>
+            </div>
         </div>
 
-        <p class="mt-8 text-gray-400 text-center text-sm animate-pulse px-4" id="status-text">
-            HOLD & SLIDE FINGER ON THE SHAPE
+        <p class="mt-8 text-white/50 text-center text-xs tracking-[0.2em] animate-pulse" id="status-text">
+            TRACE THE WHITE LINE PRECISELY
         </p>
     </div>
 
     <div id="needle"></div>
+    <div id="guide-dot" class="guide-dot"></div>
+
+    <div id="death-screen">
+        <div class="blood-drip"></div>
+        <h1 class="text-8xl text-red-600 mb-4" style="font-family: 'Creepster', cursive;">ELIMINATED</h1>
+        <button onclick="location.reload()" class="mt-8 bg-transparent border-2 border-white text-white px-8 py-2 hover:bg-white hover:text-black transition">TRY AGAIN</button>
+    </div>
 
     <script>
+        // SHAPES DATA
         const SHAPES = {
             'circle': 'M 50, 10 A 40,40 0 1,0 50,90 A 40,40 0 1,0 50,10',
-            'triangle': 'M 50,10 L 90,85 L 10,85 L 50,10 Z',
-            'square': 'M 15,15 L 85,15 L 85,85 L 15,85 Z',
+            'triangle': 'M 50,15 L 85,80 L 15,80 L 50,15 Z',
+            'square': 'M 20,20 L 80,20 L 80,80 L 20,80 Z',
             'star': 'M 50,5 L 61,38 L 95,38 L 68,58 L 79,90 L 50,70 L 21,90 L 32,58 L 5,38 L 39,38 Z',
-            'umbrella': 'M 10,50 Q 50,-10 90,50 L 90,55 Q 80,45 70,55 Q 60,45 50,55 Q 40,45 30,55 Q 20,45 10,55 Z M 50,10 L 50,85 Q 50,95 60,95',
+            'umbrella': 'M 10,45 Q 50,-15 90,45 L 90,50 Q 80,40 70,50 Q 60,40 50,50 Q 40,40 30,50 Q 20,40 10,50 Z M 50,10 L 50,85 Q 50,95 60,95',
             'nightmare': 'M 50,5 L 95,90 L 5,90 L 50,5 M 50,25 L 75,75 L 25,75 L 50,25 M 50,45 L 60,65 L 40,65 L 50,45'
         };
 
-        let active = false, started = false;
-        let progress = 0, totalLength = 0;
+        // GAME STATE
+        let isPlaying = false;
+        let isTracing = false;
         let timerInt;
-        let failed = false;
-
+        
+        // PATH LOGIC
+        let pathEl, progressEl;
+        let totalLen = 0;
+        let currentLen = 0; // Where we currently are on the line (from totalLen down to 0)
+        
+        // DOM ELEMENTS
         const needle = document.getElementById('needle');
+        const guideDot = document.getElementById('guide-dot');
+        const svgEl = document.getElementById('svg-el');
 
-        window.addEventListener('touchmove', handleMove, {passive: false});
-        window.addEventListener('mousemove', handleMove);
-        window.addEventListener('touchend', endInput);
-        window.addEventListener('mouseup', endInput);
+        // INPUT LISTENERS
+        window.addEventListener('touchmove', handleInput, {passive: false});
+        window.addEventListener('mousemove', handleInput);
+        window.addEventListener('touchend', stopTracing);
+        window.addEventListener('mouseup', stopTracing);
+        window.addEventListener('touchstart', startTracing, {passive: false});
+        window.addEventListener('mousedown', startTracing);
 
-        function handleMove(e) {
-            if(!active || failed) return;
-            e.preventDefault();
+        function initGame(level, name, fee) {
+            if(!confirm(`Enter Game?\nFee: $${fee}`)) return;
 
-            let clientX, clientY;
-            if(e.touches) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
-
-            needle.style.left = clientX + 'px';
-            needle.style.top = (clientY - 20) + 'px';
-            needle.style.transform = `translate(-50%, -100%) rotate(${(Math.random()*4)-2}deg)`;
-
-            checkCollision(clientX, clientY);
-        }
-
-        function endInput() {}
-
-        function startGame(level, name, fee) {
-            if(!confirm(`Start Level: ${name}?\nFee: $${fee}`)) return;
-
+            // API Call Simulation
             fetch('/api/dalgona/start', {
                 method: 'POST', headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({level: level})
             }).then(r=>r.json()).then(d => {
                 if(d.status === 'error') { alert(d.msg); return; }
 
+                // Setup UI
                 document.getElementById('balance').innerText = d.new_balance.toLocaleString();
                 document.getElementById('menu').classList.add('hidden');
                 document.getElementById('game-ui').classList.remove('hidden');
                 document.getElementById('game-ui').classList.add('flex');
-                needle.style.display = 'block';
+                
+                // Setup Path
+                const dPath = SHAPES[d.shape];
+                pathEl = document.getElementById('path-base');
+                progressEl = document.getElementById('path-progress');
+                
+                pathEl.setAttribute('d', dPath);
+                progressEl.setAttribute('d', dPath);
 
-                const pathStr = SHAPES[d.shape];
-                document.getElementById('path-base').setAttribute('d', pathStr);
-                document.getElementById('path-progress').setAttribute('d', pathStr);
-                document.getElementById('path-hitbox').setAttribute('d', pathStr);
+                // Initialize Lengths (We draw backwards from Invisible to Visible)
+                totalLen = pathEl.getTotalLength();
+                currentLen = totalLen; // Start fully hidden
+                
+                progressEl.style.strokeDasharray = totalLen;
+                progressEl.style.strokeDashoffset = totalLen;
 
-                totalLength = document.getElementById('path-base').getTotalLength();
-                progress = totalLength;
-                document.getElementById('path-progress').style.strokeDasharray = totalLength;
-                document.getElementById('path-progress').style.strokeDashoffset = totalLength;
-
+                // Timer
                 document.getElementById('timer').innerText = d.time;
-                document.getElementById('crack').style.opacity = 0;
-                document.getElementById('warning-bar').style.height = '0';
-                failed = false;
-
-                active = true; started = false;
+                startTimer();
+                
+                isPlaying = true;
+                needle.style.display = 'block';
+                
+                // Show initial guide dot
+                updateGuideDot();
             });
         }
 
-        function checkCollision(x, y) {
-            const el = document.elementFromPoint(x, y - 20);
+        function startTracing(e) {
+            if(!isPlaying) return;
+            isTracing = true;
+            handleInput(e); // Check immediately
+        }
 
-            if(el && el.id === 'path-hitbox') {
-                if(!started) {
-                    started = true;
-                    document.getElementById('status-text').innerText = "TRACING... DON'T SLIP!";
-                    document.getElementById('status-text').className = "mt-8 text-green-400 font-bold animate-pulse";
-                    startTimer();
-                }
+        function stopTracing() {
+            isTracing = false;
+        }
 
-                progress -= 3;
-                if(progress < 0) progress = 0;
-                document.getElementById('path-progress').style.strokeDashoffset = progress;
+        function handleInput(e) {
+            if(!isPlaying) return;
+            e.preventDefault();
 
-                if(progress <= 0) winGame();
+            let x, y;
+            if(e.touches) {
+                x = e.touches[0].clientX;
+                y = e.touches[0].clientY;
+            } else {
+                x = e.clientX;
+                y = e.clientY;
+            }
+
+            // Move Needle
+            needle.style.left = x + 'px';
+            needle.style.top = y + 'px';
+            needle.style.transform = `translate(-50%, -100%) rotate(${(Math.random()*6)-3 - 15}deg)`;
+
+            // --- CORE LOGIC FIX ---
+            if(isTracing) {
+                checkProgress(x, y);
+            }
+        }
+
+        function checkProgress(userX, userY) {
+            // 1. Get the screen coordinates of the specific point we need to cut next
+            // We are cutting from totalLen down to 0. 
+            // The "Target Point" is exactly at (totalLen - currentLen) from the start.
+            // But strokeDashOffset works inverse. 
+            // Let's use getPointAtLength(totalLen - currentLen).
+            
+            // NOTE: We allow a small buffer ahead.
+            const targetPointSVG = pathEl.getPointAtLength(totalLen - currentLen);
+            const targetScreen = svgToScreen(targetPointSVG.x, targetPointSVG.y);
+
+            // Calculate Distance from Needle Tip to Target Point
+            // Needle tip is userX, userY (approx, adjusted for offset)
+            const dist = Math.hypot(userX - targetScreen.x, (userY - 20) - targetScreen.y); // -20 for needle tip offset
+
+            // LOGIC: 
+            // If close (< 20px), advance.
+            // If far (> 40px) AND touching the cookie area, break.
+            
+            if (dist < 25) {
+                // User is on track! Advance.
+                // Move 2 pixels per event (speed)
+                currentLen -= 2.5; 
+                if(currentLen < 0) currentLen = 0;
+                
+                // Update Visuals
+                progressEl.style.strokeDashoffset = currentLen;
+                
+                // Win Condition
+                if(currentLen <= 0) winGame();
 
             } else {
-                if(started && active && !failed) {
-                    failGame("YOU LOST");
+                // User is NOT on the target point. 
+                // Are they completely off the line?
+                
+                // We check if they are touching the cookie at all.
+                // If they are on the cookie but NOT on the line -> CRACK.
+                const el = document.elementFromPoint(userX, userY - 20);
+                if(el && (el.classList.contains('cookie') || el.id === 'path-base')) {
+                    // Touching cookie, but missed the target point by > 25px
+                    // We give a little grace period or check closest point, 
+                    // but for strict logic, if distance > 40px, fail.
+                    if(dist > 50) {
+                        failGame();
+                    }
                 }
             }
         }
 
-        function failGame(reason) {
-            failed = true;
-            active = false; 
+        // Helper: Convert SVG coordinates (0-100) to Screen Pixels
+        function svgToScreen(svgX, svgY) {
+            const r = svgEl.getBoundingClientRect();
+            // SVG viewBox is 0 0 100 100.
+            const pxX = r.left + (svgX / 100) * r.width;
+            const pxY = r.top + (svgY / 100) * r.height;
+            return { x: pxX, y: pxY };
+        }
+
+        // Debug/Helper: Show where the user SHOULD be
+        function updateGuideDot() {
+            if(!isPlaying) return;
+            const pt = pathEl.getPointAtLength(totalLen - currentLen);
+            const scr = svgToScreen(pt.x, pt.y);
+            // guideDot.style.display = 'block'; // Uncomment to cheat/debug
+            // guideDot.style.left = scr.x + 'px';
+            // guideDot.style.top = scr.y + 'px';
+            requestAnimationFrame(updateGuideDot);
+        }
+
+        function failGame() {
+            if(!isPlaying) return;
+            isPlaying = false;
             clearInterval(timerInt);
+            
+            // Visuals
             document.getElementById('crack').style.opacity = 1;
-            const bar = document.getElementById('warning-bar');
-            bar.style.height = '100vh';
-            bar.innerText = reason;
-            document.body.classList.add("shake");
-
-            if(navigator.vibrate) navigator.vibrate([300, 100, 300]);
-
+            document.getElementById('death-screen').style.display = 'flex';
+            
+            // Sound
+            if(navigator.vibrate) navigator.vibrate([500]);
+            
+            // Backend
             fetch('/api/dalgona/fail', {method:'POST'});
-            setTimeout(() => location.reload(), 3000);
         }
 
         function winGame() {
-            if(!active) return;
-            active = false; 
+            if(!isPlaying) return;
+            isPlaying = false;
             clearInterval(timerInt);
 
-            confetti({ particleCount: 300, spread: 140, origin: { y: 0.6 } });
-            document.getElementById('status-text').innerText = "CONGRATULATIONS!";
-            document.getElementById('status-text').className = "mt-8 text-yellow-400 font-bold text-3xl";
+            confetti({ particleCount: 500, spread: 100, origin: { y: 0.6 } });
+            document.getElementById('status-text').innerText = "SURVIVED";
+            document.getElementById('status-text').className = "text-green-500 font-bold text-4xl mt-8";
 
             fetch('/api/dalgona/finish', {method:'POST'})
             .then(r=>r.json()).then(d => {
-                if(d.status === 'win') alert(`PASSED! +$${d.prize.toLocaleString()}`);
-                else alert(d.msg);
-                location.reload();
+                setTimeout(() => {
+                    if(d.status === 'win') alert(`YOU SURVIVED! +$${d.prize.toLocaleString()}`);
+                    location.reload();
+                }, 1000);
             });
         }
 
@@ -312,7 +412,7 @@
             timerInt = setInterval(() => {
                 t--;
                 document.getElementById('timer').innerText = t < 10 ? `0${t}` : t;
-                if(t <= 0) failGame("TIME UP!");
+                if(t <= 0) failGame();
             }, 1000);
         }
     </script>
