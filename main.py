@@ -41,90 +41,45 @@ def get_real_ip():
     return request.remote_addr
 
 def send_visitor_log(ip, user_id="None", username="Guest", user_agent="Unknown", visited_page="/"):
+    print(f"🔍 Tracking started for IP: {ip}") # DEBUG LOG 1
+
     try:
-        # 1. New API (ipwho.is) - Ye Render pe better chalta hai
-        # Timeout laga diya taaki agar site slow ho to atke nahi (3 seconds max)
-        response = requests.get(f"http://ipwho.is/{ip}", timeout=3)
+        # 1. IP API Call
+        response = requests.get(f"http://ipwho.is/{ip}", timeout=5)
         data = response.json()
 
-        # Agar API fail ho jaye, to function yahin rok do (No Spam)
         if not data.get('success', True): 
+            print(f"❌ IP API Failed: {data.get('message')}") # DEBUG LOG 2
             return 
 
-        # 2. Data Extraction (Naye API ke hisaab se)
+        # 2. Data Extraction
         city = data.get('city', 'Unknown City')
-        region = data.get('region', 'Unknown State')
         country = data.get('country', 'Unknown Country')
-        zip_c = data.get('postal', 'N/A')
         isp = data.get('connection', {}).get('isp', 'Unknown ISP')
-        org = data.get('connection', {}).get('org', 'Unknown Org')
-        lat = data.get('latitude', 0)
-        lon = data.get('longitude', 0)
         
-        # Mobile Check
-        is_mobile = "Unknown"
-        # Basic check based on user agent instead of API
-        if "Android" in user_agent or "iPhone" in user_agent:
-            is_mobile = "Yes 📱"
-        else:
-            is_mobile = "No 💻"
-
-        # Proxy/VPN Check (Basic)
-        is_proxy = "Possible 🛡️" if data.get('security', {}).get('vpn') else "Clean ✅"
-
-        # 3. Google Maps Link
-        maps_link = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
-
-        # 4. Device Detection (Same as before)
-        device_icon = "💻"
-        os_name = "Unknown OS"
-        if "Android" in user_agent: os_name = "Android"; device_icon = "📱"
-        elif "iPhone" in user_agent: os_name = "iOS"; device_icon = "🍎"
-        elif "Windows" in user_agent: os_name = "Windows"; device_icon = "🪟"
-        elif "Macintosh" in user_agent: os_name = "MacOS"; device_icon = "🍎"
-        elif "Linux" in user_agent: os_name = "Linux"; device_icon = "🐧"
-
-        # 5. Embed Construction
+        # 3. Embed Creation
         embed = {
-            "title": f"🚨 NEW VISITOR DETECTED! {device_icon}",
-            "description": f"**User:** `{username}`\n**ID:** `{user_id}`\n**Page:** `{visited_page}`",
-            "color": 3066993 if username == "Guest" else 15158332,
+            "title": "🚨 DEBUG TRACKER TEST",
+            "description": f"**User:** {username}\n**IP:** `{ip}`",
+            "color": 16711680,
             "fields": [
-                {
-                    "name": "📍 Location Details",
-                    "value": f"🏙️ **City:** {city}\n🚩 **State:** {region}\n🏳️ **Country:** {country}\n📮 **Zip:** {zip_c}",
-                    "inline": True
-                },
-                {
-                    "name": "📡 Network Info",
-                    "value": f"🏢 **ISP:** {isp}\n🌐 **IP:** `{ip}`\n🛡️ **VPN/Proxy:** {is_proxy}",
-                    "inline": True
-                },
-                {
-                    "name": "📱 Device & Browser",
-                    "value": f"⚙️ **OS:** {os_name}\n📲 **Mobile:** {is_mobile}\n🕸️ **Agent:** `{user_agent[:50]}...`",
-                    "inline": False
-                },
-                {
-                    "name": "🧭 GPS Coordinates",
-                    "value": f"[**🌍 CLICK TO OPEN MAP**]({maps_link})\n`{lat}, {lon}`",
-                    "inline": False
-                },
-                {
-                    "name": "🕒 Time",
-                    "value": f"⏰ {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}",
-                    "inline": False
-                }
-            ],
-            "footer": {"text": "Security System • IP Tracker"}
+                {"name": "Location", "value": f"{city}, {country}", "inline": True},
+                {"name": "ISP", "value": isp, "inline": True}
+            ]
         }
 
-        requests.post(LOG_WEBHOOK_URL, json={"embeds": [embed]}, timeout=3)
+        # 4. Sending to Discord
+        print("📤 Sending to Discord...") # DEBUG LOG 3
+        res = requests.post(LOG_WEBHOOK_URL, json={"embeds": [embed]}, timeout=5)
+        
+        if res.status_code == 204:
+            print("✅ Message Sent Successfully!")
+        else:
+            print(f"❌ Discord Error: {res.status_code} - {res.text}")
 
-    except Exception:
-        # 🤫 Agar koi error aaye (timeout/connection reset), to chupchap ignore karo.
-        # Spam nahi hoga.
-        pass
+    except Exception as e:
+        print(f"⚠️ CRITICAL ERROR: {e}") # Yahan asli error dikhega
+
 
 # --- 🛡️ SECURITY SYSTEM SETUP ---
 authorized_guilds_cache = set()
