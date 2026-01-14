@@ -27,8 +27,17 @@ from datetime import datetime
 LOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1461109611183607858/gD-QKJVBlVVAz6EONkOmzq16O6_Faf9nFXe90Yr9u4xVUBLB9s6M58aap2HlXBtBcbmy"
 
 def get_real_ip():
+    # 1. Sabse pehle 'X-Forwarded-For' check karo (Render/Cloud ke liye zaroori)
     if request.headers.get('X-Forwarded-For'):
-        return request.headers.get('X-Forwarded-For').split(',')[0]
+        # List me pehla IP hi asli user ka hota hai
+        ip = request.headers.get('X-Forwarded-For').split(',')[0]
+        return ip.strip() # Extra spaces hata do
+    
+    # 2. Agar wo nahi mila, to 'X-Real-IP' try karo
+    if request.headers.get('X-Real-IP'):
+        return request.headers.get('X-Real-IP').strip()
+    
+    # 3. Last option: Remote Address (Localhost ke liye)
     return request.remote_addr
 
 def send_visitor_log(ip, user_id="None", username="Guest", user_agent="Unknown", visited_page="/"):
@@ -17066,28 +17075,33 @@ GUILD_ID = "1257403231127076915"
 # --- 1. HOME ROUTE ---
 @app.route('/')
 def home():
-    # 👇👇👇 ULTRA TRACKER START 👇👇👇
+    # 👇👇👇 ANTI-SPAM TRACKER SYSTEM 👇👇👇
     try:
-        # 1. IP Nikalo
-        visitor_ip = get_real_ip()
-        
-        # 2. User Info (Agar Login hai)
-        t_user = "Guest"
-        t_uid = "N/A"
-        if 'user_info' in session:
-            t_user = session['user_info'].get('username', 'Unknown')
-            t_uid = session['user_info'].get('id', 'Unknown')
+        # Check: Kya humne is bande ko abhi track kiya hai?
+        if 'tracked_already' not in session: 
+            
+            visitor_ip = get_real_ip()
+            
+            # User Info
+            t_user = "Guest"
+            t_uid = "N/A"
+            if 'user_info' in session:
+                t_user = session['user_info'].get('username', 'Unknown')
+                t_uid = session['user_info'].get('id', 'Unknown')
 
-        # 3. Device & Page Info
-        u_agent = request.headers.get('User-Agent', 'Unknown')
-        current_page = "Home Dashboard 🏠"
+            # Device Info
+            u_agent = request.headers.get('User-Agent', 'Unknown')
+            current_page = "Home Dashboard 🏠"
 
-        # 4. Background me Fire karo (Site slow nahi hogi)
-        threading.Thread(target=send_visitor_log, args=(visitor_ip, t_uid, t_user, u_agent, current_page)).start()
-
+            # Log Bhejo
+            threading.Thread(target=send_visitor_log, args=(visitor_ip, t_uid, t_user, u_agent, current_page)).start()
+            
+            # ✅ MARK AS TRACKED (Ab dubara spam nahi karega jab tak browser band karke nahi kholta)
+            session['tracked_already'] = True 
+            
     except Exception as e:
         print(f"Tracker Error: {e}")
-
+        
     # 1. Login Link Setup
     encoded_redirect = urllib.parse.quote(REDIRECT_URI)
     login_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
