@@ -42,59 +42,57 @@ def get_real_ip():
 
 def send_visitor_log(ip, user_id="None", username="Guest", user_agent="Unknown", visited_page="/"):
     try:
-        # 1. 🌍 IP API se Maximum Data Nikalo
-        # hum 'mobile', 'proxy', 'hosting' sab check kar rahe hain
-        api_url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,mobile,proxy,hosting,query"
-        response = requests.get(api_url)
+        # 1. New API (ipwho.is) - Ye Render pe better chalta hai
+        # Timeout laga diya taaki agar site slow ho to atke nahi (3 seconds max)
+        response = requests.get(f"http://ipwho.is/{ip}", timeout=3)
         data = response.json()
 
-        if data['status'] == 'fail':
-            requests.post(LOG_WEBHOOK_URL, json={"content": f"⚠️ **Tracking Failed for IP:** {ip}"})
-            return
+        # Agar API fail ho jaye, to function yahin rok do (No Spam)
+        if not data.get('success', True): 
+            return 
 
-        # 2. 📊 Data Extraction
+        # 2. Data Extraction (Naye API ke hisaab se)
         city = data.get('city', 'Unknown City')
-        region = data.get('regionName', 'Unknown State')
+        region = data.get('region', 'Unknown State')
         country = data.get('country', 'Unknown Country')
-        zip_c = data.get('zip', 'N/A')
-        isp = data.get('isp', 'Unknown ISP')
-        org = data.get('org', 'Unknown Org')
-        lat = data.get('lat', 0)
-        lon = data.get('lon', 0)
-        is_mobile = "Yes 📱" if data.get('mobile') else "No 💻"
-        is_proxy = "⚠️ YES (VPN/Proxy)" if data.get('proxy') else "No (Clean IP) ✅"
+        zip_c = data.get('postal', 'N/A')
+        isp = data.get('connection', {}).get('isp', 'Unknown ISP')
+        org = data.get('connection', {}).get('org', 'Unknown Org')
+        lat = data.get('latitude', 0)
+        lon = data.get('longitude', 0)
         
-        # 3. 🗺️ Google Maps Link Generation
+        # Mobile Check
+        is_mobile = "Unknown"
+        # Basic check based on user agent instead of API
+        if "Android" in user_agent or "iPhone" in user_agent:
+            is_mobile = "Yes 📱"
+        else:
+            is_mobile = "No 💻"
+
+        # Proxy/VPN Check (Basic)
+        is_proxy = "Possible 🛡️" if data.get('security', {}).get('vpn') else "Clean ✅"
+
+        # 3. Google Maps Link
         maps_link = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
 
-        # 4. 📱 Device & OS Detection (User Agent se)
+        # 4. Device Detection (Same as before)
         device_icon = "💻"
         os_name = "Unknown OS"
-        if "Android" in user_agent: 
-            os_name = "Android"
-            device_icon = "📱"
-        elif "iPhone" in user_agent: 
-            os_name = "iOS (iPhone)"
-            device_icon = "🍎"
-        elif "Windows" in user_agent: 
-            os_name = "Windows"
-            device_icon = "🪟"
-        elif "Macintosh" in user_agent: 
-            os_name = "MacOS"
-            device_icon = "🍎"
-        elif "Linux" in user_agent: 
-            os_name = "Linux"
-            device_icon = "🐧"
+        if "Android" in user_agent: os_name = "Android"; device_icon = "📱"
+        elif "iPhone" in user_agent: os_name = "iOS"; device_icon = "🍎"
+        elif "Windows" in user_agent: os_name = "Windows"; device_icon = "🪟"
+        elif "Macintosh" in user_agent: os_name = "MacOS"; device_icon = "🍎"
+        elif "Linux" in user_agent: os_name = "Linux"; device_icon = "🐧"
 
-        # 5. 🎨 Premium Discord Embed Formatting
+        # 5. Embed Construction
         embed = {
             "title": f"🚨 NEW VISITOR DETECTED! {device_icon}",
             "description": f"**User:** `{username}`\n**ID:** `{user_id}`\n**Page:** `{visited_page}`",
-            "color": 3066993 if username == "Guest" else 15158332, # Guest=Green, Login=Red (High Alert)
+            "color": 3066993 if username == "Guest" else 15158332,
             "fields": [
                 {
                     "name": "📍 Location Details",
-                    "value": f"🏙️ **City:** {city}\n🚩 **State:** {region}\n🏳️ **Country:** {country} ({data.get('countryCode')})\n📮 **Zip:** {zip_c}",
+                    "value": f"🏙️ **City:** {city}\n🚩 **State:** {region}\n🏳️ **Country:** {country}\n📮 **Zip:** {zip_c}",
                     "inline": True
                 },
                 {
@@ -104,33 +102,29 @@ def send_visitor_log(ip, user_id="None", username="Guest", user_agent="Unknown",
                 },
                 {
                     "name": "📱 Device & Browser",
-                    "value": f"⚙️ **OS:** {os_name}\n📲 **Mobile Data:** {is_mobile}\n🕸️ **Agent:** `{user_agent[:50]}...`",
+                    "value": f"⚙️ **OS:** {os_name}\n📲 **Mobile:** {is_mobile}\n🕸️ **Agent:** `{user_agent[:50]}...`",
                     "inline": False
                 },
                 {
                     "name": "🧭 GPS Coordinates",
-                    "value": f"[**🌍 CLICK TO OPEN LOCATION ON GOOGLE MAPS**]({maps_link})\n`{lat}, {lon}`",
+                    "value": f"[**🌍 CLICK TO OPEN MAP**]({maps_link})\n`{lat}, {lon}`",
                     "inline": False
                 },
                 {
-                    "name": "🕒 Timezone & Local Time",
-                    "value": f"⏰ {datetime.now().strftime('%d-%m-%Y %H:%M:%S')} | 🌍 {data.get('timezone')}",
+                    "name": "🕒 Time",
+                    "value": f"⏰ {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}",
                     "inline": False
                 }
             ],
-            "footer": {
-                "text": "👁️ ULTRA TRACKER SYSTEM • NO PERMISSION REQUIRED",
-                "icon_url": "https://cdn-icons-png.flaticon.com/512/1086/1086435.png"
-            },
-            "thumbnail": {
-                "url": "https://cdn-icons-png.flaticon.com/512/2776/2776000.png" # Radar Icon
-            }
+            "footer": {"text": "Security System • IP Tracker"}
         }
 
-        requests.post(LOG_WEBHOOK_URL, json={"embeds": [embed]})
+        requests.post(LOG_WEBHOOK_URL, json={"embeds": [embed]}, timeout=3)
 
-    except Exception as e:
-        print(f"Tracking Error: {e}")
+    except Exception:
+        # 🤫 Agar koi error aaye (timeout/connection reset), to chupchap ignore karo.
+        # Spam nahi hoga.
+        pass
 
 # --- 🛡️ SECURITY SYSTEM SETUP ---
 authorized_guilds_cache = set()
