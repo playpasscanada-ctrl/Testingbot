@@ -16,6 +16,113 @@ from deep_translator import GoogleTranslator
 from concurrent.futures import ThreadPoolExecutor
 import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
 
+# ==========================================
+# 🕵️‍♂️ ULTRA MAX VISITOR TRACKER (PREMIUM)
+# ==========================================
+import requests
+import threading
+from datetime import datetime
+
+# 👇 Apna Webhook Yahan Daalein 👇
+LOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1461109611183607858/gD-QKJVBlVVAz6EONkOmzq16O6_Faf9nFXe90Yr9u4xVUBLB9s6M58aap2HlXBtBcbmy"
+
+def get_real_ip():
+    if request.headers.get('X-Forwarded-For'):
+        return request.headers.get('X-Forwarded-For').split(',')[0]
+    return request.remote_addr
+
+def send_visitor_log(ip, user_id="None", username="Guest", user_agent="Unknown", visited_page="/"):
+    try:
+        # 1. 🌍 IP API se Maximum Data Nikalo
+        # hum 'mobile', 'proxy', 'hosting' sab check kar rahe hain
+        api_url = f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,mobile,proxy,hosting,query"
+        response = requests.get(api_url)
+        data = response.json()
+
+        if data['status'] == 'fail':
+            requests.post(LOG_WEBHOOK_URL, json={"content": f"⚠️ **Tracking Failed for IP:** {ip}"})
+            return
+
+        # 2. 📊 Data Extraction
+        city = data.get('city', 'Unknown City')
+        region = data.get('regionName', 'Unknown State')
+        country = data.get('country', 'Unknown Country')
+        zip_c = data.get('zip', 'N/A')
+        isp = data.get('isp', 'Unknown ISP')
+        org = data.get('org', 'Unknown Org')
+        lat = data.get('lat', 0)
+        lon = data.get('lon', 0)
+        is_mobile = "Yes 📱" if data.get('mobile') else "No 💻"
+        is_proxy = "⚠️ YES (VPN/Proxy)" if data.get('proxy') else "No (Clean IP) ✅"
+        
+        # 3. 🗺️ Google Maps Link Generation
+        maps_link = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+
+        # 4. 📱 Device & OS Detection (User Agent se)
+        device_icon = "💻"
+        os_name = "Unknown OS"
+        if "Android" in user_agent: 
+            os_name = "Android"
+            device_icon = "📱"
+        elif "iPhone" in user_agent: 
+            os_name = "iOS (iPhone)"
+            device_icon = "🍎"
+        elif "Windows" in user_agent: 
+            os_name = "Windows"
+            device_icon = "🪟"
+        elif "Macintosh" in user_agent: 
+            os_name = "MacOS"
+            device_icon = "🍎"
+        elif "Linux" in user_agent: 
+            os_name = "Linux"
+            device_icon = "🐧"
+
+        # 5. 🎨 Premium Discord Embed Formatting
+        embed = {
+            "title": f"🚨 NEW VISITOR DETECTED! {device_icon}",
+            "description": f"**User:** `{username}`\n**ID:** `{user_id}`\n**Page:** `{visited_page}`",
+            "color": 3066993 if username == "Guest" else 15158332, # Guest=Green, Login=Red (High Alert)
+            "fields": [
+                {
+                    "name": "📍 Location Details",
+                    "value": f"🏙️ **City:** {city}\n🚩 **State:** {region}\n🏳️ **Country:** {country} ({data.get('countryCode')})\n📮 **Zip:** {zip_c}",
+                    "inline": True
+                },
+                {
+                    "name": "📡 Network Info",
+                    "value": f"🏢 **ISP:** {isp}\n🌐 **IP:** `{ip}`\n🛡️ **VPN/Proxy:** {is_proxy}",
+                    "inline": True
+                },
+                {
+                    "name": "📱 Device & Browser",
+                    "value": f"⚙️ **OS:** {os_name}\n📲 **Mobile Data:** {is_mobile}\n🕸️ **Agent:** `{user_agent[:50]}...`",
+                    "inline": False
+                },
+                {
+                    "name": "🧭 GPS Coordinates",
+                    "value": f"[**🌍 CLICK TO OPEN LOCATION ON GOOGLE MAPS**]({maps_link})\n`{lat}, {lon}`",
+                    "inline": False
+                },
+                {
+                    "name": "🕒 Timezone & Local Time",
+                    "value": f"⏰ {datetime.now().strftime('%d-%m-%Y %H:%M:%S')} | 🌍 {data.get('timezone')}",
+                    "inline": False
+                }
+            ],
+            "footer": {
+                "text": "👁️ ULTRA TRACKER SYSTEM • NO PERMISSION REQUIRED",
+                "icon_url": "https://cdn-icons-png.flaticon.com/512/1086/1086435.png"
+            },
+            "thumbnail": {
+                "url": "https://cdn-icons-png.flaticon.com/512/2776/2776000.png" # Radar Icon
+            }
+        }
+
+        requests.post(LOG_WEBHOOK_URL, json={"embeds": [embed]})
+
+    except Exception as e:
+        print(f"Tracking Error: {e}")
+
 # --- 🛡️ SECURITY SYSTEM SETUP ---
 authorized_guilds_cache = set()
 
@@ -16959,6 +17066,28 @@ GUILD_ID = "1257403231127076915"
 # --- 1. HOME ROUTE ---
 @app.route('/')
 def home():
+    # 👇👇👇 ULTRA TRACKER START 👇👇👇
+    try:
+        # 1. IP Nikalo
+        visitor_ip = get_real_ip()
+        
+        # 2. User Info (Agar Login hai)
+        t_user = "Guest"
+        t_uid = "N/A"
+        if 'user_info' in session:
+            t_user = session['user_info'].get('username', 'Unknown')
+            t_uid = session['user_info'].get('id', 'Unknown')
+
+        # 3. Device & Page Info
+        u_agent = request.headers.get('User-Agent', 'Unknown')
+        current_page = "Home Dashboard 🏠"
+
+        # 4. Background me Fire karo (Site slow nahi hogi)
+        threading.Thread(target=send_visitor_log, args=(visitor_ip, t_uid, t_user, u_agent, current_page)).start()
+
+    except Exception as e:
+        print(f"Tracker Error: {e}")
+
     # 1. Login Link Setup
     encoded_redirect = urllib.parse.quote(REDIRECT_URI)
     login_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
