@@ -75,28 +75,33 @@
         svg { width: 65%; height: 65%; overflow: visible; z-index: 10; }
 
         .path-base {
-            fill: none; stroke: #6b4423; stroke-width: 8;
+            fill: none; stroke: #6b4423; stroke-width: 10;
             stroke-linecap: round; stroke-linejoin: round;
-            opacity: 0.6; filter: blur(0.5px);
+            opacity: 0.5; filter: blur(0.5px);
         }
 
-        /* The Cut Line */
+        /* The Cut Line (NOW GREEN) */
         .path-progress {
-            fill: none; stroke: #fff; stroke-width: 3;
+            fill: none; stroke: #00ff41; stroke-width: 4;
             stroke-linecap: round; stroke-linejoin: round;
-            filter: drop-shadow(0 0 5px #fff);
+            filter: drop-shadow(0 0 8px #00ff41);
             stroke-dasharray: 1000; stroke-dashoffset: 1000;
             pointer-events: none;
+            transition: stroke-dashoffset 0.1s linear;
         }
 
         /* Guide Dot (Target) */
         .guide-dot {
-            position: fixed; width: 10px; height: 10px;
+            position: fixed; width: 12px; height: 12px;
             background: #00ff41; border-radius: 50%;
             transform: translate(-50%, -50%);
             pointer-events: none; z-index: 50;
-            box-shadow: 0 0 10px #00ff41;
+            box-shadow: 0 0 15px #00ff41, 0 0 5px #fff;
             display: none;
+            animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        @keyframes ping {
+            75%, 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
         }
 
         /* NEEDLE */
@@ -180,7 +185,7 @@
         </div>
 
         <p class="mt-8 text-white/50 text-center text-xs tracking-[0.2em] animate-pulse" id="status-text">
-            TRACE THE WHITE LINE PRECISELY
+            TRACE THE GREEN LINE PRECISELY
         </p>
     </div>
 
@@ -293,7 +298,8 @@
                 y = e.clientY;
             }
 
-            // Move Needle
+            // Move Needle (Visual)
+            // Fix: No offset here because checkProgress uses raw x, y
             needle.style.left = x + 'px';
             needle.style.top = y + 'px';
             needle.style.transform = `translate(-50%, -100%) rotate(${(Math.random()*6)-3 - 15}deg)`;
@@ -308,28 +314,26 @@
             // 1. Get the screen coordinates of the specific point we need to cut next
             // We are cutting from totalLen down to 0. 
             // The "Target Point" is exactly at (totalLen - currentLen) from the start.
-            // But strokeDashOffset works inverse. 
-            // Let's use getPointAtLength(totalLen - currentLen).
             
-            // NOTE: We allow a small buffer ahead.
+            // Fix: Use 0 if at start to be safe
             const targetPointSVG = pathEl.getPointAtLength(totalLen - currentLen);
             const targetScreen = svgToScreen(targetPointSVG.x, targetPointSVG.y);
 
             // Calculate Distance from Needle Tip to Target Point
-            // Needle tip is userX, userY (approx, adjusted for offset)
-            const dist = Math.hypot(userX - targetScreen.x, (userY - 20) - targetScreen.y); // -20 for needle tip offset
+            // Needle Tip is exactly at userX, userY
+            const dist = Math.hypot(userX - targetScreen.x, userY - targetScreen.y); 
 
             // LOGIC: 
-            // If close (< 20px), advance.
-            // If far (> 40px) AND touching the cookie area, break.
+            // Acceptance Radius: 30px (Increased for mobile usability)
+            // Fail Radius: 60px (If you go too far from target)
             
-            if (dist < 25) {
+            if (dist < 30) {
                 // User is on track! Advance.
-                // Move 2 pixels per event (speed)
-                currentLen -= 2.5; 
+                // Move 3 pixels per event (speed)
+                currentLen -= 3; 
                 if(currentLen < 0) currentLen = 0;
                 
-                // Update Visuals
+                // Update Visuals (Green Line)
                 progressEl.style.strokeDashoffset = currentLen;
                 
                 // Win Condition
@@ -341,12 +345,13 @@
                 
                 // We check if they are touching the cookie at all.
                 // If they are on the cookie but NOT on the line -> CRACK.
-                const el = document.elementFromPoint(userX, userY - 20);
+                // NO OFFSET (-20) used here to match needle tip.
+                const el = document.elementFromPoint(userX, userY);
+                
                 if(el && (el.classList.contains('cookie') || el.id === 'path-base')) {
-                    // Touching cookie, but missed the target point by > 25px
-                    // We give a little grace period or check closest point, 
-                    // but for strict logic, if distance > 40px, fail.
-                    if(dist > 50) {
+                    // Touching cookie, but missed the target point by > 30px
+                    // Fail if distance is extremely large > 60px (Slip)
+                    if(dist > 60) {
                         failGame();
                     }
                 }
@@ -367,10 +372,14 @@
             if(!isPlaying) return;
             const pt = pathEl.getPointAtLength(totalLen - currentLen);
             const scr = svgToScreen(pt.x, pt.y);
-            // guideDot.style.display = 'block'; // Uncomment to cheat/debug
-            // guideDot.style.left = scr.x + 'px';
-            // guideDot.style.top = scr.y + 'px';
-            requestAnimationFrame(updateGuideDot);
+            
+            // Show guide dot
+            guideDot.style.display = 'block';
+            guideDot.style.left = scr.x + 'px';
+            guideDot.style.top = scr.y + 'px';
+            
+            if(currentLen > 0) requestAnimationFrame(updateGuideDot);
+            else guideDot.style.display = 'none';
         }
 
         function failGame() {
@@ -397,6 +406,7 @@
             confetti({ particleCount: 500, spread: 100, origin: { y: 0.6 } });
             document.getElementById('status-text').innerText = "SURVIVED";
             document.getElementById('status-text').className = "text-green-500 font-bold text-4xl mt-8";
+            document.getElementById('guide-dot').style.display = 'none';
 
             fetch('/api/dalgona/finish', {method:'POST'})
             .then(r=>r.json()).then(d => {
