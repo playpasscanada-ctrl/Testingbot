@@ -40,45 +40,119 @@ def get_real_ip():
     # 3. Last option: Remote Address (Localhost ke liye)
     return request.remote_addr
 
+# ==========================================
+# 🕵️‍♂️ ULTRA ROBUST TRACKER (MULTI-ENGINE)
+# ==========================================
 def send_visitor_log(ip, user_id="None", username="Guest", user_agent="Unknown", visited_page="/"):
-    print(f"🔍 Tracking started for IP: {ip}") # DEBUG LOG 1
+    print(f"🔍 Tracking started for IP: {ip}") 
+
+    # --- HELPER FUNCTION TO TRY MULTIPLE APIS ---
+    def get_data_from_engines(ip):
+        # 1. ENGINE A: IP-API.com (Best Data)
+        try:
+            r = requests.get(f"http://ip-api.com/json/{ip}?fields=status,message,country,city,zip,lat,lon,isp,mobile,proxy", timeout=3)
+            d = r.json()
+            if d.get('status') == 'success':
+                return {
+                    'source': 'Engine A',
+                    'city': d.get('city'), 'country': d.get('country'),
+                    'isp': d.get('isp'), 'lat': d.get('lat'), 'lon': d.get('lon'),
+                    'mobile': 'Yes' if d.get('mobile') else 'No',
+                    'proxy': 'Yes' if d.get('proxy') else 'No'
+                }
+        except: pass
+
+        # 2. ENGINE B: IPAPI.co (Backup)
+        try:
+            r = requests.get(f"https://ipapi.co/{ip}/json/", timeout=3)
+            d = r.json()
+            if 'error' not in d:
+                return {
+                    'source': 'Engine B',
+                    'city': d.get('city'), 'country': d.get('country_name'),
+                    'isp': d.get('org'), 'lat': d.get('latitude'), 'lon': d.get('longitude'),
+                    'mobile': 'Unknown', 'proxy': 'Unknown'
+                }
+        except: pass
+
+        # 3. ENGINE C: IPInfo.io (Last Resort - Very Reliable)
+        try:
+            r = requests.get(f"https://ipinfo.io/{ip}/json", timeout=3)
+            d = r.json()
+            if 'loc' in d:
+                loc = d['loc'].split(',')
+                return {
+                    'source': 'Engine C',
+                    'city': d.get('city'), 'country': d.get('country'),
+                    'isp': d.get('org'), 'lat': loc[0], 'lon': loc[1],
+                    'mobile': 'Unknown', 'proxy': 'Unknown'
+                }
+        except: pass
+        
+        return None # Sab fail ho gaya
 
     try:
-        # 1. IP API Call
-        response = requests.get(f"http://ipwho.is/{ip}", timeout=5)
-        data = response.json()
-
-        if not data.get('success', True): 
-            print(f"❌ IP API Failed: {data.get('message')}") # DEBUG LOG 2
-            return 
-
-        # 2. Data Extraction
-        city = data.get('city', 'Unknown City')
-        country = data.get('country', 'Unknown Country')
-        isp = data.get('connection', {}).get('isp', 'Unknown ISP')
+        # Data fetch karo
+        data = get_data_from_engines(ip)
         
-        # 3. Embed Creation
+        if not data:
+            print("❌ All Tracker Engines Failed. Skipping log.")
+            return
+
+        # Data mil gaya, ab variables set karo
+        city = data.get('city', 'Unknown')
+        country = data.get('country', 'Unknown')
+        isp = data.get('isp', 'Unknown ISP')
+        lat = data.get('lat', 0)
+        lon = data.get('lon', 0)
+        source = data.get('source', 'Unknown')
+        
+        # Google Maps Link
+        maps_link = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+
+        # Device Detection
+        device_icon = "💻"
+        os_name = "Unknown OS"
+        if "Android" in user_agent: os_name = "Android"; device_icon = "📱"
+        elif "iPhone" in user_agent: os_name = "iOS"; device_icon = "🍎"
+        elif "Windows" in user_agent: os_name = "Windows"; device_icon = "🪟"
+
+        # Embed
         embed = {
-            "title": "🚨 DEBUG TRACKER TEST",
-            "description": f"**User:** {username}\n**IP:** `{ip}`",
-            "color": 16711680,
+            "title": f"🚨 VISITOR DETECTED ({source}) {device_icon}",
+            "description": f"**User:** `{username}`\n**ID:** `{user_id}`",
+            "color": 3066993 if username == "Guest" else 15158332,
             "fields": [
-                {"name": "Location", "value": f"{city}, {country}", "inline": True},
-                {"name": "ISP", "value": isp, "inline": True}
-            ]
+                {
+                    "name": "📍 Location",
+                    "value": f"🏙️ **City:** {city}\n🏳️ **Country:** {country}",
+                    "inline": True
+                },
+                {
+                    "name": "📡 Network",
+                    "value": f"🏢 **ISP:** {isp}\n🌐 **IP:** `{ip}`",
+                    "inline": True
+                },
+                {
+                    "name": "📱 Device Info",
+                    "value": f"⚙️ **OS:** {os_name}\n🕸️ **Agent:** `{user_agent[:40]}...`",
+                    "inline": False
+                },
+                {
+                    "name": "🧭 Google Maps",
+                    "value": f"[**🌍 CLICK TO OPEN MAP**]({maps_link})",
+                    "inline": False
+                }
+            ],
+            "footer": {"text": f"Powered by {source} • Auto-Switch Technology"}
         }
 
-        # 4. Sending to Discord
-        print("📤 Sending to Discord...") # DEBUG LOG 3
-        res = requests.post(LOG_WEBHOOK_URL, json={"embeds": [embed]}, timeout=5)
-        
-        if res.status_code == 204:
-            print("✅ Message Sent Successfully!")
-        else:
-            print(f"❌ Discord Error: {res.status_code} - {res.text}")
+        requests.post(LOG_WEBHOOK_URL, json={"embeds": [embed]}, timeout=5)
+        print("✅ Log Sent Successfully!")
 
     except Exception as e:
-        print(f"⚠️ CRITICAL ERROR: {e}") # Yahan asli error dikhega
+        print(f"⚠️ Tracker Error: {e}")
+
 
 
 # --- 🛡️ SECURITY SYSTEM SETUP ---
