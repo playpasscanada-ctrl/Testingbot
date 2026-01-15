@@ -17,6 +17,8 @@ from concurrent.futures import ThreadPoolExecutor
 import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
 from business_config import BUSINESSES, MARKET_EVENTS, ILLEGAL_BIZ, MANAGER_PRICES
 
+active_web_matches = {}
+
 # --- HELPER: GET CURRENT MARKET EVENT ---
 def get_current_event():
     # Har 4 ghante me event change hoga (Time based math)
@@ -16672,13 +16674,62 @@ async def unauthorize(interaction: discord.Interaction, server_id: str):
     except Exception as e:
         await interaction.response.send_message(f"❌ **System Error:** {e}", ephemeral=True)
 
-active_web_matches = {}
+import uuid # Agar upar import nahi hai to yaha laga do
 
-import traceback # Ye line sabse upar honi chahiye file me
+# --- 1. VIEW CLASS (Ye Command se PEHLE honi chahiye) ---
+class WebFightView(discord.ui.View):
+    def __init__(self, p1, p2, amount):
+        super().__init__(timeout=60)
+        self.p1 = p1
+        self.p2 = p2
+        self.amount = amount
 
+    @discord.ui.button(label="🔥 ACCEPT FIGHT", style=discord.ButtonStyle.success)
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Check: Sirf opponent hi accept kar sakta hai
+        if interaction.user.id != self.p2.id:
+            return await interaction.response.send_message("❌ This challenge is not for you!", ephemeral=True)
+
+        # 1. Money Deduct (Safety Check again)
+        # Note: Yahan aap direct deduction logic lagayein
+        try:
+            db.update_balance(str(self.p1.id), -self.amount)
+            db.update_balance(str(self.p2.id), -self.amount)
+        except:
+            return await interaction.response.send_message("❌ Transaction Failed! Check balances.", ephemeral=True)
+
+        # 2. Match ID Create
+        match_id = str(uuid.uuid4())[:8]
+        
+        # 3. Store Match Info (Global Dictionary me)
+        # Make sure 'active_web_matches' upar define ho: active_web_matches = {}
+        active_web_matches[match_id] = {
+            "p1": str(self.p1.id), "p1_name": self.p1.display_name,
+            "p2": str(self.p2.id), "p2_name": self.p2.display_name,
+            "amount": self.amount
+        }
+
+        # 4. Generate Link
+        link = f"{WEBSITE_URL}/tekken_web/{match_id}"
+        
+        await interaction.response.send_message(
+            f"✅ **MATCH STARTED!**\n\nClick to Play: **[👊 OPEN TEKKEN ARENA]({link})**\n\n*(Both players join > Netplay > Fight > Winner clicks 'I WON')*",
+            ephemeral=False
+        )
+        
+        # Disable buttons
+        self.stop()
+        # Optional: Edit original message to remove buttons
+        try:
+            await interaction.message.edit(view=None)
+        except:
+            pass
+
+
+# --- 2. COMMAND (Ye View ke BAAD ayega) ---
 @bot.tree.command(name="play_tekken", description="🎮 Play Tekken 3 (Web Version)")
 async def play_tekken(interaction: discord.Interaction, opponent: discord.Member, amount: int):
-    # 1. Wait Signal (Thinking...)
+    # 1. Wait Signal
     await interaction.response.defer(ephemeral=True)
 
     try:
@@ -16686,42 +16737,34 @@ async def play_tekken(interaction: discord.Interaction, opponent: discord.Member
         if user.id == opponent.id:
             return await interaction.followup.send("❌ You cannot fight yourself!")
 
-        # ---------------------------------------------------------
-        # 🛠️ FIX: DIRECT DATABASE FETCH (No Helper Function)
-        # ---------------------------------------------------------
-        
-        # Player 1 Balance Nikalo
+        # Direct Database Check
         data1 = db.supabase.table("economy").select("balance").eq("user_id", str(user.id)).execute().data
         p1_bal = data1[0]['balance'] if data1 else 0
 
-        # Player 2 Balance Nikalo
         data2 = db.supabase.table("economy").select("balance").eq("user_id", str(opponent.id)).execute().data
         p2_bal = data2[0]['balance'] if data2 else 0
 
-        # ---------------------------------------------------------
-
-        # Balance Checks
         if p1_bal < amount:
-            return await interaction.followup.send(f"❌ You have only **${p1_bal:,}**. You need **${amount:,}**!", ephemeral=True)
+            return await interaction.followup.send(f"❌ You need **${amount:,}** to fight!", ephemeral=True)
         if p2_bal < amount:
-            return await interaction.followup.send(f"❌ {opponent.display_name} has only **${p2_bal:,}**. They are broke!", ephemeral=True)
+            return await interaction.followup.send(f"❌ {opponent.display_name} is broke!", ephemeral=True)
 
-        # Game Setup
+        # UI Setup
         embed = discord.Embed(
-            title="🎮 TEKKEN 3 ARENA", 
-            description=f"{user.mention} 🆚 {opponent.mention}\n💵 **Stake:** ${amount:,}", 
-            color=0xFFA500
+            title="🎮 TEKKEN 3 CHALLENGE", 
+            description=f"{user.mention} ⚔️ {opponent.mention}\n💰 **Bet:** ${amount:,}", 
+            color=0xFF0000
         )
         embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/en/f/f0/Tekken_3_cover.jpg")
         
+        # View ko call kiya
         view = WebFightView(user, opponent, amount)
-        await interaction.followup.send(f"🥊 {opponent.mention}, click accept!", embed=embed, view=view)
+        await interaction.followup.send(f"🥊 {opponent.mention}, do you accept?", embed=embed, view=view)
 
     except Exception as e:
         print(f"ERROR: {e}")
         await interaction.followup.send(f"⚠️ Error: `{e}`")
-
-                      
+        
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
 import time
