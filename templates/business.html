@@ -172,7 +172,7 @@
         .btn-order { background: #1a1a1a; color: #fff; border: 1px solid #444; }
         .btn-order:hover { background: #333; border-color: #666; }
 
-        /* 2. Instant Order (NEW) */
+        /* 2. Instant Order */
         .btn-instant { 
             grid-column: span 2; 
             background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%); 
@@ -194,6 +194,14 @@
         .btn-upgrade { grid-column: span 2; background: #111; color: #666; border: 1px dashed #444; }
         .btn-upgrade:hover { color: white; border-color: white; }
 
+        /* 6. Manager Button (New) */
+        .btn-manager { 
+            grid-column: span 2; 
+            background: rgba(221, 0, 255, 0.1); border: 1px solid #d0f; color: #d0f;
+            box-shadow: 0 0 10px rgba(221, 0, 255, 0.2);
+        }
+        .btn-manager:hover { background: #d0f; color: white; box-shadow: 0 0 20px #d0f; }
+
         .btn:active { transform: scale(0.96); }
 
         /* --- EMPTY STATE --- */
@@ -205,7 +213,7 @@
         .empty-icon { font-size: 60px; margin-bottom: 20px; opacity: 0.2; filter: grayscale(1); }
         .empty-text { font-family: 'Share Tech Mono'; color: #666; font-size: 16px; margin-bottom: 20px;}
 
-        /* --- HACKING TERMINAL MODAL (Keeping exact logic) --- */
+        /* --- HACKING TERMINAL MODAL --- */
         #hack-modal { 
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: #000; z-index: 10000; font-family: 'Share Tech Mono', monospace;
@@ -268,13 +276,74 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab(event, 'manage')">🏭 EMPIRE</button>
             <button class="tab-btn" onclick="switchTab(event, 'market')">🛒 BUY BIZ</button>
-            <button class="tab-btn" style="color:var(--gold); border-color:var(--gold);" onclick="switchTab(event, 'invest')">🦈 SHARK TANK</button>
+            <button class="tab-btn" style="color:var(--gold); border-color:var(--gold);" onclick="switchTab(event, 'events_tab')">📢 EVENTS</button>
             <button class="tab-btn" style="color:#0f0; border-color:#0f0;" onclick="switchTab(event, 'portfolio')">📁 STOCKS</button>
-            <button class="tab-btn" style="color:var(--fail); border-color:var(--fail);" onclick="switchTab(event, 'attack')">💀 HACKER OPS</button>
+            <button class="tab-btn" style="color:var(--fail); border-color:var(--fail);" onclick="switchTab(event, 'attack')">💀 OPS CENTER</button>
+        </div>
+    </div>
+
+    <div id="events_tab" class="container">
+        <div class="card" style="grid-column: 1/-1; border-color: var(--gold); background: rgba(255, 215, 0, 0.05); text-align: center;">
+            <div class="biz-header" style="justify-content: center;">
+                <h2 class="biz-name" style="color: var(--gold); font-size: 28px; text-shadow: 0 0 15px var(--gold);">GLOBAL NEWS NETWORK</h2>
+            </div>
+            
+            <div style="margin: 30px 0;">
+                <div style="font-size: 14px; color: #888; font-family: 'Orbitron'; letter-spacing: 2px;">LIVE MARKET STATUS</div>
+                <div style="font-size: 36px; font-weight: 900; color: white; margin: 15px 0; text-shadow: 0 0 25px rgba(255,255,255,0.3);">
+                    {{ market_event.name }}
+                </div>
+                <div style="font-size: 24px; color: {{ 'var(--hack)' if market_event.multiplier >= 1 else 'var(--fail)' }}; font-family: 'Share Tech Mono'; font-weight: bold;">
+                    PROFIT MULTIPLIER: {{ market_event.multiplier }}x
+                </div>
+                
+                <div style="margin-top: 30px; padding: 20px; border: 1px dashed rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); border-radius: 10px;">
+                    <span style="font-size: 40px; display: block; margin-bottom: 10px;">📡</span>
+                    <p style="color: #ccc; font-size: 16px; font-style: italic; margin: 0;">"{{ market_event.msg }}"</p>
+                </div>
+            </div>
         </div>
     </div>
 
     <div id="manage" class="container active">
+        
+        <div class="card" style="grid-column: 1/-1; border-left: 4px solid var(--gold); background: linear-gradient(90deg, rgba(20,20,20,0.95), rgba(50,40,0,0.15));">
+            <div class="biz-header">
+                <h3 class="biz-name" style="color: var(--gold);">UNDERWORLD CONTROL</h3>
+                <span class="sec-badge" style="background:var(--gold); color:black;">RISK MANAGEMENT</span>
+            </div>
+            
+            <div class="btn-grid">
+                <div style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div class="stat-label">
+                        <span>POLICE HEAT</span>
+                        <span style="color: {{ 'var(--fail)' if heat > 50 else 'white' }}">{{ heat }}%</span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-fill" style="width: {{ heat }}%; background: {{ 'var(--fail)' if heat > 80 else 'var(--gold)' }}"></div>
+                    </div>
+                    <button class="btn" style="background: #222; border: 1px solid var(--gold); color: var(--gold); width: 100%; margin-top: 15px;" 
+                            onclick="triggerPost('/api/police/bribe', {})">
+                        👮 BRIBE ($100k/Heat)
+                    </button>
+                </div>
+
+                <div style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div class="stat-label">
+                        <span>DIRTY MONEY</span>
+                        <span style="color: var(--fail); font-weight: bold;">${{ "{:,}".format(dirty_money) }}</span>
+                    </div>
+                    <div style="font-size: 10px; color: #666; font-family: 'Share Tech Mono'; margin: 5px 0 10px 0;">
+                        Black money cannot be used for legal purchases.
+                    </div>
+                    <button class="btn" style="background: var(--neon); color: black; width: 100%;" 
+                            onclick="triggerPost('/api/laundry/clean', {})">
+                        🧼 WASH CASH (20% Fee)
+                    </button>
+                </div>
+            </div>
+        </div>
+
         {% if owned|length == 0 %}
         <div class="empty-state">
             <div class="empty-icon">🏢</div>
@@ -324,6 +393,16 @@
                     ⚡ INSTANT RESTOCK (10x COST)
                 </button>
 
+                {% if not data.has_manager %}
+                    <button class="btn btn-manager" onclick="triggerPost('/api/business/hire_manager', {biz_id:'{{ id }}'})">
+                        🤖 HIRE AI MANAGER (AUTO-RESTOCK)
+                    </button>
+                {% else %}
+                    <button class="btn" style="grid-column: span 2; background: transparent; border: 1px solid #d0f; color: #d0f; cursor: default;">
+                        🤖 AI MANAGER ACTIVE
+                    </button>
+                {% endif %}
+
                 <button class="btn btn-order" onclick="triggerPost('/api/business/order', {biz_id:'{{ id }}', type:'normal'})">
                     🚛 ORDER (3HRS)
                 </button>
@@ -368,6 +447,21 @@
     </div>
 
     <div id="attack" class="container">
+        
+        <div class="card" style="grid-column: 1/-1; border-color: var(--fail);">
+            <div class="biz-header">
+                <h3 class="biz-name" style="color: var(--fail);">💀 DARK WEB CONTRACTS</h3>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <input type="text" id="bounty-target" class="terminal-input" placeholder="TARGET ID" style="font-size: 14px; padding: 12px; margin:0; text-align:left;">
+                <input type="number" id="bounty-amount" class="terminal-input" placeholder="BOUNTY ($)" style="font-size: 14px; padding: 12px; margin:0; text-align:left;">
+            </div>
+            <button class="btn" style="background: var(--fail); color: white; width: 100%; margin-top: 15px; font-size: 12px;"
+                    onclick="triggerPost('/api/bounty/set', {target_id: document.getElementById('bounty-target').value, amount: document.getElementById('bounty-amount').value})">
+                PUBLISH DEATH CONTRACT
+            </button>
+        </div>
+
         <div id="target-list" style="grid-column: 1/-1;"></div>
     </div>
 
@@ -464,9 +558,14 @@
             if(!data.targets.length) tList.innerHTML = `<div class="empty-state"><div class="empty-icon">🛰️</div><div class="empty-text">NO RIVALS DETECTED.</div></div>`;
             data.targets.forEach(t => {
                 let truck = t.truck_active ? `<button class="btn" style="background:#ffaa00; color:black; margin-top:8px; font-weight:bold;" onclick="triggerPost('/api/business/rob_truck', {target_id:'${t.user_id}', biz_id:'${t.biz_id}'})">🚚 HIJACK TRUCK</button>` : "";
+                
+                // Show Bounty if Exists
+                let bountyBadge = t.head_bounty > 0 ? `<div style="color:var(--fail); font-weight:bold; margin-bottom:5px;">💀 BOUNTY: $${t.head_bounty.toLocaleString()}</div>` : "";
+
                 tList.innerHTML += `<div class="card" style="border-left: 4px solid var(--fail)">
                     <div class="biz-header"><h3 class="biz-name">${t.biz_name}</h3><span class="sec-badge" style="color:var(--fail); border-color:var(--fail)">TARGET</span></div>
                     <div style="font-size:12px; color:#aaa; font-family:'Share Tech Mono'; line-height:1.6;">
+                        ${bountyBadge}
                         OWNER: <span style="color:white">${t.username || t.user_id.substring(0,12)}</span><br>
                         SECURITY: <span style="color:var(--fail)">Lvl ${t.security}</span><br>
                         LOOTABLE: <span style="color:var(--gold)">$${t.stock.toLocaleString()}</span>
