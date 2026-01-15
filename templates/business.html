@@ -194,7 +194,7 @@
         .btn-upgrade { grid-column: span 2; background: #111; color: #666; border: 1px dashed #444; }
         .btn-upgrade:hover { color: white; border-color: white; }
 
-        /* 6. Manager Button (New) */
+        /* 6. Manager Button */
         .btn-manager { 
             grid-column: span 2; 
             background: rgba(221, 0, 255, 0.1); border: 1px solid #d0f; color: #d0f;
@@ -276,6 +276,9 @@
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab(event, 'manage')">🏭 EMPIRE</button>
             <button class="tab-btn" onclick="switchTab(event, 'market')">🛒 BUY BIZ</button>
+            
+            <button class="tab-btn" style="color:var(--gold); border-color:var(--gold);" onclick="switchTab(event, 'invest')">🦈 SHARK TANK</button>
+            
             <button class="tab-btn" style="color:var(--gold); border-color:var(--gold);" onclick="switchTab(event, 'events_tab')">📢 EVENTS</button>
             <button class="tab-btn" style="color:#0f0; border-color:#0f0;" onclick="switchTab(event, 'portfolio')">📁 STOCKS</button>
             <button class="tab-btn" style="color:var(--fail); border-color:var(--fail);" onclick="switchTab(event, 'attack')">💀 OPS CENTER</button>
