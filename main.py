@@ -16676,54 +16676,50 @@ active_web_matches = {}
 
 import traceback # Ye line sabse upar honi chahiye file me
 
-@bot.tree.command(name="play_tekken", description="🎮 Play Tekken 3 (Debug Mode)")
+@bot.tree.command(name="play_tekken", description="🎮 Play Tekken 3 (Web Version)")
 async def play_tekken(interaction: discord.Interaction, opponent: discord.Member, amount: int):
-    # 1. Defer (Thinking...)
+    # 1. Wait Signal (Thinking...)
     await interaction.response.defer(ephemeral=True)
 
     try:
         user = interaction.user
-        
-        # --- DEBUG 1: SELF CHECK ---
         if user.id == opponent.id:
-            return await interaction.followup.send("❌ Khud se nahi lad sakte!")
+            return await interaction.followup.send("❌ You cannot fight yourself!")
 
-        # --- DEBUG 2: DATABASE CONNECTION CHECK ---
-        # Yahan hum check karenge ki DB zinda hai ya nahi
-        try:
-            # Apne DB function ka naam check karein.
-            # Agar aapke code me 'db.get_balance' hai toh wahi rahne de.
-            # Agar 'get_balance' direct function hai, toh 'db.' hata dena.
-            p1_bal = db.get_balance(str(user.id))
-            p2_bal = db.get_balance(str(opponent.id))
-        except Exception as db_err:
-            raise Exception(f"DATABASE FAIL: {db_err}")
+        # ---------------------------------------------------------
+        # 🛠️ FIX: DIRECT DATABASE FETCH (No Helper Function)
+        # ---------------------------------------------------------
+        
+        # Player 1 Balance Nikalo
+        data1 = db.supabase.table("economy").select("balance").eq("user_id", str(user.id)).execute().data
+        p1_bal = data1[0]['balance'] if data1 else 0
 
-        # --- DEBUG 3: BALANCE CHECK ---
+        # Player 2 Balance Nikalo
+        data2 = db.supabase.table("economy").select("balance").eq("user_id", str(opponent.id)).execute().data
+        p2_bal = data2[0]['balance'] if data2 else 0
+
+        # ---------------------------------------------------------
+
+        # Balance Checks
         if p1_bal < amount:
-            return await interaction.followup.send(f"❌ Gareeb! Tere paas ${amount:,} nahi hain.", ephemeral=True)
+            return await interaction.followup.send(f"❌ You have only **${p1_bal:,}**. You need **${amount:,}**!", ephemeral=True)
         if p2_bal < amount:
-            return await interaction.followup.send(f"❌ {opponent.display_name} ke paas paise nahi hain!", ephemeral=True)
+            return await interaction.followup.send(f"❌ {opponent.display_name} has only **${p2_bal:,}**. They are broke!", ephemeral=True)
 
-        # --- GAME SETUP ---
+        # Game Setup
         embed = discord.Embed(
             title="🎮 TEKKEN 3 ARENA", 
-            description=f"{user.mention} 🆚 {opponent.mention}\n💵 **Bet:** ${amount:,}", 
+            description=f"{user.mention} 🆚 {opponent.mention}\n💵 **Stake:** ${amount:,}", 
             color=0xFFA500
         )
         embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/en/f/f0/Tekken_3_cover.jpg")
         
         view = WebFightView(user, opponent, amount)
-        await interaction.followup.send(f"🥊 {opponent.mention}, challenge accept kar!", embed=embed, view=view)
+        await interaction.followup.send(f"🥊 {opponent.mention}, click accept!", embed=embed, view=view)
 
     except Exception as e:
-        # ⚠️ ASLI ERROR YAHAN DIKHEGA ⚠️
-        error_msg = traceback.format_exc()
-        print(error_msg) # Console me bhi print hoga
-        
-        # User (Aapko) dikhega ki galti kya hai (Sirf 2000 words tak)
-        short_error = str(e)
-        await interaction.followup.send(f"💀 **CODE ERROR:**\n`{short_error}`\n\n(Screenshot this code error and show me)")
+        print(f"ERROR: {e}")
+        await interaction.followup.send(f"⚠️ Error: `{e}`")
 
                       
 # ================== OPTIMIZED FLASK BACKEND ==================
