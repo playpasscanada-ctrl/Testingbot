@@ -16,6 +16,22 @@ from deep_translator import GoogleTranslator
 from concurrent.futures import ThreadPoolExecutor
 import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
 
+# --- HELPER: GET CURRENT MARKET EVENT ---
+def get_current_event():
+    # Har 4 ghante me event change hoga (Time based math)
+    hour_block = int(time.time() / (4 * 3600)) 
+    event_index = hour_block % len(MARKET_EVENTS)
+    return MARKET_EVENTS[event_index]
+
+# --- HELPER: RAID CHECK ---
+def check_police_raid(user_heat, user_id, current_stock):
+    # Agar Heat 80% se zyada hai, to 30% chance hai RAID ka
+    if user_heat > 80 and random.random() < 0.3:
+        loss = int(current_stock * 0.5) # 50% Maal zabt
+        # Database se stock kaat lo (Logic neeche routes me use hoga)
+        return {"raided": True, "loss": loss, "msg": f"🚔 POLICE RAID! They seized ${loss:,} worth of stock!"}
+    return {"raided": False, "msg": ""}
+
 # --- 🛡️ SECURITY SYSTEM SETUP ---
 authorized_guilds_cache = set()
 
@@ -16959,29 +16975,54 @@ GUILD_ID = "1257403231127076915"
 # --- 1. HOME ROUTE ---
 @app.route('/')
 def home():
-       
     # 1. Login Link Setup
     encoded_redirect = urllib.parse.quote(REDIRECT_URI)
     login_url = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_ID}&redirect_uri={encoded_redirect}&response_type=code&scope=identify"
 
+    # 🔥 Live Market Event Nikalo (Time based)
+    active_event = get_current_event()
+
     # 2. Agar user login nahi hai
     if 'user_info' not in session:
         try:
-            # Koshish karo dashboard.html dikhane ki
-            return render_template('dashboard.html', user=None, login_url=login_url)
+            return render_template('dashboard.html', 
+                                   user=None, 
+                                   login_url=login_url, 
+                                   market_event=active_event) # Event pass kiya guest ke liye bhi
         except Exception as e:
-            # Agar dashboard.html nahi mila, to Error dikhao
-            return f"<h1>Error: Dashboard File Missing!</h1><p>Details: {e}</p><p>Try renaming 'index.html' to 'dashboard.html' or check templates folder.</p>"
+            return f"<h1>Error: Dashboard File Missing!</h1><p>Details: {e}</p>"
 
     # 3. Agar User Login hai
     try:
         user_id = session['user_info']['id']
-        current_balance = db.get_user_balance(user_id)
-        session['user_info']['balance'] = current_balance
         
-        return render_template('dashboard.html', user=session['user_info'], balance=current_balance)
+        # 🏦 Database se Pura Data Nikalo (Balance, Heat, Dirty Money)
+        # Hum 'get_user_balance' ki jagah direct query karenge taaki Heat bhi mile
+        data = db.supabase.table("economy").select("*").eq("user_id", user_id).execute().data
+        
+        if data:
+            user_data = data[0]
+            current_balance = user_data.get('balance', 0)
+            current_heat = user_data.get('heat', 0)       # 🚔 Police Heat
+            dirty_cash = user_data.get('dirty_money', 0)  # 🧼 Black Money
+        else:
+            # Agar naya user hai
+            current_balance = 0
+            current_heat = 0
+            dirty_cash = 0
+
+        # Session update
+        session['user_info']['balance'] = current_balance
+
+        # 🚀 Template Render (Sab kuch pass kar rahe hain)
+        return render_template('dashboard.html', 
+                               user=session['user_info'], 
+                               balance=current_balance, 
+                               heat=current_heat,          # UI me Red Bar dikhane ke liye
+                               dirty_money=dirty_cash,     # Laundering ke liye
+                               market_event=active_event)  # Market Tab ke liye
+
     except Exception as e:
-        # Agar koi aur dikkat aayi
         return f"<h1>Dashboard Error</h1><p>{e}</p>"
 
 # --- 2. SHOP ROUTE ---
@@ -17744,6 +17785,107 @@ def order_supplies():
         print(f"Order Error: {e}")
         return jsonify({"status": "error", "msg": "Server Error"})
 
+# ==========================================
+# 1. 👮 POLICE HEAT & BRIBE SYSTEM
+# ==========================================
+@app.route('/api/police/bribe', methods=['POST'])
+def bribe_police():
+    user_id = session['user_info']['id']
+    data = db.supabase.table("economy").select("balance, heat").eq("user_id", user_id).execute().data
+    
+    current_heat = data[0].get('heat', 0)
+    balance = data[0]['balance']
+    
+    bribe_cost = current_heat * 100000 # Jitni Heat, utna mehnga bribe (Example: 50 Heat = $5M)
+    
+    if balance < bribe_cost:
+        return jsonify({"status":"error", "msg": f"Need ${bribe_cost:,} to bribe commissioner!"})
+    
+    # Heat Reset & Money Deduct
+    db.supabase.table("economy").update({
+        "balance": balance - bribe_cost,
+        "heat": 0
+    }).eq("user_id", user_id).execute()
+    
+    return jsonify({"status":"success", "msg": "👮 Commissioner Bribed! Heat is now 0%."})
+
+
+# ==========================================
+# 2. 🤖 HIRE MANAGER (AUTO-RESTOCK)
+# ==========================================
+@app.route('/api/business/hire_manager', methods=['POST'])
+def hire_manager():
+    user_id = session['user_info']['id']
+    biz_id = request.json.get('biz_id')
+    
+    data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
+    owned = data[0]['businesses']
+    balance = data[0]['balance']
+    
+    if owned[biz_id].get('has_manager'):
+        return jsonify({"status":"error", "msg": "Manager already hired!"})
+
+    cost = MANAGER_PRICES.get(biz_id, MANAGER_PRICES['default'])
+    
+    if balance < cost:
+        return jsonify({"status":"error", "msg": f"Manager demands ${cost:,} upfront!"})
+        
+    # Hire Manager
+    owned[biz_id]['has_manager'] = True
+    
+    db.supabase.table("economy").update({
+        "balance": balance - cost,
+        "businesses": owned
+    }).eq("user_id", user_id).execute()
+    
+    return jsonify({"status":"success", "msg": f"🤖 Manager Hired for {owned[biz_id]['name']}!"})
+
+
+# ==========================================
+# 3. 🎰 MONEY LAUNDERING (CLEAN DIRTY MONEY)
+# ==========================================
+@app.route('/api/laundry/clean', methods=['POST'])
+def clean_money():
+    user_id = session['user_info']['id']
+    data = db.supabase.table("economy").select("balance, dirty_money").eq("user_id", user_id).execute().data
+    
+    dirty = data[0].get('dirty_money', 0)
+    
+    if dirty <= 0:
+        return jsonify({"status":"error", "msg": "No dirty money to clean!"})
+        
+    # Laundering Fee (20% cut)
+    tax = int(dirty * 0.2)
+    cleaned_amount = dirty - tax
+    
+    db.supabase.table("economy").update({
+        "balance": data[0]['balance'] + cleaned_amount,
+        "dirty_money": 0
+    }).eq("user_id", user_id).execute()
+    
+    return jsonify({"status":"success", "msg": f"🧼 Laundered ${dirty:,}. Paid ${tax:,} in fees. Added ${cleaned_amount:,} to bank."})
+
+
+# ==========================================
+# 4. 🔪 BOUNTY SYSTEM (SET TARGET)
+# ==========================================
+@app.route('/api/bounty/set', methods=['POST'])
+def set_bounty():
+    user_id = session['user_info']['id']
+    target_id = request.json.get('target_id')
+    amount = int(request.json.get('amount'))
+    
+    if amount < 1000000: return jsonify({"status":"error", "msg": "Minimum bounty is $1M"})
+    
+    # Deduct Money
+    data = db.supabase.table("economy").select("balance").eq("user_id", user_id).execute().data
+    if data[0]['balance'] < amount:
+        return jsonify({"status":"error", "msg": "Insufficient funds for bounty!"})
+        
+    db.supabase.table("economy").update({"balance": data[0]['balance'] - amount}).eq("user_id", user_id).execute()
+    
+    return jsonify({"status":"success", "msg": f"💀 Bounty of ${amount:,} set on target!"})
+
 
 # --- ROB TRUCK (NEW FEATURE) ---
 @app.route('/api/business/rob_truck', methods=['POST'])
@@ -17789,6 +17931,7 @@ from datetime import datetime
 # 👇 YAHAN APNA WEBHOOK URL DALO
 DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1459876492044406835/H3Yr0hMve6EooTkclhoxF_v8fLrhRYT4cMnQUpDkrBvrHvpvt2eGyJ6hBdVOUOYfHmJ3"
 
+# --- SELL STOCK (UPDATED WITH HEAT, MARKET, LAUNDRY & INVESTORS) ---
 @app.route('/api/business/action', methods=['POST'])
 def biz_action():
     if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login First"})
@@ -17800,26 +17943,43 @@ def biz_action():
     action = req.get('action')
     biz_id = req.get('biz_id')
     
-    data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
+    # 🔥 DATA FETCH (Heat aur Dirty Money bhi mangwaya hai)
+    data = db.supabase.table("economy").select("balance, businesses, heat, dirty_money").eq("user_id", user_id).execute().data
     if not data: return jsonify({"status":"error", "msg":"User data not found"})
     
-    owned = data[0]['businesses']
+    user_data = data[0]
+    owned = user_data['businesses']
     try: biz = owned[biz_id]
     except: return jsonify({"status":"error", "msg":"Business not found"})
     
     msg = "" 
 
     if action == 'promote':
-        if data[0]['balance'] < 10000: return jsonify({"status":"error", "msg": "Need $10,000"})
-        data[0]['balance'] -= 10000
+        if user_data['balance'] < 10000: return jsonify({"status":"error", "msg": "Need $10,000"})
+        user_data['balance'] -= 10000
         biz['popularity'] = 100
         msg = "Promoted!"
         
     elif action == 'sell_stock':
-        stock_val = biz.get('stock', 0)
-        if stock_val <= 0: return jsonify({"status":"error", "msg":"No Stock Value"})
+        raw_stock = biz.get('stock', 0)
+        if raw_stock <= 0: return jsonify({"status":"error", "msg":"No Stock Value"})
         
-        # --- INVESTOR PAYOUT & LOGIC ---
+        # 1. 📊 MARKET EVENT CHECK (Income Multiplier)
+        active_event = get_current_event()
+        stock_val = int(raw_stock * active_event['multiplier'])
+        
+        # 2. 👮 POLICE RAID CHECK
+        current_heat = user_data.get('heat', 0)
+        raid_result = check_police_raid(current_heat, user_id, stock_val)
+        
+        if raid_result['raided']:
+            # Agar Raid pad gayi to maal gaya aur heat kam hui
+            biz['stock'] = 0
+            new_heat = max(0, current_heat - 50)
+            db.supabase.table("economy").update({"businesses": owned, "heat": new_heat}).eq("user_id", user_id).execute()
+            return jsonify({"status":"error", "msg": raid_result['msg']})
+        
+        # --- INVESTOR PAYOUT & LOGIC (SAME AS BEFORE) ---
         investors = biz.get('investors', {})
         total_payout = 0
         investor_log_str = ""
@@ -17834,22 +17994,45 @@ def biz_action():
                 if share > 0:
                     db.update_balance(inv_id, share)
                     total_payout += share
-                    # ✅ AB YEHAN % BHI DIKHEGA
                     investor_log_str += f"> <@{inv_id}> ({percentage}%): **${share:,}**\n"
             
         owner_share = stock_val - total_payout
-        data[0]['balance'] += owner_share
-        biz['stock'] = 0 
-        msg = f"Sold! You kept ${owner_share:,}"
         
-        # --- WEBHOOK LOG ---
+        # 3. 🧼 DIRTY MONEY vs CLEAN MONEY CHECK
+        is_illegal = biz_id in ILLEGAL_BIZ
+        money_type_msg = "Clean Cash"
+        
+        if is_illegal:
+            # Illegal hai to Dirty Money badhao aur Heat badhao
+            current_dirty = user_data.get('dirty_money', 0)
+            user_data['dirty_money'] = current_dirty + owner_share
+            
+            # Heat Increase (Max 100)
+            new_heat = min(100, current_heat + 10)
+            user_data['heat'] = new_heat
+            
+            money_type_msg = "Dirty Money 🧼 (Heat +10%)"
+            msg = f"Sold (Black Market)! +${owner_share:,} added to Dirty Money."
+        else:
+            # Legal hai to sidha Bank me
+            user_data['balance'] += owner_share
+            msg = f"Sold! You kept ${owner_share:,}"
+
+        biz['stock'] = 0 
+        
+        # --- WEBHOOK LOG (UPDATED WITH EVENT INFO) ---
         biz_name = BUSINESSES.get(biz_id, {}).get('name', biz_id.title()) if 'BUSINESSES' in globals() else biz_id.title()
 
         embed = {
             "title": "💸 MARKET SELL ALERT",
             "description": f"**Seller:** {user_name} (<@{user_id}>)\n**Business:** {biz_name}",
-            "color": 0x00FF00,
+            "color": 0xFF0000 if is_illegal else 0x00FF00, # Red for Illegal, Green for Legal
             "fields": [
+                {
+                    "name": "📊 Market Status",
+                    "value": f"{active_event['name']} ({active_event['multiplier']}x)",
+                    "inline": False
+                },
                 {
                     "name": "💰 Total Sold",
                     "value": f"```${stock_val:,}```",
@@ -17857,7 +18040,7 @@ def biz_action():
                 },
                 {
                     "name": "👑 Owner Profit",
-                    "value": f"**${owner_share:,}**",
+                    "value": f"**${owner_share:,}**\n*({money_type_msg})*",
                     "inline": True
                 },
                 {
@@ -17880,10 +18063,15 @@ def biz_action():
         try: requests.post(DISCORD_WEBHOOK_URL, json={"embeds": [embed]})
         except Exception as e: print(f"Webhook Error: {e}")
 
-    db.supabase.table("economy").update({"balance": data[0]['balance'], "businesses": owned}).eq("user_id", user_id).execute()
+    # 🔥 FINAL DB UPDATE (Balance, Business, Heat, Dirty Money sab save karo)
+    db.supabase.table("economy").update({
+        "balance": user_data['balance'], 
+        "businesses": owned,
+        "heat": user_data.get('heat', 0),
+        "dirty_money": user_data.get('dirty_money', 0)
+    }).eq("user_id", user_id).execute()
     
-    return jsonify({"status":"success", "msg": msg, "new_bal": data[0]['balance']})
-
+    return jsonify({"status":"success", "msg": msg, "new_bal": user_data['balance']})
 
 # --- SECURITY ---
 @app.route('/api/business/security', methods=['POST'])
@@ -18019,54 +18207,137 @@ def get_targets():
                 
     return jsonify(data)
 
-# --- 14. API: HEIST EXECUTION (4-STEP VERIFICATION) ---
+# --- 14. API: HEIST EXECUTION (UPDATED WITH BOUNTY, HEAT & LOGS) ---
 @app.route('/api/business/heist', methods=['POST'])
 def execute_heist():
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login Required"})
+    
     hacker_id = session['user_info']['id']
+    hacker_name = session['user_info']['username']
+    
     req = request.json
     target_id = req.get('target_id')
     biz_id = req.get('biz_id')
     step_success = req.get('success') # From UI minigame
     
-    # 1. Entry Fee Check
-    hacker_data = db.supabase.table("economy").select("balance, businesses").eq("user_id", hacker_id).execute().data
-    if hacker_data[0]['balance'] < 100000000: 
+    # 1. FETCH DATA (Hacker & Target)
+    # Hacker ka pura data chahiye (Balance, Businesses, Heat, Dirty Money)
+    h_data = db.supabase.table("economy").select("*").eq("user_id", hacker_id).execute().data
+    
+    # Target ka data (Businesses, Head Bounty)
+    t_data = db.supabase.table("economy").select("*").eq("user_id", target_id).execute().data
+    
+    if not h_data or not t_data: return jsonify({"status":"error", "msg":"User not found"})
+    
+    hacker = h_data[0]
+    target = t_data[0]
+    
+    # 2. ENTRY FEE CHECK ($100M)
+    cost = 100000000
+    if hacker['balance'] < cost: 
         return jsonify({"status":"error", "msg":"Insufficient Funds for Heist Kit ($100M)"})
 
-    new_hacker_bal = hacker_data[0]['balance'] - 100000000
+    # Paise pehle hi kaat lo (Risk hai to ishq hai)
+    hacker['balance'] -= cost
     
-    if not step_success:
-        db.supabase.table("economy").update({"balance": new_hacker_bal}).eq("user_id", hacker_id).execute()
-        return jsonify({"status":"fail", "msg":"HACK FAILED! You lost $100M."})
+    # Target Business Check
+    target_biz_list = target.get('businesses', {})
+    if biz_id not in target_biz_list:
+        db.supabase.table("economy").update({"balance": hacker['balance']}).eq("user_id", hacker_id).execute()
+        return jsonify({"status":"error", "msg":"Business already moved or sold!"})
 
-    # 2. Fetch Target
-    target_data = db.supabase.table("economy").select("businesses").eq("user_id", target_id).execute().data
-    target_biz = target_data[0]['businesses']
+    target_biz_obj = target_biz_list[biz_id]
+    biz_name = target_biz_obj['name']
+
+    # --- FAIL CONDITION 1: UI GAME FAILED ---
+    if not step_success:
+        # Heat thodi badhao (Failed attempt)
+        hacker['heat'] = min(100, hacker.get('heat', 0) + 5)
+        
+        db.supabase.table("economy").update({"balance": hacker['balance'], "heat": hacker['heat']}).eq("user_id", hacker_id).execute()
+        
+        # Discord Log (Fail)
+        send_heist_log(hacker_name, target_id, biz_name, "FAILED (Minigame)", 0)
+        return jsonify({"status":"fail", "msg":"HACK FAILED! Firewall detected you. Lost $100M."})
+
+    # --- FAIL CONDITION 2: SECURITY RNG CHECK ---
+    # Formula: Security Lvl * 15% protection
+    # Lvl 1 = 15%, Lvl 5 = 75%, Lvl 6+ = 90% (Max Cap)
+    security_lvl = target_biz_obj.get('security', 1)
+    fail_chance = min(0.90, security_lvl * 0.15) 
     
-    # 3. Security RNG Check
-    security_lvl = target_biz[biz_id].get('security', 1)
-    win_chance = 1.0 - (security_lvl * 0.15) 
+    if random.random() < fail_chance:
+        # Heat badhao
+        hacker['heat'] = min(100, hacker.get('heat', 0) + 10)
+        db.supabase.table("economy").update({"balance": hacker['balance'], "heat": hacker['heat']}).eq("user_id", hacker_id).execute()
+        
+        # Discord Log (Fail)
+        send_heist_log(hacker_name, target_id, biz_name, f"BLOCKED (Security Lvl {security_lvl})", 0)
+        return jsonify({"status":"fail", "msg": f"Target Security Level {security_lvl} blocked your breach! lost $100M."})
+
+    # ==========================================
+    # ✅ SUCCESS: TRANSFER OWNERSHIP
+    # ==========================================
     
-    if random.random() > win_chance:
-        db.supabase.table("economy").update({"balance": new_hacker_bal}).eq("user_id", hacker_id).execute()
-        return jsonify({"status":"fail", "msg": f"Target Security Level {security_lvl} blocked your breach!"})
+    # 1. Remove from Target
+    stolen_data = target_biz_list.pop(biz_id)
+    # Reset Investors & Status
+    stolen_data['has_investor'] = False 
+    stolen_data['investment_open'] = False
+    stolen_data['investors'] = {} # Clear investors
     
-    # 4. SUCCESS: TRANSFER OWNERSHIP
-    stolen_biz_data = target_biz.pop(biz_id)
-    # Remove existing investors on theft
-    stolen_biz_data['has_investor'] = False 
-    stolen_biz_data['investment_open'] = False
+    # 2. Add to Hacker
+    hacker_biz_list = hacker.get('businesses', {})
+    hacker_biz_list[biz_id] = stolen_data
     
-    db.supabase.table("economy").update({"businesses": target_biz}).eq("user_id", target_id).execute()
+    # 3. 💀 BOUNTY CLAIM CHECK
+    # Agar target ke sir pe bounty thi, to hacker ko milegi
+    bounty_reward = target.get('head_bounty', 0)
+    bounty_msg = ""
+    if bounty_reward > 0:
+        hacker['balance'] += bounty_reward
+        target['head_bounty'] = 0 # Bounty Cleared
+        bounty_msg = f" + 💀 CLAIMED ${bounty_reward:,} BOUNTY!"
+
+    # 4. Heat & Stats Update
+    hacker['heat'] = min(100, hacker.get('heat', 0) + 25) # Major Crime = High Heat
     
-    hacker_biz = hacker_data[0]['businesses'] or {}
-    hacker_biz[biz_id] = stolen_biz_data 
-    
+    # 5. DB Save (Both Users)
     db.supabase.table("economy").update({
-        "balance": new_hacker_bal, "businesses": hacker_biz
+        "balance": hacker['balance'], 
+        "businesses": hacker_biz_list,
+        "heat": hacker['heat']
     }).eq("user_id", hacker_id).execute()
     
-    return jsonify({"status":"success", "msg":"SYSTEM BREACHED! Ownership transferred to you."})
+    db.supabase.table("economy").update({
+        "businesses": target_biz_list,
+        "head_bounty": target['head_bounty']
+    }).eq("user_id", target_id).execute()
+    
+    # 6. Discord Log (Success)
+    send_heist_log(hacker_name, target_id, biz_name, "SUCCESS", bounty_reward)
+    
+    return jsonify({"status":"success", "msg":f"SYSTEM BREACHED! Ownership transferred.{bounty_msg}"})
+
+
+# --- HELPER: DISCORD LOG FOR HEIST ---
+def send_heist_log(hacker_name, target_id, biz_name, status, bounty):
+    color = 0x00FF00 if status == "SUCCESS" else 0xFF0000
+    desc = f"**Attacker:** {hacker_name}\n**Target:** <@{target_id}>\n**Business:** {biz_name}\n**Status:** {status}"
+    
+    if bounty > 0:
+        desc += f"\n💀 **Bounty Claimed:** ${bounty:,}"
+
+    embed = {
+        "title": "💻 BLACK OPS: HEIST ALERT",
+        "description": desc,
+        "color": color,
+        "footer": {"text": "Security System • Dark Web"},
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    try: requests.post(DISCORD_WEBHOOK_URL, json={"embeds": [embed]})
+    except: pass
+
 
 # --- 18. RUNNER GAME ROUTE (SUBWAY SURF STYLE) ---
 @app.route('/games/runner')
