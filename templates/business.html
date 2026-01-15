@@ -153,10 +153,10 @@
         @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 
         /* --- PARTNERS SYSTEM --- */
-        .partners-box { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 10px; margin: 15px 0; }
+        .partners-box { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-top: 20px; border: 1px dashed rgba(255,215,0,0.3); }
         .partners-title { font-size: 10px; color: var(--gold); margin-bottom: 10px; font-weight: bold; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
-        .partner-item { display: flex; justify-content: space-between; font-size: 11px; padding: 8px 0; color: #ccc; font-family: 'Share Tech Mono'; }
-        .kick-btn { color: var(--fail); cursor: pointer; font-weight: bold; font-size: 9px; border: 1px solid var(--fail); padding: 2px 8px; border-radius: 4px; transition:0.2s; }
+        .partner-item { display: flex; justify-content: space-between; font-size: 11px; padding: 8px 0; color: #ccc; font-family: 'Share Tech Mono'; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .kick-btn { color: var(--fail); cursor: pointer; font-weight: bold; font-size: 9px; border: 1px solid var(--fail); padding: 2px 8px; border-radius: 4px; transition:0.2s; margin-left: 8px; }
         .kick-btn:hover { background: var(--fail); color: white; }
 
         /* --- BUTTONS (REDESIGNED) --- */
@@ -394,8 +394,9 @@
                 </button>
 
                 {% if not data.has_manager %}
+                    {% set mgr_cost = manager_prices.get(id, 10000000) %}
                     <button class="btn btn-manager" onclick="triggerPost('/api/business/hire_manager', {biz_id:'{{ id }}'})">
-                        🤖 HIRE AI MANAGER (AUTO-RESTOCK)
+                        🤖 HIRE MANAGER (${{ "{:,}".format(mgr_cost) }})
                     </button>
                 {% else %}
                     <button class="btn" style="grid-column: span 2; background: transparent; border: 1px solid #d0f; color: #d0f; cursor: default;">
@@ -421,19 +422,22 @@
             </div>
 
             <div class="partners-box">
-                <div class="partners-title">SHAREHOLDERS</div>
+                <div class="partners-title">SHAREHOLDERS (INVESTORS)</div>
                 {% if data.investors|length > 0 %}
                     {% for inv_id, eq in data.investors.items() %}
                     <div class="partner-item">
-                        <span>USER_ID: {{ inv_id[:8] }}...</span>
-                        <span>{{ (eq*100)|int }}% <span class="kick-btn" onclick="manageInvestment('kick', '{{ id }}', '{{ inv_id }}')">KICK</span></span>
+                        <span style="color:var(--neon)">ID: {{ inv_id[:10] }}...</span>
+                        <span>{{ (eq*100)|int }}% EQUITY <span class="kick-btn" onclick="manageInvestment('kick', '{{ id }}', '{{ inv_id }}')">KICK</span></span>
                     </div>
                     {% endfor %}
                 {% else %}
-                    <div style="font-size:10px; color:#666; text-align:center; padding:5px 0;">NO EXTERNAL INVESTORS</div>
+                    <div style="font-size:10px; color:#666; text-align:center; padding:5px 0;">NO INVESTORS YET</div>
                 {% endif %}
-                <button class="btn" style="background:transparent; border:1px solid #444; color:#888; width:100%; margin-top:5px; padding:8px;" onclick="openIPO('{{ id }}')">OPEN IPO (OFFER 10% EQUITY)</button>
+                <button class="btn" style="background:transparent; border:1px solid var(--gold); color:var(--gold); width:100%; margin-top:5px; padding:8px; font-size:10px;" onclick="openIPO('{{ id }}')">
+                    📢 OPEN IPO (SELL 10% EQUITY)
+                </button>
             </div>
+
         </div>
         {% endfor %}
     </div>
