@@ -17626,14 +17626,12 @@ def submit_answer():
 # ==========================================
 
 @app.route('/business')
-@app.route('/business')
 def business_dashboard():
     # 1. Auth Check
     if 'user_info' not in session: return redirect('/')
     user_id = session['user_info']['id']
     
-    # 2. Fetch Data (Updated to Select ALL columns for Heat/Dirty Money)
-    # Humne .select("*") kar diya taaki heat aur dirty_money bhi mile
+    # 2. Fetch Data (Select ALL for Heat/Dirty Money)
     data = db.supabase.table("economy").select("*").eq("user_id", user_id).execute().data
     if not data: return "Error: User Data Not Found"
     
@@ -17660,14 +17658,8 @@ def business_dashboard():
         if 'stock' not in biz: biz['stock'] = 0
         if 'popularity' not in biz: biz['popularity'] = 100
         if 'last_check' not in biz: biz['last_check'] = current_time
-        if 'has_manager' not in biz: biz['has_manager'] = False # 🤖 Manager Key Added
+        if 'has_manager' not in biz: biz['has_manager'] = False 
         # -----------------------------------------------------
-
-        # 🤖 MANAGER LOGIC (Auto-Restock)
-        # Agar Manager hired hai, to supplies humesha 100 rahengi
-        if biz['has_manager']:
-            biz['supplies'] = 100
-            biz['delivery_time'] = 0
 
         # A. Truck Delivery Check
         if biz['delivery_time'] > 0:
@@ -17675,22 +17667,38 @@ def business_dashboard():
                 biz['supplies'] = 100
                 biz['delivery_time'] = 0 # Reset timer (Truck Arrived)
         
-        # B. Passive Income Logic
+        # B. Passive Income & Manager Logic
         last_check = biz.get('last_check', current_time)
         hours_passed = (current_time - last_check) / 3600
         
         if hours_passed > 0:
+            
+            # --- 🔴 NEW: MANAGER SALARY LOGIC ---
+            if biz['has_manager']:
+                # 1. Manager keeps supplies full
+                biz['supplies'] = 100
+                biz['delivery_time'] = 0
+                
+                # 2. Calculate Salary: 10% of Business Hourly Income * Hours Passed
+                # Har business ka alag rate automatic uthayega
+                income_rate = BUSINESSES.get(biz_id, {}).get('income_per_hr', 0)
+                salary_cut = int((income_rate * 0.10) * hours_passed) 
+                
+                # 3. Deduct from User Balance directly
+                balance -= salary_cut
+            # -------------------------------------
+
             # Variable Consumption Logic
             if biz_id in BUSINESSES:
                 price = BUSINESSES[biz_id]['price']
-                # Saste business = Jaldi supply khatam (High maintenance)
+                # Saste business = Jaldi supply khatam
                 consumption_rate = 20 if price < 150000000 else 5 if price > 500000000 else 10
             else:
-                consumption_rate = 10 # Fallback logic
+                consumption_rate = 10 
 
             supplies = biz.get('supplies', 0)
             
-            # Agar supplies hai ya Manager hai tabhi production hoga
+            # Production Logic (Only if supplies > 0 OR Manager is active)
             if supplies > 0 or biz['has_manager']:
                 rate = BUSINESSES.get(biz_id, {}).get('income_per_hr', 0)
                 
@@ -17711,10 +17719,13 @@ def business_dashboard():
                 # Update Check Time
                 biz['last_check'] = current_time
 
-    # 3. Save Updates to Database
-    db.supabase.table("economy").update({"businesses": owned_businesses}).eq("user_id", user_id).execute()
+    # 3. Save Updates to Database (Balance bhi update kar rahe hain kyuki salary kati hai)
+    db.supabase.table("economy").update({
+        "businesses": owned_businesses,
+        "balance": balance  # ✅ Updated Balance Saved
+    }).eq("user_id", user_id).execute()
 
-        # 4. Render Template (Updated)
+    # 4. Render Template (Updated with Manager Prices)
     return render_template('business.html', 
                            user=session['user_info'], 
                            balance=balance, 
@@ -17724,7 +17735,7 @@ def business_dashboard():
                            market_event=active_event,
                            heat=current_heat,
                            dirty_money=current_dirty,
-                           manager_prices=MANAGER_PRICES) # <--- ✅ YE ADD KARO
+                           manager_prices=MANAGER_PRICES)
 
 # --- BUY BUSINESS ---
 @app.route('/api/business/buy', methods=['POST'])
