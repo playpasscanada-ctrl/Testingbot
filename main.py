@@ -16688,7 +16688,7 @@ class WebFightView(discord.ui.View):
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
         # Check: Sirf opponent hi accept kar sakta hai
         if interaction.user.id != self.p2.id:
-            return await interaction.response.send_message("❌ This challenge is not for you!", ephemeral=True)
+            return await interaction.response.send_message("❌ This challenge is not for you!", ephemeral=False)
 
         # 1. Money Deduct (Safety Check again)
         # Note: Yahan aap direct deduction logic lagayein
@@ -16696,7 +16696,7 @@ class WebFightView(discord.ui.View):
             db.update_balance(str(self.p1.id), -self.amount)
             db.update_balance(str(self.p2.id), -self.amount)
         except:
-            return await interaction.response.send_message("❌ Transaction Failed! Check balances.", ephemeral=True)
+            return await interaction.response.send_message("❌ Transaction Failed! Check balances.", ephemeral=False)
 
         # 2. Match ID Create
         match_id = str(uuid.uuid4())[:8]
@@ -16730,7 +16730,7 @@ class WebFightView(discord.ui.View):
 @bot.tree.command(name="play_tekken", description="🎮 Play Tekken 3 (Web Version)")
 async def play_tekken(interaction: discord.Interaction, opponent: discord.Member, amount: int):
     # 1. Wait Signal
-    await interaction.response.defer(ephemeral=True)
+    await interaction.response.defer(ephemeral=False)
 
     try:
         user = interaction.user
@@ -16745,9 +16745,9 @@ async def play_tekken(interaction: discord.Interaction, opponent: discord.Member
         p2_bal = data2[0]['balance'] if data2 else 0
 
         if p1_bal < amount:
-            return await interaction.followup.send(f"❌ You need **${amount:,}** to fight!", ephemeral=True)
+            return await interaction.followup.send(f"❌ You need **${amount:,}** to fight!", ephemeral=False)
         if p2_bal < amount:
-            return await interaction.followup.send(f"❌ {opponent.display_name} is broke!", ephemeral=True)
+            return await interaction.followup.send(f"❌ {opponent.display_name} is broke!", ephemeral=False)
 
         # UI Setup
         embed = discord.Embed(
