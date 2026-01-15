@@ -16670,6 +16670,56 @@ async def unauthorize(interaction: discord.Interaction, server_id: str):
 
     except Exception as e:
         await interaction.response.send_message(f"❌ **System Error:** {e}", ephemeral=True)
+
+active_web_matches = {}
+
+# --- DISCORD COMMAND ---
+@bot.tree.command(name="play_tekken", description="🎮 Play Tekken 3 on Website (No Download)")
+async def play_tekken(interaction: discord.Interaction, opponent: discord.Member, amount: int):
+    user = interaction.user
+    if user.id == opponent.id: return await interaction.response.send_message("No self-play!", ephemeral=True)
+
+    # 1. Money Check
+    p1_bal = db.get_balance(str(user.id))
+    p2_bal = db.get_balance(str(opponent.id))
+    
+    if p1_bal < amount: return await interaction.response.send_message("You are broke!", ephemeral=True)
+    if p2_bal < amount: return await interaction.response.send_message("Opponent is broke!", ephemeral=True)
+
+    # 2. Challenge UI
+    embed = discord.Embed(title="🎮 TEKKEN 3 WEB BATTLE", description=f"{user.mention} vs {opponent.mention}\n**BET:** ${amount:,}", color=0xFFA500)
+    embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/en/f/f0/Tekken_3_cover.jpg")
+    
+    view = WebFightView(user, opponent, amount)
+    await interaction.response.send_message(f"{opponent.mention}, click accept!", embed=embed, view=view)
+
+
+class WebFightView(ui.View):
+    def __init__(self, p1, p2, amount):
+        super().__init__(timeout=60)
+        self.p1 = p1; self.p2 = p2; self.amount = amount
+
+    @ui.button(label="🔥 START GAME", style=discord.ButtonStyle.success)
+    async def accept(self, interaction: discord.Interaction, button: ui.Button):
+        if interaction.user.id != self.p2.id: return await interaction.response.send_message("Not for you!", ephemeral=True)
+
+        # Cut Money
+        db.update_balance(str(self.p1.id), -self.amount)
+        db.update_balance(str(self.p2.id), -self.amount)
+
+        # Match ID
+        match_id = str(uuid.uuid4())[:8]
+        active_web_matches[match_id] = {
+            "p1": self.p1.id, "p1_name": self.p1.display_name,
+            "p2": self.p2.id, "p2_name": self.p2.display_name,
+            "amount": self.amount
+        }
+
+        # Link
+        link = f"{WEBSITE_URL}/tekken_web/{match_id}"
+        
+        await interaction.response.send_message(f"**GAME LIVE!**\nClick here to play: {link}\n*(Both players join, fight, then report result)*", ephemeral=True)
+        self.stop()
                         
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
@@ -17620,6 +17670,32 @@ def submit_answer():
 
     return jsonify({"status": "success", "msg": "Already Solved (No Money)"})
 
+# --- FLASK ROUTES ---
+@app.route('/tekken_web/<match_id>')
+def tekken_web_page(match_id):
+    if match_id not in active_web_matches: return "<h1>Match Finished</h1>"
+    match = active_web_matches[match_id]
+    return render_template('tekken_web.html', match=match, match_id=match_id)
+
+@app.route('/api/tekken_web/report', methods=['POST'])
+def report_web_win():
+    data = request.json
+    match_id = data['match_id']
+    winner_id = data['winner_id'] # ID of who clicked "I WON"
+    
+    match = active_web_matches.get(match_id)
+    if not match: return jsonify({"status":"error"})
+
+    # Simple Trust Logic: First to click "I WON" gets the money
+    # (Friends ke liye theek hai, public ke liye risk hai)
+    
+    prize = match['amount'] * 2
+    db.update_balance(str(winner_id), prize)
+    
+    # Close Match
+    del active_web_matches[match_id]
+    
+    return jsonify({"status":"success", "msg": f"WINNER! ${prize:,} added."})
 
 # ==========================================
 # 🚀 ULTIMATE BUSINESS SYSTEM (UPDATED)
