@@ -17722,18 +17722,26 @@ def submit_answer():
 
     return jsonify({"status": "success", "msg": "Already Solved (No Money)"})
 
-@app.route('/test')
-def test_page():
-    # Ye dummy data hai taaki page load ho sake
-    dummy_match = {"p1_name": "Check1", "p2_name": "Check2", "amount": 0}
-    return render_template('tekken_web.html', match=dummy_match, match_id="test-123")
-
-# --- FLASK ROUTES ---
+# --- 1. GAME PAGE ROUTE ---
 @app.route('/tekken_web/<match_id>')
 def tekken_web_page(match_id):
-    if match_id not in active_web_matches: return "<h1>Match Finished</h1>"
-    match = active_web_matches[match_id]
+    # Check karein ki match active hai ya nahi
+    if match_id not in active_web_matches and match_id != "test-mode":
+        return "<h1>⚠️ Match Expired or Not Found</h1>", 404
+    
+    match = active_web_matches.get(match_id, {
+        "p1_name": "Player 1", 
+        "p2_name": "Player 2", 
+        "amount": 0
+    })
     return render_template('tekken_web.html', match=match, match_id=match_id)
+
+# --- 2. QUICK TEST ROUTE (Direct Check karne ke liye) ---
+@app.route('/test')
+def test_game():
+    dummy_match = {"p1_name": "Tester1", "p2_name": "Tester2", "amount": 0}
+    return render_template('tekken_web.html', match=dummy_match, match_id="test-mode")
+
 
 @app.route('/api/tekken_web/report', methods=['POST'])
 def report_web_win():
