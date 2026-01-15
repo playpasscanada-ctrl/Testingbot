@@ -7,64 +7,32 @@
     <style>
         body { background: #000; color: white; text-align: center; font-family: sans-serif; margin: 0; overflow-x: hidden; }
         
-        /* Game Container Wrapper */
         #game-wrapper {
-            position: relative;
-            width: 100%;
-            height: 75vh;
-            border-bottom: 3px solid gold;
-            background: #000;
+            position: relative; width: 100%; height: 75vh;
+            border-bottom: 3px solid gold; background: #000;
         }
+        #game-holder { width: 100%; height: 100%; }
 
-        #game-holder {
-            width: 100%;
-            height: 100%;
-        }
-
-        /* 🔥 LOADING OVERLAY STYLE */
+        /* Loader Overlay */
         #custom-loader {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9); /* Thoda transparent black */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 999; /* Game ke upar dikhega */
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 999;
         }
-
         .spinner {
-            border: 5px solid #333;
-            border-top: 5px solid #00ff00; /* Neon Green */
-            border-radius: 50%;
-            width: 50px; height: 50px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
+            border: 5px solid #333; border-top: 5px solid #00ff00; border-radius: 50%;
+            width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px;
         }
-
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        .loading-text {
-            color: #00ff00; font-size: 18px; font-weight: bold;
-            text-transform: uppercase; letter-spacing: 1px;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
-        .sub-text { color: #aaa; font-size: 12px; margin-top: 5px; }
 
         .header-bet {
             display: flex; justify-content: space-between; padding: 10px 20px;
-            background: linear-gradient(to bottom, #222, #111);
-            font-size: 14px;
+            background: #222; font-size: 14px;
         }
-
-        .controls-area { padding: 15px; background: #1a1a1a; border-top: 1px solid #333; }
         .btn-win { 
             width: 90%; padding: 15px; font-size: 22px; border: none; cursor: pointer; 
-            border-radius: 12px; font-weight: bold; margin-top: 15px;
-            background: linear-gradient(45deg, #00ff00, #00cc00); color: black;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+            border-radius: 12px; background: linear-gradient(45deg, #00ff00, #00cc00); font-weight: bold; margin-top: 15px;
         }
     </style>
 </head>
@@ -72,17 +40,16 @@
 
     <div class="header-bet">
         <span style="color:cyan">👤 {{ match.p1_name }}</span>
-        <span style="color:gold; font-weight:900;">💰 ${{ "{:,}".format(match.amount) }}</span>
+        <span style="color:gold;">💰 ${{ "{:,}".format(match.amount) }}</span>
         <span style="color:orange">{{ match.p2_name }} 👤</span>
     </div>
 
     <div id="game-wrapper">
-        
         <div id="custom-loader">
             <div class="spinner"></div>
-            <div class="loading-text">Downloading Game Data...</div>
-            <div class="sub-text">Size: 450 MB (Takes 3-5 Mins)</div>
-            <div class="sub-text" style="color:orange; margin-top:10px;">Please do not close this page</div>
+            <div style="color:#00ff00; font-weight:bold;">DOWNLOADING GAME DATA...</div>
+            <div style="color:#aaa; font-size:12px;">(Connecting to Dropbox...)</div>
+            <div style="color:orange; margin-top:5px; font-size:11px;">Please Wait & Don't Close</div>
         </div>
 
         <div id="game-holder"></div>
@@ -93,50 +60,36 @@
             EJS_gameName = "Tekken 3";
             EJS_biosUrl = 'https://archive.org/download/psx_bios_scph1001/scph1001.bin'; 
             
-            // ✅ ORIGINAL LINK
-            EJS_gameUrl = 'https://archive.org/download/Tekken3_201905/Tekken3.zip'; 
+            // ✅ YOUR FIXED DROPBOX LINK
+            // Maine 'www.dropbox.com' ko 'dl.dropboxusercontent.com' kar diya hai
+            EJS_gameUrl = 'https://dl.dropboxusercontent.com/scl/fi/e76utc45hw2cpswr05qch/tekken_3.zip?rlkey=oq9d34t8deisfe25y6wsp5l1f&st=no5efd5u'; 
             
             EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
             EJS_startOnLoaded = true;
             EJS_CONFIG = { mobileControls: true };
             EJS_netplayUrl = "wss://netplay.emulatorjs.org"; 
             
-            // 🔥 JADU: Jab Game Start Hoga, Loader Gayab Ho Jayega
+            // Game start hone par loader hatt jayega
             EJS_onGameStart = function() {
                 document.getElementById('custom-loader').style.display = 'none';
-                console.log("Game Started! Loader Hidden.");
             };
         </script>
         <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
     </div>
 
-    <div class="controls-area">
-        <div style="color:#aaa; font-size:12px; margin-bottom:10px;">
-            <b>Instructions:</b><br>
-            1. Wait for loading to finish.<br>
-            2. Player 1: Menu > Netplay > Create Room.<br>
-            3. Player 2: Menu > Netplay > Join Room.<br>
-        </div>
-        
-        <input type="text" id="uid" placeholder="Enter Your Discord ID" style="padding:12px; width:90%; border-radius:8px; border:1px solid #444; background:#333; color:white; text-align:center;">
-        <br>
-        <button class="btn-win" onclick="claimWin()">🏆 I WON THE MATCH</button>
+    <div style="padding:15px; background:#1a1a1a;">
+        <input type="text" id="uid" placeholder="Discord ID" style="padding:10px; width:90%;">
+        <button class="btn-win" onclick="claimWin()">🏆 I WON</button>
     </div>
 
     <script>
         async function claimWin() {
             const uid = document.getElementById('uid').value;
-            if(!uid) return alert("⚠️ Enter Discord ID first!");
-            if(!confirm("Sure you won? Fake claims = Ban.")) return;
-
-            const res = await fetch('/api/tekken_web/report', {
-                method: 'POST',
-                headers: {'Content-Type':'application/json'},
+            if(!uid) return alert("ID Required");
+            fetch('/api/tekken_web/report', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
                 body: JSON.stringify({ match_id: "{{ match_id }}", winner_id: uid })
-            });
-            const data = await res.json();
-            alert(data.msg);
-            if(data.status === 'success') window.close();
+            }).then(r=>r.json()).then(d=>alert(d.msg));
         }
     </script>
 </body>
