@@ -16674,42 +16674,56 @@ async def unauthorize(interaction: discord.Interaction, server_id: str):
 
 active_web_matches = {}
 
-@bot.tree.command(name="play_tekken", description="🎮 Play Tekken 3 (Web Version)")
+import traceback # Ye line sabse upar honi chahiye file me
+
+@bot.tree.command(name="play_tekken", description="🎮 Play Tekken 3 (Debug Mode)")
 async def play_tekken(interaction: discord.Interaction, opponent: discord.Member, amount: int):
-    # 1. Discord को बोलो "Wait करो" (ताकि timeout न हो)
+    # 1. Defer (Thinking...)
     await interaction.response.defer(ephemeral=True)
 
     try:
-        # 2. Database Check (Safe Mode)
         user = interaction.user
+        
+        # --- DEBUG 1: SELF CHECK ---
         if user.id == opponent.id:
-            return await interaction.followup.send("❌ You cannot fight yourself!")
+            return await interaction.followup.send("❌ Khud se nahi lad sakte!")
 
-        # Balance check logic
-        p1_bal = db.get_balance(str(user.id))
-        p2_bal = db.get_balance(str(opponent.id))
+        # --- DEBUG 2: DATABASE CONNECTION CHECK ---
+        # Yahan hum check karenge ki DB zinda hai ya nahi
+        try:
+            # Apne DB function ka naam check karein.
+            # Agar aapke code me 'db.get_balance' hai toh wahi rahne de.
+            # Agar 'get_balance' direct function hai, toh 'db.' hata dena.
+            p1_bal = db.get_balance(str(user.id))
+            p2_bal = db.get_balance(str(opponent.id))
+        except Exception as db_err:
+            raise Exception(f"DATABASE FAIL: {db_err}")
 
+        # --- DEBUG 3: BALANCE CHECK ---
         if p1_bal < amount:
-            return await interaction.followup.send(f"❌ You don't have ${amount:,}!", ephemeral=True)
+            return await interaction.followup.send(f"❌ Gareeb! Tere paas ${amount:,} nahi hain.", ephemeral=True)
         if p2_bal < amount:
-            return await interaction.followup.send(f"❌ {opponent.display_name} needs ${amount:,}!", ephemeral=True)
+            return await interaction.followup.send(f"❌ {opponent.display_name} ke paas paise nahi hain!", ephemeral=True)
 
-        # 3. Game Setup
+        # --- GAME SETUP ---
         embed = discord.Embed(
             title="🎮 TEKKEN 3 ARENA", 
-            description=f"{user.mention} 🆚 {opponent.mention}\n💵 **Stake:** ${amount:,}", 
+            description=f"{user.mention} 🆚 {opponent.mention}\n💵 **Bet:** ${amount:,}", 
             color=0xFFA500
         )
         embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/en/f/f0/Tekken_3_cover.jpg")
         
-        # View (Buttons) load karein
         view = WebFightView(user, opponent, amount)
-        await interaction.followup.send(f"🥊 {opponent.mention}, accept the challenge!", embed=embed, view=view)
+        await interaction.followup.send(f"🥊 {opponent.mention}, challenge accept kar!", embed=embed, view=view)
 
     except Exception as e:
-        print(f"COMMAND ERROR: {e}")
-        # Agar DB fail ho, tab bhi user ko batao
-        await interaction.followup.send("⚠️ Server is cooling down. Please wait 10 seconds and try again.")
+        # ⚠️ ASLI ERROR YAHAN DIKHEGA ⚠️
+        error_msg = traceback.format_exc()
+        print(error_msg) # Console me bhi print hoga
+        
+        # User (Aapko) dikhega ki galti kya hai (Sirf 2000 words tak)
+        short_error = str(e)
+        await interaction.followup.send(f"💀 **CODE ERROR:**\n`{short_error}`\n\n(Screenshot this code error and show me)")
 
                       
 # ================== OPTIMIZED FLASK BACKEND ==================
