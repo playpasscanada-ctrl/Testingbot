@@ -7,28 +7,51 @@
     <style>
         body { background: #000; color: white; text-align: center; font-family: sans-serif; margin: 0; overflow-x: hidden; }
         
-        #game-holder {
+        /* Game Container Wrapper */
+        #game-wrapper {
+            position: relative;
             width: 100%;
             height: 75vh;
-            background: #000;
             border-bottom: 3px solid gold;
-            position: relative;
+            background: #000;
         }
 
-        /* Loading Animation */
-        #loader-msg {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: #ffd700; font-size: 16px; font-weight: bold;
-            z-index: 0;
+        #game-holder {
+            width: 100%;
+            height: 100%;
         }
-        
-        /* Spinner CSS */
+
+        /* 🔥 LOADING OVERLAY STYLE */
+        #custom-loader {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9); /* Thoda transparent black */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 999; /* Game ke upar dikhega */
+        }
+
         .spinner {
-            border: 4px solid #333; border-top: 4px solid gold; border-radius: 50%;
-            width: 40px; height: 40px; animation: spin 1s linear infinite;
-            margin: 0 auto 10px auto;
+            border: 5px solid #333;
+            border-top: 5px solid #00ff00; /* Neon Green */
+            border-radius: 50%;
+            width: 50px; height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
         }
+
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .loading-text {
+            color: #00ff00; font-size: 18px; font-weight: bold;
+            text-transform: uppercase; letter-spacing: 1px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .sub-text { color: #aaa; font-size: 12px; margin-top: 5px; }
 
         .header-bet {
             display: flex; justify-content: space-between; padding: 10px 20px;
@@ -53,12 +76,16 @@
         <span style="color:orange">{{ match.p2_name }} 👤</span>
     </div>
 
-    <div id="game-holder">
-        <div id="loader-msg">
+    <div id="game-wrapper">
+        
+        <div id="custom-loader">
             <div class="spinner"></div>
-            Loading Tekken 3 (Lite)...<br>
-            <span style="font-size:12px; color:#aaa;">(Wait 15-20 Seconds)</span>
+            <div class="loading-text">Downloading Game Data...</div>
+            <div class="sub-text">Size: 450 MB (Takes 3-5 Mins)</div>
+            <div class="sub-text" style="color:orange; margin-top:10px;">Please do not close this page</div>
         </div>
+
+        <div id="game-holder"></div>
         
         <script>
             EJS_player = '#game-holder';
@@ -66,25 +93,29 @@
             EJS_gameName = "Tekken 3";
             EJS_biosUrl = 'https://archive.org/download/psx_bios_scph1001/scph1001.bin'; 
             
-            // 🔥 FAST LITE VERSION LINK (45 MB only)
-            // Ye turant chalega. Agar ye chal gaya, toh code sahi hai.
-            EJS_gameUrl = 'https://archive.org/download/Tekken3_201905/Tekken3_RIP.zip'; 
+            // ✅ ORIGINAL LINK
+            EJS_gameUrl = 'https://archive.org/download/Tekken3_201905/Tekken3.zip'; 
             
-            // Agar full version chahiye (Movies ke sath) toh neeche wala use karein (450MB):
-            // EJS_gameUrl = 'https://archive.org/download/Tekken3_201905/Tekken3.zip';
-
             EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
             EJS_startOnLoaded = true;
             EJS_CONFIG = { mobileControls: true };
             EJS_netplayUrl = "wss://netplay.emulatorjs.org"; 
+            
+            // 🔥 JADU: Jab Game Start Hoga, Loader Gayab Ho Jayega
+            EJS_onGameStart = function() {
+                document.getElementById('custom-loader').style.display = 'none';
+                console.log("Game Started! Loader Hidden.");
+            };
         </script>
         <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
     </div>
 
     <div class="controls-area">
         <div style="color:#aaa; font-size:12px; margin-bottom:10px;">
-            <b>Status:</b> Using Lite Version (Fast Load)<br>
-            Wait for game menu, then Player 1 creates Netplay Room.
+            <b>Instructions:</b><br>
+            1. Wait for loading to finish.<br>
+            2. Player 1: Menu > Netplay > Create Room.<br>
+            3. Player 2: Menu > Netplay > Join Room.<br>
         </div>
         
         <input type="text" id="uid" placeholder="Enter Your Discord ID" style="padding:12px; width:90%; border-radius:8px; border:1px solid #444; background:#333; color:white; text-align:center;">
