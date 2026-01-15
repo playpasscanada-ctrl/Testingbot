@@ -16673,54 +16673,37 @@ async def unauthorize(interaction: discord.Interaction, server_id: str):
 
 active_web_matches = {}
 
-# --- DISCORD COMMAND ---
-@bot.tree.command(name="play_tekken", description="🎮 Play Tekken 3 on Website (No Download)")
+@bot.tree.command(name="play_tekken", description="🎮 Play Tekken 3 on Website")
 async def play_tekken(interaction: discord.Interaction, opponent: discord.Member, amount: int):
+    # 1. Sabse pehle Discord ko bolo "Wait karo" (Thinking...)
+    await interaction.response.defer(ephemeral=True) 
+
     user = interaction.user
-    if user.id == opponent.id: return await interaction.response.send_message("No self-play!", ephemeral=True)
+    if user.id == opponent.id: 
+        return await interaction.followup.send("No self-play!") # Note: 'followup' use hoga ab
 
-    # 1. Money Check
-    p1_bal = db.get_balance(str(user.id))
-    p2_bal = db.get_balance(str(opponent.id))
-    
-    if p1_bal < amount: return await interaction.response.send_message("You are broke!", ephemeral=True)
-    if p2_bal < amount: return await interaction.response.send_message("Opponent is broke!", ephemeral=True)
+    # 2. Money Check
+    # (Database check thoda time le sakta hai, isliye defer jaruri tha)
+    try:
+        p1_bal = db.get_balance(str(user.id))
+        p2_bal = db.get_balance(str(opponent.id))
+    except Exception as e:
+        return await interaction.followup.send("Database Error! Try again.")
 
-    # 2. Challenge UI
+    if p1_bal < amount: 
+        return await interaction.followup.send(f"🚫 You need ${amount:,}!", ephemeral=True)
+    if p2_bal < amount: 
+        return await interaction.followup.send(f"🚫 {opponent.display_name} needs ${amount:,}!", ephemeral=True)
+
+    # 3. Embed Setup
     embed = discord.Embed(title="🎮 TEKKEN 3 WEB BATTLE", description=f"{user.mention} vs {opponent.mention}\n**BET:** ${amount:,}", color=0xFFA500)
     embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/en/f/f0/Tekken_3_cover.jpg")
     
     view = WebFightView(user, opponent, amount)
-    await interaction.response.send_message(f"{opponent.mention}, click accept!", embed=embed, view=view)
-
-
-class WebFightView(ui.View):
-    def __init__(self, p1, p2, amount):
-        super().__init__(timeout=60)
-        self.p1 = p1; self.p2 = p2; self.amount = amount
-
-    @ui.button(label="🔥 START GAME", style=discord.ButtonStyle.success)
-    async def accept(self, interaction: discord.Interaction, button: ui.Button):
-        if interaction.user.id != self.p2.id: return await interaction.response.send_message("Not for you!", ephemeral=True)
-
-        # Cut Money
-        db.update_balance(str(self.p1.id), -self.amount)
-        db.update_balance(str(self.p2.id), -self.amount)
-
-        # Match ID
-        match_id = str(uuid.uuid4())[:8]
-        active_web_matches[match_id] = {
-            "p1": self.p1.id, "p1_name": self.p1.display_name,
-            "p2": self.p2.id, "p2_name": self.p2.display_name,
-            "amount": self.amount
-        }
-
-        # Link
-        link = f"{WEBSITE_URL}/tekken_web/{match_id}"
-        
-        await interaction.response.send_message(f"**GAME LIVE!**\nClick here to play: {link}\n*(Both players join, fight, then report result)*", ephemeral=True)
-        self.stop()
-                        
+    
+    # 4. Final Send (Followup use karna jaruri hai)
+    await interaction.followup.send(f"{opponent.mention}, click accept!", embed=embed, view=view)
+                      
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
 import time
