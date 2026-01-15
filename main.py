@@ -17672,19 +17672,78 @@ def buy_business():
     db.supabase.table("economy").update({"balance": data[0]['balance'] - cost, "businesses": owned}).eq("user_id", user_id).execute()
     return jsonify({"status":"success", "msg":"Business Purchased!"})
 
-# --- ORDER SUPPLIES ---
+# --- ORDER SUPPLIES (Dynamic Cost & 10x Instant) ---
 @app.route('/api/business/order', methods=['POST'])
 def order_supplies():
-    user_id = session['user_info']['id']; biz_id = request.json.get('biz_id')
-    data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
-    owned = data[0]['businesses']
-    
-    if owned[biz_id].get('delivery_time', 0) > time.time(): return jsonify({"status":"error", "msg":"Truck en route!"})
-    if data[0]['balance'] < 75000: return jsonify({"status":"error", "msg":"Need $75k"})
-    
-    owned[biz_id]['delivery_time'] = int(time.time()) + (3 * 3600) # 3 Hours
-    db.supabase.table("economy").update({"balance": data[0]['balance'] - 75000, "businesses": owned}).eq("user_id", user_id).execute()
-    return jsonify({"status":"success", "msg":"Supplies Ordered (3hrs)"})
+    try:
+        user_id = session['user_info']['id']
+        
+        # Frontend se data lo
+        req_data = request.json
+        biz_id = req_data.get('biz_id')
+        order_type = req_data.get('type') # 'instant' ya 'normal'
+
+        # 1. Config se is business ki Original Supply Cost nikalo
+        if biz_id not in BUSINESSES:
+            return jsonify({"status": "error", "msg": "Invalid Business"})
+            
+        base_cost = BUSINESSES[biz_id]['supply_cost']
+        biz_name = BUSINESSES[biz_id]['name']
+
+        # 2. Database se balance aur business nikalo
+        data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
+        
+        if not data: return jsonify({"status": "error", "msg": "User not found"})
+        
+        owned = data[0]['businesses']
+        current_bal = int(data[0]['balance'])
+        
+        # Check: Kya user ke paas ye business hai?
+        if biz_id not in owned:
+            return jsonify({"status": "error", "msg": "You don't own this business"})
+
+        # Check: Kya truck pehle se raste me hai? (Sirf Normal order ke liye check karo)
+        # Agar Instant hai to hum truck ko override kar denge
+        if order_type != 'instant' and owned[biz_id].get('delivery_time', 0) > time.time(): 
+            return jsonify({"status":"error", "msg":"Truck already en route!"})
+
+        # --- COST & TIME LOGIC ---
+        final_cost = 0
+        wait_time = 0
+        msg_success = ""
+
+        if order_type == 'instant':
+            # 🔥 INSTANT = 10x COST
+            final_cost = base_cost * 10
+            wait_time = 0   # 0 Seconds wait
+            msg_success = f"⚡ INSTANT! {biz_name} Supplies Arrived!"
+        else:
+            # 🚛 NORMAL = ORIGINAL COST
+            final_cost = base_cost
+            wait_time = 3 * 3600 # 3 Hours wait
+            msg_success = f"🚛 {biz_name} Supplies Ordered (3hrs)"
+
+        # --- BALANCE CHECK ---
+        if current_bal < final_cost:
+            return jsonify({"status":"error", "msg": f"Need ${final_cost:,} for this order!"})
+
+        # --- UPDATE DATABASE ---
+        # Delivery time set karo
+        owned[biz_id]['delivery_time'] = int(time.time()) + wait_time
+        
+        new_bal = current_bal - final_cost
+        
+        db.supabase.table("economy").update({
+            "balance": new_bal, 
+            "businesses": owned
+        }).eq("user_id", user_id).execute()
+
+        return jsonify({"status":"success", "msg": msg_success, "new_balance": new_bal})
+
+    except Exception as e:
+        print(f"Order Error: {e}")
+        return jsonify({"status": "error", "msg": "Server Error"})
+
 
 # --- ROB TRUCK (NEW FEATURE) ---
 @app.route('/api/business/rob_truck', methods=['POST'])
