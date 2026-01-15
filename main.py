@@ -67,32 +67,31 @@ def check_seized():
     async def predicate(interaction: discord.Interaction) -> bool:
         user_id = str(interaction.user.id)
 
-        # 🛡️ 1. STAFF IMMUNITY (Ye Naya Code Hai)
-        # Agar helper function bolta hai ki ye Staff (Top 3) hai, toh bina check kiye jane do
+        # 🛡️ 1. STAFF IMMUNITY (Top Staff Bypass)
         if is_user_staff(user_id):
             return True 
 
-        # 🛑 2. SUPABASE CHECK (Purana Code)
+        # 🛑 2. SUPABASE CHECK
         try:
-            # Database check karo
-            res = supabase.table("economy").select("is_seized").eq("user_id", user_id).execute()
+            # Database check
+            res = db.supabase.table("economy").select("is_seized").eq("user_id", user_id).execute()
             
-            # Agar data mila aur 'is_seized' True hai
+            # Agar account seized hai
             if res.data and res.data[0].get('is_seized', False):
-                # Error raise karo taaki Global Error Handler isse pakad sake
                 raise app_commands.CheckFailure("seized_account")
                 
-            return True # Sab theek hai, aage badho
+            return True 
 
         except app_commands.CheckFailure:
-            # Agar humne upar khud error raise kiya hai, toh usse aage jane do
+            # Agar humne khud error raise kiya hai (Seized wala), toh use pass karo
             raise
-        import time # ऊपर import करें
 
         except Exception as e:
-            print(f"⚠️ DB ERROR (Retrying in 5s): {e}")
-            time.sleep(5) 
-            return True 
+            # Agar Database crash ho jaye ya connection error aaye
+            import time
+            print(f"⚠️ DB ERROR (Cooling down 5s): {e}")
+            time.sleep(5) # Server ko saans lene ka time do
+            return True # Error aane par user ko block mat karo, khelne do
             
     return app_commands.check(predicate)
 
