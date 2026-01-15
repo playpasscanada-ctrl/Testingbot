@@ -17714,16 +17714,17 @@ def business_dashboard():
     # 3. Save Updates to Database
     db.supabase.table("economy").update({"businesses": owned_businesses}).eq("user_id", user_id).execute()
 
-    # 4. Render Template (Updated with ALL 5 Features Variables)
+        # 4. Render Template (Updated)
     return render_template('business.html', 
                            user=session['user_info'], 
                            balance=balance, 
                            owned=owned_businesses, 
                            all_biz=BUSINESSES, 
                            now=current_time,
-                           market_event=active_event, # ✅ Fixed: Event Passed
-                           heat=current_heat,         # ✅ Fixed: Heat Passed
-                           dirty_money=current_dirty) # ✅ Fixed: Dirty Money Passed
+                           market_event=active_event,
+                           heat=current_heat,
+                           dirty_money=current_dirty,
+                           manager_prices=MANAGER_PRICES) # <--- ✅ YE ADD KARO
 
 # --- BUY BUSINESS ---
 @app.route('/api/business/buy', methods=['POST'])
