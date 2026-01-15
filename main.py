@@ -17626,32 +17626,48 @@ def submit_answer():
 # ==========================================
 
 @app.route('/business')
+@app.route('/business')
 def business_dashboard():
     # 1. Auth Check
     if 'user_info' not in session: return redirect('/')
     user_id = session['user_info']['id']
     
-    # 2. Fetch Data
-    data = db.supabase.table("economy").select("balance, businesses").eq("user_id", user_id).execute().data
-    if not data: return "Error"
+    # 2. Fetch Data (Updated to Select ALL columns for Heat/Dirty Money)
+    # Humne .select("*") kar diya taaki heat aur dirty_money bhi mile
+    data = db.supabase.table("economy").select("*").eq("user_id", user_id).execute().data
+    if not data: return "Error: User Data Not Found"
     
-    balance = data[0]['balance']
-    owned_businesses = data[0]['businesses'] or {} # Agar NULL ho to empty dict
+    user_data = data[0]
+    balance = user_data['balance']
+    owned_businesses = user_data['businesses'] or {} 
+    
+    # 🔥 New Variables Fetch
+    current_heat = user_data.get('heat', 0)
+    current_dirty = user_data.get('dirty_money', 0)
     current_time = int(time.time())
+
+    # 📊 Live Market Event Calculation
+    active_event = get_current_event()
 
     # --- ADVANCED PASSIVE INCOME & CONSUMPTION ---
     for biz_id, biz in owned_businesses.items():
         
         # -----------------------------------------------------
-        # 🔴 ERROR FIX: Missing Keys Patch
-        # Ye code ensure karega ki Jinja template crash na ho
+        # 🔴 Missing Keys Patch (Safety Check)
         # -----------------------------------------------------
         if 'delivery_time' not in biz: biz['delivery_time'] = 0
         if 'supplies' not in biz: biz['supplies'] = 0
         if 'stock' not in biz: biz['stock'] = 0
         if 'popularity' not in biz: biz['popularity'] = 100
         if 'last_check' not in biz: biz['last_check'] = current_time
+        if 'has_manager' not in biz: biz['has_manager'] = False # 🤖 Manager Key Added
         # -----------------------------------------------------
+
+        # 🤖 MANAGER LOGIC (Auto-Restock)
+        # Agar Manager hired hai, to supplies humesha 100 rahengi
+        if biz['has_manager']:
+            biz['supplies'] = 100
+            biz['delivery_time'] = 0
 
         # A. Truck Delivery Check
         if biz['delivery_time'] > 0:
@@ -17665,24 +17681,31 @@ def business_dashboard():
         
         if hours_passed > 0:
             # Variable Consumption Logic
-            # Cheaper business = High consumption (Needs more attention)
-            price = BUSINESSES[biz_id]['price']
-            consumption_rate = 20 if price < 150000000 else 5 if price > 500000000 else 10
-            
+            if biz_id in BUSINESSES:
+                price = BUSINESSES[biz_id]['price']
+                # Saste business = Jaldi supply khatam (High maintenance)
+                consumption_rate = 20 if price < 150000000 else 5 if price > 500000000 else 10
+            else:
+                consumption_rate = 10 # Fallback logic
+
             supplies = biz.get('supplies', 0)
             
-            if supplies > 0:
-                rate = BUSINESSES[biz_id]['income_per_hr']
+            # Agar supplies hai ya Manager hai tabhi production hoga
+            if supplies > 0 or biz['has_manager']:
+                rate = BUSINESSES.get(biz_id, {}).get('income_per_hr', 0)
                 
                 # Popularity based production calculation
                 production = int(rate * hours_passed * (biz.get('popularity', 100)/100))
-                max_st = BUSINESSES[biz_id]['max_stock']
+                max_st = BUSINESSES.get(biz_id, {}).get('max_stock', 1000000)
                 
                 # Update Stock (Don't exceed max)
                 biz['stock'] = min(biz.get('stock', 0) + production, max_st)
                 
-                # Consume supplies & Decrease Popularity
-                biz['supplies'] = max(0, supplies - int(hours_passed * consumption_rate))
+                # Consume supplies (Sirf tab kato agar Manager NAHI hai)
+                if not biz['has_manager']:
+                    biz['supplies'] = max(0, supplies - int(hours_passed * consumption_rate))
+                
+                # Decrease Popularity slightly over time
                 biz['popularity'] = max(0, int(biz.get('popularity', 100) - hours_passed))
                 
                 # Update Check Time
@@ -17691,7 +17714,16 @@ def business_dashboard():
     # 3. Save Updates to Database
     db.supabase.table("economy").update({"businesses": owned_businesses}).eq("user_id", user_id).execute()
 
-    return render_template('business.html', user=session['user_info'], balance=balance, owned=owned_businesses, all_biz=BUSINESSES, now=current_time)
+    # 4. Render Template (Updated with ALL 5 Features Variables)
+    return render_template('business.html', 
+                           user=session['user_info'], 
+                           balance=balance, 
+                           owned=owned_businesses, 
+                           all_biz=BUSINESSES, 
+                           now=current_time,
+                           market_event=active_event, # ✅ Fixed: Event Passed
+                           heat=current_heat,         # ✅ Fixed: Heat Passed
+                           dirty_money=current_dirty) # ✅ Fixed: Dirty Money Passed
 
 # --- BUY BUSINESS ---
 @app.route('/api/business/buy', methods=['POST'])
