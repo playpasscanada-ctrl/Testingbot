@@ -19223,6 +19223,98 @@ async def handle_purchase_effects(uid, cid, item_name, price, result_text, old_b
         
 # ================== 🎮 DISCORD COMMANDS ==================
 
+# ==========================================
+# 🕵️ SUPER CHECK COMMAND (PREMIUM PROFILE)
+# ==========================================
+@bot.tree.command(name="check", description="🕵️ View advanced empire stats, black money & heat level")
+async def check(interaction: discord.Interaction, member: discord.Member = None):
+    # 1. Target Set Karo (Khud ka ya kisi aur ka)
+    target = member or interaction.user
+    user_id = str(target.id)
+
+    # 2. Database se Data Nikalo
+    data = db.supabase.table("economy").select("*").eq("user_id", user_id).execute().data
+
+    if not data:
+        embed = discord.Embed(title="❌ Account Not Found", description=f"{target.mention} has not started their empire yet.", color=discord.Color.red())
+        await interaction.response.send_message(embed=embed)
+        return
+
+    user_data = data[0]
+
+    # 3. Data Parsing & Calculations
+    balance = user_data.get('balance', 0)
+    dirty_money = user_data.get('dirty_money', 0)
+    heat = user_data.get('heat', 0)
+    bounty = user_data.get('head_bounty', 0)
+    businesses = user_data.get('businesses') or {}
+    
+    # Empire Valuation Logic
+    total_biz_stock = 0
+    total_income_hr = 0
+    biz_count = len(businesses)
+    biz_names_list = []
+
+    # Investments Logic
+    my_investors_count = 0
+    portfolio_count = 0 
+    
+    # Portfolio Count (Rough check from full DB would be heavy, so we skip exact portfolio count here or fetch simple)
+    # But we can calculate owned business stats:
+    for bid, bdata in businesses.items():
+        total_biz_stock += bdata.get('stock', 0)
+        
+        # Income rate fetch from config
+        if bid in BUSINESSES:
+            total_income_hr += BUSINESSES[bid]['income_per_hr']
+            biz_names_list.append(BUSINESSES[bid]['name'])
+        
+        # Count my investors
+        if 'investors' in bdata:
+            my_investors_count += len(bdata['investors'])
+
+    net_worth = balance + total_biz_stock + dirty_money
+
+    # 4. 🎨 Premium Embed Design
+    embed = discord.Embed(title=f"🕴️ 𝚂𝚄𝙿𝙴𝚁 𝙿𝚁𝙾𝙵𝙸𝙻𝙴: {target.display_name.upper()}", color=0x00ffcc)
+    embed.set_thumbnail(url=target.avatar.url if target.avatar else target.default_avatar.url)
+    
+    # --- A. FINANCIALS ---
+    embed.add_field(
+        name="💳 __**FINANCIAL STATUS**__",
+        value=f"```yaml\n💰 Clean Cash:   ${balance:,}\n🧼 Black Money:  ${dirty_money:,}\n🏦 Biz Stock:    ${total_biz_stock:,}\n💎 NET WORTH:    ${net_worth:,}```",
+        inline=False
+    )
+
+    # --- B. UNDERWORLD STATUS (Heat & Bounty) ---
+    # Heat Bar Generator
+    heat_blocks = int(heat / 10)
+    heat_bar = "🟥" * heat_blocks + "⬜" * (10 - heat_blocks)
+    
+    status_emoji = "🟢 SAFE" if heat < 30 else "🟡 WATCHED" if heat < 70 else "🔴 WANTED"
+    
+    embed.add_field(
+        name="🚨 __**LEGAL STATUS**__",
+        value=f"**Heat Level:** {heat}%\n`{heat_bar}`\n**Status:** {status_emoji}\n**💀 Head Bounty:** ${bounty:,}",
+        inline=True
+    )
+
+    # --- C. EMPIRE STATS ---
+    top_biz = biz_names_list[:3] # Show top 3 names
+    biz_display = ", ".join(top_biz) + ("..." if len(biz_names_list) > 3 else "") if biz_names_list else "None"
+    
+    embed.add_field(
+        name="🏭 __**BUSINESS EMPIRE**__",
+        value=f"**🏢 Owned:** {biz_count} Facilities\n**💸 Income:** ${total_income_hr:,}/hr\n**👥 Investors:** {my_investors_count} Active\n**🏗️ Portfolio:** {biz_display}",
+        inline=True
+    )
+
+    # Footer with Time
+    embed.set_footer(text="Elite Business Network • Global Economy System", icon_url="https://i.imgur.com/AfFp7pu.png")
+    embed.timestamp = discord.utils.utcnow()
+
+    await interaction.response.send_message(embed=embed)
+
 # --- BUSINESS COMMAND ---
 @bot.tree.command(name="business", description="Manage your GTA Empire (Passive Income)")
 @check_seized()
