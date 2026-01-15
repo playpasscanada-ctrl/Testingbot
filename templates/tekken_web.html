@@ -3,45 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tekken 3 Mobile Arena</title>
+    <title>Tekken 3 Arena</title>
     <style>
         body { background: #000; color: white; text-align: center; font-family: sans-serif; margin: 0; overflow-x: hidden; }
         
-        /* GAME CONTAINER - Full Width on Mobile */
         #game-holder {
             width: 100%;
-            height: 75vh; /* Screen ka 75% height */
+            height: 75vh;
             background: #000;
             border-bottom: 3px solid gold;
+            position: relative;
         }
 
-        /* --- 📱 PRO MOBILE CONTROLS CSS --- */
-        /* Controller Container */
-        .ejs--touch-controls {
-            opacity: 0.6 !important; /* थोड़े पारदर्शी ताकि गेम दिखे */
-            z-index: 999 !important;
+        /* Loading Text Style */
+        #loader-msg {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #ffd700; font-size: 18px; font-weight: bold;
+            animation: blink 1s infinite; pointer-events: none; z-index: 0;
         }
-
-        /* D-PAD & Buttons Style */
-        .ejs--dpad-button, .ejs--controller-button {
-            background: rgba(50, 50, 50, 0.8) !important;
-            border: 2px solid rgba(255, 255, 255, 0.5) !important;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5) !important;
-        }
-        
-        /* PlayStation Button Colors */
-        .ejs--button-triangle { color: #00ff00 !important; } /* Green */
-        .ejs--button-circle { color: #ff3300 !important; }   /* Red */
-        .ejs--button-cross { color: #0099ff !important; }    /* Blue */
-        .ejs--button-square { color: #ff66cc !important; }   /* Pink */
-
-        /* Start/Select Buttons */
-        .ejs--button-start, .ejs--button-select {
-            border-radius: 20px !important;
-            font-size: 12px !important;
-            background: rgba(0,0,0,0.8) !important;
-        }
-        /* ---------------------------------- */
+        @keyframes blink { 50% { opacity: 0.5; } }
 
         .header-bet {
             display: flex; justify-content: space-between; padding: 10px 20px;
@@ -55,10 +35,7 @@
             border-radius: 12px; font-weight: bold; margin-top: 15px;
             background: linear-gradient(45deg, #00ff00, #00cc00); color: black;
             box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
-            animation: pulse 2s infinite;
         }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
-        .info { color: #aaa; font-size: 12px; margin-bottom: 10px; text-align: left; display: inline-block; }
     </style>
 </head>
 <body>
@@ -70,59 +47,50 @@
     </div>
 
     <div id="game-holder">
+        <div id="loader-msg">Downloading Tekken 3...<br>(Wait 2-3 mins)<br>Please stay on this page.</div>
+        
         <script>
             EJS_player = '#game-holder';
             EJS_core = 'psx'; 
             EJS_gameName = "Tekken 3";
-            EJS_biosUrl = ''; 
             
-            // ✅ 100% WORKING DIRECT LINK (USA Version)
+            // ✅ NEW: BIOS ADDED (Black screen fix)
+            EJS_biosUrl = 'https://archive.org/download/psx_bios_scph1001/scph1001.bin'; 
+            
+            // ✅ GAME LINK (USA Version)
             EJS_gameUrl = 'https://archive.org/download/Tekken3_201905/Tekken3.zip'; 
             
             EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
             EJS_startOnLoaded = true;
-            // Mobile controls on by default
-            EJS_CONFIG = { mobile controls: true };
+            EJS_CONFIG = { mobileControls: true }; // Controls On
             EJS_netplayUrl = "wss://netplay.emulatorjs.org"; 
         </script>
         <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
     </div>
 
     <div class="controls-area">
-        <div class="info">
-            Start Menu > <b>Netplay</b> (Multiplayer)<br>
-            • Player 1: Create Room & Send Code.<br>
-            • Player 2: Join Room & Enter Code.<br>
+        <div style="color:#aaa; font-size:12px; margin-bottom:10px;">
+            <b>Instructions:</b><br>
+            • Wait for "Sony" logo (Downloading 450MB).<br>
+            • Use <b>Netplay</b> in menu to connect with friend.<br>
         </div>
         
-        <input type="text" id="uid" placeholder="Enter Your Discord ID to Claim" style="padding:12px; width:90%; border-radius:8px; border:1px solid #444; background:#333; color:white; text-align:center;">
+        <input type="text" id="uid" placeholder="Enter Your Discord ID" style="padding:12px; width:90%; border-radius:8px; border:1px solid #444; background:#333; color:white; text-align:center;">
         <br>
         <button class="btn-win" onclick="claimWin()">🏆 I WON THE MATCH</button>
     </div>
 
     <script>
-        // Fullscreen on touch (Optional fix for address bar)
-        document.addEventListener('touchstart', function() {
-             if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
-                 // document.documentElement.requestFullscreen(); // Uncomment if you want forced fullscreen
-             }
-        }, {once: true});
-
         async function claimWin() {
             const uid = document.getElementById('uid').value;
-            if(!uid) return alert("⚠️ Please enter your Discord ID first!");
-            
-            if(!confirm("Are you sure you won? Lying will result in a ban.")) return;
+            if(!uid) return alert("⚠️ Enter Discord ID first!");
+            if(!confirm("Sure you won? Fake claims = Ban.")) return;
 
             const res = await fetch('/api/tekken_web/report', {
                 method: 'POST',
                 headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({
-                    match_id: "{{ match_id }}",
-                    winner_id: uid
-                })
+                body: JSON.stringify({ match_id: "{{ match_id }}", winner_id: uid })
             });
-            
             const data = await res.json();
             alert(data.msg);
             if(data.status === 'success') window.close();
