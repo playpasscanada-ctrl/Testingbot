@@ -17714,6 +17714,12 @@ def submit_answer():
 
     return jsonify({"status": "success", "msg": "Already Solved (No Money)"})
 
+@app.route('/test')
+def test_page():
+    # Ye dummy data hai taaki page load ho sake
+    dummy_match = {"p1_name": "Check1", "p2_name": "Check2", "amount": 0}
+    return render_template('tekken_web.html', match=dummy_match, match_id="test-123")
+
 # --- FLASK ROUTES ---
 @app.route('/tekken_web/<match_id>')
 def tekken_web_page(match_id):
