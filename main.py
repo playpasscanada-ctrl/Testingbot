@@ -87,9 +87,11 @@ def check_seized():
         except app_commands.CheckFailure:
             # Agar humne upar khud error raise kiya hai, toh usse aage jane do
             raise
+        import time # ऊपर import करें
+
         except Exception as e:
-            # Agar Database error aaye, toh safe side user ko allow kar do (Block mat karo)
-            print(f"⚠️ DB Check Error: {e}")
+            print(f"⚠️ DB ERROR (Retrying in 5s): {e}")
+            time.sleep(5) 
             return True 
             
     return app_commands.check(predicate)
@@ -16673,36 +16675,43 @@ async def unauthorize(interaction: discord.Interaction, server_id: str):
 
 active_web_matches = {}
 
-@bot.tree.command(name="play_tekken", description="🎮 Play Tekken 3 on Website")
+@bot.tree.command(name="play_tekken", description="🎮 Play Tekken 3 (Web Version)")
 async def play_tekken(interaction: discord.Interaction, opponent: discord.Member, amount: int):
-    # 1. Sabse pehle Discord ko bolo "Wait karo" (Thinking...)
-    await interaction.response.defer(ephemeral=True) 
+    # 1. Discord को बोलो "Wait करो" (ताकि timeout न हो)
+    await interaction.response.defer(ephemeral=True)
 
-    user = interaction.user
-    if user.id == opponent.id: 
-        return await interaction.followup.send("No self-play!") # Note: 'followup' use hoga ab
-
-    # 2. Money Check
-    # (Database check thoda time le sakta hai, isliye defer jaruri tha)
     try:
+        # 2. Database Check (Safe Mode)
+        user = interaction.user
+        if user.id == opponent.id:
+            return await interaction.followup.send("❌ You cannot fight yourself!")
+
+        # Balance check logic
         p1_bal = db.get_balance(str(user.id))
         p2_bal = db.get_balance(str(opponent.id))
+
+        if p1_bal < amount:
+            return await interaction.followup.send(f"❌ You don't have ${amount:,}!", ephemeral=True)
+        if p2_bal < amount:
+            return await interaction.followup.send(f"❌ {opponent.display_name} needs ${amount:,}!", ephemeral=True)
+
+        # 3. Game Setup
+        embed = discord.Embed(
+            title="🎮 TEKKEN 3 ARENA", 
+            description=f"{user.mention} 🆚 {opponent.mention}\n💵 **Stake:** ${amount:,}", 
+            color=0xFFA500
+        )
+        embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/en/f/f0/Tekken_3_cover.jpg")
+        
+        # View (Buttons) load karein
+        view = WebFightView(user, opponent, amount)
+        await interaction.followup.send(f"🥊 {opponent.mention}, accept the challenge!", embed=embed, view=view)
+
     except Exception as e:
-        return await interaction.followup.send("Database Error! Try again.")
+        print(f"COMMAND ERROR: {e}")
+        # Agar DB fail ho, tab bhi user ko batao
+        await interaction.followup.send("⚠️ Server is cooling down. Please wait 10 seconds and try again.")
 
-    if p1_bal < amount: 
-        return await interaction.followup.send(f"🚫 You need ${amount:,}!", ephemeral=True)
-    if p2_bal < amount: 
-        return await interaction.followup.send(f"🚫 {opponent.display_name} needs ${amount:,}!", ephemeral=True)
-
-    # 3. Embed Setup
-    embed = discord.Embed(title="🎮 TEKKEN 3 WEB BATTLE", description=f"{user.mention} vs {opponent.mention}\n**BET:** ${amount:,}", color=0xFFA500)
-    embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/en/f/f0/Tekken_3_cover.jpg")
-    
-    view = WebFightView(user, opponent, amount)
-    
-    # 4. Final Send (Followup use karna jaruri hai)
-    await interaction.followup.send(f"{opponent.mention}, click accept!", embed=embed, view=view)
                       
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
