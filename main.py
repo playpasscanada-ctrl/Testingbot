@@ -18123,123 +18123,265 @@ def buy_security():
     return jsonify({"status":"success", "msg":"Security Upgraded!"})
 
 # --- INVESTMENT: LISTING & MULTIPLE INVESTORS ---
+# --- 16. API: OPEN IPO (Listing 10% Equity) ---
 @app.route('/api/business/open_investment', methods=['POST'])
 def open_investment():
-    user_id = session['user_info']['id']; biz_id = request.json.get('biz_id')
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login Required"})
+
+    user_id = session['user_info']['id']
+    biz_id = request.json.get('biz_id')
+
+    # Data Fetch
     data = db.supabase.table("economy").select("businesses").eq("user_id", user_id).execute().data
+    if not data: return jsonify({"status":"error", "msg":"User data error"})
+    
     owned = data[0]['businesses']
-    
-    # Calculate total equity given away
-    current_equity = sum(owned[biz_id].get('investors', {}).values())
-    if current_equity >= 0.49: # Max 49% can be sold
-        return jsonify({"status":"error", "msg":"You cannot sell more equity (Max 49%)"})
 
-    invest_price = int(BUSINESSES[biz_id]['price'] * 0.2) # Sell 10% chunks for 20% of price
+    # 1. Validation: Business Own karte ho?
+    if biz_id not in owned:
+        return jsonify({"status":"error", "msg":"Business not found in portfolio"})
+
+    # 2. Safety: Investors Dict check
+    if 'investors' not in owned[biz_id]:
+        owned[biz_id]['investors'] = {}
+
+    # 3. Validation: Already Open?
+    if owned[biz_id].get('investment_open'):
+        return jsonify({"status":"error", "msg":"IPO is already live!"})
+
+    # 4. Check Equity Limit (Max 49% Sold)
+    # values() ka sum nikalo (e.g. 0.1 + 0.1 = 0.2)
+    current_equity_sold = sum(owned[biz_id]['investors'].values())
+    
+    if current_equity_sold >= 0.49: 
+        return jsonify({"status":"error", "msg":"Majority Stake Warning! You cannot sell more than 49%."})
+
+    # 5. Price Calculation (Your Logic: 10% Equity costs 20% of Biz Price)
+    # Yaani Premium pe bech rahe ho
+    base_price = BUSINESSES.get(biz_id, {}).get('price', 100000000)
+    listing_price = int(base_price * 0.20) 
+
+    # 6. Update State
     owned[biz_id]['investment_open'] = True
-    owned[biz_id]['invest_price'] = invest_price
+    owned[biz_id]['invest_price'] = listing_price # Price save kar liya taaki buyer ko pata chale
     
+    # 7. Save to DB
     db.supabase.table("economy").update({"businesses": owned}).eq("user_id", user_id).execute()
-    return jsonify({"status":"success", "msg": "Listed 10% Equity for Investment!"})
+    
+    return jsonify({"status":"success", "msg": f"📈 IPO Live! Listed 10% Equity for ${listing_price:,}"})
 
+# --- 17. API: INVEST MONEY (Buying Shares) ---
 @app.route('/api/business/invest_now', methods=['POST'])
 def invest_now():
-    inv_id = session['user_info']['id']; req = request.json; target_id = req.get('target_id'); biz_id = req.get('biz_id')
-    if inv_id == target_id: return jsonify({"status":"error", "msg":"Self-invest?"})
-    
-    # Fetch Data
-    inv_data = db.supabase.table("economy").select("balance").eq("user_id", inv_id).execute().data
-    t_data = db.supabase.table("economy").select("balance, businesses").eq("user_id", target_id).execute().data
-    biz = t_data[0]['businesses'][biz_id]
-    
-    if not biz.get('investment_open'): return jsonify({"status":"error", "msg":"Closed"})
-    
-    # Check Max Equity again
-    investors = biz.get('investors', {})
-    if sum(investors.values()) >= 0.49: 
-        return jsonify({"status":"error", "msg":"Round Full"})
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login Required"})
 
-    cost = biz['invest_price']
-    if inv_data[0]['balance'] < cost: return jsonify({"status":"error", "msg":"No Money"})
+    investor_id = session['user_info']['id']
+    req = request.json
+    target_id = req.get('target_id')
+    biz_id = req.get('biz_id')
     
-    # Transaction
-    db.update_balance(inv_id, -cost)
-    db.update_balance(target_id, cost)
+    # 1. Self Investment Block
+    if investor_id == target_id: 
+        return jsonify({"status":"error", "msg":"You cannot invest in your own business here!"})
     
-    # Add Investor (10% chunk)
-    current_share = investors.get(inv_id, 0)
-    investors[inv_id] = current_share + 0.10 # Add 10%
+    # 2. Fetch Data (Investor & Target)
+    inv_data = db.supabase.table("economy").select("balance").eq("user_id", investor_id).execute().data
+    target_data = db.supabase.table("economy").select("balance, businesses").eq("user_id", target_id).execute().data
     
-    biz['investors'] = investors
-    # Don't close investment automatically, allow more people
+    if not inv_data or not target_data: return jsonify({"status":"error", "msg":"User data not found"})
     
-    db.supabase.table("economy").update({"businesses": t_data[0]['businesses']}).eq("user_id", target_id).execute()
-    return jsonify({"status":"success", "msg":"Invested! You own +10% equity."})
+    # 3. Validation
+    target_biz = target_data[0]['businesses']
+    if biz_id not in target_biz: return jsonify({"status":"error", "msg":"Business not found"})
+    
+    biz = target_biz[biz_id]
+    
+    # Check Open Status
+    if not biz.get('investment_open'): 
+        return jsonify({"status":"error", "msg":"IPO is Closed or Sold Out!"})
+    
+    # Ensure investors dict exists
+    if 'investors' not in biz: biz['investors'] = {}
+    
+    # 4. Check Equity Limit (Max 49%)
+    current_sold = sum(biz['investors'].values())
+    
+    # Agar 49% ya usse zyada bik chuka hai to block karo
+    if round(current_sold, 2) >= 0.49:
+        biz['investment_open'] = False # Auto Close
+        db.supabase.table("economy").update({"businesses": target_biz}).eq("user_id", target_id).execute()
+        return jsonify({"status":"error", "msg":"Investment Round Full (Max 49% Sold)"})
 
-# --- KICK / LEAVE INVESTMENT ---
+    # 5. Money Check
+    # Price wahi lo jo Owner ne set kiya tha (invest_price)
+    cost = biz.get('invest_price', 0)
+    
+    # Fallback: Agar purane data me price nahi hai to calculate kar lo
+    if cost == 0:
+        base_price = BUSINESSES.get(biz_id, {}).get('price', 100000000)
+        cost = int(base_price * 0.20)
+
+    if inv_data[0]['balance'] < cost: 
+        return jsonify({"status":"error", "msg": f"Insufficient Funds! Need ${cost:,}"})
+    
+    # ==========================================
+    # 💰 TRANSACTION EXECUTION
+    # ==========================================
+    
+    # A. Investor se paisa lo
+    new_inv_bal = inv_data[0]['balance'] - cost
+    
+    # B. Target ko paisa do
+    new_target_bal = target_data[0]['balance'] + cost
+    
+    # C. Equity Assign karo (+10%)
+    current_share = biz['investors'].get(investor_id, 0)
+    new_share = round(current_share + 0.10, 2) # 0.10 add kiya aur round kiya precision ke liye
+    biz['investors'][investor_id] = new_share
+    
+    biz['has_investor'] = True
+    
+    # D. Auto-Close if Full (Ab agar 49% ho gaya to band kar do)
+    total_after_sale = sum(biz['investors'].values())
+    if round(total_after_sale, 2) >= 0.49:
+        biz['investment_open'] = False
+    
+    # ==========================================
+    # 💾 DB SAVE
+    # ==========================================
+    
+    # Update Investor Balance
+    db.supabase.table("economy").update({"balance": new_inv_bal}).eq("user_id", investor_id).execute()
+    
+    # Update Target Balance & Business Data
+    db.supabase.table("economy").update({
+        "balance": new_target_bal, 
+        "businesses": target_biz
+    }).eq("user_id", target_id).execute()
+    
+    return jsonify({"status":"success", "msg": f"✅ Invested! You now own {int(new_share*100)}% equity."})
+
+# --- 18. API: KICK / LEAVE INVESTMENT (Manage Shareholders) ---
 @app.route('/api/business/manage_investor', methods=['POST'])
 def manage_investor():
-    user_id = session['user_info']['id']; req = request.json
-    action = req.get('action'); biz_id = req.get('biz_id'); target_inv = req.get('target_inv') # For kick
+    if 'user_info' not in session: return jsonify({"status":"error", "msg":"Login Required"})
     
-    data = db.supabase.table("economy").select("businesses").eq("user_id", user_id).execute().data
+    user_id = session['user_info']['id']
+    req = request.json
+    action = req.get('action')
+    biz_id = req.get('biz_id')
     
-    if action == 'kick': # Owner kicks investor
+    # 1. ACTION: KICK (Owner kicks investor)
+    if action == 'kick': 
+        target_inv = req.get('target_inv')
+        
+        # Owner ka data nikalo
+        data = db.supabase.table("economy").select("businesses").eq("user_id", user_id).execute().data
+        if not data: return jsonify({"status":"error", "msg":"User data not found"})
+        
         owned = data[0]['businesses']
-        if target_inv in owned[biz_id]['investors']:
-            del owned[biz_id]['investors'][target_inv]
-            db.supabase.table("economy").update({"businesses": owned}).eq("user_id", user_id).execute()
-            return jsonify({"status":"success", "msg":"Investor Kicked (No Refund)"})
-            
-    elif action == 'leave': # Investor leaves (Needs complex lookup or passed owner ID)
-        owner_id = req.get('owner_id')
+        
+        # Check agar business aur investor exist karte hain
+        if biz_id in owned and 'investors' in owned[biz_id]:
+            if target_inv in owned[biz_id]['investors']:
+                # Delete Investor
+                del owned[biz_id]['investors'][target_inv]
+                
+                # Agar list khali ho gayi, to tag hata do
+                if not owned[biz_id]['investors']:
+                    owned[biz_id]['has_investor'] = False
+                
+                db.supabase.table("economy").update({"businesses": owned}).eq("user_id", user_id).execute()
+                return jsonify({"status":"success", "msg":"🚫 Investor Kicked! (Equity seized)"})
+            else:
+                return jsonify({"status":"error", "msg":"Investor not found in list"})
+        else:
+            return jsonify({"status":"error", "msg":"Business or Investors not found"})
+
+    # 2. ACTION: LEAVE (Investor leaves portfolio)
+    elif action == 'leave': 
+        owner_id = req.get('owner_id') # UI se Owner ID aana chahiye
+        if not owner_id: return jsonify({"status":"error", "msg":"Owner ID missing"})
+        
+        # Owner ka data nikalo (Kyuki business owner ke paas hai)
         owner_data = db.supabase.table("economy").select("businesses").eq("user_id", owner_id).execute().data
+        if not owner_data: return jsonify({"status":"error", "msg":"Business Owner not found"})
+        
         owned = owner_data[0]['businesses']
         
-        if user_id in owned[biz_id]['investors']:
-            del owned[biz_id]['investors'][user_id]
-            db.supabase.table("economy").update({"businesses": owned}).eq("user_id", owner_id).execute()
-            return jsonify({"status":"success", "msg":"You left the investment (No Refund)"})
+        # Check agar main investor list me hu
+        if biz_id in owned and 'investors' in owned[biz_id]:
+            if user_id in owned[biz_id]['investors']:
+                # Remove Self
+                del owned[biz_id]['investors'][user_id]
+                
+                # Agar list khali ho gayi
+                if not owned[biz_id]['investors']:
+                    owned[biz_id]['has_investor'] = False
+                    
+                db.supabase.table("economy").update({"businesses": owned}).eq("user_id", owner_id).execute()
+                return jsonify({"status":"success", "msg":"📉 You dumped your shares (No Refund)"})
+            else:
+                return jsonify({"status":"error", "msg":"You are not an investor here"})
+        else:
+            return jsonify({"status":"error", "msg":"Business details changed or removed"})
 
-    return jsonify({"status":"error", "msg":"Action Failed"})
+    return jsonify({"status":"error", "msg":"Invalid Action"})
 
-# --- GET TARGETS (Attack Truck / Invest / Portfolio) ---
+
+# --- GET TARGETS (Attack Truck / Invest / Portfolio / Bounty) ---
 @app.route('/api/business/targets', methods=['GET'])
 def get_targets():
+    if 'user_info' not in session: return jsonify({"portfolio":[], "targets":[]})
+    
     my_id = session['user_info']['id']
-    all_users = db.supabase.table("economy").select("user_id, businesses").neq("businesses", "{}").limit(30).execute().data
+    
+    # 1. Fetch Data (Added 'head_bounty' to select)
+    # Humne head_bounty bhi mangaya hai taaki Hacker tab me dikhe
+    all_users = db.supabase.table("economy").select("user_id, businesses, head_bounty").neq("businesses", "{}").limit(30).execute().data
     
     data = {
-        "targets": [], # For Heist/Invest
+        "targets": [],  # For Heist/Invest/Bounty
         "portfolio": [] # My Investments
     }
     
     for u in all_users:
         uid = u['user_id']
+        user_bounty = u.get('head_bounty', 0) # Bounty nikalo
+        
+        # User ke saare businesses check karo
         for b_id, b_data in u['businesses'].items():
             
-            # Check if I am an investor
+            # A. Check if I am an investor (Portfolio)
             investors = b_data.get('investors', {})
             if my_id in investors:
+                # Business Name config se nikalo
+                biz_name = BUSINESSES.get(b_id, {}).get('name', b_id)
+                
                 data['portfolio'].append({
                     "owner_id": uid,
-                    "biz_name": BUSINESSES[b_id]['name'],
+                    "biz_name": biz_name,
                     "biz_id": b_id,
                     "equity": int(investors[my_id] * 100)
                 })
             
-            # Add to targets list (exclude self)
+            # B. Add to Targets List (Exclude Self)
             if uid != my_id:
+                biz_name = BUSINESSES.get(b_id, {}).get('name', b_id)
+                
                 data['targets'].append({
                     "user_id": uid,
-                    "biz_name": BUSINESSES[b_id]['name'],
+                    "biz_name": biz_name,
                     "biz_id": b_id,
                     "stock": b_data.get('stock', 0),
                     "security": b_data.get('security', 1),
                     "investment_open": b_data.get('investment_open', False),
-                    "truck_active": b_data.get('delivery_time', 0) > time.time() # Truck logic
+                    "truck_active": b_data.get('delivery_time', 0) > time.time(),
+                    "head_bounty": user_bounty # ✅ Added Bounty Here
                 })
                 
     return jsonify(data)
+
 
 # --- 14. API: HEIST EXECUTION (UPDATED WITH BOUNTY, HEAT & LOGS) ---
 @app.route('/api/business/heist', methods=['POST'])
