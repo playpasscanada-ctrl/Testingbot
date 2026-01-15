@@ -15,13 +15,20 @@
             position: relative;
         }
 
-        /* Loading Text Style */
+        /* Loading Animation */
         #loader-msg {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: #ffd700; font-size: 18px; font-weight: bold;
-            animation: blink 1s infinite; pointer-events: none; z-index: 0;
+            color: #ffd700; font-size: 16px; font-weight: bold;
+            z-index: 0;
         }
-        @keyframes blink { 50% { opacity: 0.5; } }
+        
+        /* Spinner CSS */
+        .spinner {
+            border: 4px solid #333; border-top: 4px solid gold; border-radius: 50%;
+            width: 40px; height: 40px; animation: spin 1s linear infinite;
+            margin: 0 auto 10px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .header-bet {
             display: flex; justify-content: space-between; padding: 10px 20px;
@@ -47,22 +54,28 @@
     </div>
 
     <div id="game-holder">
-        <div id="loader-msg">Downloading Tekken 3...<br>(Wait 2-3 mins)<br>Please stay on this page.</div>
+        <div id="loader-msg">
+            <div class="spinner"></div>
+            Loading Tekken 3 (Lite)...<br>
+            <span style="font-size:12px; color:#aaa;">(Wait 15-20 Seconds)</span>
+        </div>
         
         <script>
             EJS_player = '#game-holder';
             EJS_core = 'psx'; 
             EJS_gameName = "Tekken 3";
-            
-            // ✅ NEW: BIOS ADDED (Black screen fix)
             EJS_biosUrl = 'https://archive.org/download/psx_bios_scph1001/scph1001.bin'; 
             
-            // ✅ GAME LINK (USA Version)
-            EJS_gameUrl = 'https://archive.org/download/Tekken3_201905/Tekken3.zip'; 
+            // 🔥 FAST LITE VERSION LINK (45 MB only)
+            // Ye turant chalega. Agar ye chal gaya, toh code sahi hai.
+            EJS_gameUrl = 'https://archive.org/download/Tekken3_201905/Tekken3_RIP.zip'; 
             
+            // Agar full version chahiye (Movies ke sath) toh neeche wala use karein (450MB):
+            // EJS_gameUrl = 'https://archive.org/download/Tekken3_201905/Tekken3.zip';
+
             EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
             EJS_startOnLoaded = true;
-            EJS_CONFIG = { mobileControls: true }; // Controls On
+            EJS_CONFIG = { mobileControls: true };
             EJS_netplayUrl = "wss://netplay.emulatorjs.org"; 
         </script>
         <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
@@ -70,9 +83,8 @@
 
     <div class="controls-area">
         <div style="color:#aaa; font-size:12px; margin-bottom:10px;">
-            <b>Instructions:</b><br>
-            • Wait for "Sony" logo (Downloading 450MB).<br>
-            • Use <b>Netplay</b> in menu to connect with friend.<br>
+            <b>Status:</b> Using Lite Version (Fast Load)<br>
+            Wait for game menu, then Player 1 creates Netplay Room.
         </div>
         
         <input type="text" id="uid" placeholder="Enter Your Discord ID" style="padding:12px; width:90%; border-radius:8px; border:1px solid #444; background:#333; color:white; text-align:center;">
