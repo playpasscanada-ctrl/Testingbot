@@ -15,6 +15,7 @@ from discord.ext import commands, tasks
 from deep_translator import GoogleTranslator
 from concurrent.futures import ThreadPoolExecutor
 import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
+from business_config import BUSINESSES, MARKET_EVENTS, ILLEGAL_BIZ, MANAGER_PRICES
 
 # --- HELPER: GET CURRENT MARKET EVENT ---
 def get_current_event():
