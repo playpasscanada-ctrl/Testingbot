@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>CRASH - High Stakes</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body { background: #000; color: #fff; font-family: sans-serif; overflow: hidden; height: 100vh; }
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+        .crashed { color: #ff0040; animation: shake 0.5s; }
+        @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-5px);} 75% {transform: translateX(5px);} }
+        .btn-play { background: linear-gradient(to right, #ec008c, #fc6767); }
+        .btn-cash { background: linear-gradient(to right, #11998e, #38ef7d); }
+    </style>
+</head>
+<body class="flex flex-col">
+
+    <div class="flex justify-between p-4 bg-gray-900 border-b border-gray-800 z-10">
+        <h1 class="text-xl font-bold text-pink-500 orbitron">CRASH</h1>
+        <div class="bg-gray-800 px-3 py-1 rounded border border-gray-700">
+            <span class="text-gray-400 text-xs">BALANCE</span>
+            <span class="text-green-400 font-mono font-bold">$<span id="bal">{{ balance }}</span></span>
+        </div>
+    </div>
+
+    <div class="flex-1 relative bg-black flex items-center justify-center">
+        <canvas id="graph" class="absolute inset-0 w-full h-full"></canvas>
+        <div class="z-10 text-center">
+            <div id="status" class="text-pink-500 text-sm tracking-widest mb-2 opacity-80">CONNECTING...</div>
+            <div id="mult" class="text-8xl font-black orbitron text-white">1.00x</div>
+            <div id="warn" class="hidden mt-4 text-red-500 bg-red-900/30 border border-red-600 px-2 py-1 rounded text-xs animate-pulse">⚠️ 10x LOSS PENALTY</div>
+        </div>
+    </div>
+
+    <div class="bg-gray-900 p-5 rounded-t-3xl border-t border-gray-700 shadow-2xl z-20">
+        <div class="max-w-md mx-auto space-y-3">
+            <div class="flex bg-gray-800 rounded p-1">
+                <button onclick="changeBet(-100)" class="px-4 text-gray-400 text-2xl font-bold hover:text-white">-</button>
+                <input type="number" id="bet" value="1000" class="flex-1 bg-transparent text-center text-white text-xl font-bold outline-none">
+                <button onclick="changeBet(100)" class="px-4 text-gray-400 text-2xl font-bold hover:text-white">+</button>
+            </div>
+            
+            <button id="mainBtn" onclick="doAction()" class="w-full h-16 rounded-xl btn-play text-white text-2xl font-bold orbitron shadow-lg shadow-pink-600/20">
+                PLACE BET
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const canvas = document.getElementById('graph');
+        const ctx = canvas.getContext('2d');
+        let state = 'WAITING', myBet = 0, betting = false, dataPoints = [];
+
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        // --- DRAW GRAPH ---
+        function draw(val, status) {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            if(dataPoints.length < 2) return;
+            ctx.beginPath();
+            ctx.strokeStyle = status === 'CRASHED' ? '#ff0040' : '#ec008c';
+            ctx.lineWidth = 5;
+            const w = canvas.width, h = canvas.height, max = Math.max(2, val * 1.2);
+            for(let i=0; i<dataPoints.length; i++) {
+                ctx.lineTo((i/200)*w, h - ((dataPoints[i]-1)/(max-1))*h*0.8 - 50);
+            }
+            ctx.stroke();
+        }
+
+        // --- EVENTS ---
+        socket.on('crash_update', d => {
+            state = d.status;
+            const m = document.getElementById('mult');
+            const btn = document.getElementById('mainBtn');
+            const msg = document.getElementById('status');
+            
+            if(state === 'WAITING') {
+                m.innerText = "1.00x"; m.classList.remove('crashed');
+                msg.innerText = `NEXT ROUND: ${Math.ceil(d.time_left)}s`;
+                dataPoints = []; ctx.clearRect(0,0,canvas.width,canvas.height);
+                document.getElementById('warn').classList.remove('hidden');
+                
+                if(!betting) {
+                    btn.innerText = "PLACE BET"; btn.disabled = false;
+                    btn.className = "w-full h-16 rounded-xl btn-play text-white text-2xl font-bold orbitron shadow-lg";
+                }
+            }
+            else if(state === 'RUNNING') {
+                m.innerText = d.multiplier.toFixed(2) + "x";
+                msg.innerText = "FLYING...";
+                document.getElementById('warn').classList.add('hidden');
+                dataPoints.push(d.multiplier);
+                if(dataPoints.length > 200) dataPoints.shift();
+                draw(d.multiplier, 'RUNNING');
+
+                if(betting) {
+                    btn.innerText = `CASHOUT $${Math.floor(myBet * d.multiplier)}`;
+                    btn.className = "w-full h-16 rounded-xl btn-cash text-white text-2xl font-bold orbitron shadow-lg";
+                } else {
+                    btn.innerText = "GAME RUNNING"; btn.disabled = true;
+                    btn.className = "w-full h-16 rounded-xl bg-gray-700 text-gray-500 text-xl font-bold orbitron";
+                }
+            }
+            else { // CRASHED
+                m.innerText = "CRASHED"; m.classList.add('crashed');
+                msg.innerText = `BUSTED @ ${d.multiplier.toFixed(2)}x`;
+                draw(d.multiplier, 'CRASHED');
+                if(betting) {
+                    btn.innerText = "LOST (10x PENALTY)";
+                    btn.className = "w-full h-16 rounded-xl bg-red-900 text-red-500 text-xl font-bold orbitron";
+                    betting = false;
+                }
+            }
+        });
+
+        socket.on('bet_ok', d => { betting = true; myBet = d.amount; document.getElementById('mainBtn').innerText = "BET PLACED"; });
+        socket.on('cashout_ok', d => { betting = false; const btn = document.getElementById('mainBtn'); btn.innerText = `WON +$${d.win}`; btn.disabled = true; });
+        socket.on('balance_update', d => { document.getElementById('bal').innerText = d.balance; });
+
+        // --- ACTIONS ---
+        function changeBet(v) { 
+            const inp = document.getElementById('bet'); 
+            if(parseInt(inp.value)+v > 0) inp.value = parseInt(inp.value)+v; 
+        }
+        function doAction() {
+            if(state === 'WAITING' && !betting) socket.emit('crash_bet', {amount: document.getElementById('bet').value});
+            else if(state === 'RUNNING' && betting) socket.emit('crash_cashout');
+        }
+    </script>
+</body>
+</html>
