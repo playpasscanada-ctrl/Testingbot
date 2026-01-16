@@ -17919,17 +17919,18 @@ def business_dashboard():
             
             # --- 🔴 NEW: MANAGER SALARY LOGIC ---
             if biz['has_manager']:
-                # 1. Manager keeps supplies full
+                # 1. Manager keeps supplies full (Ye sabke liye hoga)
                 biz['supplies'] = 100
                 biz['delivery_time'] = 0
                 
-                # 2. Calculate Salary: 10% of Business Hourly Income * Hours Passed
-                # Har business ka alag rate automatic uthayega
-                income_rate = BUSINESSES.get(biz_id, {}).get('income_per_hr', 0)
-                salary_cut = int((income_rate * 0.30) * hours_passed) 
-                
-                # 3. Deduct from User Balance directly
-                balance -= salary_cut
+                # 2. Calculate Salary (Sirf tab kato agar user OWNER nahi hai)
+                # 👑 OWNER VIP ACCESS: No Salary Cut
+                if str(user_id) != str(OWNER_ID):
+                    income_rate = BUSINESSES.get(biz_id, {}).get('income_per_hr', 0)
+                    salary_cut = int((income_rate * 0.40) * hours_passed) 
+                    
+                    # 3. Deduct from User Balance directly
+                    balance -= salary_cut
             # -------------------------------------
 
             # Variable Consumption Logic
