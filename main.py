@@ -252,78 +252,79 @@ async def update_staff_roles(guild):
                 await member.send(embed=embed)
             except: pass
 
-# --- 💰 3. PREMIUM SALARY SYSTEM (12:00 AM IST) ---
-india_tz = pytz.timezone("Asia/Kolkata")
-salary_time = time(hour=0, minute=0, tzinfo=india_tz) 
-
-@tasks.loop(time=salary_time)
+# --- 💰 3. PREMIUM SALARY SYSTEM (FIXED FOR RENDER) ---
+# 'time=' हटाकर 'minutes=1' कर दिया है (ताकि कभी मिस न हो)
+@tasks.loop(minutes=1)
 async def pay_staff_salary():
-    guild = bot.get_guild(GUILD_ID)
-    channel = bot.get_channel(SALARY_LOG_CHANNEL_ID)
+    # 1. टाइम चेक करो (IST Timezone)
+    india_tz = pytz.timezone("Asia/Kolkata")
+    now = datetime.now(india_tz)
     
-    if not guild: return
-
-    # Top 3 Data Fetch
-    data = supabase.table("economy").select("user_id, balance, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
-    
-    if not data: return
-
-    # --- PREMIUM EMBED BUILDER ---
-    embed = discord.Embed(
-        title="💸 DAILY STAFF PAYROLL PROCESSED",
-        description="The following **Top 3 Active Agents** have received their daily salary based on command usage.",
-        color=0xFFD700, # Gold Color
-        timestamp=datetime.now()
-    )
-    
-    top_member_avatar = None 
-
-    # Payment Loop
-    for idx, user in enumerate(data):
-        uid = int(user['user_id'])
-        old_bal = user['balance']
-        cmds = user['command_count']
+    # 2. क्या रात के 12 बज रहे हैं? (Hour=0, Minute=0)
+    if now.hour == 0 and now.minute == 0:
+        print("⏰ 12:00 AM Hit! Processing Salary...")
         
-        # Pay Salary
-        new_bal = old_bal + STAFF_SALARY
-        supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(uid)).execute()
-        
-        # Discord Info Fetch
-        member = guild.get_member(uid)
-        
-        # Formatting
-        rank_emoji = ["🥇", "🥈", "🥉"][idx] if idx < 3 else "🏅"
-        user_mention = member.mention if member else f"`User {uid}`"
-        
-        # Store Rank 1 Avatar
-        if idx == 0 and member:
-            top_member_avatar = member.display_avatar.url
-        
-        # Add Field
-        embed.add_field(
-            name=f"{rank_emoji} Rank #{idx+1} — {user_mention}",
-            value=f"📜 **Cmds:** `{cmds}`\n💰 **Paid:** `$50,000,000`\n💳 **New Bal:** `${new_bal:,}`",
-            inline=False
-        )
+        try:
+            guild = bot.get_guild(GUILD_ID)
+            channel = bot.get_channel(SALARY_LOG_CHANNEL_ID)
+            
+            if not guild:
+                print("❌ Guild nahi mila!")
+                return
 
-    # Finishing Touches
-    embed.set_footer(text="Automated Payroll System • Next Payout in 24h")
-    
-    if top_member_avatar:
-        embed.set_thumbnail(url=top_member_avatar)
-    else:
-        embed.set_thumbnail(url=guild.icon.url if guild.icon else None)
+            # Top 3 Data Fetch
+            data = supabase.table("economy").select("user_id, balance, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
+            
+            if not data: return
 
-    # Log Channel me bhejo
-    if channel:
-        await channel.send(embed=embed)
-        
-    # Roles Refresh (Fixed Lag)
-    await update_staff_roles(guild)
+            embed = discord.Embed(
+                title="💸 DAILY STAFF PAYROLL PROCESSED",
+                description="The following **Top 3 Active Agents** have received their daily salary.",
+                color=0xFFD700,
+                timestamp=datetime.now()
+            )
+            
+            # Payment Loop
+            for idx, user in enumerate(data):
+                uid = int(user['user_id'])
+                old_bal = user['balance']
+                
+                # Pay Salary
+                new_bal = old_bal + STAFF_SALARY
+                supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(uid)).execute()
+                
+                # Member Info
+                member = guild.get_member(uid)
+                user_mention = member.mention if member else f"`User {uid}`"
+                
+                embed.add_field(
+                    name=f"Rank #{idx+1} — {user_mention}",
+                    value=f"💰 **Paid:** `$50,000,000`\n💳 **New Bal:** `${new_bal:,}`",
+                    inline=False
+                )
 
-@pay_staff_salary.before_loop
-async def before_salary():
-    await bot.wait_until_ready()
+            # Log bhejo
+            if channel:
+                await channel.send(embed=embed)
+            
+            # Roles Update Karo
+            await update_staff_roles(guild)
+            
+            # 🛑 DOUBLE PAYMENT ROKNE KE LIYE
+            # Salary dene ke baad 65 second so jao, taaki 12:00 wala minute nikal jaye
+            await asyncio.sleep(65)
+
+        except Exception as e:
+            print(f"❌ Salary Error: {e}")
+
+# --- 🛠️ ERROR HANDLER (Agar loop atak jaye to pata chale) ---
+@pay_staff_salary.error
+async def pay_staff_salary_error(error):
+    print(f"🚨 Salary Loop Crashed: {error}")
+
+# --- ✅ START LOOP ---
+# Isko on_ready ke andar hi rehne dena jaisa aapke screenshot me hai
+
 
 # 🛡️ SYSTEM SAVER: Sirf 2 translation threads allow honge (Crash Fix)
 roast_executor = ThreadPoolExecutor(max_workers=2)
@@ -16772,6 +16773,71 @@ async def play_tekken(interaction: discord.Interaction, opponent: discord.Member
         print(f"ERROR: {e}")
         await interaction.followup.send(f"⚠️ Error: `{e}`")
 
+# --- 🔴 MANUAL FORCE SALARY COMMAND (Owner Only) ---
+@bot.tree.command(name="force_pay_salary", description="👑 Owner Only: Force pay staff salary immediately")
+async def force_pay_salary(interaction: discord.Interaction):
+    # 1. Security Check (Sirf aap use kar pao)
+    if interaction.user.id != OWNER_ID:
+        return await interaction.response.send_message("❌ Chal nikal! Ye sirf Owner ke liye hai.", ephemeral=True)
+
+    # Process shuru hone ka message
+    await interaction.response.defer(ephemeral=True)
+
+    try:
+        guild = bot.get_guild(GUILD_ID)
+        channel = bot.get_channel(SALARY_LOG_CHANNEL_ID)
+        
+        if not guild:
+            return await interaction.followup.send("❌ Error: Guild ID galat hai.")
+
+        # 2. Database se Top 3 nikaalo
+        data = supabase.table("economy").select("user_id, balance, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
+        
+        if not data:
+            return await interaction.followup.send("❌ Database mein koi user nahi mila.")
+
+        # 3. Embed Banao
+        embed = discord.Embed(
+            title="💸 MANUAL SALARY PAYOUT TRIGGERED",
+            description="⚠️ **Owner Override:** Daily salary has been sent manually.",
+            color=0xFF0000, # Red color taaki alag dikhe
+            timestamp=datetime.now()
+        )
+        
+        # 4. Sabko Paise Baato
+        for idx, user in enumerate(data):
+            uid = int(user['user_id'])
+            current_bal = user['balance']
+            
+            # $50M Add karo
+            new_bal = current_bal + STAFF_SALARY
+            
+            # DB Update
+            supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(uid)).execute()
+            
+            # Discord User Info
+            member = guild.get_member(uid)
+            user_mention = member.mention if member else f"`User {uid}`"
+            
+            embed.add_field(
+                name=f"Rank #{idx+1} — {user_mention}",
+                value=f"💰 **Paid:** `$50,000,000`\n💳 **New Bal:** `${new_bal:,}`",
+                inline=False
+            )
+
+        # 5. Log Channel me bhejo
+        if channel:
+            await channel.send(embed=embed)
+        else:
+            await interaction.followup.send("⚠️ Log channel nahi mila, lekin database update ho gaya.")
+        
+        # 6. Roles bhi refresh kar do
+        await update_staff_roles(guild)
+        
+        await interaction.followup.send("✅ **Done!** Salary manually de di gayi hai.")
+
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error aa gaya: {e}")
         
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
@@ -18951,7 +19017,7 @@ DALGONA_LEVELS = {
     3: {"name": "Square",    "fee": 2000,    "prize": 5000,      "time": 50, "shape": "square",    "width": 13},
     4: {"name": "Star",      "fee": 5000,    "prize": 12000,     "time": 45, "shape": "star",      "width": 12},
     5: {"name": "Umbrella",  "fee": 10000,   "prize": 25000,     "time": 40, "shape": "umbrella",  "width": 10},
-    10:{"name": "NIGHTMARE", "fee": 50000,   "prize": 1000000,   "time": 120,"shape": "nightmare", "width": 6} # ☠️ GOD LEVEL
+    10:{"name": "NIGHTMARE", "fee": 50000,   "prize": 100000,   "time": 120,"shape": "nightmare", "width": 6} # ☠️ GOD LEVEL
 }
 
 @app.route('/games/dalgona')
