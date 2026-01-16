@@ -3,365 +3,443 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aviator Pro</title>
+    <title>Aviator Elite</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&family=Roboto:wght@500;900&display=swap" rel="stylesheet">
+    
     <style>
         body { 
-            background-color: #0d0d0d; 
+            background-color: #000; 
             color: white; 
-            overflow: hidden; /* Scroll rokne ke liye */
-            font-family: 'Roboto Mono', monospace;
+            font-family: 'Roboto', sans-serif;
+            overflow: hidden;
             height: 100vh;
             width: 100vw;
-            touch-action: none; /* Zoom rokne ke liye */
+            user-select: none;
         }
 
-        /* --- BACKGROUND STARS --- */
-        .stars {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000 url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/1231630/stars.png') repeat;
-            z-index: -1; opacity: 0.5;
+        /* --- BACKGROUND LAYER (Runway & Sky) --- */
+        .bg-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 50% 100%, #1a1a2e 0%, #000000 100%);
+            z-index: 0;
+        }
+        
+        /* Grid Effect (Simulates Speed) */
+        .grid-lines {
+            position: absolute; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 1;
         }
 
         /* --- GAME CANVAS --- */
-        #game-area {
+        #game-wrapper {
             position: relative;
             width: 100%;
-            height: 60vh; /* Screen ka 60% hissa graph ke liye */
-            border-bottom: 2px solid #333;
-            background: radial-gradient(circle at bottom left, #1a1a1a, #000);
+            height: 65vh; /* Graph area */
+            z-index: 10;
         }
         canvas { display: block; width: 100%; height: 100%; }
 
-        /* --- CENTER MULTIPLIER --- */
-        .center-hud {
+        /* --- CENTER HUD (The Big Multiplier) --- */
+        .hud-container {
             position: absolute;
-            top: 40%; left: 50%;
+            top: 35%; left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            z-index: 10;
+            z-index: 20;
             pointer-events: none;
         }
         .big-multiplier {
-            font-size: 4.5rem;
-            font-weight: 900;
+            font-family: 'Chakra Petch', sans-serif;
+            font-size: 5rem;
+            font-weight: 700;
             color: white;
-            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+            transition: color 0.2s;
         }
-        .status-badge {
-            background: rgba(255,255,255,0.1);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            color: #aaa;
-            letter-spacing: 2px;
+        .status-pill {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            color: #bbb;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             margin-bottom: 10px;
-            display: inline-block;
+            backdrop-filter: blur(4px);
         }
 
-        /* --- CONTROLS PANEL (Fixed Bottom) --- */
+        /* --- CONTROL PANEL (Bottom) --- */
         .control-panel {
-            position: fixed;
-            bottom: 0; left: 0; width: 100%;
-            height: 40vh; /* Screen ka 40% hissa controls ke liye */
-            background: #151515;
-            border-top-left-radius: 25px;
-            border-top-right-radius: 25px;
-            padding: 20px;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            z-index: 20;
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 35vh;
+            background: #141414;
+            border-top: 2px solid #222;
+            padding: 15px 20px;
+            display: flex; flex-direction: column; justify-content: space-between;
+            z-index: 30;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
         }
 
-        /* --- INPUTS --- */
-        .input-group {
-            display: flex;
-            background: #000;
-            border-radius: 12px;
-            padding: 5px;
+        /* Bet Controls */
+        .bet-row {
+            display: flex; gap: 10px; align-items: center; justify-content: center;
+            background: #0a0a0a; border-radius: 15px; padding: 5px;
             border: 1px solid #333;
         }
-        .btn-minus, .btn-plus {
-            width: 50px; height: 50px;
-            background: #222; border-radius: 8px;
-            font-size: 1.5rem; color: #fff;
+        .btn-circle {
+            width: 45px; height: 45px; border-radius: 12px;
+            background: #252525; border: none; color: white; font-size: 1.5rem;
             display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
         }
+        .btn-circle:active { transform: scale(0.9); }
         .bet-input {
-            flex: 1;
-            background: transparent;
-            text-align: center;
-            font-size: 1.5rem;
-            color: white;
-            font-weight: bold;
-            border: none; outline: none;
+            flex: 1; background: transparent; border: none; outline: none;
+            color: white; font-size: 1.5rem; text-align: center; font-weight: bold;
+            font-family: 'Chakra Petch', sans-serif;
         }
 
-        /* --- MAIN BUTTON --- */
-        #action-btn {
-            width: 100%;
-            height: 70px;
+        /* MAIN BUTTON (The Hero) */
+        #main-btn {
+            width: 100%; height: 80px;
             border-radius: 15px;
-            font-size: 1.8rem;
-            font-weight: 900;
+            border: none;
+            font-size: 1.6rem; font-weight: 900;
             text-transform: uppercase;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            transition: transform 0.1s;
+            color: white;
+            box-shadow: 0 5px 0 rgba(0,0,0,0.4);
+            transition: all 0.1s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            line-height: 1.1;
         }
-        #action-btn:active { transform: scale(0.97); }
+        #main-btn:active { transform: translateY(4px); box-shadow: none; }
         
-        /* State Colors */
-        .btn-green { background: linear-gradient(to bottom, #2ecc71, #27ae60); color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
-        .btn-red { background: linear-gradient(to bottom, #e74c3c, #c0392b); color: white; }
-        .btn-wait { background: #333; color: #777; }
-        .btn-orange { background: linear-gradient(to bottom, #f1c40f, #f39c12); color: black; }
+        .sub-text { font-size: 0.9rem; font-weight: 500; opacity: 0.9; }
 
-        /* --- ANIMATIONS --- */
-        .crashed-text { color: #e74c3c !important; text-shadow: 0 0 20px red; animation: shake 0.5s; }
-        @keyframes shake { 0%, 100% {transform: translate(-50%, -50%) translateX(0);} 25% {transform: translate(-50%, -50%) translateX(-5px);} 75% {transform: translate(-50%, -50%) translateX(5px);} }
+        /* Button Colors */
+        .btn-green { background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%); text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+        .btn-orange { background: linear-gradient(180deg, #f1c40f 0%, #d35400 100%); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5); border: 2px solid #f39c12; }
+        .btn-red { background: linear-gradient(180deg, #c0392b 0%, #8e44ad 100%); opacity: 0.8; }
+        .btn-disabled { background: #333; color: #777; cursor: not-allowed; }
 
         /* --- TOP BAR --- */
-        .top-bar {
+        .top-nav {
             position: absolute; top: 0; left: 0; width: 100%;
-            padding: 15px;
-            display: flex; justify-content: space-between;
-            z-index: 20;
+            padding: 15px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 50;
         }
-        .balance-box {
-            background: rgba(0,0,0,0.6);
-            padding: 5px 15px;
-            border-radius: 20px;
-            border: 1px solid #333;
+        .logo { color: #e74c3c; font-weight: 900; font-size: 1.2rem; font-style: italic; letter-spacing: -1px; }
+        .balance-pill {
+            background: #111; padding: 5px 15px; border-radius: 30px; border: 1px solid #333;
+            font-family: 'Chakra Petch', sans-serif;
         }
+
+        /* --- CRASH ANIMATION --- */
+        .crashed-effect { color: #e74c3c !important; animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } }
+
     </style>
 </head>
 <body>
 
-    <div class="stars"></div>
+    <div class="bg-layer">
+        <div class="grid-lines"></div>
+    </div>
 
-    <div class="top-bar">
-        <div class="text-pink-500 font-bold text-xl tracking-wider">CRASH 🚀</div>
-        <div class="balance-box">
-            <span class="text-xs text-gray-400">BALANCE</span>
-            <span class="text-green-400 font-bold ml-1">$<span id="balance">Loading...</span></span>
+    <div class="top-nav">
+        <div class="logo">AVIATOR <span class="text-white not-italic">PRO</span></div>
+        <div class="balance-pill">
+            <span class="text-gray-500 text-xs mr-1">USD</span>
+            <span class="text-green-400 font-bold text-lg" id="balance">---</span>
         </div>
     </div>
 
-    <div id="game-area">
-        <canvas id="graph"></canvas>
+    <div id="game-wrapper">
+        <canvas id="gameCanvas"></canvas>
         
-        <div class="center-hud">
-            <div id="status-text" class="status-badge">CONNECTING...</div>
+        <div class="hud-container">
+            <div id="status-badge" class="status-pill">LOADING SERVER...</div>
             <div id="multiplier" class="big-multiplier">1.00x</div>
         </div>
     </div>
 
     <div class="control-panel">
         
-        <div class="input-group">
-            <div class="btn-minus" onclick="adjustBet(-100)">-</div>
-            <input type="number" id="bet-amount" value="1000" class="bet-input" readonly>
-            <div class="btn-plus" onclick="adjustBet(100)">+</div>
+        <div class="bet-row">
+            <button class="btn-circle" onclick="adjBet(-100)">-</button>
+            <input type="number" id="bet-amt" value="1000" class="bet-input" readonly>
+            <button class="btn-circle" onclick="adjBet(100)">+</button>
         </div>
 
-        <button id="action-btn" class="btn-wait" onclick="handleAction()" disabled>
-            WAITING...
+        <div class="text-center">
+            <span id="game-tip" class="text-xs text-gray-500 font-mono">WAIT FOR NEXT ROUND TO START</span>
+        </div>
+
+        <button id="main-btn" class="btn-disabled" onclick="handleBtnAction()" disabled>
+            <span>PLACE BET</span>
         </button>
-
-        <div class="text-center text-xs text-gray-500 mt-2">
-            AUTO CASH OUT IS DISABLED • 10x LOSS PENALTY ACTIVE
-        </div>
     </div>
 
     <script>
         const socket = io();
-        const canvas = document.getElementById('graph');
+        const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const multDisplay = document.getElementById('multiplier');
-        const statusDisplay = document.getElementById('status-text');
-        const actionBtn = document.getElementById('action-btn');
-
-        // --- GAME VARIABLES ---
-        let gameState = 'WAITING';
-        let myBet = 0;
-        let isBetting = false;
-        let dataPoints = [];
-        let animationFrame;
         
-        // Plane Image (Emoji fallback for safety)
-        const planeImg = new Image();
-        planeImg.src = 'https://cdn-icons-png.flaticon.com/512/7893/7893979.png'; // Red Plane Icon
+        // UI Elements
+        const elMult = document.getElementById('multiplier');
+        const elStatus = document.getElementById('status-badge');
+        const elBtn = document.getElementById('main-btn');
+        const elTip = document.getElementById('game-tip');
 
-        // --- RESIZE LOGIC ---
+        // State
+        let gameState = 'CONNECTING';
+        let myBet = 0;
+        let isBetting = false; // Is the user *in* the current round?
+        let hasBetNext = false; // Did user bet for the *upcoming* round?
+        let dataPoints = [];
+        
+        // --- ASSETS ---
+        // Red Aviator Plane Image
+        const planeImg = new Image();
+        planeImg.src = "https://i.ibb.co/3r5MvK8/plane-red.png"; 
+
+        // --- RESIZE ---
         function resize() {
-            canvas.width = document.getElementById('game-area').clientWidth;
-            canvas.height = document.getElementById('game-area').clientHeight;
+            canvas.width = document.getElementById('game-wrapper').clientWidth;
+            canvas.height = document.getElementById('game-wrapper').clientHeight;
         }
         window.addEventListener('resize', resize);
         resize();
 
-        // --- DRAWING ENGINE (The "Game" Look) ---
-        function drawGame(currentMult, status) {
+        // --- VISUAL ENGINE ---
+        function draw(currentMult, status) {
             const w = canvas.width;
             const h = canvas.height;
-            
             ctx.clearRect(0, 0, w, h);
 
-            // 1. Draw Grid (Tech Look)
-            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-            ctx.lineWidth = 1;
+            // 1. Dynamic Scaling (Camera Zoom Out)
+            // As multiplier grows, the Y-axis max value increases so the plane stays in view
+            // As time (points) grows, X-axis scales
+            const maxX = Math.max(dataPoints.length, 150); 
+            const maxY = Math.max(currentMult * 1.3, 2.0); 
+
+            if(dataPoints.length < 2) return;
+
+            // 2. Draw Curve (Smooth)
             ctx.beginPath();
-            for(let x=0; x<w; x+=50) { ctx.moveTo(x,0); ctx.lineTo(x,h); }
-            for(let y=0; y<h; y+=50) { ctx.moveTo(0,y); ctx.lineTo(w,y); }
-            ctx.stroke();
-
-            if (dataPoints.length < 2) return;
-
-            // 2. Calculate Scales (Zoom Out Effect)
-            // Jaise jaise multiplier badhega, graph chhota hoga taaki fit aaye
-            const maxValX = Math.max(dataPoints.length, 100); // Time axis
-            const maxValY = Math.max(currentMult * 1.5, 2);   // Multiplier axis
-
-            // 3. Draw The Curve
-            ctx.beginPath();
-            ctx.lineWidth = 6;
+            ctx.lineWidth = 5;
             ctx.lineCap = 'round';
-            ctx.strokeStyle = status === 'CRASHED' ? '#e74c3c' : '#f1c40f'; // Red or Yellow line
+            ctx.strokeStyle = '#e74c3c'; // Aviator Red
 
-            let lastX = 0, lastY = h;
+            let px = 0, py = h;
 
-            for (let i = 0; i < dataPoints.length; i++) {
-                const x = (i / maxValX) * w;
-                // Y axis logic: Bottom (h) is 1.00x, Top (0) is maxValY
-                const normalizedY = (dataPoints[i] - 1) / (maxValY - 1);
-                const y = h - (normalizedY * h) - 40; // -40 padding bottom
+            for(let i=0; i<dataPoints.length; i++) {
+                // Normalize Coordinates
+                const x = (i / maxX) * w;
+                // Y logic: 1.00x is at Bottom (h), MaxY is at Top (0)
+                const val = dataPoints[i];
+                const normalizedY = (val - 1) / (maxY - 1); 
+                const y = h - (normalizedY * h * 0.9) - 20; // 0.9 keeps it from hitting exact top
 
-                if (i === 0) ctx.moveTo(x, y);
-                else {
-                    // Smooth curve
-                    const cpX = (lastX + x) / 2;
-                    ctx.quadraticCurveTo(lastX, lastY, cpX, (lastY + y)/2);
-                    ctx.lineTo(x, y);
-                }
-                lastX = x;
-                lastY = y;
+                if(i===0) ctx.moveTo(x,y);
+                else ctx.lineTo(x,y); // Straight lines are faster/cleaner for crash graphs
+
+                px = x; py = y;
             }
             ctx.stroke();
 
-            // 4. Fill Area Under Graph
-            ctx.lineTo(lastX, h);
+            // 3. Fill Area (Gradient)
+            ctx.lineTo(px, h);
             ctx.lineTo(0, h);
-            ctx.fillStyle = status === 'CRASHED' 
-                ? 'rgba(231, 76, 60, 0.2)' 
-                : 'rgba(241, 196, 15, 0.1)';
+            const grad = ctx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, 'rgba(231, 76, 60, 0.4)');
+            grad.addColorStop(1, 'rgba(231, 76, 60, 0.0)');
+            ctx.fillStyle = grad;
             ctx.fill();
 
-            // 5. Draw Plane at Tip
-            if (status === 'RUNNING') {
-                const pSize = 40;
+            // 4. DRAW PLANE (Rotated)
+            if(status === 'RUNNING') {
+                const size = 60;
                 ctx.save();
-                ctx.translate(lastX, lastY); // Move to tip
-                ctx.rotate(-0.2); // Thoda sa tilt
-                ctx.drawImage(planeImg, -pSize/2, -pSize/2, pSize, pSize);
+                ctx.translate(px, py);
+                
+                // Calculate Angle based on slope
+                // Simple tilt logic: Steep at start, flattens slightly
+                let angle = -Math.atan((h*0.5) / (w*0.5)); 
+                if (dataPoints.length > 50) angle = -0.3; // Steady cruise angle
+                
+                ctx.rotate(angle);
+                ctx.drawImage(planeImg, -size/2, -size/2, size, size);
+                
+                // Rocket Trail Effect
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = "#f39c12";
                 ctx.restore();
             }
         }
 
-        // --- SOCKET EVENTS ---
+        // --- BUTTON STATES ---
+        function updateButton() {
+            // SCENARIO 1: WAITING PHASE
+            if (gameState === 'WAITING') {
+                if (hasBetNext) {
+                    // User already clicked Bet for this round
+                    elBtn.className = "btn-red";
+                    elBtn.innerHTML = `<span>CANCEL BET</span><span class='sub-text'>$${document.getElementById('bet-amt').value}</span>`;
+                    elBtn.disabled = false;
+                } else {
+                    // User needs to bet
+                    elBtn.className = "btn-green";
+                    elBtn.innerHTML = `<span>BET</span><span class='sub-text'>NEXT ROUND</span>`;
+                    elBtn.disabled = false;
+                }
+            } 
+            // SCENARIO 2: PLANE IS FLYING
+            else if (gameState === 'RUNNING') {
+                if (isBetting) {
+                    // User is in the game -> SHOW CASH OUT
+                    const currentM = parseFloat(elMult.innerText);
+                    const profit = (myBet * currentM).toFixed(0);
+                    
+                    elBtn.className = "btn-orange";
+                    elBtn.innerHTML = `<span>CASH OUT</span><span class='sub-text'>WIN $${profit}</span>`;
+                    elBtn.disabled = false;
+                } else {
+                    // User is watching (didn't bet) -> Bet for NEXT round
+                    if (hasBetNext) {
+                        elBtn.className = "btn-red";
+                        elBtn.innerHTML = `<span>WAITING...</span><span class='sub-text'>BET PLACED</span>`;
+                        elBtn.disabled = true;
+                    } else {
+                        elBtn.className = "btn-green";
+                        elBtn.innerHTML = `<span>BET</span><span class='sub-text'>FOR NEXT ROUND</span>`;
+                        elBtn.disabled = false;
+                    }
+                }
+            }
+            // SCENARIO 3: CRASHED
+            else {
+                elBtn.className = "btn-disabled";
+                elBtn.innerHTML = `<span>CRASHED</span>`;
+                elBtn.disabled = true;
+            }
+        }
+
+        // --- SOCKET LISTENERS ---
         socket.on('balance_update', d => {
             document.getElementById('balance').innerText = d.balance.toLocaleString();
         });
 
         socket.on('crash_update', d => {
             gameState = d.status;
-            
-            // UI Updates
-            if (gameState === 'WAITING') {
-                multDisplay.innerText = "1.00x";
-                multDisplay.classList.remove('crashed-text');
-                statusDisplay.innerText = `NEXT ROUND: ${Math.ceil(d.time_left)}s`;
-                statusDisplay.style.color = '#aaa';
-                
-                dataPoints = []; // Reset Graph
-                ctx.clearRect(0,0,canvas.width,canvas.height);
 
-                if (!isBetting) {
-                    actionBtn.innerText = "PLACE BET";
-                    actionBtn.disabled = false;
-                    actionBtn.className = "btn-green";
+            if (gameState === 'WAITING') {
+                elMult.innerText = "1.00x";
+                elMult.style.color = "white";
+                elMult.classList.remove('crashed-effect');
+                
+                elStatus.innerText = `PREPARING PLANE: ${Math.ceil(d.time_left)}s`;
+                elStatus.style.color = "#3498db";
+                
+                dataPoints = []; 
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                
+                // If round resets, 'isBetting' becomes false for everyone
+                // 'hasBetNext' stays true if they queued a bet
+                if(isBetting) isBetting = false; 
+                
+                // Auto-bet logic execution (Mock)
+                if(hasBetNext && !isBetting) {
+                    // Logic handled in 'bet_ok'
                 }
             }
             else if (gameState === 'RUNNING') {
-                multDisplay.innerText = d.multiplier.toFixed(2) + "x";
-                statusDisplay.innerText = "FLYING...";
-                statusDisplay.style.color = '#f1c40f';
+                const m = d.multiplier.toFixed(2);
+                elMult.innerText = m + "x";
+                elStatus.innerText = "FLYING";
+                elStatus.style.color = "#f1c40f";
 
-                // Add Point to Graph
                 dataPoints.push(d.multiplier);
-                drawGame(d.multiplier, 'RUNNING');
-
-                if (isBetting) {
-                    const profit = Math.floor(myBet * d.multiplier);
-                    actionBtn.innerText = `CASH OUT ($${profit})`;
-                    actionBtn.className = "btn-orange";
-                    actionBtn.disabled = false;
-                } else {
-                    actionBtn.innerText = "GAME IN PROGRESS";
-                    actionBtn.className = "btn-wait";
-                    actionBtn.disabled = true;
-                }
+                draw(d.multiplier, 'RUNNING');
             }
             else if (gameState === 'CRASHED') {
-                multDisplay.innerText = "FLEW AWAY";
-                multDisplay.classList.add('crashed-text');
-                statusDisplay.innerText = `CRASHED @ ${d.multiplier.toFixed(2)}x`;
-                statusDisplay.style.color = '#e74c3c';
+                elMult.innerText = d.multiplier.toFixed(2) + "x";
+                elMult.classList.add('crashed-effect');
+                elMult.style.color = "#e74c3c";
                 
-                drawGame(d.multiplier, 'CRASHED');
-
-                if (isBetting) {
-                    actionBtn.innerText = "YOU LOST (10x PENALTY)";
-                    actionBtn.className = "btn-red";
-                    actionBtn.disabled = true;
+                elStatus.innerText = "PLANE FLEW AWAY";
+                elStatus.style.color = "#e74c3c";
+                
+                draw(d.multiplier, 'CRASHED');
+                
+                // Reset betting flags for lost users
+                if(isBetting) {
                     isBetting = false;
+                    // Logic for loss handled by server balance update
                 }
+                hasBetNext = false; // Reset queue
             }
+            updateButton();
         });
 
         socket.on('bet_ok', d => {
-            isBetting = true;
+            if(gameState === 'WAITING') {
+                isBetting = true; // In the game now
+                hasBetNext = false;
+            } else {
+                hasBetNext = true; // Queued for next
+            }
             myBet = d.amount;
-            actionBtn.innerText = "BET PLACED";
-            actionBtn.className = "btn-wait";
-            actionBtn.disabled = true;
+            updateButton();
         });
 
         socket.on('cashout_ok', d => {
             isBetting = false;
-            actionBtn.innerText = `WON $${d.win}`;
-            actionBtn.className = "btn-green";
-            actionBtn.disabled = true;
+            elBtn.className = "btn-green";
+            elBtn.innerHTML = `<span>WON $${d.win}</span>`;
+            elBtn.disabled = true;
+            setTimeout(updateButton, 2000);
         });
 
-        // --- BUTTON LOGIC ---
-        function adjustBet(amount) {
-            const el = document.getElementById('bet-amount');
-            let current = parseInt(el.value);
-            if (current + amount >= 100) {
-                el.value = current + amount;
-            }
+        // --- ACTIONS ---
+        function adjBet(val) {
+            const el = document.getElementById('bet-amt');
+            let v = parseInt(el.value) + val;
+            if(v >= 100) el.value = v;
         }
 
-        function handleAction() {
-            const val = document.getElementById('bet-amount').value;
-            if (gameState === 'WAITING' && !isBetting) {
-                socket.emit('crash_bet', { amount: val });
-            } else if (gameState === 'RUNNING' && isBetting) {
-                socket.emit('crash_cashout');
+        function handleBtnAction() {
+            const amt = document.getElementById('bet-amt').value;
+
+            if (gameState === 'WAITING') {
+                if(hasBetNext) {
+                    // Cancel logic (optional, for now just reset flag locally)
+                    hasBetNext = false; updateButton();
+                } else {
+                    socket.emit('crash_bet', {amount: amt});
+                }
+            }
+            else if (gameState === 'RUNNING') {
+                if (isBetting) {
+                    socket.emit('crash_cashout');
+                } else {
+                    // Place bet for NEXT round
+                    if(!hasBetNext) {
+                        hasBetNext = true;
+                        // Technically we should tell server, but for UI feedback:
+                        updateButton();
+                        // Send bet when round restarts or send now and server queues it
+                        // For this simple version, we assume user clicks again or we hold intent
+                        socket.emit('crash_bet', {amount: amt}); 
+                    }
+                }
             }
         }
     </script>
