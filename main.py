@@ -17908,7 +17908,7 @@ def business_dashboard():
                 # 2. Calculate Salary: 10% of Business Hourly Income * Hours Passed
                 # Har business ka alag rate automatic uthayega
                 income_rate = BUSINESSES.get(biz_id, {}).get('income_per_hr', 0)
-                salary_cut = int((income_rate * 0.10) * hours_passed) 
+                salary_cut = int((income_rate * 0.30) * hours_passed) 
                 
                 # 3. Deduct from User Balance directly
                 balance -= salary_cut
