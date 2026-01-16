@@ -16862,14 +16862,23 @@ import os
 import time
 import threading
 from datetime import datetime
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, session, redirect
 import discord
 from discord.ext import commands
 from discord import app_commands
 from supabase import create_client, Client
+from flask_socketio import SocketIO, emit
+from threading import Thread, Event
+import random
+import eventlet 
 
 # Initialize Flask
 app = Flask(__name__)
+ # Ye line aapke paas pehle se hogi
+app.config['SECRET_KEY'] = 'vikas_bhai_op_secret_key' # Security ke liye
+
+# 👇 YE LINE SABSE ZAROORI HAI 👇
+socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")
 
 # --- 2. OPTIMIZED CACHE SYSTEM (FROM YOUR CODE) ---
 USER_CACHE_TTL = 25
@@ -19117,6 +19126,119 @@ def fail_dalgona():
     return jsonify({"status":"ok"})
 
 # ==========================================
+# 🚀 CRASH GAME LOGIC & ROUTE (No Folders)
+# ==========================================
+
+# --- A. GAME VARIABLES ---
+crash_state = { 'status': 'WAITING', 'multiplier': 1.00, 'time_left': 5 }
+crash_bets = {} 
+crash_thread = None
+
+# --- B. ENGINE (Hardcore Logic) ---
+def crash_engine():
+    global crash_state, crash_bets
+    while True:
+        # 1. WAITING
+        crash_state['status'] = 'WAITING'
+        crash_state['multiplier'] = 1.00
+        for i in range(80, 0, -1): # 8 Seconds wait
+            crash_state['time_left'] = i / 10
+            socketio.emit('crash_update', crash_state)
+            socketio.sleep(0.1)
+
+        # 2. FLYING (Calculate Crash Point)
+        crash_state['status'] = 'RUNNING'
+        import random, time
+        chance = random.random() * 100
+        
+        # --- YOUR ODDS ---
+        if chance < 40: limit = round(random.uniform(1.00, 1.49), 2) # Bad Luck
+        elif chance < 90: limit = round(random.uniform(1.50, 2.00), 2) # Risky
+        else: limit = round(min(random.expovariate(0.5) + 2.0, 100.00), 2) # Jackpot
+        
+        start = time.time()
+        while crash_state['multiplier'] < limit:
+            elapsed = time.time() - start
+            crash_state['multiplier'] = round(1.0 + (elapsed**2.5 / 20), 2)
+            if crash_state['multiplier'] > limit: crash_state['multiplier'] = limit
+            socketio.emit('crash_update', crash_state)
+            socketio.sleep(0.08)
+
+        # 3. CRASHED (Apply 10x Penalty)
+        crash_state['status'] = 'CRASHED'
+        socketio.emit('crash_update', crash_state)
+        
+        # --- 💀 PENALTY LOGIC ---
+        for sid, bet in list(crash_bets.items()):
+            if not bet['cashed_out']:
+                uid = bet['user_id']
+                penalty = bet['amount'] * 10 # 10 Guna kaato
+                
+                try:
+                    # Direct DB Minus
+                    curr = db.supabase.table("economy").select("balance").eq("user_id", str(uid)).execute().data[0]['balance']
+                    db.supabase.table("economy").update({"balance": curr - penalty}).eq("user_id", str(uid)).execute()
+                    socketio.emit('balance_update', {'balance': curr - penalty}, to=sid)
+                except: pass
+        
+        crash_bets = {}
+        socketio.sleep(3)
+
+# --- C. ROUTE (Jaisa aapne manga) ---
+@app.route('/games/crash')
+def crash():
+    if 'user_info' not in session: return redirect('/')
+    
+    # Engine Auto-Start on Visit
+    global crash_thread
+    if crash_thread is None or not crash_thread.is_alive():
+        from threading import Thread
+        crash_thread = Thread(target=crash_engine)
+        crash_thread.daemon = True
+        crash_thread.start()
+
+    user_id = session['user_info']['id']
+    # Balance fetch karne ka aapka tareeka
+    try:
+        data = db.supabase.table("economy").select("balance").eq("user_id", str(user_id)).execute().data
+        balance = data[0]['balance'] if data else 0
+    except: balance = 0
+    
+    # Seedha templates folder me crash.html dhundega
+    return render_template('crash.html', user=session['user_info'], balance=balance)
+
+# --- D. SOCKET EVENTS ---
+@socketio.on('crash_bet')
+def on_crash_bet(data):
+    if crash_state['status'] != 'WAITING': return
+    uid = session['user_info']['id']
+    amt = int(data['amount'])
+    
+    # Check & Deduct
+    curr = db.supabase.table("economy").select("balance").eq("user_id", str(uid)).execute().data[0]['balance']
+    if curr < amt: return
+    
+    db.supabase.table("economy").update({"balance": curr - amt}).eq("user_id", str(uid)).execute()
+    crash_bets[request.sid] = {'user_id': uid, 'amount': amt, 'cashed_out': False}
+    socketio.emit('bet_ok', {'amount': amt}, to=request.sid)
+    socketio.emit('balance_update', {'balance': curr - amt}, to=request.sid)
+
+@socketio.on('crash_cashout')
+def on_crash_cashout():
+    if crash_state['status'] == 'RUNNING' and request.sid in crash_bets:
+        if not crash_bets[request.sid]['cashed_out']:
+            bet = crash_bets[request.sid]
+            win = int(bet['amount'] * crash_state['multiplier'])
+            
+            # Add Win
+            curr = db.supabase.table("economy").select("balance").eq("user_id", str(bet['user_id'])).execute().data[0]['balance']
+            db.supabase.table("economy").update({"balance": curr + win}).eq("user_id", str(bet['user_id'])).execute()
+            
+            bet['cashed_out'] = True
+            socketio.emit('cashout_ok', {'win': win}, to=request.sid)
+            socketio.emit('balance_update', {'balance': curr + win}, to=request.sid)
+
+# ==========================================
 # 🎰 VIP ROULETTE (Fixed & Updated Route)
 # ==========================================
 
@@ -19957,8 +20079,8 @@ def self_ping():
 def run_server():
     # Render se PORT lo, nahi to 10000 use karo
     port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
-
+    socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
+    
 if __name__ == "__main__":
     # A. Website Start (Background Thread)
     t1 = threading.Thread(target=run_server, daemon=True)
