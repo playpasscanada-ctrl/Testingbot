@@ -11,3 +11,5 @@ ffmpeg-python
 edge-tts
 Pillow
 pytz
+flask-socketio
+eventlet
