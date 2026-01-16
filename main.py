@@ -16773,71 +16773,89 @@ async def play_tekken(interaction: discord.Interaction, opponent: discord.Member
         print(f"ERROR: {e}")
         await interaction.followup.send(f"⚠️ Error: `{e}`")
 
-# --- 🔴 MANUAL FORCE SALARY COMMAND (Owner Only) ---
+OWNER_ID = 804687084249284618   # Owner ID
+STAFF_ROLE_ID = 1459074209191039049  # Staff Role ID
+GUILD_ID = 1257403231127076915       # Server ID
+SALARY_LOG_CHANNEL_ID = 1457066104819028089 # Log Channel
+STAFF_SALARY = 50000000
+
+# --- 🔴 MANUAL FORCE SALARY (Smart & Error Proof) ---
 @bot.tree.command(name="force_pay_salary", description="👑 Owner Only: Force pay staff salary immediately")
 async def force_pay_salary(interaction: discord.Interaction):
-    # 1. Security Check (Sirf aap use kar pao)
-    if interaction.user.id != OWNER_ID:
+    # 🛡️ SECURITY: Dono ko 'int' bana kar check karo taaki galti na ho
+    if int(interaction.user.id) != int(OWNER_ID):
         return await interaction.response.send_message("❌ Chal nikal! Ye sirf Owner ke liye hai.", ephemeral=True)
 
-    # Process shuru hone ka message
     await interaction.response.defer(ephemeral=True)
 
     try:
-        guild = bot.get_guild(GUILD_ID)
-        channel = bot.get_channel(SALARY_LOG_CHANNEL_ID)
-        
+        # 1. GUILD FETCH (Smart Way)
+        # ID se dhundne ke bajaye, "Current Server" uthayega
+        guild = interaction.guild
         if not guild:
-            return await interaction.followup.send("❌ Error: Guild ID galat hai.")
+            return await interaction.followup.send("❌ Error: Ye command Server me chalao, DM me nahi!")
 
-        # 2. Database se Top 3 nikaalo
+        # 2. CHANNEL FETCH (Jugaad Way)
+        # Pehle Config wala channel dhundo
+        channel = guild.get_channel(int(SALARY_LOG_CHANNEL_ID))
+        
+        warning_msg = ""
+        # Agar Config wala channel nahi mila, to Current Channel use karo
+        if not channel:
+            channel = interaction.channel
+            warning_msg = f"\n⚠️ **Note:** Config wala Log Channel (`{SALARY_LOG_CHANNEL_ID}`) nahi mila. Isliye receipt yahi bhej raha hu."
+
+        # 3. DATABASE FETCH
         data = supabase.table("economy").select("user_id, balance, command_count").neq("user_id", str(OWNER_ID)).order("command_count", desc=True).limit(3).execute().data
         
         if not data:
-            return await interaction.followup.send("❌ Database mein koi user nahi mila.")
+            return await interaction.followup.send("❌ Database mein koi banda nahi mila.")
 
-        # 3. Embed Banao
+        # 4. EMBED BANAO
         embed = discord.Embed(
             title="💸 MANUAL SALARY PAYOUT TRIGGERED",
-            description="⚠️ **Owner Override:** Daily salary has been sent manually.",
-            color=0xFF0000, # Red color taaki alag dikhe
+            description=f"⚠️ **Owner Override:** Salary sent manually.{warning_msg}",
+            color=0xFF0000, 
             timestamp=datetime.now()
         )
         
-        # 4. Sabko Paise Baato
+        # 5. PAISE BAATO (Loop)
+        count = 0
         for idx, user in enumerate(data):
             uid = int(user['user_id'])
             current_bal = user['balance']
             
-            # $50M Add karo
+            # Paise Add
             new_bal = current_bal + STAFF_SALARY
-            
-            # DB Update
             supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(uid)).execute()
             
-            # Discord User Info
+            # User Info
             member = guild.get_member(uid)
             user_mention = member.mention if member else f"`User {uid}`"
             
             embed.add_field(
                 name=f"Rank #{idx+1} — {user_mention}",
-                value=f"💰 **Paid:** `$50,000,000`\n💳 **New Bal:** `${new_bal:,}`",
+                value=f"💰 **Paid:** `$50M`\n💳 **New Bal:** `${new_bal:,}`",
                 inline=False
             )
+            count += 1
 
-        # 5. Log Channel me bhejo
-        if channel:
+        # 6. LOG BHEJO
+        # Ab ye kabhi fail nahi hoga kyuki fallback laga hai
+        try:
             await channel.send(embed=embed)
-        else:
-            await interaction.followup.send("⚠️ Log channel nahi mila, lekin database update ho gaya.")
-        
-        # 6. Roles bhi refresh kar do
+        except:
+            await interaction.followup.send("❌ Bot ko Message bhejne ki permission nahi hai!")
+            return
+
+        # 7. ROLES UPDATE
         await update_staff_roles(guild)
         
-        await interaction.followup.send("✅ **Done!** Salary manually de di gayi hai.")
+        await interaction.followup.send(f"✅ **Success!** {count} logo ko salary mil gayi.\nCheck: {channel.mention}")
 
     except Exception as e:
-        await interaction.followup.send(f"❌ Error aa gaya: {e}")
+        await interaction.followup.send(f"❌ Gehra Error aa gaya: {e}")
+
         
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
