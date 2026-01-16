@@ -16877,8 +16877,8 @@ app = Flask(__name__)
  # Ye line aapke paas pehle se hogi
 app.config['SECRET_KEY'] = 'vikas_bhai_op_secret_key' # Security ke liye
 
-# 👇 YE LINE SABSE ZAROORI HAI 👇
-socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")
+# 'threading' mode discord bot ke saath compatible hai
+socketio = SocketIO(app, async_mode='threading', cors_allowed_origins="*")
 
 # --- 2. OPTIMIZED CACHE SYSTEM (FROM YOUR CODE) ---
 USER_CACHE_TTL = 25
@@ -20077,8 +20077,8 @@ def self_ping():
 
 # 2. Server Start (Port Fix ke saath)
 def run_server():
-    # Render se PORT lo, nahi to 10000 use karo
     port = int(os.environ.get("PORT", 10000))
+    # Threading mode me 'allow_unsafe_werkzeug=True' zaroori hai
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
     
 if __name__ == "__main__":
