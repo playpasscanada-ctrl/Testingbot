@@ -60,7 +60,7 @@ REDIRECT_URI = "https://testingbot-8pb1.onrender.com/callback"
 WEBSITE_URL = "https://testingbot-8pb1.onrender.com" 
 
 # --- LOAN SYSTEM SETTINGS ---
-MAX_LOAN = 10000000000000000000000000    # 10 Million Limit
+MAX_LOAN = 10000000  # 10 Million Limit
 INTEREST_LIMIT = 100000  # 300k se upar interest lagega
 LOAN_DURATION = 24       # 24 Hours time limit
 
