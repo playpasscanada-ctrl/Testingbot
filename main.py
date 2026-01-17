@@ -17,22 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
 from business_config import BUSINESSES, MARKET_EVENTS, ILLEGAL_BIZ, MANAGER_PRICES
 import yt_dlp
-import random
-import time
-import datetime
-
-# --- SETTINGS ---
-FFMPEG_OPTIONS = {
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn'
-}
-YDL_OPTIONS = {
-    'format': 'bestaudio/best',
-    'noplaylist': True,
-    'quiet': True,
-    'default_search': 'ytsearch',
-    'source_address': '0.0.0.0'
-}
+from discord.ui import View, Button
 
 active_web_matches = {}
 
@@ -1169,245 +1154,6 @@ async def check_loans():
     except Exception as e:
         print(f"Loop Error: {e}")
 
-# --- HELPER: Progress Bar ---
-def create_progress_bar(current_sec, total_sec, length=20):
-    if total_sec == 0: return "🔘▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    percent = current_sec / total_sec
-    if percent > 1: percent = 1
-    filled = int(length * percent)
-    return "▬" * filled + "🔘" + "▬" * (length - filled)
-
-def format_time(seconds):
-    return str(datetime.timedelta(seconds=int(seconds)))
-
-# --- BUTTON VIEW (3 Hours Timeout) ---
-class MusicControlView(discord.ui.View):
-    def __init__(self, ctx, voice_client, bot_cog):
-        super().__init__(timeout=10800) # 3 Ghante ka Timeout
-        self.ctx = ctx
-        self.voice_client = voice_client
-        self.bot_cog = bot_cog
-
-    @discord.ui.button(label="Pause/Res", style=discord.ButtonStyle.primary, emoji="⏯️")
-    async def pause_resume(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer() # Anti-Crash
-        if self.voice_client.is_playing():
-            self.voice_client.pause()
-            self.bot_cog.pause_start_time = time.time()
-        elif self.voice_client.is_paused():
-            self.voice_client.resume()
-            if self.bot_cog.pause_start_time:
-                self.bot_cog.total_pause_duration += time.time() - self.bot_cog.pause_start_time
-                self.bot_cog.pause_start_time = None
-        # Embed update task will handle the UI change
-
-    @discord.ui.button(label="Skip", style=discord.ButtonStyle.secondary, emoji="⏭️")
-    async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        if self.voice_client.is_playing() or self.voice_client.is_paused():
-            self.voice_client.stop()
-            await interaction.followup.send("⏭️ **Skipped!**", ephemeral=True)
-
-    @discord.ui.button(label="Shuffle", style=discord.ButtonStyle.secondary, emoji="🔀")
-    async def shuffle(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        if len(self.bot_cog.queue) > 1:
-            random.shuffle(self.bot_cog.queue)
-            await interaction.followup.send("🔀 **Queue Shuffled!**", ephemeral=True)
-        else:
-            await interaction.followup.send("⚠️ Not enough songs to shuffle.", ephemeral=True)
-
-    @discord.ui.button(label="Loop", style=discord.ButtonStyle.secondary, emoji="🔁")
-    async def loop(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        self.bot_cog.loop = not self.bot_cog.loop
-        status = "Enabled" if self.bot_cog.loop else "Disabled"
-        button.style = discord.ButtonStyle.green if self.bot_cog.loop else discord.ButtonStyle.secondary
-        await interaction.edit_original_response(view=self)
-        await interaction.followup.send(f"🔁 Loop **{status}**", ephemeral=True)
-
-    @discord.ui.button(label="Stop", style=discord.ButtonStyle.danger, emoji="⏹️")
-    async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        self.bot_cog.queue = []
-        self.bot_cog.current_song = None
-        if self.voice_client: await self.voice_client.disconnect()
-        await interaction.followup.send("🛑 Stopped.", ephemeral=True)
-
-# --- MAIN MUSIC CLASS ---
-class MusicBot(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.queue = []
-        self.current_song = None
-        self.loop = False
-        self.song_start_time = None
-        self.pause_start_time = None
-        self.total_pause_duration = 0
-        self.now_playing_message = None
-        self.current_song_duration_sec = 0
-
-    @tasks.loop(seconds=7) # Updated time to avoid rate limits
-    async def update_message_task(self):
-        if not self.now_playing_message or not self.current_song: return
-        try:
-            if self.pause_start_time:
-                elapsed = self.pause_start_time - self.song_start_time - self.total_pause_duration
-            else:
-                elapsed = time.time() - self.song_start_time - self.total_pause_duration
-
-            bar = create_progress_bar(elapsed, self.current_song_duration_sec)
-            time_str = f"{format_time(elapsed)} / {format_time(self.current_song_duration_sec)}"
-            
-            embed = self.now_playing_message.embeds[0]
-            embed.description = f"### [{self.current_song['title']}]({self.current_song['url']})\n\n`{time_str}`\n{bar}"
-            
-            # Update footer based on Loop/Queue
-            status_text = f"Loop: {'ON' if self.loop else 'OFF'} | Queue: {len(self.queue)} songs"
-            embed.set_footer(text=f"Requested by {self.current_song['user'].display_name} • {status_text}")
-            
-            await self.now_playing_message.edit(embed=embed)
-        except:
-            self.update_message_task.cancel()
-
-    async def play_next(self, interaction):
-        if self.update_message_task.is_running(): self.update_message_task.cancel()
-
-        if self.loop and self.current_song: pass
-        elif len(self.queue) > 0: self.current_song = self.queue.pop(0)
-        else:
-            self.current_song = None
-            return
-
-        voice_client = interaction.guild.voice_client
-        try:
-            with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-                info = ydl.extract_info(self.current_song['url'], download=False)
-                play_url = info['url']
-
-            source = await discord.FFmpegOpusAudio.from_probe(play_url, **FFMPEG_OPTIONS)
-            
-            self.song_start_time = time.time()
-            self.pause_start_time = None
-            self.total_pause_duration = 0
-            self.current_song_duration_sec = self.current_song.get('duration_sec', 0)
-
-            voice_client.play(source, after=lambda e: self.bot.loop.create_task(self.check_queue(interaction)))
-            
-            # PREMIUM EMBED
-            embed = discord.Embed(
-                title="💿 Now Playing",
-                description=f"### [{self.current_song['title']}]({self.current_song['url']})\n\nLoading...",
-                color=discord.Color.purple()
-            )
-            embed.set_thumbnail(url=self.current_song.get('thumbnail'))
-            embed.add_field(name="👤 Requested By", value=self.current_song['user'].mention, inline=True)
-            embed.add_field(name="⏳ Duration", value=f"`{format_time(self.current_song_duration_sec)}`", inline=True)
-            
-            view = MusicControlView(interaction, voice_client, self)
-            self.now_playing_message = await interaction.channel.send(embed=embed, view=view)
-            self.update_message_task.start()
-            
-        except Exception as e:
-            print(f"Error: {e}")
-            await self.check_queue(interaction)
-
-    async def check_queue(self, interaction):
-        if len(self.queue) > 0 or self.loop: await self.play_next(interaction)
-
-    # --- ALL SLASH COMMANDS ---
-
-    @app_commands.command(name="play", description="🎵 Play a song (Name or Link)")
-    async def play(self, interaction: discord.Interaction, query: str):
-        await interaction.response.defer() # Anti-Crash
-        if not interaction.user.voice:
-            return await interaction.followup.send("❌ Join a Voice Channel first!", ephemeral=True)
-
-        if not interaction.guild.voice_client:
-            await interaction.user.voice.channel.connect()
-
-        voice_client = interaction.guild.voice_client
-        msg = await interaction.followup.send(f"🔎 **Searching:** `{query}`...", ephemeral=True)
-        
-        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-            try:
-                info = ydl.extract_info(query, download=False)
-                if 'entries' in info: info = info['entries'][0]
-                
-                song = {
-                    'url': info['webpage_url'], 'title': info['title'],
-                    'user': interaction.user, 'duration_sec': info.get('duration', 0),
-                    'thumbnail': info.get('thumbnail')
-                }
-                self.queue.append(song)
-                
-                embed = discord.Embed(title="✅ Added to Queue", description=f"[{info['title']}]({info['webpage_url']})", color=discord.Color.green())
-                await interaction.channel.send(embed=embed)
-                
-                if not voice_client.is_playing(): await self.play_next(interaction)
-            except Exception as e:
-                await interaction.followup.send("❌ Error finding song.")
-
-    @app_commands.command(name="stop", description="🛑 Stop music and disconnect")
-    async def stop_cmd(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        self.queue = []
-        if interaction.guild.voice_client:
-            await interaction.guild.voice_client.disconnect()
-            await interaction.followup.send("🛑 **Disconnected.**")
-        else: await interaction.followup.send("❌ Not connected.", ephemeral=True)
-
-    @app_commands.command(name="skip", description="⏭️ Skip current song")
-    async def skip_cmd(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        if interaction.guild.voice_client and interaction.guild.voice_client.is_playing():
-            interaction.guild.voice_client.stop()
-            await interaction.followup.send("⏭️ **Skipped!**")
-        else: await interaction.followup.send("❌ Nothing playing.", ephemeral=True)
-
-    @app_commands.command(name="pause", description="⏸️ Pause music")
-    async def pause_cmd(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        if interaction.guild.voice_client and interaction.guild.voice_client.is_playing():
-            interaction.guild.voice_client.pause()
-            self.pause_start_time = time.time()
-            await interaction.followup.send("⏸️ **Paused.**")
-        else: await interaction.followup.send("❌ Not playing.", ephemeral=True)
-
-    @app_commands.command(name="resume", description="▶️ Resume music")
-    async def resume_cmd(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        if interaction.guild.voice_client and interaction.guild.voice_client.is_paused():
-            interaction.guild.voice_client.resume()
-            if self.pause_start_time:
-                self.total_pause_duration += time.time() - self.pause_start_time
-                self.pause_start_time = None
-            await interaction.followup.send("▶️ **Resumed.**")
-        else: await interaction.followup.send("❌ Not paused.", ephemeral=True)
-
-    @app_commands.command(name="volume", description="🔊 Set volume (0-100)")
-    async def volume_cmd(self, interaction: discord.Interaction, amount: int):
-        await interaction.response.defer()
-        if interaction.guild.voice_client and interaction.guild.voice_client.source:
-            interaction.guild.voice_client.source.volume = amount / 100
-            await interaction.followup.send(f"🔊 Volume set to **{amount}%**")
-        else: await interaction.followup.send("❌ Nothing playing.", ephemeral=True)
-
-    @app_commands.command(name="shuffle", description="🔀 Shuffle the queue")
-    async def shuffle_cmd(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        if len(self.queue) > 1:
-            random.shuffle(self.queue)
-            await interaction.followup.send("🔀 **Queue Shuffled!**")
-        else: await interaction.followup.send("❌ Not enough songs.", ephemeral=True)
-
-    @app_commands.command(name="loop", description="🔁 Toggle loop for current song")
-    async def loop_cmd(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        self.loop = not self.loop
-        status = "Enabled" if self.loop else "Disabled"
-        await interaction.followup.send(f"🔁 Loop **{status}**")
-
 # ================== ENV ==================
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
@@ -1478,9 +1224,6 @@ def emb(title, desc, color=0x5865F2):
 async def on_ready():
     print(f"Logged in as {bot.user} (BOT ONLINE)")
     
-    # 1. SERVER AUTH LOAD (Ye Naya Hai) 👇
-    # Ye database se allowed servers ki list load karega
-    await bot.add_cog(MusicBot(bot))
     await load_authorized_servers()
 
     # 2. SESSION CREATION (Aapka Purana Code)
@@ -1569,6 +1312,55 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
                 await interaction.response.send_message("❌ Command use nahi kar sakte (Check Failed).", ephemeral=True)
     else:
         print(f"Error: {error}")
+
+def premium_embed(title, url, user):
+    embed = discord.Embed(
+        title="🎶 Now Playing",
+        description=f"**{title}**",
+        color=0x8b5cf6
+    )
+
+    embed.add_field(name="🔊 Quality", value="High", inline=True)
+    embed.add_field(name="👤 Requested By", value=user.mention, inline=True)
+
+    embed.set_thumbnail(url="https://i.imgur.com/8Km9tLL.png")
+    embed.set_footer(text="Premium Music System")
+
+    return embed
+
+from discord.ui import View, Button
+
+class MusicButtons(View):
+    def __init__(self, vc):
+        super().__init__(timeout=900)
+        self.vc = vc
+
+    @discord.ui.button(label="⏸ Pause", style=discord.ButtonStyle.secondary)
+    async def pause(self, interaction, button):
+        self.vc.pause()
+        await interaction.response.defer()
+
+    @discord.ui.button(label="▶ Resume", style=discord.ButtonStyle.success)
+    async def resume(self, interaction, button):
+        self.vc.resume()
+        await interaction.response.defer()
+
+    @discord.ui.button(label="⏭ Skip", style=discord.ButtonStyle.primary)
+    async def skip(self, interaction, button):
+        self.vc.stop()
+        await interaction.response.defer()
+
+    @discord.ui.button(label="⏹ Stop", style=discord.ButtonStyle.danger)
+    async def stop(self, interaction, button):
+        await self.vc.disconnect()
+        await interaction.response.defer()
+
+    @discord.ui.button(label="❤️ Like", style=discord.ButtonStyle.success)
+    async def like(self, interaction, button):
+        await interaction.response.send_message(
+            "❤️ Added to favorites!",
+            ephemeral=True
+        )
 
 # ================== VERIFY + AUTO WHITELIST + LOGS ==================
 @bot.event
@@ -2565,7 +2357,51 @@ async def vip(i: discord.Interaction, mode: app_commands.Choice[str], user: disc
     except Exception as e:
         print(f"VIP ERROR: {e}")
         await i.followup.send(f"❌ System Error: `{e}`")
-            
+
+@bot.tree.command(name="play", description="Play song or YouTube link")
+async def play(interaction: discord.Interaction, song: str):
+
+    await interaction.response.defer()
+
+    if not interaction.user.voice:
+        return await interaction.followup.send("❌ Voice channel join karo")
+
+    vc = interaction.guild.voice_client
+    if not vc:
+        vc = await interaction.user.voice.channel.connect()
+
+    ydl_opts = {"format": "bestaudio"}
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(f"ytsearch:{song}", download=False)
+        url = info["entries"][0]["url"]
+        title = info["entries"][0]["title"]
+
+    vc.play(discord.FFmpegPCMAudio(url))
+
+    embed = premium_embed(title, url, interaction.user)
+    view = MusicButtons(vc)
+
+    await interaction.followup.send(embed=embed, view=view)
+
+@bot.tree.command(name="pause")
+async def pause(interaction: discord.Interaction):
+    interaction.guild.voice_client.pause()
+    await interaction.response.send_message("⏸ Paused")
+
+@bot.tree.command(name="resume")
+async def resume(interaction: discord.Interaction):
+    interaction.guild.voice_client.resume()
+    await interaction.response.send_message("▶ Resumed")
+
+@bot.tree.command(name="skip")
+async def skip(interaction: discord.Interaction):
+    interaction.guild.voice_client.stop()
+    await interaction.response.send_message("⏭ Skipped")
+
+@bot.tree.command(name="stop")
+async def stop(interaction: discord.Interaction):
+    await interaction.guild.voice_client.disconnect()
+    await interaction.response.send_message("⏹ Stopped")
 
 # ================== 🔥 ROAST SYSTEM ==================
 
