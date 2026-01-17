@@ -20,6 +20,10 @@ import yt_dlp
 from discord.ui import View, Button
 
 active_web_matches = {}
+music_queue = {}
+volume_level = {}
+loop_mode = {}
+stay_connected = {}
 
 # --- HELPER: GET CURRENT MARKET EVENT ---
 def get_current_event():
@@ -1253,6 +1257,51 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Sync Error: {e}")
 
+# 🔥 YE LINE YAHI ADD KARO (LAST ME)
+    await bot.change_presence(
+        activity=discord.Activity(
+            type=discord.ActivityType.listening,
+            name="/play | Premium Music"
+        )
+    )
+    
+# =================task ===================
+
+async def song_autocomplete(
+    interaction: discord.Interaction,
+    current: str,
+):
+    if not current:
+        return []
+
+    ydl_opts = {"quiet": True}
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(
+            f"ytsearch5:{current}",
+            download=False
+        )
+
+    results = []
+    for entry in info["entries"][:5]:
+        results.append(
+            app_commands.Choice(
+                name=entry["title"][:100],
+                value=entry["title"]
+            )
+        )
+
+    return results
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    if member.id != bot.user.id:
+        return
+
+    if before.channel and not after.channel:
+        guild_id = member.guild.id
+        if stay_connected.get(guild_id):
+            await before.channel.connect()
+            
 # --- 📊 COMMAND TRACKING EVENT ---
 # Ise main.py me lagayein (Events section ke paas)
 
@@ -1313,21 +1362,20 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
     else:
         print(f"Error: {error}")
 
-def premium_embed(title, url, user):
+def premium_embed(title, user):
     embed = discord.Embed(
-        title="🎶 Now Playing",
+        title="🎧 Now Playing",
         description=f"**{title}**",
-        color=0x8b5cf6
+        color=discord.Color.from_rgb(155, 89, 182)
     )
 
-    embed.add_field(name="🔊 Quality", value="High", inline=True)
-    embed.add_field(name="👤 Requested By", value=user.mention, inline=True)
-
-    embed.set_thumbnail(url="https://i.imgur.com/8Km9tLL.png")
-    embed.set_footer(text="Premium Music System")
+    embed.set_thumbnail(url="https://i.imgur.com/e1hLQ2G.gif")
+    embed.add_field(name="🔊 Quality", value="320kbps", inline=True)
+    embed.add_field(name="💎 Mode", value="Premium", inline=True)
+    embed.set_footer(text=f"Requested by {user}")
 
     return embed
-
+    
 from discord.ui import View, Button
 
 class MusicButtons(View):
@@ -1368,6 +1416,28 @@ async def on_message(msg):
     # 1. Bot Khud ko reply na kare
     if msg.author.bot:
         return
+
+    # 🔒 Admin bypass
+    if message.author.guild_permissions.administrator:
+        await bot.process_commands(message)
+        return
+
+    # 🎵 Music related commands
+    music_commands = [
+        "/play", "/pause", "/resume",
+        "/skip", "/stop", "/queue",
+        "/volume", "/loop"
+    ]
+
+    if any(message.content.lower().startswith(cmd) for cmd in music_commands):
+        await asyncio.sleep(15)
+        try:
+            await message.delete()
+        except:
+            pass
+
+    # ⚠️ IMPORTANT: commands ko process hone dena
+    await bot.process_commands(message)
 
         # ... (on_message ke andar baaki code ke neeche)
 
@@ -2358,7 +2428,8 @@ async def vip(i: discord.Interaction, mode: app_commands.Choice[str], user: disc
         print(f"VIP ERROR: {e}")
         await i.followup.send(f"❌ System Error: `{e}`")
 
-@bot.tree.command(name="play", description="Play song or YouTube link")
+@bot.tree.command(name="play", description="Play a song")
+@app_commands.autocomplete(song=song_autocomplete)
 async def play(interaction: discord.Interaction, song: str):
 
     await interaction.response.defer()
@@ -2378,10 +2449,141 @@ async def play(interaction: discord.Interaction, song: str):
 
     vc.play(discord.FFmpegPCMAudio(url))
 
-    embed = premium_embed(title, url, interaction.user)
+    embed = premium_embed(title, interaction.user)
     view = MusicButtons(vc)
 
     await interaction.followup.send(embed=embed, view=view)
+    
+async def play_next(interaction):
+    guild_id = interaction.guild.id
+    vc = interaction.guild.voice_client
+
+    if not vc:
+        return
+
+    if loop_mode.get(guild_id) == "song":
+        vc.play(vc.source, after=lambda e: bot.loop.create_task(play_next(interaction)))
+        return
+
+    if not music_queue.get(guild_id):
+        if stay_connected.get(guild_id):
+            return
+        await vc.disconnect()
+        return
+
+    url, title = music_queue[guild_id].pop(0)
+
+    source = discord.PCMVolumeTransformer(
+        discord.FFmpegPCMAudio(url),
+        volume=volume_level.get(guild_id, 0.5)
+    )
+
+    vc.play(source, after=lambda e: bot.loop.create_task(play_next(interaction)))
+
+    embed = premium_embed(title, interaction.user)
+    view = MusicButtons(vc)
+
+    await interaction.channel.send(embed=embed, view=view)
+    
+@bot.tree.command(name="volume", description="Set volume (1–100)")
+async def volume(interaction: discord.Interaction, level: int):
+
+    if level < 1 or level > 100:
+        return await interaction.response.send_message("❌ Volume 1–100 ke beech rakho")
+
+    guild_id = interaction.guild.id
+    volume_level[guild_id] = level / 100
+
+    vc = interaction.guild.voice_client
+    if vc and vc.source:
+        vc.source.volume = level / 100
+
+    await interaction.response.send_message(f"🔊 Volume set to {level}%")
+
+@bot.tree.command(name="queue", description="Show music queue")
+async def queue(interaction: discord.Interaction):
+
+    q = music_queue.get(interaction.guild.id)
+
+    if not q:
+        return await interaction.response.send_message("🎵 Queue empty hai")
+
+    text = ""
+    for i, song in enumerate(q, start=1):
+        text += f"{i}. {song[1]}\n"
+
+    embed = discord.Embed(
+        title="🎶 Music Queue",
+        description=text,
+        color=0x8b5cf6
+    )
+
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="nowplaying")
+async def nowplaying(interaction: discord.Interaction):
+    vc = interaction.guild.voice_client
+
+    if not vc or not vc.is_playing():
+        return await interaction.response.send_message("❌ No song playing")
+
+    await interaction.response.send_message("🎶 Song currently playing")
+
+import requests
+
+@bot.tree.command(name="lyrics", description="Get song lyrics")
+async def lyrics(interaction: discord.Interaction, song: str):
+
+    await interaction.response.defer()
+
+    url = f"https://some-random-api.com/lyrics?title={song}"
+    data = requests.get(url).json()
+
+    if "lyrics" not in data:
+        return await interaction.followup.send("❌ Lyrics not found")
+
+    embed = discord.Embed(
+        title=f"🎤 Lyrics - {song}",
+        description=data["lyrics"][:4000],
+        color=0x8b5cf6
+    )
+
+    await interaction.followup.send(embed=embed)
+
+@bot.tree.command(name="seek", description="Seek song (seconds)")
+async def seek(interaction: discord.Interaction, seconds: int):
+
+    vc = interaction.guild.voice_client
+    if not vc:
+        return await interaction.response.send_message("❌ No music playing")
+
+    vc.stop()
+
+    source = discord.FFmpegPCMAudio(
+        vc.source.source,
+        before_options=f"-ss {seconds}"
+    )
+
+    vc.play(source)
+    await interaction.response.send_message(f"⏩ Skipped to {seconds}s")
+
+@bot.tree.command(name="loop", description="Loop current song or queue")
+@app_commands.describe(mode="song / queue / off")
+async def loop(interaction: discord.Interaction, mode: str):
+
+    gid = interaction.guild.id
+
+    if mode not in ["song", "queue", "off"]:
+        return await interaction.response.send_message("Use: song / queue / off")
+
+    loop_mode[gid] = mode
+    await interaction.response.send_message(f"🔁 Loop mode set to **{mode}**")
+
+@bot.tree.command(name="247", description="Keep bot always in VC")
+async def stay(interaction: discord.Interaction):
+
+    stay_connected[interaction.guild.id] = True
+    await interaction.response.send_message("✅ 24/7 Mode Enabled")
 
 @bot.tree.command(name="pause")
 async def pause(interaction: discord.Interaction):
