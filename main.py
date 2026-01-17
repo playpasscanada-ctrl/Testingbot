@@ -16855,9 +16855,29 @@ async def force_pay_salary(interaction: discord.Interaction):
     except Exception as e:
         await interaction.followup.send(f"❌ Gehra Error aa gaya: {e}")
 
-APPROVAL_CHANNEL_ID = 1440733604702584976 # Admin Channel ID
 
-# --- 🔄 USER'S SECOND CHANCE VIEW (Jab Owner Reject kare) ---
+# ==========================================
+# 🏢 ULTRA PREMIUM BUSINESS SELLING SYSTEM
+# =========================================
+
+APPROVAL_CHANNEL_ID = 1440733604702584976 
+
+
+# --- HELPER: Autocomplete for Selling ---
+async def sell_biz_autocomplete(interaction: discord.Interaction, current: str) -> List[discord.app_commands.Choice[str]]:
+    user_id = str(interaction.user.id)
+    data = supabase.table("economy").select("businesses").eq("user_id", user_id).execute().data
+    if not data or not data[0].get('businesses'): return []
+    
+    owned = data[0]['businesses']
+    choices = []
+    for biz_id in owned:
+        if biz_id in BUSINESSES and current.lower() in BUSINESSES[biz_id]['name'].lower():
+            choices.append(discord.app_commands.Choice(name=BUSINESSES[biz_id]['name'], value=biz_id))
+    return choices[:25]
+
+
+# --- 🔄 USER'S SECOND CHANCE VIEW (DM me dikhega) ---
 class RejectOfferOptions(discord.ui.View):
     def __init__(self, user_id, user_name, biz_id, biz_name, actual_price, biz_data):
         super().__init__(timeout=300) # 5 Minute timeout
@@ -16865,18 +16885,26 @@ class RejectOfferOptions(discord.ui.View):
         self.user_name = user_name
         self.biz_id = biz_id
         self.biz_name = biz_name
-        self.biz_data = biz_data # Business ka pura data (Stock, Level etc.)
+        self.biz_data = biz_data
         self.actual_price = actual_price
         self.offer_price = int(actual_price * 0.40) # 40% Amount
+
+        # 🛠️ FIX: Button label ko yahan update kiya hai (Dynamic Price)
+        # self.children[1] matlab dusra button (Sell wala)
+        self.children[1].label = f"🤝 SELL TO OWNER (${self.offer_price:,})"
 
     # OPTION 1: KEEP BUSINESS
     @discord.ui.button(label="✋ KEEP BUSINESS", style=discord.ButtonStyle.secondary)
     async def keep(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != self.user_id: return
         await interaction.response.edit_message(content=f"✅ **Saved:** {self.biz_name} aapke paas hi rahega.", embed=None, view=None)
 
     # OPTION 2: SELL TO OWNER (Transfer Logic)
-    @discord.ui.button(label=f"🤝 SELL TO OWNER (${self.offer_price:,})", style=discord.ButtonStyle.primary, emoji="👑")
+    # Label __init__ se update hoga
+    @discord.ui.button(label="Loading Offer...", style=discord.ButtonStyle.primary, emoji="👑")
     async def sell_to_owner(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != self.user_id: return
+
         await interaction.response.defer()
 
         # 1. Fetch User Data (Seller)
@@ -16888,7 +16916,7 @@ class RejectOfferOptions(discord.ui.View):
         
         # Security Check
         if self.biz_id not in seller_biz:
-            return await interaction.followup.send("❌ Glitch? Ye business ab aapke paas nahi hai.", ephemeral=True)
+            return await interaction.followup.send("❌ Error: Ye business ab aapke paas nahi hai.", ephemeral=True)
 
         # 2. Fetch Owner Data (Buyer)
         owner_res = supabase.table("economy").select("businesses").eq("user_id", str(OWNER_ID)).execute().data
@@ -16898,7 +16926,7 @@ class RejectOfferOptions(discord.ui.View):
         owner_biz = owner_res[0].get('businesses', {}) or {}
 
         # 3. ACTION: TRANSFER
-        # A. Remove from User & Add Money (System Pays)
+        # A. Remove from User & Add Money (System Pays 40%)
         del seller_biz[self.biz_id]
         new_seller_bal = seller_data['balance'] + self.offer_price
 
@@ -16919,7 +16947,7 @@ class RejectOfferOptions(discord.ui.View):
             }).eq("user_id", str(OWNER_ID)).execute()
 
             # 5. Success Message to User
-            embed = discord.Embed(title="🤝 DEAL COMPLETE", color=0x3498db) # Blue for Owner Deal
+            embed = discord.Embed(title="🤝 DEAL COMPLETE", color=0x3498db) # Blue
             embed.description = (
                 f"**{self.biz_name}** has been transferred to **Owner**.\n"
                 f"💰 **Payment Received:** `${self.offer_price:,}` (40%)\n"
@@ -16999,7 +17027,7 @@ class SellApprovalView(discord.ui.View):
         try:
             target_user = await bot.fetch_user(int(self.target_user_id))
             
-            dm_embed = discord.Embed(title="👑 EXCLUSIVE OWNER OFFER", color=0x9b59b6) # Purple for Royal
+            dm_embed = discord.Embed(title="👑 EXCLUSIVE OWNER OFFER", color=0x9b59b6) # Purple
             dm_embed.set_thumbnail(url=interaction.user.display_avatar.url)
             dm_embed.description = (
                 f"**Hey {self.target_user_name},**\n"
@@ -17009,13 +17037,13 @@ class SellApprovalView(discord.ui.View):
                 f"🔹 **Condition:** Paisa System dega, Owner free me lega."
             )
             
-            # Pass biz_data so we can transfer it later
+            # Create view and send
             view = RejectOfferOptions(self.target_user_id, self.target_user_name, self.biz_id, self.biz_name, self.actual_price, self.biz_data)
             await target_user.send(embed=dm_embed, view=view)
             
-            status_msg = "Offer sent to User."
+            status_msg = "Offer sent to User DM."
         except Exception as e:
-            status_msg = f"⚠️ DM Failed: {e}"
+            status_msg = f"⚠️ DM Failed (User ne DM band rakha hai)."
 
         # 2. Update Admin Panel
         embed = interaction.message.embeds[0]
@@ -17038,15 +17066,16 @@ async def sell_business_request(interaction: discord.Interaction, business_id: s
     if not data or business_id not in data[0]['businesses']:
         return await interaction.response.send_message("❌ Ye business tumhare paas nahi hai!", ephemeral=True)
 
-    if business_id not in BUSINESSES: return await interaction.response.send_message("Config Error.", ephemeral=True)
+    if business_id not in BUSINESSES: 
+        return await interaction.response.send_message("Config Error.", ephemeral=True)
 
     biz_name = BUSINESSES[business_id]['name']
     actual_price = BUSINESSES[business_id]['price']
-    biz_data = data[0]['businesses'][business_id] # Capture actual stats (Level, Stock)
+    biz_data = data[0]['businesses'][business_id] # Capture actual stats
     refund_90 = int(actual_price * 0.90)
 
     # Feedback
-    await interaction.response.send_message(f"⏳ **Request Sent:** Selling **{biz_name}**. Waiting for approval...", ephemeral=True)
+    await interaction.response.send_message(f"⏳ **Request Sent:** Selling **{biz_name}**. Wait for Owner's approval.", ephemeral=True)
 
     # Admin Panel Msg
     channel = bot.get_channel(APPROVAL_CHANNEL_ID)
@@ -17060,6 +17089,9 @@ async def sell_business_request(interaction: discord.Interaction, business_id: s
         
         view = SellApprovalView(user_id, user_name, business_id, biz_name, actual_price, biz_data)
         await channel.send(embed=embed, view=view)
+    else:
+        # Fallback agar channel ID galat ho
+        print("❌ Error: APPROVAL_CHANNEL_ID galat hai!")
 
         
 # ================== OPTIMIZED FLASK BACKEND ==================
