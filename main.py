@@ -1171,6 +1171,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
 intents.members = True
+intents.voice_states = True
 intents.presences = True # <--- YE LINE ADD KARNA ZAROORI HAI
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -1216,6 +1217,14 @@ def emb(title, desc, color=0x5865F2):
     e = discord.Embed(title=title, description=desc, color=color)
     e.timestamp = datetime.utcnow()
     return e
+
+# --- 1. SETUP HOOK (Commands Load karne ke liye) ---
+async def load_extensions():
+    try:
+        await bot.load_extension("music")
+        print("✅ Music Extension Loaded!")
+    except Exception as e:
+        print(f"❌ Error loading music extension: {e}")
  
 @bot.event
 async def on_ready():
@@ -1223,6 +1232,7 @@ async def on_ready():
     
     # 1. SERVER AUTH LOAD (Ye Naya Hai) 👇
     # Ye database se allowed servers ki list load karega
+    await load_extensions()
     await load_authorized_servers()
 
     # 2. SESSION CREATION (Aapka Purana Code)
