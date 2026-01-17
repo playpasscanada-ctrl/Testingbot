@@ -5025,13 +5025,13 @@ async def owner_cmd(i: discord.Interaction, action: app_commands.Choice[str], us
             await i.followup.send(embed=emb("❌ ERROR", f"List fetch nahi ho payi: `{e}`"))
 
 
-@bot.tree.command(name="stop", description="Enable / Disable global script execution")
+@bot.tree.command(name="stopp", description="Enable / Disable global script execution")
 @app_commands.choices(mode=[
     app_commands.Choice(name="Enable Stop (Block Scripts)", value="on"),
     app_commands.Choice(name="Disable Stop (Allow Scripts)", value="off"),
     app_commands.Choice(name="Status", value="status"),
 ])
-async def stop(i: discord.Interaction, mode: app_commands.Choice[str]):
+async def stopp(i: discord.Interaction, mode: app_commands.Choice[str]):
 
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION","Owner Only"))
