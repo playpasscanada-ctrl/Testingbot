@@ -16864,7 +16864,7 @@ APPROVAL_CHANNEL_ID = 1440733604702584976
 
 
 # --- HELPER: Autocomplete for Selling ---
-async def sell_biz_autocomplete(interaction: discord.Interaction, current: str) -> List[discord.app_commands.Choice[str]]:
+async def sell_biz_autocomplete(interaction: discord.Interaction, current: str):
     user_id = str(interaction.user.id)
     data = supabase.table("economy").select("businesses").eq("user_id", user_id).execute().data
     if not data or not data[0].get('businesses'): return []
