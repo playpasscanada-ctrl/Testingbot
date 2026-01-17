@@ -2428,11 +2428,10 @@ async def vip(i: discord.Interaction, mode: app_commands.Choice[str], user: disc
         print(f"VIP ERROR: {e}")
         await i.followup.send(f"❌ System Error: `{e}`")
 
-@bot.tree.command(name="play", description="Play a song")
+@bot.tree.command(name="play", description="Play song")
 @app_commands.autocomplete(song=song_autocomplete)
 async def play(interaction: discord.Interaction, song: str):
 
-    # ✅ THIS IS VERY IMPORTANT
     await interaction.response.defer(thinking=True)
 
     if not interaction.user.voice:
@@ -2442,27 +2441,31 @@ async def play(interaction: discord.Interaction, song: str):
     if not vc:
         vc = await interaction.user.voice.channel.connect()
 
+    ydl_opts = {
+        "format": "bestaudio",
+        "quiet": True,
+        "noplaylist": True
+    }
+
     try:
-        ydl_opts = {
-            "format": "bestaudio",
-            "quiet": True,
-            "noplaylist": True
-        }
-
+        # 🔹 First try YouTube
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(f"ytsearch:{song}", download=False)
-            url = info["entries"][0]["url"]
-            title = info["entries"][0]["title"]
+            info = ydl.extract_info(f"ytsearch1:{song}", download=False)
 
-        vc.play(discord.FFmpegPCMAudio(url))
+    except:
+        # 🔹 Fallback → SoundCloud (100% works)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f"scsearch1:{song}", download=False)
 
-        embed = premium_embed(title, interaction.user)
-        view = MusicButtons(vc)
+    url = info["entries"][0]["url"]
+    title = info["entries"][0]["title"]
 
-        await interaction.followup.send(embed=embed, view=view)
+    vc.play(discord.FFmpegPCMAudio(url))
 
-    except Exception as e:
-        await interaction.followup.send(f"❌ Error: {str(e)}")
+    embed = premium_embed(title, interaction.user)
+    view = MusicButtons(vc)
+
+    await interaction.followup.send(embed=embed, view=view)
     
 async def play_next(interaction):
     guild_id = interaction.guild.id
