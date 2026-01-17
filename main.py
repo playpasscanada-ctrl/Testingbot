@@ -17926,7 +17926,7 @@ def business_dashboard():
                 # 👑 OWNER VIP ACCESS: No Salary Cut
                 if str(user_id) != str(OWNER_ID):
                     income_rate = BUSINESSES.get(biz_id, {}).get('income_per_hr', 0)
-                    salary_cut = int((income_rate * 0.30) * hours_passed) 
+                    salary_cut = int((income_rate * 0.70) * hours_passed) 
                     
                     # 3. Deduct from User Balance directly
                     balance -= salary_cut
