@@ -16,6 +16,23 @@ from deep_translator import GoogleTranslator
 from concurrent.futures import ThreadPoolExecutor
 import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
 from business_config import BUSINESSES, MARKET_EVENTS, ILLEGAL_BIZ, MANAGER_PRICES
+import yt_dlp
+import random
+import time
+import datetime
+
+# --- SETTINGS ---
+FFMPEG_OPTIONS = {
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+    'options': '-vn'
+}
+YDL_OPTIONS = {
+    'format': 'bestaudio/best',
+    'noplaylist': True,
+    'quiet': True,
+    'default_search': 'ytsearch',
+    'source_address': '0.0.0.0'
+}
 
 active_web_matches = {}
 
@@ -1152,6 +1169,245 @@ async def check_loans():
     except Exception as e:
         print(f"Loop Error: {e}")
 
+# --- HELPER: Progress Bar ---
+def create_progress_bar(current_sec, total_sec, length=20):
+    if total_sec == 0: return "🔘▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+    percent = current_sec / total_sec
+    if percent > 1: percent = 1
+    filled = int(length * percent)
+    return "▬" * filled + "🔘" + "▬" * (length - filled)
+
+def format_time(seconds):
+    return str(datetime.timedelta(seconds=int(seconds)))
+
+# --- BUTTON VIEW (3 Hours Timeout) ---
+class MusicControlView(discord.ui.View):
+    def __init__(self, ctx, voice_client, bot_cog):
+        super().__init__(timeout=10800) # 3 Ghante ka Timeout
+        self.ctx = ctx
+        self.voice_client = voice_client
+        self.bot_cog = bot_cog
+
+    @discord.ui.button(label="Pause/Res", style=discord.ButtonStyle.primary, emoji="⏯️")
+    async def pause_resume(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer() # Anti-Crash
+        if self.voice_client.is_playing():
+            self.voice_client.pause()
+            self.bot_cog.pause_start_time = time.time()
+        elif self.voice_client.is_paused():
+            self.voice_client.resume()
+            if self.bot_cog.pause_start_time:
+                self.bot_cog.total_pause_duration += time.time() - self.bot_cog.pause_start_time
+                self.bot_cog.pause_start_time = None
+        # Embed update task will handle the UI change
+
+    @discord.ui.button(label="Skip", style=discord.ButtonStyle.secondary, emoji="⏭️")
+    async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        if self.voice_client.is_playing() or self.voice_client.is_paused():
+            self.voice_client.stop()
+            await interaction.followup.send("⏭️ **Skipped!**", ephemeral=True)
+
+    @discord.ui.button(label="Shuffle", style=discord.ButtonStyle.secondary, emoji="🔀")
+    async def shuffle(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        if len(self.bot_cog.queue) > 1:
+            random.shuffle(self.bot_cog.queue)
+            await interaction.followup.send("🔀 **Queue Shuffled!**", ephemeral=True)
+        else:
+            await interaction.followup.send("⚠️ Not enough songs to shuffle.", ephemeral=True)
+
+    @discord.ui.button(label="Loop", style=discord.ButtonStyle.secondary, emoji="🔁")
+    async def loop(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        self.bot_cog.loop = not self.bot_cog.loop
+        status = "Enabled" if self.bot_cog.loop else "Disabled"
+        button.style = discord.ButtonStyle.green if self.bot_cog.loop else discord.ButtonStyle.secondary
+        await interaction.edit_original_response(view=self)
+        await interaction.followup.send(f"🔁 Loop **{status}**", ephemeral=True)
+
+    @discord.ui.button(label="Stop", style=discord.ButtonStyle.danger, emoji="⏹️")
+    async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        self.bot_cog.queue = []
+        self.bot_cog.current_song = None
+        if self.voice_client: await self.voice_client.disconnect()
+        await interaction.followup.send("🛑 Stopped.", ephemeral=True)
+
+# --- MAIN MUSIC CLASS ---
+class MusicBot(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.queue = []
+        self.current_song = None
+        self.loop = False
+        self.song_start_time = None
+        self.pause_start_time = None
+        self.total_pause_duration = 0
+        self.now_playing_message = None
+        self.current_song_duration_sec = 0
+
+    @tasks.loop(seconds=7) # Updated time to avoid rate limits
+    async def update_message_task(self):
+        if not self.now_playing_message or not self.current_song: return
+        try:
+            if self.pause_start_time:
+                elapsed = self.pause_start_time - self.song_start_time - self.total_pause_duration
+            else:
+                elapsed = time.time() - self.song_start_time - self.total_pause_duration
+
+            bar = create_progress_bar(elapsed, self.current_song_duration_sec)
+            time_str = f"{format_time(elapsed)} / {format_time(self.current_song_duration_sec)}"
+            
+            embed = self.now_playing_message.embeds[0]
+            embed.description = f"### [{self.current_song['title']}]({self.current_song['url']})\n\n`{time_str}`\n{bar}"
+            
+            # Update footer based on Loop/Queue
+            status_text = f"Loop: {'ON' if self.loop else 'OFF'} | Queue: {len(self.queue)} songs"
+            embed.set_footer(text=f"Requested by {self.current_song['user'].display_name} • {status_text}")
+            
+            await self.now_playing_message.edit(embed=embed)
+        except:
+            self.update_message_task.cancel()
+
+    async def play_next(self, interaction):
+        if self.update_message_task.is_running(): self.update_message_task.cancel()
+
+        if self.loop and self.current_song: pass
+        elif len(self.queue) > 0: self.current_song = self.queue.pop(0)
+        else:
+            self.current_song = None
+            return
+
+        voice_client = interaction.guild.voice_client
+        try:
+            with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+                info = ydl.extract_info(self.current_song['url'], download=False)
+                play_url = info['url']
+
+            source = await discord.FFmpegOpusAudio.from_probe(play_url, **FFMPEG_OPTIONS)
+            
+            self.song_start_time = time.time()
+            self.pause_start_time = None
+            self.total_pause_duration = 0
+            self.current_song_duration_sec = self.current_song.get('duration_sec', 0)
+
+            voice_client.play(source, after=lambda e: self.bot.loop.create_task(self.check_queue(interaction)))
+            
+            # PREMIUM EMBED
+            embed = discord.Embed(
+                title="💿 Now Playing",
+                description=f"### [{self.current_song['title']}]({self.current_song['url']})\n\nLoading...",
+                color=discord.Color.purple()
+            )
+            embed.set_thumbnail(url=self.current_song.get('thumbnail'))
+            embed.add_field(name="👤 Requested By", value=self.current_song['user'].mention, inline=True)
+            embed.add_field(name="⏳ Duration", value=f"`{format_time(self.current_song_duration_sec)}`", inline=True)
+            
+            view = MusicControlView(interaction, voice_client, self)
+            self.now_playing_message = await interaction.channel.send(embed=embed, view=view)
+            self.update_message_task.start()
+            
+        except Exception as e:
+            print(f"Error: {e}")
+            await self.check_queue(interaction)
+
+    async def check_queue(self, interaction):
+        if len(self.queue) > 0 or self.loop: await self.play_next(interaction)
+
+    # --- ALL SLASH COMMANDS ---
+
+    @app_commands.command(name="play", description="🎵 Play a song (Name or Link)")
+    async def play(self, interaction: discord.Interaction, query: str):
+        await interaction.response.defer() # Anti-Crash
+        if not interaction.user.voice:
+            return await interaction.followup.send("❌ Join a Voice Channel first!", ephemeral=True)
+
+        if not interaction.guild.voice_client:
+            await interaction.user.voice.channel.connect()
+
+        voice_client = interaction.guild.voice_client
+        msg = await interaction.followup.send(f"🔎 **Searching:** `{query}`...", ephemeral=True)
+        
+        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+            try:
+                info = ydl.extract_info(query, download=False)
+                if 'entries' in info: info = info['entries'][0]
+                
+                song = {
+                    'url': info['webpage_url'], 'title': info['title'],
+                    'user': interaction.user, 'duration_sec': info.get('duration', 0),
+                    'thumbnail': info.get('thumbnail')
+                }
+                self.queue.append(song)
+                
+                embed = discord.Embed(title="✅ Added to Queue", description=f"[{info['title']}]({info['webpage_url']})", color=discord.Color.green())
+                await interaction.channel.send(embed=embed)
+                
+                if not voice_client.is_playing(): await self.play_next(interaction)
+            except Exception as e:
+                await interaction.followup.send("❌ Error finding song.")
+
+    @app_commands.command(name="stop", description="🛑 Stop music and disconnect")
+    async def stop_cmd(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        self.queue = []
+        if interaction.guild.voice_client:
+            await interaction.guild.voice_client.disconnect()
+            await interaction.followup.send("🛑 **Disconnected.**")
+        else: await interaction.followup.send("❌ Not connected.", ephemeral=True)
+
+    @app_commands.command(name="skip", description="⏭️ Skip current song")
+    async def skip_cmd(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        if interaction.guild.voice_client and interaction.guild.voice_client.is_playing():
+            interaction.guild.voice_client.stop()
+            await interaction.followup.send("⏭️ **Skipped!**")
+        else: await interaction.followup.send("❌ Nothing playing.", ephemeral=True)
+
+    @app_commands.command(name="pause", description="⏸️ Pause music")
+    async def pause_cmd(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        if interaction.guild.voice_client and interaction.guild.voice_client.is_playing():
+            interaction.guild.voice_client.pause()
+            self.pause_start_time = time.time()
+            await interaction.followup.send("⏸️ **Paused.**")
+        else: await interaction.followup.send("❌ Not playing.", ephemeral=True)
+
+    @app_commands.command(name="resume", description="▶️ Resume music")
+    async def resume_cmd(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        if interaction.guild.voice_client and interaction.guild.voice_client.is_paused():
+            interaction.guild.voice_client.resume()
+            if self.pause_start_time:
+                self.total_pause_duration += time.time() - self.pause_start_time
+                self.pause_start_time = None
+            await interaction.followup.send("▶️ **Resumed.**")
+        else: await interaction.followup.send("❌ Not paused.", ephemeral=True)
+
+    @app_commands.command(name="volume", description="🔊 Set volume (0-100)")
+    async def volume_cmd(self, interaction: discord.Interaction, amount: int):
+        await interaction.response.defer()
+        if interaction.guild.voice_client and interaction.guild.voice_client.source:
+            interaction.guild.voice_client.source.volume = amount / 100
+            await interaction.followup.send(f"🔊 Volume set to **{amount}%**")
+        else: await interaction.followup.send("❌ Nothing playing.", ephemeral=True)
+
+    @app_commands.command(name="shuffle", description="🔀 Shuffle the queue")
+    async def shuffle_cmd(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        if len(self.queue) > 1:
+            random.shuffle(self.queue)
+            await interaction.followup.send("🔀 **Queue Shuffled!**")
+        else: await interaction.followup.send("❌ Not enough songs.", ephemeral=True)
+
+    @app_commands.command(name="loop", description="🔁 Toggle loop for current song")
+    async def loop_cmd(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        self.loop = not self.loop
+        status = "Enabled" if self.loop else "Disabled"
+        await interaction.followup.send(f"🔁 Loop **{status}**")
+
 # ================== ENV ==================
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
@@ -1217,14 +1473,6 @@ def emb(title, desc, color=0x5865F2):
     e = discord.Embed(title=title, description=desc, color=color)
     e.timestamp = datetime.utcnow()
     return e
-
-# --- 1. SETUP HOOK (Commands Load karne ke liye) ---
-async def load_extensions():
-    try:
-        await bot.load_extension("music")
-        print("✅ Music Extension Loaded!")
-    except Exception as e:
-        print(f"❌ Error loading music extension: {e}")
  
 @bot.event
 async def on_ready():
@@ -1232,7 +1480,7 @@ async def on_ready():
     
     # 1. SERVER AUTH LOAD (Ye Naya Hai) 👇
     # Ye database se allowed servers ki list load karega
-    await load_extensions()
+    await bot.add_cog(MusicBot(bot))
     await load_authorized_servers()
 
     # 2. SESSION CREATION (Aapka Purana Code)
@@ -3677,296 +3925,7 @@ async def whois(i: discord.Interaction, user_id: str):
 
     except Exception as e:
         print(f"WHOIS ERROR: {e}")
-        await i.followup.send(f"❌ **System Error:** `{e}`")
-
-import discord
-from discord import app_commands
-from discord.ext import commands, tasks
-import yt_dlp
-import asyncio
-import random
-import time
-import datetime
-
-# --- YTDL और FFMPEG सेटिंग्स ---
-FFMPEG_OPTIONS = {
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn'
-}
-YDL_OPTIONS = {
-    'format': 'bestaudio/best',
-    'noplaylist': True,
-    'quiet': True,
-    'default_search': 'ytsearch',
-    'source_address': '0.0.0.0'
-}
-
-# --- प्रोग्रेस बार कैलकुलेटर ---
-def create_progress_bar(current_sec, total_sec, length=20):
-    if total_sec == 0:
-        return "🔘▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
-    
-    percent = current_sec / total_sec
-    if percent > 1: percent = 1
-    
-    filled_length = int(length * percent)
-    bar = "▬" * filled_length + "🔘" + "▬" * (length - filled_length)
-    return bar
-
-# --- समय को फॉर्मेट करने का फंक्शन (Seconds -> MM:SS) ---
-def format_time(seconds):
-    return str(datetime.timedelta(seconds=int(seconds)))
-
-# --- बटन वाला व्यू (Controls) ---
-class MusicControlView(discord.ui.View):
-    def __init__(self, ctx, voice_client, bot_cog):
-        super().__init__(timeout=None) 
-        self.ctx = ctx
-        self.voice_client = voice_client
-        self.bot_cog = bot_cog
-
-    @discord.ui.button(label="Pause", style=discord.ButtonStyle.primary, emoji="⏸️", custom_id="pause_btn")
-    async def pause_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        if self.voice_client.is_playing():
-            self.voice_client.pause()
-            # पॉज होने पर टाइमर रोकें
-            self.bot_cog.pause_start_time = time.time()
-            
-            button.label = "Resume"
-            button.emoji = "▶️"
-            button.style = discord.ButtonStyle.success
-            await interaction.edit_original_response(view=self)
-            
-        elif self.voice_client.is_paused():
-            self.voice_client.resume()
-            # रिज्यूम होने पर पॉज का टाइम घटाएं ताकि टाइमर सही चले
-            if self.bot_cog.pause_start_time:
-                self.bot_cog.total_pause_duration += time.time() - self.bot_cog.pause_start_time
-                self.bot_cog.pause_start_time = None
-            
-            button.label = "Pause"
-            button.emoji = "⏸️"
-            button.style = discord.ButtonStyle.primary
-            await interaction.edit_original_response(view=self)
-
-    @discord.ui.button(label="Skip", style=discord.ButtonStyle.secondary, emoji="⏭️", custom_id="skip_btn")
-    async def skip_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        if self.voice_client.is_playing() or self.voice_client.is_paused():
-            self.voice_client.stop()
-            # टास्क रोकें
-            if self.bot_cog.update_message_task.is_running():
-                self.bot_cog.update_message_task.cancel()
-            await interaction.followup.send("⏭️ **Skipped!**", ephemeral=True)
-
-    @discord.ui.button(label="Loop", style=discord.ButtonStyle.secondary, emoji="🔁", custom_id="loop_btn")
-    async def loop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        self.bot_cog.loop = not self.bot_cog.loop
-        if self.bot_cog.loop:
-            button.style = discord.ButtonStyle.green
-            await interaction.followup.send("🔁 **Loop Enabled!**", ephemeral=True)
-        else:
-            button.style = discord.ButtonStyle.secondary
-            await interaction.followup.send("➡️ **Loop Disabled.**", ephemeral=True)
-        await interaction.edit_original_response(view=self)
-
-    @discord.ui.button(label="Stop", style=discord.ButtonStyle.danger, emoji="⏹️", custom_id="stop_btn")
-    async def stop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        self.bot_cog.queue = []
-        if self.bot_cog.update_message_task.is_running():
-            self.bot_cog.update_message_task.cancel()
-        
-        if self.voice_client:
-            await self.voice_client.disconnect()
-        
-        await interaction.followup.send("🛑 **Stopped.**", ephemeral=True)
-
-# --- म्यूजिक बॉट का मुख्य क्लास (Cog) ---
-class MusicBot(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self.queue = []
-        self.current_song = None
-        self.loop = False
-        
-        # --- Time Tracking Variables ---
-        self.song_start_time = None
-        self.pause_start_time = None
-        self.total_pause_duration = 0
-        self.now_playing_message = None # मैसेज को स्टोर करने के लिए ताकि एडिट कर सकें
-        self.current_song_duration_sec = 0
-
-    # --- Background Task: Update Embed Every 6 Seconds ---
-    @tasks.loop(seconds=6)
-    async def update_message_task(self):
-        # अगर कोई गाना नहीं बज रहा या मैसेज नहीं है, तो कुछ मत करो
-        if not self.now_playing_message or not self.current_song:
-            return
-        
-        try:
-            # वर्तमान समय कैलकुलेट करें
-            if self.pause_start_time:
-                # अगर पॉज है, तो समय आगे नहीं बढ़ेगा
-                elapsed = self.pause_start_time - self.song_start_time - self.total_pause_duration
-            else:
-                elapsed = time.time() - self.song_start_time - self.total_pause_duration
-
-            # प्रोग्रेस बार और टाइम टेक्स्ट बनाएं
-            bar = create_progress_bar(elapsed, self.current_song_duration_sec)
-            time_str = f"{format_time(elapsed)} / {format_time(self.current_song_duration_sec)}"
-
-            # पुराना एम्बेड लें और अपडेट करें
-            embed = self.now_playing_message.embeds[0]
-            
-            # डिस्क्रिप्शन में बार अपडेट करें
-            # हम डिस्क्रिप्शन को रीसेट कर रहे हैं ताकि बार अपडेट हो
-            song_url = self.current_song['url']
-            song_title = self.current_song['title']
-            
-            embed.description = f"### [{song_title}]({song_url})\n\n`{time_str}`\n{bar}"
-            
-            # मैसेज एडिट करें
-            await self.now_playing_message.edit(embed=embed)
-        
-        except Exception as e:
-            print(f"Update Error: {e}")
-            # अगर मैसेज डिलीट हो गया तो टास्क रोक दो
-            self.update_message_task.cancel()
-
-    async def play_next(self, interaction):
-        # पिछले टास्क को रोकें अगर चल रहा हो
-        if self.update_message_task.is_running():
-            self.update_message_task.cancel()
-
-        if self.loop and self.current_song:
-            pass 
-        elif len(self.queue) > 0:
-            self.current_song = self.queue.pop(0)
-        else:
-            self.current_song = None
-            return
-
-        url = self.current_song['url']
-        title = self.current_song['title']
-        user = self.current_song['user']
-        # yt_dlp से duration (seconds) लाएं
-        duration_sec = self.current_song.get('duration_sec', 0) 
-        self.current_song_duration_sec = duration_sec # ग्लोबल वेरिएबल में सेव करें
-        thumbnail = self.current_song.get('thumbnail', None)
-
-        voice_client = interaction.guild.voice_client
-        
-        try:
-            with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-                info = ydl.extract_info(url, download=False)
-                play_url = info['url']
-
-            source = await discord.FFmpegOpusAudio.from_probe(play_url, **FFMPEG_OPTIONS)
-            
-            # --- टाइमर वेरिएबल्स रीसेट करें ---
-            self.song_start_time = time.time()
-            self.pause_start_time = None
-            self.total_pause_duration = 0
-            
-            voice_client.play(source, after=lambda e: self.bot.loop.create_task(self.check_queue(interaction)))
-            
-            # --- शुरुआती एम्बेड ---
-            time_display = f"00:00 / {format_time(duration_sec)}"
-            bar_display = create_progress_bar(0, duration_sec)
-
-            embed = discord.Embed(
-                title="💿 Now Playing",
-                description=f"### [{title}]({url})\n\n`{time_display}`\n{bar_display}",
-                color=discord.Color.from_rgb(255, 20, 147)
-            )
-            embed.add_field(name="👤 Requested By", value=user.mention, inline=True)
-            embed.set_thumbnail(url=thumbnail)
-            embed.set_footer(text="Updates live • Premium Music Bot")
-
-            view = MusicControlView(interaction, voice_client, self)
-            
-            # मैसेज भेजें और उसे वेरिएबल में स्टोर करें (अपडेट करने के लिए)
-            self.now_playing_message = await interaction.channel.send(embed=embed, view=view)
-
-            # --- टास्क चालू करें ---
-            self.update_message_task.start()
-
-        except Exception as e:
-            print(f"Error: {e}")
-            await interaction.channel.send(f"⚠️ Error playing song.")
-            await self.check_queue(interaction)
-
-    async def check_queue(self, interaction):
-        if self.update_message_task.is_running():
-            self.update_message_task.cancel()
-            
-        if len(self.queue) > 0 or self.loop:
-            await self.play_next(interaction)
-        else:
-            pass
-
-    # --- SLASH COMMAND: PLAY ---
-    @app_commands.command(name="play", description="🎵 Play a song with Live Progress Bar")
-    async def play(self, interaction: discord.Interaction, query: str):
-        await interaction.response.defer()
-
-        if not interaction.user.voice:
-            await interaction.followup.send("❌ Join a Voice Channel first!", ephemeral=True)
-            return
-
-        channel = interaction.user.voice.channel
-        voice_client = interaction.guild.voice_client
-
-        if not voice_client:
-            voice_client = await channel.connect()
-        
-        msg = await interaction.followup.send(f"🔎 **Searching:** `{query}`...", ephemeral=True)
-        
-        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-            try:
-                info = ydl.extract_info(query, download=False)
-                if 'entries' in info: info = info['entries'][0]
-                
-                # Duration Seconds में ज़रूरी है प्रोग्रेस बार के लिए
-                duration_sec = info.get('duration', 0)
-
-                song_info = {
-                    'url': info['webpage_url'], 
-                    'title': info['title'], 
-                    'user': interaction.user,
-                    'duration_sec': duration_sec, # Seconds save kar rahe hain
-                    'thumbnail': info.get('thumbnail', None)
-                }
-                self.queue.append(song_info)
-
-                embed = discord.Embed(title="✅ Added to Queue", description=f"[{info['title']}]({info['webpage_url']})", color=discord.Color.green())
-                await interaction.channel.send(embed=embed)
-
-                if not voice_client.is_playing():
-                    await self.play_next(interaction)
-
-            except Exception as e:
-                await interaction.channel.send("❌ Song not found.")
-                print(e)
-
-    # --- Other Commands (Volume/Stop Same as before) ---
-    @app_commands.command(name="stop", description="Stop and Clear")
-    async def stop(self, interaction: discord.Interaction):
-        if self.update_message_task.is_running():
-            self.update_message_task.cancel()
-        
-        if interaction.guild.voice_client:
-            await interaction.guild.voice_client.disconnect()
-            await interaction.response.send_message("🛑 Disconnected.")
-        else:
-            await interaction.response.send_message("❌ Not connected.", ephemeral=True)
-
-async def setup(bot):
-    await bot.add_cog(MusicBot(bot))
-
+        await i.followup.send(f"❌ **System Error:** `{e}`")        
         
 # ================== STATS COMMAND (FIXED: FAST & ASYNC) ==================
 
@@ -20379,23 +20338,6 @@ async def sync(ctx):
         await ctx.send(f"❌ Error: {e}")
         print(f"Sync error: {e}")
 
-@bot.command()
-async def reload(ctx):
-    try:
-        await bot.reload_extension("music")
-        await ctx.send("✅ Music Extension Reloaded!")
-    except Exception as e:
-        await ctx.send(f"❌ Error: {e}")
-
-# Is command ko main.py me kahi bhi daal do
-@bot.command()
-async def loadmusic(ctx):
-    try:
-        await bot.load_extension("music")
-        await ctx.send("✅ Music Loaded Successfully!")
-    except Exception as e:
-        await ctx.send(f"❌ ERROR: {e}")
-        
 # ==========================================
 # 🚀 FINAL STARTUP (File ka bilkul aakhri hissa)
 # ==========================================
