@@ -1413,31 +1413,30 @@ class MusicButtons(View):
 # ================== VERIFY + AUTO WHITELIST + LOGS ==================
 @bot.event
 async def on_message(msg):
-    # 1. Bot Khud ko reply na kare
     if msg.author.bot:
         return
 
     # 🔒 Admin bypass
-    if message.author.guild_permissions.administrator:
-        await bot.process_commands(message)
+    if msg.author.guild_permissions.administrator:
+        await bot.process_commands(msg)
         return
 
-    # 🎵 Music related commands
+    # 🎵 Music commands
     music_commands = [
         "/play", "/pause", "/resume",
         "/skip", "/stop", "/queue",
         "/volume", "/loop"
     ]
 
-    if any(message.content.lower().startswith(cmd) for cmd in music_commands):
+    if any(msg.content.lower().startswith(cmd) for cmd in music_commands):
         await asyncio.sleep(15)
         try:
-            await message.delete()
+            await msg.delete()
         except:
             pass
 
-    # ⚠️ IMPORTANT: commands ko process hone dena
-    await bot.process_commands(message)
+    # ⚠️ IMPORTANT
+    await bot.process_commands(msg)
 
         # ... (on_message ke andar baaki code ke neeche)
 
