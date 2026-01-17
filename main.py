@@ -2432,7 +2432,8 @@ async def vip(i: discord.Interaction, mode: app_commands.Choice[str], user: disc
 @app_commands.autocomplete(song=song_autocomplete)
 async def play(interaction: discord.Interaction, song: str):
 
-    await interaction.response.defer()
+    # ✅ THIS IS VERY IMPORTANT
+    await interaction.response.defer(thinking=True)
 
     if not interaction.user.voice:
         return await interaction.followup.send("❌ Voice channel join karo")
@@ -2441,18 +2442,27 @@ async def play(interaction: discord.Interaction, song: str):
     if not vc:
         vc = await interaction.user.voice.channel.connect()
 
-    ydl_opts = {"format": "bestaudio"}
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(f"ytsearch:{song}", download=False)
-        url = info["entries"][0]["url"]
-        title = info["entries"][0]["title"]
+    try:
+        ydl_opts = {
+            "format": "bestaudio",
+            "quiet": True,
+            "noplaylist": True
+        }
 
-    vc.play(discord.FFmpegPCMAudio(url))
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f"ytsearch:{song}", download=False)
+            url = info["entries"][0]["url"]
+            title = info["entries"][0]["title"]
 
-    embed = premium_embed(title, interaction.user)
-    view = MusicButtons(vc)
+        vc.play(discord.FFmpegPCMAudio(url))
 
-    await interaction.followup.send(embed=embed, view=view)
+        embed = premium_embed(title, interaction.user)
+        view = MusicButtons(vc)
+
+        await interaction.followup.send(embed=embed, view=view)
+
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {str(e)}")
     
 async def play_next(interaction):
     guild_id = interaction.guild.id
