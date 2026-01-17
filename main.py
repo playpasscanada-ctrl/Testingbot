@@ -16,14 +16,8 @@ from deep_translator import GoogleTranslator
 from concurrent.futures import ThreadPoolExecutor
 import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
 from business_config import BUSINESSES, MARKET_EVENTS, ILLEGAL_BIZ, MANAGER_PRICES
-import yt_dlp
-from discord.ui import View, Button
 
 active_web_matches = {}
-music_queue = {}
-volume_level = {}
-loop_mode = {}
-stay_connected = {}
 
 # --- HELPER: GET CURRENT MARKET EVENT ---
 def get_current_event():
@@ -1177,7 +1171,6 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
 intents.members = True
-intents.voice_states = True
 intents.presences = True # <--- YE LINE ADD KARNA ZAROORI HAI
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -1257,54 +1250,6 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Sync Error: {e}")
 
-# 🔥 YE LINE YAHI ADD KARO (LAST ME)
-    await bot.change_presence(
-        activity=discord.Activity(
-            type=discord.ActivityType.listening,
-            name="/play | Premium Music"
-        )
-    )
-    
-# =================task ===================
-
-async def song_autocomplete(
-    interaction: discord.Interaction,
-    current: str,
-):
-    if not current:
-        return []
-
-    ydl_opts = {"quiet": True}
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(
-            f"ytsearch5:{current}",
-            download=False
-        )
-
-    results = []
-    for entry in info["entries"][:5]:
-        results.append(
-            app_commands.Choice(
-                name=entry["title"][:100],
-                value=entry["title"]
-            )
-        )
-
-    return results
-
-@bot.event
-async def on_voice_state_update(member, before, after):
-    if member.id != bot.user.id:
-        return
-
-    if before.channel and not after.channel:
-        guild_id = member.guild.id
-        if stay_connected.get(guild_id):
-            await before.channel.connect()
-            
-# --- 📊 COMMAND TRACKING EVENT ---
-# Ise main.py me lagayein (Events section ke paas)
-
 @bot.event
 async def on_app_command_completion(interaction: discord.Interaction, command: discord.app_commands.Command):
     # Har command complete hone par +1 count karega
@@ -1362,86 +1307,14 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
     else:
         print(f"Error: {error}")
 
-def premium_embed(title, user):
-    embed = discord.Embed(
-        title="🎧 Now Playing",
-        description=f"**{title}**",
-        color=discord.Color.from_rgb(155, 89, 182)
-    )
 
-    embed.set_thumbnail(url="https://i.imgur.com/e1hLQ2G.gif")
-    embed.add_field(name="🔊 Quality", value="320kbps", inline=True)
-    embed.add_field(name="💎 Mode", value="Premium", inline=True)
-    embed.set_footer(text=f"Requested by {user}")
-
-    return embed
-    
-from discord.ui import View, Button
-
-class MusicButtons(View):
-    def __init__(self, vc):
-        super().__init__(timeout=900)
-        self.vc = vc
-
-    @discord.ui.button(label="⏸ Pause", style=discord.ButtonStyle.secondary)
-    async def pause(self, interaction, button):
-        self.vc.pause()
-        await interaction.response.defer()
-
-    @discord.ui.button(label="▶ Resume", style=discord.ButtonStyle.success)
-    async def resume(self, interaction, button):
-        self.vc.resume()
-        await interaction.response.defer()
-
-    @discord.ui.button(label="⏭ Skip", style=discord.ButtonStyle.primary)
-    async def skip(self, interaction, button):
-        self.vc.stop()
-        await interaction.response.defer()
-
-    @discord.ui.button(label="⏹ Stop", style=discord.ButtonStyle.danger)
-    async def stop(self, interaction, button):
-        await self.vc.disconnect()
-        await interaction.response.defer()
-
-    @discord.ui.button(label="❤️ Like", style=discord.ButtonStyle.success)
-    async def like(self, interaction, button):
-        await interaction.response.send_message(
-            "❤️ Added to favorites!",
-            ephemeral=True
-        )
 
 # ================== VERIFY + AUTO WHITELIST + LOGS ==================
 @bot.event
 async def on_message(msg):
     if msg.author.bot:
         return
-
-    # 🔒 Admin bypass
-    if msg.author.guild_permissions.administrator:
-        await bot.process_commands(msg)
-        return
-
-    # 🎵 Music commands
-    music_commands = [
-        "/play", "/pause", "/resume",
-        "/skip", "/stop", "/queue",
-        "/volume", "/loop"
-    ]
-
-    if any(msg.content.lower().startswith(cmd) for cmd in music_commands):
-        await asyncio.sleep(15)
-        try:
-            await msg.delete()
-        except:
-            pass
-
-    # ⚠️ IMPORTANT
-    await bot.process_commands(msg)
-
-        # ... (on_message ke andar baaki code ke neeche)
-
-    # 4. ❤️ I LOVE YOU AUTO-REPLY (Fixed Variable Name)
-    # Keywords List
+        
     love_triggers = r"\b(i love you|ily|luv u|love u|love you|pyar karta hu|mohabbat|ishq)\b"
 
     # ⚠️ NOTICE: Yahan 'message' ki jagah 'msg' use kiya hai
@@ -2426,196 +2299,6 @@ async def vip(i: discord.Interaction, mode: app_commands.Choice[str], user: disc
     except Exception as e:
         print(f"VIP ERROR: {e}")
         await i.followup.send(f"❌ System Error: `{e}`")
-
-@bot.tree.command(name="play", description="Play song")
-@app_commands.autocomplete(song=song_autocomplete)
-async def play(interaction: discord.Interaction, song: str):
-
-    await interaction.response.defer(thinking=True)
-
-    if not interaction.user.voice:
-        return await interaction.followup.send("❌ Voice channel join karo")
-
-    vc = interaction.guild.voice_client
-    if not vc:
-        vc = await interaction.user.voice.channel.connect()
-
-    ydl_opts = {
-        "format": "bestaudio",
-        "quiet": True,
-        "noplaylist": True
-    }
-
-    try:
-        # 🔹 First try YouTube
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(f"ytsearch1:{song}", download=False)
-
-    except:
-        # 🔹 Fallback → SoundCloud (100% works)
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(f"scsearch1:{song}", download=False)
-
-    url = info["entries"][0]["url"]
-    title = info["entries"][0]["title"]
-
-    vc.play(discord.FFmpegPCMAudio(url))
-
-    embed = premium_embed(title, interaction.user)
-    view = MusicButtons(vc)
-
-    await interaction.followup.send(embed=embed, view=view)
-    
-async def play_next(interaction):
-    guild_id = interaction.guild.id
-    vc = interaction.guild.voice_client
-
-    if not vc:
-        return
-
-    if loop_mode.get(guild_id) == "song":
-        vc.play(vc.source, after=lambda e: bot.loop.create_task(play_next(interaction)))
-        return
-
-    if not music_queue.get(guild_id):
-        if stay_connected.get(guild_id):
-            return
-        await vc.disconnect()
-        return
-
-    url, title = music_queue[guild_id].pop(0)
-
-    source = discord.PCMVolumeTransformer(
-        discord.FFmpegPCMAudio(url),
-        volume=volume_level.get(guild_id, 0.5)
-    )
-
-    vc.play(source, after=lambda e: bot.loop.create_task(play_next(interaction)))
-
-    embed = premium_embed(title, interaction.user)
-    view = MusicButtons(vc)
-
-    await interaction.channel.send(embed=embed, view=view)
-    
-@bot.tree.command(name="volume", description="Set volume (1–100)")
-async def volume(interaction: discord.Interaction, level: int):
-
-    if level < 1 or level > 100:
-        return await interaction.response.send_message("❌ Volume 1–100 ke beech rakho")
-
-    guild_id = interaction.guild.id
-    volume_level[guild_id] = level / 100
-
-    vc = interaction.guild.voice_client
-    if vc and vc.source:
-        vc.source.volume = level / 100
-
-    await interaction.response.send_message(f"🔊 Volume set to {level}%")
-
-@bot.tree.command(name="queue", description="Show music queue")
-async def queue(interaction: discord.Interaction):
-
-    q = music_queue.get(interaction.guild.id)
-
-    if not q:
-        return await interaction.response.send_message("🎵 Queue empty hai")
-
-    text = ""
-    for i, song in enumerate(q, start=1):
-        text += f"{i}. {song[1]}\n"
-
-    embed = discord.Embed(
-        title="🎶 Music Queue",
-        description=text,
-        color=0x8b5cf6
-    )
-
-    await interaction.response.send_message(embed=embed)
-
-@bot.tree.command(name="nowplaying")
-async def nowplaying(interaction: discord.Interaction):
-    vc = interaction.guild.voice_client
-
-    if not vc or not vc.is_playing():
-        return await interaction.response.send_message("❌ No song playing")
-
-    await interaction.response.send_message("🎶 Song currently playing")
-
-import requests
-
-@bot.tree.command(name="lyrics", description="Get song lyrics")
-async def lyrics(interaction: discord.Interaction, song: str):
-
-    await interaction.response.defer()
-
-    url = f"https://some-random-api.com/lyrics?title={song}"
-    data = requests.get(url).json()
-
-    if "lyrics" not in data:
-        return await interaction.followup.send("❌ Lyrics not found")
-
-    embed = discord.Embed(
-        title=f"🎤 Lyrics - {song}",
-        description=data["lyrics"][:4000],
-        color=0x8b5cf6
-    )
-
-    await interaction.followup.send(embed=embed)
-
-@bot.tree.command(name="seek", description="Seek song (seconds)")
-async def seek(interaction: discord.Interaction, seconds: int):
-
-    vc = interaction.guild.voice_client
-    if not vc:
-        return await interaction.response.send_message("❌ No music playing")
-
-    vc.stop()
-
-    source = discord.FFmpegPCMAudio(
-        vc.source.source,
-        before_options=f"-ss {seconds}"
-    )
-
-    vc.play(source)
-    await interaction.response.send_message(f"⏩ Skipped to {seconds}s")
-
-@bot.tree.command(name="loop", description="Loop current song or queue")
-@app_commands.describe(mode="song / queue / off")
-async def loop(interaction: discord.Interaction, mode: str):
-
-    gid = interaction.guild.id
-
-    if mode not in ["song", "queue", "off"]:
-        return await interaction.response.send_message("Use: song / queue / off")
-
-    loop_mode[gid] = mode
-    await interaction.response.send_message(f"🔁 Loop mode set to **{mode}**")
-
-@bot.tree.command(name="247", description="Keep bot always in VC")
-async def stay(interaction: discord.Interaction):
-
-    stay_connected[interaction.guild.id] = True
-    await interaction.response.send_message("✅ 24/7 Mode Enabled")
-
-@bot.tree.command(name="pause")
-async def pause(interaction: discord.Interaction):
-    interaction.guild.voice_client.pause()
-    await interaction.response.send_message("⏸ Paused")
-
-@bot.tree.command(name="resume")
-async def resume(interaction: discord.Interaction):
-    interaction.guild.voice_client.resume()
-    await interaction.response.send_message("▶ Resumed")
-
-@bot.tree.command(name="skip")
-async def skip(interaction: discord.Interaction):
-    interaction.guild.voice_client.stop()
-    await interaction.response.send_message("⏭ Skipped")
-
-@bot.tree.command(name="stop")
-async def stop(interaction: discord.Interaction):
-    await interaction.guild.voice_client.disconnect()
-    await interaction.response.send_message("⏹ Stopped")
 
 # ================== 🔥 ROAST SYSTEM ==================
 
@@ -17171,6 +16854,212 @@ async def force_pay_salary(interaction: discord.Interaction):
 
     except Exception as e:
         await interaction.followup.send(f"❌ Gehra Error aa gaya: {e}")
+
+APPROVAL_CHANNEL_ID = 1440733604702584976 # Admin Channel ID
+
+# --- 🔄 USER'S SECOND CHANCE VIEW (Jab Owner Reject kare) ---
+class RejectOfferOptions(discord.ui.View):
+    def __init__(self, user_id, user_name, biz_id, biz_name, actual_price, biz_data):
+        super().__init__(timeout=300) # 5 Minute timeout
+        self.user_id = str(user_id)
+        self.user_name = user_name
+        self.biz_id = biz_id
+        self.biz_name = biz_name
+        self.biz_data = biz_data # Business ka pura data (Stock, Level etc.)
+        self.actual_price = actual_price
+        self.offer_price = int(actual_price * 0.40) # 40% Amount
+
+    # OPTION 1: KEEP BUSINESS
+    @discord.ui.button(label="✋ KEEP BUSINESS", style=discord.ButtonStyle.secondary)
+    async def keep(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(content=f"✅ **Saved:** {self.biz_name} aapke paas hi rahega.", embed=None, view=None)
+
+    # OPTION 2: SELL TO OWNER (Transfer Logic)
+    @discord.ui.button(label=f"🤝 SELL TO OWNER (${self.offer_price:,})", style=discord.ButtonStyle.primary, emoji="👑")
+    async def sell_to_owner(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+
+        # 1. Fetch User Data (Seller)
+        seller_res = supabase.table("economy").select("*").eq("user_id", self.user_id).execute().data
+        if not seller_res: return
+
+        seller_data = seller_res[0]
+        seller_biz = seller_data.get('businesses', {})
+        
+        # Security Check
+        if self.biz_id not in seller_biz:
+            return await interaction.followup.send("❌ Glitch? Ye business ab aapke paas nahi hai.", ephemeral=True)
+
+        # 2. Fetch Owner Data (Buyer)
+        owner_res = supabase.table("economy").select("businesses").eq("user_id", str(OWNER_ID)).execute().data
+        if not owner_res:
+             return await interaction.followup.send("❌ Error: Owner ka database account nahi mila.", ephemeral=True)
+        
+        owner_biz = owner_res[0].get('businesses', {}) or {}
+
+        # 3. ACTION: TRANSFER
+        # A. Remove from User & Add Money (System Pays)
+        del seller_biz[self.biz_id]
+        new_seller_bal = seller_data['balance'] + self.offer_price
+
+        # B. Add to Owner (Transfer ownership)
+        owner_biz[self.biz_id] = self.biz_data # Pura stats transfer
+        
+        # 4. SAVE BOTH
+        try:
+            # Update Seller
+            supabase.table("economy").update({
+                "businesses": seller_biz,
+                "balance": new_seller_bal
+            }).eq("user_id", self.user_id).execute()
+
+            # Update Owner
+            supabase.table("economy").update({
+                "businesses": owner_biz
+            }).eq("user_id", str(OWNER_ID)).execute()
+
+            # 5. Success Message to User
+            embed = discord.Embed(title="🤝 DEAL COMPLETE", color=0x3498db) # Blue for Owner Deal
+            embed.description = (
+                f"**{self.biz_name}** has been transferred to **Owner**.\n"
+                f"💰 **Payment Received:** `${self.offer_price:,}` (40%)\n"
+                f"🏦 **Payer:** System Treasury"
+            )
+            await interaction.edit_original_response(embed=embed, view=None)
+
+            # 6. Notify Owner (Admin Channel)
+            channel = bot.get_channel(APPROVAL_CHANNEL_ID)
+            if channel:
+                log = discord.Embed(title="👑 BUSINESS ACQUIRED", color=0x3498db)
+                log.description = f"**{self.user_name}** accepted your offer.\n**{self.biz_name}** is now in your inventory."
+                await channel.send(embed=log)
+
+        except Exception as e:
+            await interaction.followup.send(f"❌ Database Error: {e}")
+
+
+# --- 🛡️ ADMIN APPROVAL VIEW (Owner Panel) ---
+class SellApprovalView(discord.ui.View):
+    def __init__(self, target_user_id, target_user_name, biz_id, biz_name, actual_price, biz_data):
+        super().__init__(timeout=None)
+        self.target_user_id = str(target_user_id)
+        self.target_user_name = target_user_name
+        self.biz_id = biz_id
+        self.biz_name = biz_name
+        self.actual_price = actual_price
+        self.biz_data = biz_data
+        self.refund_90 = int(actual_price * 0.90)
+
+    # ✅ APPROVE (System Buys @ 90%)
+    @discord.ui.button(label="APPROVE (System Buy 90%)", style=discord.ButtonStyle.green, emoji="✅")
+    async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != OWNER_ID:
+            return await interaction.response.send_message("❌ Tu Owner nahi hai!", ephemeral=True)
+
+        await interaction.response.defer()
+
+        # Fetch Data
+        data = supabase.table("economy").select("*").eq("user_id", self.target_user_id).execute().data
+        if not data: return await interaction.followup.send("User not found.")
+        
+        user_data = data[0]
+        owned = user_data.get('businesses', {})
+        
+        if self.biz_id not in owned:
+            return await interaction.edit_original_response(content="⚠️ Deal Failed: Business not found.", view=None)
+
+        # Action: Delete & Pay 90%
+        del owned[self.biz_id]
+        new_bal = user_data['balance'] + self.refund_90
+        
+        supabase.table("economy").update({"businesses": owned, "balance": new_bal}).eq("user_id", self.target_user_id).execute()
+
+        # Log Update
+        embed = interaction.message.embeds[0]
+        embed.color = 0x00FF00
+        embed.title = "✅ SOLD TO SYSTEM"
+        embed.set_footer(text=f"Approved by Owner. User got ${self.refund_90:,}")
+        await interaction.edit_original_response(embed=embed, view=None)
+        
+        # Notify User
+        try:
+            user = await bot.fetch_user(int(self.target_user_id))
+            await user.send(f"✅ **Approved:** System ne aapka {self.biz_name} khareed liya hai! (+${self.refund_90:,})")
+        except: pass
+
+    # ❌ REJECT (Offer to Buy for Self @ 40%)
+    @discord.ui.button(label="REJECT (Offer to Buy 40%)", style=discord.ButtonStyle.red, emoji="👑")
+    async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != OWNER_ID:
+            return await interaction.response.send_message("❌ Tu Owner nahi hai!", ephemeral=True)
+
+        await interaction.response.defer()
+
+        # 1. Send Offer to User DM
+        try:
+            target_user = await bot.fetch_user(int(self.target_user_id))
+            
+            dm_embed = discord.Embed(title="👑 EXCLUSIVE OWNER OFFER", color=0x9b59b6) # Purple for Royal
+            dm_embed.set_thumbnail(url=interaction.user.display_avatar.url)
+            dm_embed.description = (
+                f"**Hey {self.target_user_name},**\n"
+                f"Owner ne apki **System Sale (90%)** reject kar di hai.\n\n"
+                f"⚠️ **LEKIN** Owner yeh business khud lena chahte hain:\n"
+                f"🔹 **Offer Price:** `${int(self.actual_price * 0.40):,}` (40%)\n"
+                f"🔹 **Condition:** Paisa System dega, Owner free me lega."
+            )
+            
+            # Pass biz_data so we can transfer it later
+            view = RejectOfferOptions(self.target_user_id, self.target_user_name, self.biz_id, self.biz_name, self.actual_price, self.biz_data)
+            await target_user.send(embed=dm_embed, view=view)
+            
+            status_msg = "Offer sent to User."
+        except Exception as e:
+            status_msg = f"⚠️ DM Failed: {e}"
+
+        # 2. Update Admin Panel
+        embed = interaction.message.embeds[0]
+        embed.color = 0x9b59b6
+        embed.title = "👑 OFFER SENT TO USER"
+        embed.set_footer(text=status_msg)
+        
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+# --- 🛒 MAIN COMMAND ---
+@bot.tree.command(name="sell_business", description="🏢 Request to sell a business (Requires Approval)")
+@app_commands.autocomplete(business_id=sell_biz_autocomplete)
+async def sell_business_request(interaction: discord.Interaction, business_id: str):
+    user_id = str(interaction.user.id)
+    user_name = interaction.user.name
+    
+    # Check Data
+    data = supabase.table("economy").select("businesses").eq("user_id", user_id).execute().data
+    if not data or business_id not in data[0]['businesses']:
+        return await interaction.response.send_message("❌ Ye business tumhare paas nahi hai!", ephemeral=True)
+
+    if business_id not in BUSINESSES: return await interaction.response.send_message("Config Error.", ephemeral=True)
+
+    biz_name = BUSINESSES[business_id]['name']
+    actual_price = BUSINESSES[business_id]['price']
+    biz_data = data[0]['businesses'][business_id] # Capture actual stats (Level, Stock)
+    refund_90 = int(actual_price * 0.90)
+
+    # Feedback
+    await interaction.response.send_message(f"⏳ **Request Sent:** Selling **{biz_name}**. Waiting for approval...", ephemeral=True)
+
+    # Admin Panel Msg
+    channel = bot.get_channel(APPROVAL_CHANNEL_ID)
+    if channel:
+        embed = discord.Embed(title="🛡️ BUSINESS SALE REQUEST", color=0xFFA500)
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        embed.add_field(name="👤 Player", value=f"**{user_name}**\n(`{user_id}`)", inline=True)
+        embed.add_field(name="🏢 Business", value=f"**{biz_name}**", inline=True)
+        embed.add_field(name="💰 System Buy (90%)", value=f"`${refund_90:,}`", inline=False)
+        embed.set_footer(text="✅ = System Buys | 👑 = You Buy (40%)")
+        
+        view = SellApprovalView(user_id, user_name, business_id, biz_name, actual_price, biz_data)
+        await channel.send(embed=embed, view=view)
 
         
 # ================== OPTIMIZED FLASK BACKEND ==================
