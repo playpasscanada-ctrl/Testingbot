@@ -20379,6 +20379,13 @@ async def sync(ctx):
         await ctx.send(f"❌ Error: {e}")
         print(f"Sync error: {e}")
 
+@bot.command()
+async def reload(ctx):
+    try:
+        await bot.reload_extension("music")
+        await ctx.send("✅ Music Extension Reloaded!")
+    except Exception as e:
+        await ctx.send(f"❌ Error: {e}")
 
 # ==========================================
 # 🚀 FINAL STARTUP (File ka bilkul aakhri hissa)
