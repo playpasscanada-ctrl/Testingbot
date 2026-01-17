@@ -20387,6 +20387,15 @@ async def reload(ctx):
     except Exception as e:
         await ctx.send(f"❌ Error: {e}")
 
+# Is command ko main.py me kahi bhi daal do
+@bot.command()
+async def loadmusic(ctx):
+    try:
+        await bot.load_extension("music")
+        await ctx.send("✅ Music Loaded Successfully!")
+    except Exception as e:
+        await ctx.send(f"❌ ERROR: {e}")
+        
 # ==========================================
 # 🚀 FINAL STARTUP (File ka bilkul aakhri hissa)
 # ==========================================
