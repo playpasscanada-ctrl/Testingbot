@@ -20366,6 +20366,19 @@ async def check_lottery(i: discord.Interaction):
     if i.user.id != OWNER_ID: return await i.response.send_message("❌ Admin Only", ephemeral=True)
     await i.response.send_message("ℹ️ Website Lottery is Instant. No pending tickets.", ephemeral=True)
 
+@bot.command()
+@commands.is_owner() # Sirf aap hi ise use kar payenge
+async def sync(ctx):
+    try:
+        # Global commands ko is server (guild) ke liye copy karega
+        bot.tree.copy_global_to(guild=ctx.guild)
+        synced = await bot.tree.sync(guild=ctx.guild)
+        await ctx.send(f"✅ Synced {len(synced)} commands instantly for this server!")
+        print(f"Commands synced for: {ctx.guild.name}")
+    except Exception as e:
+        await ctx.send(f"❌ Error: {e}")
+        print(f"Sync error: {e}")
+
 
 # ==========================================
 # 🚀 FINAL STARTUP (File ka bilkul aakhri hissa)
