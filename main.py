@@ -18094,6 +18094,86 @@ def report_web_win():
     return jsonify({"status":"success", "msg": f"WINNER! ${prize:,} added."})
 
 # ==========================================
+# 🐎 HORSE RACING BACKEND (Premium)
+# ==========================================
+
+# 1. ROUTE
+@app.route('/games/horses')
+def horse_race():
+    if 'user_info' not in session: return redirect('/')
+    
+    # User Data Fetch
+    uid = session['user_info']['id']
+    try:
+        data = db.supabase.table("economy").select("*").eq("user_id", str(uid)).execute().data
+        balance = data[0]['balance']
+    except:
+        balance = 0
+        
+    return render_template('horse.html', user=session['user_info'], balance=balance)
+
+# 2. SOCKET EVENT (Race Logic)
+@socketio.on('start_horse_race')
+def handle_horse_race(data):
+    uid = session['user_info']['id']
+    bet_amount = int(data['amount'])
+    selected_horse = data['horse_name']
+    
+    # A. Balance Check
+    user_data = db.supabase.table("economy").select("balance").eq("user_id", str(uid)).execute().data
+    current_bal = user_data[0]['balance']
+    
+    if current_bal < bet_amount:
+        return socketio.emit('race_error', {'msg': 'Gareeb! Balance nahi hai.'}, to=request.sid)
+
+    # B. Deduct Money
+    new_bal = current_bal - bet_amount
+    db.supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(uid)).execute()
+    socketio.emit('balance_update', {'balance': new_bal}, to=request.sid)
+
+    # C. Race Logic (Server Decides Winner)
+    # Horse Names
+    horses = ['Saksham', 'Muskan', 'Zoro', 'Dev', 'Subhu', 'Chemical', 'Cutiee', 'Snackieee', 'Mayan', 'Haru']
+    
+    # Shuffle to get random ranking
+    import random
+    ranking = horses.copy()
+    random.shuffle(ranking) # List ko randomize kar diya
+    
+    # D. Calculate Winnings
+    win_amount = 0
+    multiplier = 0
+    rank = ranking.index(selected_horse) + 1 # Player ka ghoda kaunse number pe aya?
+
+    if rank == 1:
+        multiplier = 5.0
+        win_amount = int(bet_amount * 5)
+    elif rank == 2:
+        multiplier = 2.0
+        win_amount = int(bet_amount * 2)
+    elif rank == 3:
+        multiplier = 1.2
+        win_amount = int(bet_amount * 1.2)
+    
+    # E. Update Database (Agar Jeeta)
+    if win_amount > 0:
+        final_bal = new_bal + win_amount
+        db.supabase.table("economy").update({"balance": final_bal}).eq("user_id", str(uid)).execute()
+        # Note: Client ko balance race khatam hone ke baad update karenge animation ke liye
+    else:
+        final_bal = new_bal
+
+    # F. Send Results to Client (Animation ke liye)
+    socketio.emit('race_result', {
+        'ranking': ranking, # Full list (1st to 10th)
+        'winner': ranking[0],
+        'user_rank': rank,
+        'win_amount': win_amount,
+        'final_balance': final_bal,
+        'multiplier': multiplier
+    }, to=request.sid)
+
+# ==========================================
 # 🚀 ULTIMATE BUSINESS SYSTEM (UPDATED)
 # ==========================================
 @app.route('/business')
