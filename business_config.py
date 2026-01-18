@@ -136,82 +136,82 @@ BUSINESSES = {
         "supply_duration": 24
     },
     "quantum_comp": {
-        "name": "Quantum Supercomputer 🖥️", "price": 5000000000, 
+        "name": "Quantum Supercomputer 🖥️", "price": 500000000000, 
         "income_per_hr": 50000000, "max_stock": 500000000, "supply_cost": 5000000,
         "supply_duration": 24
     },
     "immortality_lab": {
-        "name": "Immortality Research 💉", "price": 7500000000, 
+        "name": "Immortality Research 💉", "price": 7500000000000, 
         "income_per_hr": 75000000, "max_stock": 750000000, "supply_cost": 7500000,
         "supply_duration": 24
     },
     "nanotech_swarm": {
-        "name": "Nanotech Grey Goo 🦠", "price": 10000000000, 
+        "name": "Nanotech Grey Goo 🦠", "price": 10000000000000, 
         "income_per_hr": 100000000, "max_stock": 1000000000, "supply_cost": 10000000,
         "supply_duration": 24
     },
     "orbital_laser": {
-        "name": "Orbital Death Laser 🛰️", "price": 15000000000, 
+        "name": "Orbital Death Laser 🛰️", "price": 15000000000000, 
         "income_per_hr": 150000000, "max_stock": 1500000000, "supply_cost": 15000000,
         "supply_duration": 24
     },
     "moon_base": {
-        "name": "Lunar Helium-3 Mine 🌕", "price": 20000000000, 
+        "name": "Lunar Helium-3 Mine 🌕", "price": 20000000000000, 
         "income_per_hr": 200000000, "max_stock": 2000000000, "supply_cost": 20000000,
         "supply_duration": 24
     },
     "dyson_prototype": {
-        "name": "Mini Dyson Sphere ☀️", "price": 30000000000, 
+        "name": "Mini Dyson Sphere ☀️", "price": 30000000000000, 
         "income_per_hr": 300000000, "max_stock": 3000000000, "supply_cost": 30000000,
         "supply_duration": 24
     },
     "portal_network": {
-        "name": "Interstellar Portals 🌀", "price": 50000000000, 
+        "name": "Interstellar Portals 🌀", "price": 5000000000000, 
         "income_per_hr": 500000000, "max_stock": 5000000000, "supply_cost": 50000000,
         "supply_duration": 24
     },
     "antimatter_plant": {
-        "name": "Antimatter Refinery 💥", "price": 75000000000, 
+        "name": "Antimatter Refinery 💥", "price": 75000000000000, 
         "income_per_hr": 750000000, "max_stock": 7500000000, "supply_cost": 75000000,
         "supply_duration": 24
     },
     "planet_terraform": {
-        "name": "Planet Terraformer 🌍", "price": 100000000000, 
+        "name": "Planet Terraformer 🌍", "price": 100000000000000, 
         "income_per_hr": 1000000000, "max_stock": 10000000000, "supply_cost": 100000000,
         "supply_duration": 24
     },
     "galactic_senate": {
-        "name": "Galactic Senate Seat 👑", "price": 250000000000, 
+        "name": "Galactic Senate Seat 👑", "price": 250000000000000, 
         "income_per_hr": 2500000000, "max_stock": 25000000000, "supply_cost": 250000000,
         "supply_duration": 24
     },
     "black_hole_gen": {
-        "name": "Black Hole Generator 🕳️", "price": 500000000000, 
+        "name": "Black Hole Generator 🕳️", "price": 500000000000000, 
         "income_per_hr": 5000000000, "max_stock": 50000000000, "supply_cost": 500000000,
         "supply_duration": 24
     },
     "matrix_sim": {
-        "name": "Reality Simulation (Matrix) 💾", "price": 750000000000, 
+        "name": "Reality Simulation (Matrix) 💾", "price": 750000000000000, 
         "income_per_hr": 7500000000, "max_stock": 75000000000, "supply_cost": 750000000,
         "supply_duration": 24
     },
     "star_forge": {
-        "name": "Star Forge Foundry 🔥", "price": 1000000000000, 
+        "name": "Star Forge Foundry 🔥", "price": 1000000000000000, 
         "income_per_hr": 10000000000, "max_stock": 100000000000, "supply_cost": 1000000000,
         "supply_duration": 24
     },
     "multiverse_trade": {
-        "name": "Multiverse Trade Route 🌌", "price": 2500000000000, 
+        "name": "Multiverse Trade Route 🌌", "price": 250000000000000000, 
         "income_per_hr": 25000000000, "max_stock": 250000000000, "supply_cost": 2500000000,
         "supply_duration": 24
     },
     "timeline_editor": {
-        "name": "Timeline Editor Authority ⏱️", "price": 5000000000000, 
+        "name": "Timeline Editor Authority ⏱️", "price": 500000000000000000, 
         "income_per_hr": 50000000000, "max_stock": 500000000000, "supply_cost": 5000000000,
         "supply_duration": 24
     },
     "void_bank": {
-        "name": "The Void Central Bank ♾️", "price": 10000000000000, 
+        "name": "The Void Central Bank ♾️", "price": 10000000000000000000, 
         "income_per_hr": 100000000000, "max_stock": 1000000000000, "supply_cost": 10000000000,
         "supply_duration": 24
     }
@@ -275,12 +275,12 @@ MANAGER_PRICES = {
     "antimatter_plant": 7500000000,
     "planet_terraform": 10000000000,
     "galactic_senate": 25000000000,
-    "black_hole_gen": 50000000000,
-    "matrix_sim": 75000000000,
-    "star_forge": 100000000000,
-    "multiverse_trade": 250000000000,
-    "timeline_editor": 500000000000,
-    "void_bank": 1000000000000,
+    "black_hole_gen": 50000000000000,
+    "matrix_sim": 75000000000000,
+    "star_forge": 100000000000000,
+    "multiverse_trade": 250000000000000,
+    "timeline_editor": 500000000000000,
+    "void_bank": 1000000000000000,
     
     "default": 100000000 # Fallback
 }
