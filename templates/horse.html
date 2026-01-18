@@ -3,419 +3,700 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Derby Racing Premium</title>
+    <title>Grand Derby Casino</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Roboto:wght@500;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Racing+Sans+One&family=Roboto:wght@500;900&display=swap" rel="stylesheet">
     
     <style>
-        /* --- 1. GLOBAL SETTINGS --- */
-        body { margin: 0; overflow: hidden; background: #000; font-family: 'Roboto', sans-serif; user-select: none; }
-        
-        /* --- 2. PORTRAIT WARNING (Mobile Lock) --- */
-        #rotate-warning {
+        /* =========================================
+           1. CORE & RESET
+           ========================================= */
+        :root {
+            --grass-color: #2d8f38;
+            --dirt-color: #deb887;
+            --sky-top: #1e90ff;
+            --sky-bottom: #87ceeb;
+            --track-border: #fff;
+        }
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow: hidden; /* Strict lock */
+            background: #000;
+            font-family: 'Roboto', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        /* =========================================
+           2. ORIENTATION LOCK (Mobile Fix)
+           ========================================= */
+        #rotate-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: #111; color: #ff4757; z-index: 9999;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            text-align: center;
+            background: #111; z-index: 9999;
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+            color: #ff4757; text-align: center;
         }
-        .rotate-icon { font-size: 4rem; animation: spin 2s infinite linear; margin-bottom: 20px; }
+        .phone-icon {
+            font-size: 4rem; margin-bottom: 20px;
+            animation: rotatePhone 2s infinite ease-in-out;
+        }
+        @keyframes rotatePhone { 
+            0% { transform: rotate(0deg); } 
+            50% { transform: rotate(90deg); } 
+            100% { transform: rotate(0deg); } 
+        }
         
-        /* Landscape Mode Check */
+        /* Force Landscape Check via CSS */
         @media screen and (orientation: portrait) {
-            #game-container { display: none !important; }
-            #rotate-warning { display: flex !important; }
+            #game-root { display: none !important; }
+            #rotate-overlay { display: flex !important; }
         }
 
-        /* --- 3. GAME CONTAINER --- */
-        #game-container {
-            width: 100vw; height: 100vh;
+        /* =========================================
+           3. GAME ENVIRONMENT (Parallax)
+           ========================================= */
+        #game-root {
+            width: 100%; height: 100%;
             display: flex; flex-direction: column;
-            background: #2c3e50;
-        }
-
-        /* --- 4. TOP HUD (Header) --- */
-        .hud {
-            height: 12%; background: linear-gradient(to bottom, #2c3e50, #1a252f);
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 0 30px; border-bottom: 2px solid #f1c40f;
-            color: white; z-index: 10;
-        }
-        .user-info { font-size: 1.2rem; font-weight: bold; font-family: 'Russo One', sans-serif; text-shadow: 2px 2px 0 #000; }
-        .balance-box { 
-            background: #16a085; padding: 5px 20px; border-radius: 50px; 
-            border: 2px solid #1abc9c; font-family: 'Russo One', sans-serif; font-size: 1.2rem;
-        }
-
-        /* --- 5. RACE TRACK (The Game) --- */
-        #race-world {
-            flex: 1; position: relative; overflow: hidden;
-            /* Sky Background */
-            background: linear-gradient(to bottom, #3498db 0%, #87ceeb 40%, #a3d9a5 40%, #2ecc71 100%);
-        }
-        
-        /* Decorative Background Elements */
-        .mountains {
-            position: absolute; top: 20%; left: 0; width: 200%; height: 20%;
-            background: url('https://i.imgur.com/G3t1h0s.png') repeat-x; /* Simple mountain silhouette */
-            background-size: contain; opacity: 0.5;
-            animation: scrollBg 60s linear infinite;
-        }
-        .clouds {
-            position: absolute; top: 5%; width: 200%; height: 100px;
-            background: url('https://i.imgur.com/Ang1S6s.png') repeat-x;
-            opacity: 0.8; animation: scrollBg 40s linear infinite;
-        }
-
-        /* The Track Lanes */
-        .track {
-            position: absolute; top: 40%; width: 100%; height: 60%;
-            display: flex; flex-direction: column;
-        }
-        .lane {
-            flex: 1; border-bottom: 1px solid rgba(255,255,255,0.3);
             position: relative;
+        }
+
+        /* SKY & BACKGROUND */
+        #skybox {
+            position: absolute; top: 0; left: 0; width: 100%; height: 45%;
+            background: linear-gradient(to bottom, var(--sky-top), var(--sky-bottom));
+            z-index: 0; overflow: hidden;
+        }
+        .cloud {
+            position: absolute; background: rgba(255,255,255,0.8);
+            border-radius: 50px; opacity: 0.9;
+        }
+        .mountain-layer {
+            position: absolute; bottom: 0; width: 200%; height: 60%;
+            background: url('https://i.imgur.com/G3t1h0s.png') repeat-x bottom;
+            background-size: contain;
+            opacity: 0.7;
+        }
+        /* FENCE */
+        .fence {
+            position: absolute; bottom: 0; width: 200%; height: 20px;
+            background: repeating-linear-gradient(90deg, #fff 0, #fff 10px, transparent 10px, transparent 40px);
+            border-top: 5px solid #fff; border-bottom: 5px solid #fff;
+            z-index: 2;
+        }
+
+        /* =========================================
+           4. THE TRACK
+           ========================================= */
+        #track-container {
+            position: absolute; top: 35%; left: 0; width: 100%; height: 50%;
+            background: #3e2723; /* Dirt base */
+            border-top: 5px solid #8d6e63;
+            border-bottom: 5px solid #8d6e63;
+            z-index: 5;
+            perspective: 1000px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* Lanes */
+        .lane {
+            position: relative; width: 100%; height: 10%; /* 10 horses = 10% each */
+            border-bottom: 1px solid rgba(255,255,255,0.2);
             display: flex; align-items: center;
         }
-        .lane:nth-child(even) { background: rgba(0,0,0,0.05); } /* Striped Grass */
+        .lane:nth-child(even) { background: rgba(255,255,255,0.03); }
         
-        .finish-line {
-            position: absolute; right: 5%; top: 0; height: 100%; width: 20px;
-            background-image: linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000), 
-                              linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000);
-            background-size: 20px 20px; background-position: 0 0, 10px 10px;
-            background-color: #fff; z-index: 5;
-            display: none; /* Hidden until end */
+        /* Finish Line */
+        #finish-line {
+            position: absolute; top: 0; right: -100px; /* Initially hidden */
+            width: 50px; height: 100%;
+            background-image: 
+                linear-gradient(45deg, #000 25%, transparent 25%), 
+                linear-gradient(-45deg, #000 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #000 75%), 
+                linear-gradient(-45deg, transparent 75%, #000 75%);
+            background-color: #fff;
+            background-size: 20px 20px;
+            z-index: 4;
+            display: none; 
+            box-shadow: -5px 0 10px rgba(0,0,0,0.3);
         }
 
-        /* THE HORSE */
-        .horse {
-            position: absolute; left: 10px; height: 80%; width: 60px;
-            transition: left 0.1s linear; /* Smooth movement */
+        /* =========================================
+           5. HORSES & ANIMATION
+           ========================================= */
+        .horse-wrapper {
+            position: absolute; left: 2%; bottom: 5px;
+            width: 80px; height: 50px;
+            transition: left 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smooth tweening */
             z-index: 10;
         }
-        .horse-body { font-size: 2rem; transform: scaleX(-1); /* Face right */ filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5)); }
-        .horse-tag { 
-            position: absolute; top: -15px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.7); color: white; padding: 2px 6px; 
-            border-radius: 4px; font-size: 0.6rem; white-space: nowrap;
+        
+        /* The Visual Horse */
+        .horse-sprite {
+            font-size: 2.5rem;
+            transform: scaleX(-1); /* Flip emoji to face right */
+            filter: drop-shadow(4px 4px 0px rgba(0,0,0,0.3));
+            animation: gallop 0.4s infinite alternate ease-in-out;
+            position: relative;
         }
-        .winner-glow { filter: drop-shadow(0 0 10px gold) !important; transform: scale(1.2); z-index: 20; }
+        
+        /* Name Tag */
+        .horse-tag {
+            position: absolute; top: -12px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: #fff;
+            padding: 2px 6px; border-radius: 4px;
+            font-size: 0.6rem; font-weight: bold;
+            white-space: nowrap; pointer-events: none;
+            border: 1px solid #f1c40f;
+        }
 
-        /* --- 6. BETTING CONTROLS (Bottom) --- */
-        .controls {
-            height: 25%; background: #222; border-top: 4px solid #f1c40f;
-            display: flex; align-items: center; justify-content: center; gap: 20px;
-            padding: 10px; z-index: 20;
+        /* Dust Particles Effect */
+        .dust {
+            position: absolute; bottom: 0; left: -10px;
+            width: 10px; height: 10px;
+            background: rgba(210, 180, 140, 0.6);
+            border-radius: 50%;
+            animation: dustAnim 0.5s infinite linear;
+            display: none; /* Only show when running */
+        }
+        .horse-wrapper.running .dust { display: block; }
+
+        @keyframes gallop {
+            0% { transform: scaleX(-1) translateY(0) rotate(0deg); }
+            100% { transform: scaleX(-1) translateY(-3px) rotate(2deg); }
+        }
+        @keyframes dustAnim {
+            0% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+            100% { transform: translate(-20px, -10px) scale(2); opacity: 0; }
+        }
+
+        /* Winner Effect */
+        .winner-spotlight {
+            filter: drop-shadow(0 0 15px gold) brightness(1.2);
+            z-index: 100 !important;
+            transform: scale(1.2);
+            transition: all 0.5s;
+        }
+
+        /* =========================================
+           6. UI LAYOUT (HUD & Controls)
+           ========================================= */
+        
+        /* Top HUD */
+        #hud {
+            height: 15%; width: 100%;
+            background: #1a1a1a;
+            border-bottom: 2px solid #f39c12;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 50;
         }
         
-        /* Custom Dropdown */
-        select {
-            background: #333; color: white; padding: 10px; border-radius: 8px;
-            border: 2px solid #555; font-size: 1rem; font-weight: bold; width: 150px;
+        /* Commentary Box */
+        #commentary-box {
+            flex: 1; margin: 0 20px;
+            background: #000; border: 1px solid #333;
+            color: #00ff00; font-family: 'Courier New', monospace;
+            font-size: 0.9rem; padding: 8px;
+            height: 40px; display: flex; align-items: center;
+            overflow: hidden; white-space: nowrap;
+            text-transform: uppercase;
+        }
+        .typewriter { border-right: 2px solid #00ff00; animation: blink 1s step-end infinite; }
+
+        /* Bottom Controls */
+        #controls {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 15%;
+            background: #111; border-top: 2px solid #333;
+            display: flex; align-items: center; justify-content: center; gap: 30px;
+            padding: 10px; z-index: 50;
+        }
+
+        /* Betting UI Elements */
+        .control-group { display: flex; flex-direction: column; align-items: center; }
+        .label { font-size: 0.7rem; color: #888; letter-spacing: 1px; margin-bottom: 4px; }
+        
+        .styled-select {
+            background: #222; color: #fff; padding: 8px 15px;
+            border: 1px solid #444; border-radius: 5px;
+            font-family: 'Roboto', sans-serif; font-weight: bold;
         }
         
-        /* Bet Amount Input */
-        .bet-box {
-            display: flex; background: #333; border-radius: 8px; border: 2px solid #555;
+        .bet-input-wrapper {
+            display: flex; background: #222; border: 1px solid #444; border-radius: 5px;
         }
-        .bet-btn {
-            width: 40px; background: #444; color: white; border: none; font-size: 1.2rem; cursor: pointer;
+        .qty-btn {
+            width: 40px; background: #333; color: #fff; border: none; font-size: 1.2rem; cursor: pointer;
         }
+        .qty-btn:hover { background: #444; }
         .bet-input {
-            width: 80px; background: transparent; border: none; color: #f1c40f; 
-            text-align: center; font-size: 1.2rem; font-weight: bold; outline: none;
+            width: 100px; background: transparent; border: none; color: #f1c40f;
+            text-align: center; font-weight: bold; font-size: 1.1rem;
         }
 
-        /* START BUTTON */
-        .start-btn {
-            background: linear-gradient(to bottom, #e74c3c, #c0392b);
-            color: white; padding: 10px 40px; border-radius: 50px;
-            font-family: 'Russo One', sans-serif; font-size: 1.5rem;
-            border: none; box-shadow: 0 5px 0 #96281b; cursor: pointer;
-            transition: transform 0.1s;
+        /* BIG BUTTON */
+        #race-btn {
+            height: 50px; padding: 0 40px;
+            background: linear-gradient(180deg, #e74c3c, #c0392b);
+            color: white; font-family: 'Racing Sans One', cursive;
+            font-size: 1.5rem; border: none; border-radius: 5px;
+            box-shadow: 0 4px 0 #7f2a1f; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 1px;
+            transition: all 0.1s;
         }
-        .start-btn:active { transform: translateY(4px); box-shadow: none; }
-        .start-btn:disabled { background: #555; box-shadow: none; cursor: not-allowed; }
+        #race-btn:active { transform: translateY(4px); box-shadow: none; }
+        #race-btn:disabled { background: #444; color: #777; box-shadow: none; cursor: not-allowed; }
 
-        /* WIN MODAL */
-        #result-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 100;
-            display: none; align-items: center; justify-content: center; flex-direction: column;
+        /* =========================================
+           7. RESULTS MODAL
+           ========================================= */
+        #modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 100;
+            display: none; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
         }
-        .result-box {
-            background: linear-gradient(135deg, #f1c40f, #f39c12);
-            padding: 20px 50px; border-radius: 20px; border: 4px solid white;
-            text-align: center; box-shadow: 0 0 50px rgba(241, 196, 15, 0.5);
-            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        .modal-card {
+            background: #fff; padding: 5px; border-radius: 15px;
+            width: 400px; text-align: center;
+            animation: zoomIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
         }
-        .res-title { font-size: 3rem; font-weight: 900; color: #fff; text-shadow: 2px 2px 0 #000; }
-        .res-amount { font-size: 2rem; color: #2c3e50; font-weight: bold; margin-top: 10px; }
+        .modal-inner {
+            background: #000; border-radius: 10px; padding: 30px; color: #fff;
+            border: 2px solid #f1c40f;
+        }
+        .win-title { font-family: 'Anton', sans-serif; font-size: 3rem; text-transform: uppercase; margin: 0; }
+        .win-amt { font-size: 2.5rem; color: #2ecc71; font-weight: bold; margin: 10px 0; }
+        .close-btn {
+            margin-top: 20px; padding: 10px 30px;
+            background: #f1c40f; color: #000; font-weight: bold;
+            border: none; border-radius: 50px; cursor: pointer;
+        }
 
-        @keyframes spin { 100% { transform: rotate(90deg); } }
-        @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
-        @keyframes scrollBg { from { background-position: 0 0; } to { background-position: -1000px 0; } }
+        @keyframes zoomIn { from {transform: scale(0);} to {transform: scale(1);} }
+        @keyframes blink { 50% { border-color: transparent; } }
 
     </style>
 </head>
 <body>
 
-    <div id="rotate-warning">
-        <div class="rotate-icon">📱</div>
-        <h2 class="text-2xl font-bold">ROTATE YOUR DEVICE</h2>
-        <p>This game requires LANDSCAPE mode.</p>
+    <div id="rotate-overlay">
+        <div class="phone-icon">📱</div>
+        <h1 class="text-3xl font-bold mb-2">PLEASE ROTATE</h1>
+        <p class="text-gray-400">This Premium Casino game requires <br>LANDSCAPE MODE for the best experience.</p>
     </div>
 
-    <div id="game-container">
+    <div id="game-root">
         
-        <div class="hud">
-            <div class="user-info">
-                <span class="text-gray-400 text-sm block">PLAYER</span>
-                {{ user.username }} <span class="text-xs opacity-50">#{{ user.id }}</span>
+        <div id="hud">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-xl">👤</div>
+                <div>
+                    <div class="text-xs text-gray-400">PLAYER</div>
+                    <div class="font-bold text-white">{{ user.username }}</div>
+                </div>
             </div>
-            <div class="balance-box">
-                💰 $<span id="bal">{{ balance }}</span>
+
+            <div id="commentary-box">
+                <span id="comm-text" class="typewriter">WELCOME TO THE GRAND DERBY! PLACE YOUR BETS.</span>
+            </div>
+
+            <div class="bg-green-700 px-4 py-2 rounded border border-green-500 shadow-lg">
+                <span class="text-xs text-green-200 block">BALANCE</span>
+                <span class="text-xl font-bold text-white">$<span id="bal">{{ balance }}</span></span>
             </div>
         </div>
 
-        <div id="race-world">
-            <div class="clouds"></div>
-            <div class="mountains"></div>
+        <div class="relative flex-1 overflow-hidden bg-blue-400">
+            <div id="skybox">
+                </div>
             
-            <div class="track" id="track-lanes">
-                <div class="finish-line" id="finish-line"></div>
+            <div class="mountain-layer" id="bg-mountains"></div>
+            <div class="fence" id="bg-fence"></div>
+
+            <div id="track-container">
+                <div id="finish-line"></div>
                 </div>
         </div>
 
-        <div class="controls">
+        <div id="controls">
             
-            <div class="flex flex-col">
-                <label class="text-xs text-gray-400 mb-1">SELECT HORSE</label>
-                <select id="horse-select">
+            <div class="control-group">
+                <span class="label">CHAMPION</span>
+                <select id="horse-select" class="styled-select">
                     </select>
             </div>
 
-            <div class="flex flex-col">
-                <label class="text-xs text-gray-400 mb-1">BET AMOUNT</label>
-                <div class="bet-box">
-                    <button class="bet-btn" onclick="adjBet(-100)">-</button>
-                    <input type="number" id="bet-amt" class="bet-input" value="100" readonly>
-                    <button class="bet-btn" onclick="adjBet(100)">+</button>
+            <div class="control-group">
+                <span class="label">WAGER (MIN $1000)</span>
+                <div class="bet-input-wrapper">
+                    <button class="qty-btn" onclick="adjBet(-1000)">-</button>
+                    <input type="number" id="bet-amt" class="bet-input" value="1000" readonly>
+                    <button class="qty-btn" onclick="adjBet(1000)">+</button>
                 </div>
             </div>
 
-            <div class="text-xs text-gray-400 text-center leading-tight">
-                <div class="text-yellow-400 font-bold">1st: 5.0x</div>
-                <div class="text-gray-300">2nd: 2.0x</div>
-                <div class="text-gray-500">3rd: 1.2x</div>
+            <div class="text-center opacity-60 text-xs mx-4">
+                <div class="text-yellow-400">WIN: 5x</div>
+                <div>PLACE: 2x</div>
+                <div>SHOW: 1.2x</div>
             </div>
 
-            <button class="start-btn" id="start-btn" onclick="placeBet()">RACE!</button>
+            <button id="race-btn" onclick="startRace()">START RACE</button>
         </div>
 
-        <div id="result-overlay" onclick="closeResult()">
-            <div class="result-box">
-                <div class="res-title" id="res-title">YOU WON!</div>
-                <div class="res-amount" id="res-msg">+$500</div>
-                <div class="text-sm mt-4 text-black opacity-60">Tap to continue</div>
+    </div>
+
+    <div id="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-inner">
+                <h1 class="win-title" id="res-title">YOU WON!</h1>
+                <p class="text-gray-400">TOTAL PAYOUT</p>
+                <div class="win-amt" id="res-amt">$50,000</div>
+                <div id="res-desc" class="text-sm text-gray-300 mb-4">Rank #1 - Multiplier 5.0x</div>
+                <button class="close-btn" onclick="resetGame()">CONTINUE</button>
             </div>
         </div>
-
     </div>
 
     <script>
         const socket = io();
         
-        // --- CONFIG ---
-        const horseNames = ['Saksham', 'Muskan', 'Zoro', 'Dev', 'Subhu', 'Chemical', 'Cutiee', 'Snackieee', 'Mayan', 'Haru'];
-        // Funny emojis for each or random
-        const emojis = ['🐎', '🦄', '🦓', '🐂', '🐕', '🐆', '🐅', '🦌', '🐫', '🦒'];
-        
-        let isRacing = false;
-        let finalRanking = []; 
-        let winnerName = "";
-        
-        // --- INIT ---
-        const track = document.getElementById('track-lanes');
-        const select = document.getElementById('horse-select');
-        
-        // Create Lanes & Dropdown
-        horseNames.forEach((name, i) => {
-            // 1. Dropdown Option
-            let opt = document.createElement('option');
-            opt.value = name;
-            opt.innerText = `${emojis[i]} ${name}`;
-            select.appendChild(opt);
+        // --- CONFIGURATION ---
+        const config = {
+            raceDuration: 60, // Seconds (Requested 1 min)
+            updateRate: 50,   // ms update speed
+            trackLength: 100, // Percentage
+            minBet: 1000
+        };
 
-            // 2. Track Lane
+        const horses = [
+            { name: 'Saksham', icon: '🐎', color: '#e74c3c' },
+            { name: 'Muskan', icon: '🦄', color: '#8e44ad' },
+            { name: 'Zoro', icon: '🦓', color: '#f1c40f' },
+            { name: 'Dev', icon: '🐆', color: '#e67e22' },
+            { name: 'Subhu', icon: '🐅', color: '#d35400' },
+            { name: 'Chemical', icon: '🧪', color: '#2ecc71' },
+            { name: 'Cutiee', icon: '🐇', color: '#ff7979' },
+            { name: 'Snackieee', icon: '🍟', color: '#f39c12' },
+            { name: 'Mayan', icon: '🐃', color: '#34495e' },
+            { name: 'Haru', icon: '🐕', color: '#95a5a6' }
+        ];
+
+        // --- STATE ---
+        let isRunning = false;
+        let positions = new Array(10).fill(0); // 0 to 100
+        let speeds = new Array(10).fill(0);
+        let raceInterval = null;
+        let serverResult = null; // Stores backend data
+        let timeElapsed = 0;
+
+        // --- INITIALIZATION ---
+        const trackContainer = document.getElementById('track-container');
+        const horseSelect = document.getElementById('horse-select');
+        const commBox = document.getElementById('comm-text');
+
+        // Generate Lanes & Options
+        horses.forEach((h, i) => {
+            // Dropdown
+            let opt = document.createElement('option');
+            opt.value = h.name;
+            opt.innerText = `${h.icon} ${h.name}`;
+            horseSelect.appendChild(opt);
+
+            // Lane
             let lane = document.createElement('div');
             lane.className = 'lane';
-            lane.id = `lane-${name}`;
-            
-            // Horse Element
-            let horse = document.createElement('div');
-            horse.className = 'horse';
-            horse.id = `horse-${name}`;
-            horse.innerHTML = `
-                <div class="horse-tag">${name}</div>
-                <div class="horse-body">${emojis[i]}</div>
+            lane.innerHTML = `
+                <div class="horse-wrapper" id="horse-${i}">
+                    <div class="horse-tag" style="border-color:${h.color}">${h.name}</div>
+                    <div class="horse-sprite">${h.icon}</div>
+                    <div class="dust"></div>
+                </div>
             `;
-            
-            lane.appendChild(horse);
-            track.appendChild(lane);
+            trackContainer.appendChild(lane);
         });
 
-        // --- BET LOGIC ---
+        // --- BACKGROUND CLOUDS ---
+        const sky = document.getElementById('skybox');
+        for(let i=0; i<5; i++) {
+            let c = document.createElement('div');
+            c.className = 'cloud';
+            c.style.width = Math.random()*100 + 50 + 'px';
+            c.style.height = Math.random()*30 + 20 + 'px';
+            c.style.top = Math.random()*40 + '%';
+            c.style.left = Math.random()*100 + '%';
+            sky.appendChild(c);
+        }
+
+        // --- BETTING LOGIC ---
         function adjBet(val) {
-            if(isRacing) return;
+            if(isRunning) return;
             let el = document.getElementById('bet-amt');
             let v = parseInt(el.value) + val;
-            if(v >= 100) el.value = v;
+            if(v >= config.minBet) el.value = v;
         }
 
-        function placeBet() {
-            if(isRacing) return;
-            const amt = document.getElementById('bet-amt').value;
+        function startRace() {
+            if(isRunning) return;
+            const amt = parseInt(document.getElementById('bet-amt').value);
             const horse = document.getElementById('horse-select').value;
             
+            if(amt < config.minBet) {
+                alert(`Minimum bet is $${config.minBet}`);
+                return;
+            }
+
+            // Lock UI
+            document.getElementById('race-btn').disabled = true;
+            document.getElementById('race-btn').innerText = "RACE STARTED...";
+            isRunning = true;
+            
+            // Start Background Scroll (CSS Animation trigger via JS logic)
+            animateBackgrounds(true);
+            
+            // Send to Server
             socket.emit('start_horse_race', { amount: amt, horse_name: horse });
             
-            // UI Lock
-            document.getElementById('start-btn').disabled = true;
-            document.getElementById('start-btn').innerText = "RACING...";
+            // Start Local Animation Loop (Waiting for server data)
+            timeElapsed = 0;
+            updateCommentary("AND THEY'RE OFF! 🚦");
+            
+            // Initialize positions slightly staggered
+            positions = positions.map(() => Math.random() * 5); 
         }
 
-        // --- SOCKET EVENTS ---
+        // --- ANIMATION ENGINE ---
+        function animateBackgrounds(active) {
+            const mt = document.getElementById('bg-mountains');
+            const fc = document.getElementById('bg-fence');
+            
+            if(active) {
+                // We use JS to scroll backgroundPosition to control speed dynamically
+                // For simplicity in this version, we assume constant fast speed
+                mt.style.animation = "bgScroll 60s linear infinite"; 
+                fc.style.animation = "bgScroll 5s linear infinite"; // Fast fence
+            } else {
+                mt.style.animation = "none";
+                fc.style.animation = "none";
+            }
+        }
+        
+        // Add CSS rule for scrolling dynamically
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            @keyframes bgScroll { from { background-position: 0 0; } to { background-position: -2000px 0; } }
+        `;
+        document.head.appendChild(styleSheet);
+
+
+        // --- SOCKET HANDLERS ---
         socket.on('balance_update', d => {
             document.getElementById('bal').innerText = d.balance;
         });
 
         socket.on('race_error', d => {
             alert(d.msg);
-            document.getElementById('start-btn').disabled = false;
-            document.getElementById('start-btn').innerText = "RACE!";
+            resetGame();
         });
 
         socket.on('race_result', data => {
-            // Server has decided the outcome. Now we ANIMATE it.
-            isRacing = true;
-            finalRanking = data.ranking;
-            winnerName = data.winner;
-            
-            startAnimation(data);
+            serverResult = data;
+            // Now we know who wins, but we must play the drama for 60 seconds!
+            startRaceLoop();
         });
 
-        // --- ANIMATION ENGINE (The Magic) ---
-        function startAnimation(serverData) {
-            const finishLine = document.getElementById('finish-line');
-            const horses = {}; 
-            
-            // Reset Positions
-            horseNames.forEach(name => {
-                let el = document.getElementById(`horse-${name}`);
-                el.style.left = '10px';
-                el.classList.remove('winner-glow');
-                horses[name] = { el: el, pos: 0, speed: 0, finished: false };
-            });
-
-            finishLine.style.display = 'none';
-            finishLine.style.right = '-50px'; // Reset line off screen
-
-            // Phase 1: The Race (Scroll Effect)
-            // Horses wiggle in the middle of screen while background moves
-            // Actually in CSS background moves. We just jitter horses x-pos.
-            
-            let progress = 0;
-            const raceDuration = 300; // Frames (approx 5 sec)
+        // --- THE 60 SECOND DRAMA LOOP ---
+        function startRaceLoop() {
+            const totalFrames = (config.raceDuration * 1000) / config.updateRate; // approx 1200 frames
             let frame = 0;
-
-            function loop() {
+            
+            raceInterval = setInterval(() => {
                 frame++;
+                timeElapsed += config.updateRate;
                 
-                // --- PHASE 1: RUNNING (0 to 80% progress) ---
-                if (frame < raceDuration * 0.8) {
-                    horseNames.forEach(name => {
-                        // Random jitter
-                        let bump = (Math.random() - 0.5) * 2; 
-                        let currentLeft = parseFloat(horses[name].el.style.left || 10);
-                        
-                        // Keep them somewhat clustered between 10% and 50% of screen
-                        let newPos = currentLeft + bump;
-                        if(newPos < 10) newPos = 10;
-                        if(newPos > 50) newPos = 50; // Don't go too far forward yet
-                        
-                        horses[name].el.style.left = newPos + '%';
-                    });
+                // Logic based on Time Phase
+                // Phase 1: 0-50s (The Grind - Kada Mukabla)
+                // Phase 2: 50-60s (The Finish - Sorting positions)
+
+                const progressPct = frame / totalFrames; // 0.0 to 1.0
+
+                if (progressPct < 0.85) {
+                    // --- CHAOS PHASE (Random Overtaking) ---
+                    simulateChaos();
+                } else {
+                    // --- ALIGNMENT PHASE (Move Winner to front) ---
+                    convergeToResult(progressPct);
                 }
-                
-                // --- PHASE 2: FINISH SPRINT (80% to 100%) ---
-                else if (frame < raceDuration) {
-                    // Show Finish Line
-                    finishLine.style.display = 'block';
-                    finishLine.style.right = '10%'; // Move line into view
-                    
-                    horseNames.forEach(name => {
-                        // Get Target Rank
-                        let rank = finalRanking.indexOf(name); // 0 is winner
-                        
-                        // Calculate target position based on rank
-                        // Winner goes past line (90%+), Losers stay behind
-                        // Map Rank 0->95%, Rank 9->60%
-                        let target = 95 - (rank * 3); 
-                        
-                        let currentLeft = parseFloat(horses[name].el.style.left);
-                        let move = (target - currentLeft) * 0.05; // Ease out
-                        
-                        horses[name].el.style.left = (currentLeft + move) + '%';
-                    });
+
+                // Render Horses
+                renderHorses(progressPct);
+
+                // Commentary updates
+                if (frame % 100 === 0) generateCommentary();
+
+                // Finish Check
+                if (progressPct >= 1) {
+                    finishRace();
                 }
-                
-                // --- END ---
-                else {
-                    clearInterval(interval);
-                    showResult(serverData);
-                    return;
-                }
-            }
-            
-            let interval = setInterval(loop, 16); // 60 FPS
+
+            }, config.updateRate);
         }
 
-        function showResult(data) {
-            isRacing = false;
-            document.getElementById('start-btn').disabled = false;
-            document.getElementById('start-btn').innerText = "RACE!";
-            
-            // Highlight Winner
-            let winEl = document.getElementById(`horse-${data.winner}`);
-            winEl.classList.add('winner-glow');
-
-            // Show Modal
-            const overlay = document.getElementById('result-overlay');
-            const title = document.getElementById('res-title');
-            const msg = document.getElementById('res-msg');
-            const box = document.querySelector('.result-box');
-
-            overlay.style.display = 'flex';
-            
-            if (data.win_amount > 0) {
-                // WON
-                box.style.background = 'linear-gradient(135deg, #f1c40f, #f39c12)';
-                title.innerText = `YOU WON!`;
-                msg.innerText = `+${data.win_amount} (Rank #${data.user_rank})`;
-                // Update balance on UI
-                document.getElementById('bal').innerText = data.final_balance; 
-            } else {
-                // LOST
-                box.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
-                title.innerText = `YOU LOST`;
-                msg.innerText = `${data.winner} won the race.`;
+        function simulateChaos() {
+            // Random speed adjustments to make them overtake each other
+            for(let i=0; i<10; i++) {
+                // Random speed fluctuation
+                let flux = (Math.random() - 0.5) * 1.5;
+                speeds[i] += flux;
+                
+                // Cap speeds
+                if(speeds[i] > 2) speeds[i] = 2;
+                if(speeds[i] < -1) speeds[i] = -1;
+                
+                // Update pos (relative to camera center ~40%)
+                positions[i] += speeds[i];
+                
+                // Clamp within screen bounds during race (10% to 80%)
+                if(positions[i] < 5) { positions[i] = 5; speeds[i] += 0.5; }
+                if(positions[i] > 70) { positions[i] = 70; speeds[i] -= 0.5; }
             }
         }
 
-        function closeResult() {
-            document.getElementById('result-overlay').style.display = 'none';
+        function convergeToResult(progress) {
+            // Show Finish Line Logic
+            const finishLine = document.getElementById('finish-line');
+            if(finishLine.style.display !== 'block') {
+                finishLine.style.display = 'block';
+                updateCommentary("HERE COMES THE FINISH LINE! 🏁");
+            }
+            
+            // Move Finish line closer
+            // Logic: Line moves from Right (100%) to Left
+            // We simulate line movement by simply moving horses past a point
+            
+            // Sort logic: Get server rank for each horse
+            for(let i=0; i<10; i++) {
+                let horseName = horses[i].name;
+                let rank = serverResult.ranking.indexOf(horseName); // 0 is winner
+                
+                // Target position: Winner gets 90%, Last gets 40%
+                let target = 90 - (rank * 4);
+                
+                // Lerp towards target
+                let diff = target - positions[i];
+                positions[i] += diff * 0.05; // Ease in
+            }
+        }
+
+        function renderHorses(progress) {
+            for(let i=0; i<10; i++) {
+                const el = document.getElementById(`horse-${i}`);
+                el.style.left = positions[i] + '%';
+                
+                // Add running class for dust
+                if(!el.classList.contains('running')) el.classList.add('running');
+                
+                // Dynamic Z-Index (lower horses in front visually)
+                // Not strictly needed in 2D side scroll but good practice
+            }
+            
+            // Scroll Finish Line
+            if(progress > 0.85) {
+                const fl = document.getElementById('finish-line');
+                // Map progress 0.85->1.0 to Screen Right->Left
+                // Just keep it simple, horses move right, line is static or relative
+                // In this logic, horses are moving Right towards fixed percentage
+            }
+        }
+
+        function generateCommentary() {
+            // Find leader
+            let maxPos = -1;
+            let leaderIdx = 0;
+            for(let i=0; i<10; i++) {
+                if(positions[i] > maxPos) { maxPos = positions[i]; leaderIdx = i; }
+            }
+            
+            const phrases = [
+                `${horses[leaderIdx].name} IS LEADING THE PACK!`,
+                `WHAT A PERFORMANCE BY ${horses[leaderIdx].name}!`,
+                `IT'S A TIGHT RACE FOLKS!`,
+                `${horses[Math.floor(Math.random()*10)].name} IS MAKING A MOVE!`,
+                `LOOK AT THEM GO!`,
+                `SPEEDING UP DOWN THE STRETCH!`
+            ];
+            updateCommentary(phrases[Math.floor(Math.random() * phrases.length)]);
+        }
+
+        function updateCommentary(text) {
+            const box = document.getElementById('comm-text');
+            box.innerText = text;
+            box.classList.remove('typewriter');
+            void box.offsetWidth; // trigger reflow
+            box.classList.add('typewriter');
+        }
+
+        function finishRace() {
+            clearInterval(raceInterval);
+            isRunning = false;
+            animateBackgrounds(false);
+            updateCommentary(`WINNER: ${serverResult.winner.toUpperCase()}! 🏆`);
+            
+            // Find winner index
+            const winIdx = horses.findIndex(h => h.name === serverResult.winner);
+            const winEl = document.getElementById(`horse-${winIdx}`).querySelector('.horse-sprite');
+            winEl.classList.add('winner-spotlight');
+
+            // Show Modal after small delay
+            setTimeout(() => {
+                const modal = document.getElementById('modal-overlay');
+                const title = document.getElementById('res-title');
+                const amt = document.getElementById('res-amt');
+                const desc = document.getElementById('res-desc');
+                
+                modal.style.display = 'flex';
+                
+                if(serverResult.win_amount > 0) {
+                    title.innerText = "YOU WON!";
+                    title.style.color = "#2ecc71";
+                    amt.innerText = `+$${serverResult.win_amount.toLocaleString()}`;
+                    desc.innerText = `Horse: ${serverResult.winner} | Rank: #${serverResult.user_rank}`;
+                    // Update Balance
+                    document.getElementById('bal').innerText = serverResult.final_balance;
+                } else {
+                    title.innerText = "YOU LOST";
+                    title.style.color = "#e74c3c";
+                    amt.innerText = "$0";
+                    amt.style.color = "#ccc";
+                    desc.innerText = `Winner was ${serverResult.winner}`;
+                }
+            }, 1500);
+        }
+
+        function resetGame() {
+            document.getElementById('modal-overlay').style.display = 'none';
+            document.getElementById('race-btn').disabled = false;
+            document.getElementById('race-btn').innerText = "START RACE";
+            isRunning = false;
+            
+            // Reset Horses
+            positions.fill(0);
+            for(let i=0; i<10; i++) {
+                const el = document.getElementById(`horse-${i}`);
+                el.style.left = '2%';
+                el.classList.remove('running');
+                el.querySelector('.horse-sprite').classList.remove('winner-spotlight');
+            }
+            document.getElementById('finish-line').style.display = 'none';
+            updateCommentary("PLACE YOUR BETS FOR THE NEXT RACE.");
         }
 
     </script>
