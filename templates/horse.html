@@ -15,18 +15,17 @@
         :root {
             --grass-light: #5ba326;
             --grass-dark: #4a8a1e;
-            --dirt-track: #8d6e63;
             --sky-top: #00b4db;
             --sky-bot: #0083b0;
-            --ui-dark: #0f0f0f;
             --gold: #ffcc00;
             --neon-green: #39ff14;
+            --danger: #ff4757;
         }
 
         body, html {
             margin: 0; padding: 0;
             width: 100%; height: 100%;
-            overflow: hidden; /* No Body Scroll */
+            overflow: hidden;
             background: #000;
             font-family: 'Oswald', sans-serif;
             user-select: none;
@@ -41,10 +40,10 @@
             background: #050505; z-index: 10000;
             display: none; flex-direction: column;
             align-items: center; justify-content: center;
-            color: #ff4757; text-align: center;
+            color: var(--danger); text-align: center;
         }
         .rotate-svg {
-            width: 80px; height: 80px; fill: #ff4757;
+            width: 80px; height: 80px; fill: var(--danger);
             animation: rotateDevice 2s infinite ease-in-out;
             margin-bottom: 20px;
         }
@@ -53,7 +52,6 @@
             50% { transform: rotate(90deg); }
         }
 
-        /* CSS Media Query to Detect Portrait */
         @media screen and (orientation: portrait) {
             #main-interface { display: none !important; }
             #orientation-lock { display: flex !important; }
@@ -68,14 +66,15 @@
             background: #222; overflow: hidden;
         }
 
-        /* --- TOP HUD (Fixed) --- */
+        /* --- TOP HUD --- */
         #top-hud {
             height: 10vh; min-height: 50px;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.9);
             border-bottom: 2px solid var(--gold);
             display: flex; justify-content: space-between; align-items: center;
             padding: 0 2vw; z-index: 50;
             box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            flex-shrink: 0; /* Prevent shrinking */
         }
 
         .user-pill {
@@ -96,7 +95,7 @@
             border-bottom: 1px solid #333;
             display: flex; align-items: center;
             overflow: hidden; white-space: nowrap;
-            z-index: 40;
+            z-index: 40; flex-shrink: 0;
         }
         #scrolling-text {
             color: var(--gold); font-family: 'Chakra Petch', monospace;
@@ -110,15 +109,16 @@
         }
 
         /* =========================================
-           4. GAME WORLD (Middle)
+           4. GAME VIEWPORT (Expandable)
            ========================================= */
         #viewport {
-            flex: 1; /* Fills remaining space */
+            flex: 1; /* This makes it fill available space */
             position: relative; overflow: hidden;
             background: linear-gradient(180deg, var(--sky-top), var(--sky-bot));
+            transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smooth Expand */
         }
 
-        /* --- SCENERY (CSS Art Mountains - No Images) --- */
+        /* Scenery */
         .mountain-bg {
             position: absolute; bottom: 40%; left: 0; width: 100%; height: 50%;
             z-index: 1; pointer-events: none;
@@ -144,130 +144,90 @@
         }
         @keyframes moveClouds { from { left: 100%; } to { left: -200px; } }
 
-        /* Grandstand / Crowd Blur */
+        /* Crowd */
         .crowd-layer {
             position: absolute; bottom: 45%; left: 0; width: 100%; height: 10%;
-            background: 
-                repeating-linear-gradient(90deg, 
-                    #e74c3c 0, #e74c3c 2px, 
-                    #fff 2px, #fff 4px,
-                    #3498db 4px, #3498db 6px
-                );
+            background: repeating-linear-gradient(90deg, #e74c3c 0, #e74c3c 2px, #fff 2px, #fff 4px, #3498db 4px, #3498db 6px);
             opacity: 0.6; z-index: 2;
         }
 
         /* --- TURF TRACK --- */
         #track-surface {
-            position: absolute; bottom: 0; width: 100%; height: 55%; /* Fixed height for track */
-            background: repeating-linear-gradient(
-                0deg,
-                var(--grass-dark) 0%,
-                var(--grass-dark) 9.5%,
-                var(--grass-light) 10%
-            );
+            position: absolute; bottom: 0; width: 100%; height: 55%;
+            background: repeating-linear-gradient(0deg, var(--grass-dark) 0%, var(--grass-dark) 9.5%, var(--grass-light) 10%);
             border-top: 4px solid #fff;
             perspective: 1000px; z-index: 5;
-            padding-top: 2%; /* FIX: Space for top horse name */
-            padding-bottom: 2%;
+            padding: 2% 0;
         }
 
-        /* Finish Line Banner (New) */
+        /* Finish Line */
         #finish-gate {
-            position: absolute; top: 0; right: -200px; /* Hidden */
-            height: 100%; width: 50px;
-            background-image: 
-                linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000),
-                linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000);
-            background-size: 20px 20px;
-            background-color: #fff;
-            z-index: 20;
-            border-left: 4px solid #f1c40f;
-            display: none;
+            position: absolute; top: 0; right: -200px; height: 100%; width: 50px;
+            background-image: linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000), linear-gradient(45deg, #000 25%, transparent 25%, transparent 75%, #000 75%, #000);
+            background-size: 20px 20px; background-color: #fff;
+            z-index: 20; border-left: 4px solid #f1c40f; display: none;
         }
-        .gate-post {
-            position: absolute; top: -20%; right: -5px; width: 8px; height: 140%;
-            background: #c0392b; z-index: 21;
-        }
+        .gate-post { position: absolute; top: -20%; right: -5px; width: 8px; height: 140%; background: #c0392b; z-index: 21; }
 
         /* =========================================
-           5. RACERS (Horses)
+           5. RACERS
            ========================================= */
         .racer-container {
-            position: absolute; left: 2%; 
-            /* Top will be set by JS loop */
-            width: 80px; height: 8%; /* Dynamic height relative to track */
-            z-index: 10;
-            transition: left 0.1s linear; /* Fast updates */
+            position: absolute; left: 2%; width: 80px; height: 8%;
+            z-index: 10; transition: left 0.1s linear;
         }
-
         .horse-visual {
-            font-size: 5vh; /* Responsive font size */
-            transform: scaleX(-1); /* Face right */
-            filter: drop-shadow(3px 3px 2px rgba(0,0,0,0.5));
-            animation: gallop 0.4s infinite alternate ease-in-out;
-            line-height: 1;
+            font-size: 5vh; transform: scaleX(-1); filter: drop-shadow(3px 3px 2px rgba(0,0,0,0.5));
+            animation: gallop 0.4s infinite alternate ease-in-out; line-height: 1;
         }
-        
         .name-tag {
             position: absolute; top: -1.5vh; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.8); color: #fff;
-            padding: 1px 6px; border-radius: 4px;
-            font-size: 1.5vh; font-family: 'Chakra Petch', sans-serif;
+            background: rgba(0,0,0,0.8); color: #fff; padding: 1px 6px;
+            border-radius: 4px; font-size: 1.5vh; font-family: 'Chakra Petch', sans-serif;
             border: 1px solid var(--gold); white-space: nowrap;
         }
-
-        @keyframes gallop {
-            0% { transform: scaleX(-1) translateY(0); }
-            100% { transform: scaleX(-1) translateY(-10%); }
-        }
+        @keyframes gallop { 0% { transform: scaleX(-1) translateY(0); } 100% { transform: scaleX(-1) translateY(-10%); } }
 
         /* =========================================
-           6. CONTROL PANEL (Bottom - Hides on Start)
+           6. CONTROL PANEL (Collapsible)
            ========================================= */
         #betting-dock {
             height: 20vh; width: 100%;
             background: #111; border-top: 3px solid #333;
             display: flex; align-items: center; justify-content: center;
-            gap: 3vw; padding: 10px;
-            z-index: 100;
-            transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            gap: 3vw; padding: 10px; z-index: 100;
+            overflow: hidden;
+            transition: all 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            flex-shrink: 0;
         }
 
-        /* Class to hide menu */
-        .dock-hidden { transform: translateY(120%); }
+        /* Class to collapse menu */
+        .dock-collapsed {
+            height: 0 !important;
+            padding: 0 !important;
+            border-top: none !important;
+            opacity: 0;
+        }
 
         .ctl-group { display: flex; flex-direction: column; align-items: center; }
         .ctl-label { color: #888; font-size: 1.5vh; letter-spacing: 1px; margin-bottom: 5px; }
 
-        /* Fancy Inputs */
         select {
             background: #222; color: #fff; padding: 1vh 2vw; border: 1px solid #555;
             font-family: 'Oswald', sans-serif; font-size: 2vh; border-radius: 5px; outline: none;
         }
-
         .wager-box { display: flex; background: #000; border-radius: 5px; border: 1px solid #444; }
-        .adj-btn {
-            background: #333; color: #fff; border: none; width: 40px; font-size: 2vh; cursor: pointer;
-        }
-        .adj-btn:active { background: #555; }
-        #wager-display {
-            background: transparent; border: none; color: var(--gold); width: 100px;
-            text-align: center; font-size: 2.5vh; font-weight: bold;
-        }
+        .adj-btn { background: #333; color: #fff; border: none; width: 40px; font-size: 2vh; cursor: pointer; }
+        #wager-display { background: transparent; border: none; color: var(--gold); width: 100px; text-align: center; font-size: 2.5vh; font-weight: bold; }
 
         #start-btn {
-            height: 8vh; padding: 0 4vw;
-            background: linear-gradient(180deg, #e74c3c, #c0392b);
-            color: #fff; border: none; border-radius: 5px;
-            font-family: 'Black Ops One', cursive; font-size: 3vh;
-            letter-spacing: 2px; cursor: pointer;
-            box-shadow: 0 5px 0 #7f2a1f;
+            height: 8vh; padding: 0 4vw; background: linear-gradient(180deg, #e74c3c, #c0392b);
+            color: #fff; border: none; border-radius: 5px; font-family: 'Black Ops One', cursive;
+            font-size: 3vh; letter-spacing: 2px; cursor: pointer; box-shadow: 0 5px 0 #7f2a1f;
         }
-        #start-btn:active { transform: translateY(4px); box-shadow: none; }
-        #start-btn:disabled { background: #333; color: #555; box-shadow: none; cursor: not-allowed; }
 
         /* =========================================
-           7. COUNTDOWN OVERLAY
+           7. COUNTDOWN & MODAL
            ========================================= */
         #countdown-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -281,61 +241,57 @@
         }
         @keyframes popIn { from{transform: scale(0);} to{transform: scale(1);} }
 
-        /* =========================================
-           8. SCROLLABLE LEADERBOARD (Fixed)
-           ========================================= */
+        /* VIP LEADERBOARD */
         #results-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 200;
             display: none; align-items: center; justify-content: center;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(8px);
         }
 
         .results-card {
-            background: #151515; width: 80%; max-width: 600px;
-            height: 80vh; /* Fixed height relative to screen */
-            border: 2px solid var(--gold); border-radius: 10px;
-            display: flex; flex-direction: column;
-            box-shadow: 0 0 50px rgba(255, 215, 0, 0.2);
-            animation: slideUp 0.5s ease-out;
+            background: #151515; width: 90%; max-width: 600px; height: 85vh;
+            border: 2px solid var(--gold); border-radius: 15px;
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 0 80px rgba(255, 215, 0, 0.2);
+            animation: slideUp 0.6s ease-out;
         }
 
-        .card-header {
-            padding: 20px; background: var(--gold); color: #000;
-            text-align: center; font-family: 'Black Ops One', cursive; font-size: 2rem;
+        /* SUMMARY HEADER */
+        .summary-box {
+            background: #000; padding: 20px;
+            border-bottom: 2px solid #333; text-align: center;
         }
-
-        /* SCROLLABLE AREA */
-        .card-body {
-            flex: 1; /* Takes remaining space */
-            overflow-y: auto; /* ENABLE SCROLL */
-            padding: 20px;
-        }
+        .summ-title { font-family: 'Black Ops One', cursive; font-size: 3rem; margin: 0; }
         
-        /* Custom Scrollbar */
-        .card-body::-webkit-scrollbar { width: 8px; }
-        .card-body::-webkit-scrollbar-track { background: #111; }
-        .card-body::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+        .stats-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;
+            background: #222; padding: 10px; border-radius: 10px;
+        }
+        .stat-item { display: flex; flex-direction: column; }
+        .stat-label { font-size: 0.8rem; color: #888; }
+        .stat-val { font-size: 1.2rem; font-family: 'Chakra Petch', sans-serif; color: #fff; }
+
+        .card-body { flex: 1; overflow-y: auto; padding: 0 20px; }
+        .card-body::-webkit-scrollbar { width: 5px; }
+        .card-body::-webkit-scrollbar-thumb { background: #444; }
 
         .res-row {
-            display: flex; justify-content: space-between;
-            padding: 15px; border-bottom: 1px solid #333;
-            color: #ccc; font-size: 1.2rem;
+            display: flex; justify-content: space-between; padding: 12px 0;
+            border-bottom: 1px solid #333; color: #aaa; font-size: 1.1rem;
         }
-        .res-row:nth-child(1) { color: var(--gold); font-weight: bold; border: 1px solid var(--gold); background: rgba(255,215,0,0.1); }
-        .res-row.user-won { border: 2px solid #2ecc71; background: rgba(46,204,113,0.1); }
+        .res-row:nth-child(1) { color: var(--gold); font-weight: bold; }
+        .res-row.user-row { background: rgba(255,255,255,0.05); padding: 12px 5px; border-left: 3px solid #fff; }
 
-        /* BUTTON INSIDE SCROLL AREA (AT BOTTOM) */
-        .replay-section {
-            padding: 20px; text-align: center; margin-top: 20px;
-        }
+        .replay-section { padding: 20px; text-align: center; background: #111; border-top: 1px solid #333; }
         .replay-btn {
-            background: #fff; color: #000; padding: 15px 40px;
-            border: none; font-size: 1.5rem; font-family: 'Oswald', sans-serif;
-            font-weight: bold; cursor: pointer; border-radius: 50px;
+            background: #fff; color: #000; padding: 15px 50px; border-radius: 50px;
+            font-size: 1.5rem; font-weight: bold; cursor: pointer; border: none;
             transition: 0.2s;
         }
-        .replay-btn:hover { transform: scale(1.05); background: var(--neon-green); }
+        .replay-btn:hover { background: var(--neon-green); transform: scale(1.05); }
+
+        @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
     </style>
 </head>
@@ -354,7 +310,6 @@
                 <span class="text-gray-400 text-xs mr-2">PLAYER</span>
                 <span class="text-white font-bold uppercase">{{ user.username }}</span>
             </div>
-            
             <div class="balance-pill">
                 <span class="text-xs text-white opacity-80 mr-2">CREDITS</span>
                 <span class="text-2xl font-bold text-white">$<span id="balance-val">{{ balance }}</span></span>
@@ -368,26 +323,20 @@
         </div>
 
         <div id="viewport">
-            
             <div id="sky-container"></div>
-            
             <div class="mountain-bg">
                 <div class="mountain-1"></div>
                 <div class="mountain-2"></div>
             </div>
-
             <div class="crowd-layer"></div>
-
             <div id="track-surface">
                 <div id="finish-gate">
                     <div class="gate-post"></div>
                 </div>
-                </div>
-
+            </div>
             <div id="countdown-layer">
                 <div id="countdown-txt">3</div>
             </div>
-
         </div>
 
         <div id="betting-dock">
@@ -395,7 +344,6 @@
                 <span class="ctl-label">CHOOSE WINNER</span>
                 <select id="horse-selector"></select>
             </div>
-
             <div class="ctl-group">
                 <span class="ctl-label">WAGER (MIN $1000)</span>
                 <div class="wager-box">
@@ -404,13 +352,10 @@
                     <button class="adj-btn" onclick="adjWager(1000)">+</button>
                 </div>
             </div>
-
             <div class="text-xs text-gray-500 text-center">
                 <div class="text-yellow-400 font-bold">1st: 5x</div>
                 <div>2nd: 2x</div>
-                <div>3rd: 1.2x</div>
             </div>
-
             <button id="start-btn" onclick="preStartSequence()">START RACE</button>
         </div>
 
@@ -418,15 +363,36 @@
 
     <div id="results-modal">
         <div class="results-card">
-            <div class="card-header" id="res-header">RESULTS</div>
             
-            <div class="card-body">
-                <div id="res-list">
+            <div class="summary-box">
+                <div class="summ-title" id="summ-title">VICTORY</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">YOUR PICK</span>
+                        <span class="stat-val" id="summ-pick">Horse Name</span>
                     </div>
-                
-                <div class="replay-section">
-                    <button class="replay-btn" onclick="resetGame()">PLAY AGAIN ↺</button>
+                    <div class="stat-item">
+                        <span class="stat-label">WAGER</span>
+                        <span class="stat-val" id="summ-wager">$1,000</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">PAYOUT</span>
+                        <span class="stat-val" id="summ-payout" style="color:var(--neon-green)">$0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">RESULT</span>
+                        <span class="stat-val" id="summ-net">LOST</span>
+                    </div>
                 </div>
+            </div>
+
+            <div class="card-body">
+                <div style="padding:10px 0; font-weight:bold; color:#666; font-size:0.9rem;">FULL RANKING</div>
+                <div id="res-list"></div>
+            </div>
+
+            <div class="replay-section">
+                <button class="replay-btn" onclick="resetGame()">PLAY AGAIN ↺</button>
             </div>
         </div>
     </div>
@@ -454,34 +420,29 @@
             { id: 9, name: 'Haru', icon: '🐕', color: '#95a5a6' }
         ];
 
-        // --- STATE ---
         let positions = new Array(10).fill(0);
         let speeds = new Array(10).fill(0);
         let raceInterval = null;
         let serverResult = null;
         let userPick = "";
+        let currentBet = 1000; // Store bet separately
         let isRunning = false;
 
-        // --- INIT ---
         const track = document.getElementById('track-surface');
         const selector = document.getElementById('horse-selector');
         const sky = document.getElementById('sky-container');
 
-        // Build Track & Dropdown
+        // Build Track
         horses.forEach((h, i) => {
-            // Dropdown
             let opt = document.createElement('option');
             opt.value = h.name;
             opt.innerText = `${h.icon} ${h.name}`;
             selector.appendChild(opt);
 
-            // Horse on Track
             let wrap = document.createElement('div');
             wrap.className = 'racer-container';
             wrap.id = `racer-${i}`;
-            
-            // Dynamic Top Position (0% to 90% of track height)
-            let topPos = (i * 9) + 2; // +2% padding
+            let topPos = (i * 9) + 2; 
             wrap.style.top = topPos + '%';
             
             wrap.innerHTML = `
@@ -491,7 +452,7 @@
             track.appendChild(wrap);
         });
 
-        // Add Clouds
+        // Clouds
         for(let j=0; j<5; j++) {
             let c = document.createElement('div');
             c.className = 'cloud-puff';
@@ -502,30 +463,31 @@
             sky.appendChild(c);
         }
 
-        // --- FUNCTIONS ---
-
         function adjWager(val) {
             if(isRunning) return;
             let el = document.getElementById('wager-display');
             let v = parseInt(el.value) + val;
-            if(v >= config.minBet) el.value = v;
+            if(v >= config.minBet) {
+                el.value = v;
+                currentBet = v;
+            }
         }
 
         function preStartSequence() {
             if(isRunning) return;
-            const amt = parseInt(document.getElementById('wager-display').value);
+            currentBet = parseInt(document.getElementById('wager-display').value);
             userPick = document.getElementById('horse-selector').value;
 
-            if(amt < config.minBet) {
+            if(currentBet < config.minBet) {
                 alert("Minimum bet is $1000"); return;
             }
 
             isRunning = true;
 
-            // 1. HIDE MENU (Slide Down)
-            document.getElementById('betting-dock').classList.add('dock-hidden');
+            // 1. COLLAPSE DOCK & EXPAND VIEWPORT (The CSS Transition handles both)
+            document.getElementById('betting-dock').classList.add('dock-collapsed');
 
-            // 2. SHOW COUNTDOWN
+            // 2. COUNTDOWN
             const cdLayer = document.getElementById('countdown-layer');
             const cdTxt = document.getElementById('countdown-txt');
             cdLayer.style.display = 'flex';
@@ -537,7 +499,6 @@
                 count--;
                 if(count > 0) {
                     cdTxt.innerText = count;
-                    // Reset animation
                     cdTxt.style.animation = 'none';
                     void cdTxt.offsetWidth;
                     cdTxt.style.animation = 'popIn 0.5s';
@@ -546,7 +507,7 @@
                     cdTxt.innerText = "GO!";
                     setTimeout(() => {
                         cdLayer.style.display = 'none';
-                        startActualRace(amt);
+                        startActualRace(currentBet);
                     }, 500);
                 }
             }, 1000);
@@ -557,7 +518,6 @@
             socket.emit('start_horse_race', { amount: amt, horse_name: userPick });
         }
 
-        // --- SOCKET HANDLERS ---
         socket.on('balance_update', d => {
             document.getElementById('balance-val').innerText = d.balance;
         });
@@ -572,7 +532,6 @@
             runAnimationLoop();
         });
 
-        // --- MAIN LOOP ---
         function runAnimationLoop() {
             let frame = 0;
             const totalFrames = config.duration * config.fps;
@@ -580,7 +539,7 @@
 
             raceInterval = setInterval(() => {
                 frame++;
-                let progress = frame / totalFrames; // 0.0 -> 1.0
+                let progress = frame / totalFrames;
 
                 if (progress < 0.9) {
                     modeChaos();
@@ -590,7 +549,7 @@
 
                 renderPositions();
 
-                if (frame % 100 === 0) updateTickerRandom();
+                if (frame % 150 === 0) updateTickerRandom();
 
                 if (progress >= 1) {
                     finishRace();
@@ -604,27 +563,20 @@
                 speeds[i] += (Math.random() - 0.5) * 2;
                 if(speeds[i] > 2) speeds[i] = 2;
                 if(speeds[i] < -2) speeds[i] = -2;
-                
                 positions[i] += speeds[i];
-                
-                // Keep mainly in middle
                 if(positions[i] < 5) { positions[i] = 5; speeds[i] += 1; }
                 if(positions[i] > 80) { positions[i] = 80; speeds[i] -= 1; }
             }
         }
 
         function modeFinish(p) {
-            // Show Gate
             const gate = document.getElementById('finish-gate');
             gate.style.display = 'block';
             gate.style.right = '10%'; 
 
-            // Move to final ranks
             for(let i=0; i<10; i++) {
                 let name = horses[i].name;
-                let rank = serverResult.ranking.indexOf(name); // 0 = 1st
-                
-                // 1st place -> 90%, Last -> 40%
+                let rank = serverResult.ranking.indexOf(name);
                 let target = 90 - (rank * 5);
                 let diff = target - positions[i];
                 positions[i] += diff * 0.05;
@@ -641,56 +593,68 @@
         function finishRace() {
             clearInterval(raceInterval);
             
-            // Build Results
+            // --- POPULATE PREMIUM LEADERBOARD ---
+            const modal = document.getElementById('results-modal');
+            const title = document.getElementById('summ-title');
+            const pickEl = document.getElementById('summ-pick');
+            const wageEl = document.getElementById('summ-wager');
+            const payEl = document.getElementById('summ-payout');
+            const netEl = document.getElementById('summ-net');
             const list = document.getElementById('res-list');
-            const header = document.getElementById('res-header');
-            list.innerHTML = '';
 
             let userWon = (serverResult.win_amount > 0);
+
+            // 1. Summary Stats
+            pickEl.innerText = userPick.toUpperCase();
+            wageEl.innerText = `$${currentBet.toLocaleString()}`;
             
             if(userWon) {
-                header.innerText = "VICTORY!";
-                header.style.color = "#2ecc71";
+                title.innerText = "VICTORY!";
+                title.style.color = "var(--neon-green)";
+                payEl.innerText = `+$${serverResult.win_amount.toLocaleString()}`;
+                payEl.style.color = "var(--neon-green)";
+                netEl.innerText = "WON";
+                netEl.style.color = "var(--neon-green)";
                 document.getElementById('balance-val').innerText = serverResult.final_balance;
             } else {
-                header.innerText = "RACE OVER";
-                header.style.color = "#fff";
+                title.innerText = "DEFEAT";
+                title.style.color = "var(--danger)";
+                payEl.innerText = "$0";
+                payEl.style.color = "#888";
+                netEl.innerText = `-${currentBet.toLocaleString()}`;
+                netEl.style.color = "var(--danger)";
             }
 
-            // Populate Rows
+            // 2. Full List
+            list.innerHTML = '';
             serverResult.ranking.forEach((name, idx) => {
                 let rank = idx + 1;
                 let isUser = (name === userPick);
                 
                 let row = document.createElement('div');
                 row.className = 'res-row';
-                if(isUser && userWon) row.classList.add('user-won');
+                if(isUser) row.classList.add('user-row');
 
-                let payout = "-";
-                if(rank === 1) payout = "5x";
-                if(rank === 2) payout = "2x";
-                if(rank === 3) payout = "1.2x";
-
-                if(isUser && userWon) payout = `+$${serverResult.win_amount}`;
-
+                let payout = rank === 1 ? "5x" : rank === 2 ? "2x" : rank === 3 ? "1.2x" : "-";
+                
                 row.innerHTML = `
-                    <div style="width:30px">#${rank}</div>
-                    <div style="flex:1; padding-left:10px">${name}</div>
-                    <div>${payout}</div>
+                    <div style="width:40px; font-weight:bold;">#${rank}</div>
+                    <div style="flex:1;">${name} ${isUser ? '(YOU)' : ''}</div>
+                    <div style="font-weight:bold; color:${rank<=3 ? 'var(--gold)' : '#555'}">${payout}</div>
                 `;
                 list.appendChild(row);
             });
 
             // Show Modal
-            document.getElementById('results-modal').style.display = 'flex';
+            modal.style.display = 'flex';
         }
 
         function resetGame() {
             document.getElementById('results-modal').style.display = 'none';
             document.getElementById('finish-gate').style.display = 'none';
             
-            // Show Menu again
-            document.getElementById('betting-dock').classList.remove('dock-hidden');
+            // Show Menu (Slide Up)
+            document.getElementById('betting-dock').classList.remove('dock-collapsed');
             
             // Reset Horses
             positions.fill(0);
