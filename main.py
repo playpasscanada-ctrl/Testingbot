@@ -17097,20 +17097,18 @@ async def sell_business_request(interaction: discord.Interaction, business_id: s
 import discord
 from discord import app_commands
 from elevenlabs.client import ElevenLabs
-from elevenlabs import save
 import os
-# Supabase Client Import (Make sure 'supabase' library is installed)
 from supabase import create_client, Client
 
 # ==================================================
-# ⚙️ CONFIGURATION & KEYS
+# ⚙️ CONFIGURATION
 # ==================================================
 
-# 1. API Keys (Environment se ya Direct String)
+# 1. API Keys (Environment Variables se lega)
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "Sk_4ca015b756289af65b3cd920a084ed0f9062f0b5ded984d2")
-SUPABASE_URL = os.getenv("SUPABASE_URL", "APNI_SUPABASE_URL_YAHAN_DALO")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "APNI_SUPABASE_ANON_KEY_YAHAN_DALO")
-OWNER_ID = 804687084249284618  # 🔥 APNA DISCORD ID YAHAN DALO (Access dene ke liye)
+SUPABASE_URL = os.getenv("SUPABASE_URL", "APNI_SUPABASE_URL_DALO")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "APNI_SUPABASE_KEY_DALO")
+OWNER_ID = 123456789012345678  # Apna Discord ID yahan dalo
 
 # 2. Voice Database (Name : ID)
 VOICE_DB = {
@@ -17120,28 +17118,29 @@ VOICE_DB = {
     "👦 Shaan": "EmspiS7CSUabPeqBcrAP"
 }
 
-# 3. Clients Setup
+# 3. Initialize Clients
 try:
-    el_client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
+    client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 except Exception as e:
-    print(f"❌ Client Error: {e}")
+    print(f"❌ Init Error: {e}")
 
 # ==================================================
-# 🛠️ HELPER FUNCTIONS (Database Logic)
+# 🛠️ DATABASE HELPER
 # ==================================================
 
-def get_user_data(user_id):
-    """Supabase se user ka data laata hai. Agar nahi hai to banata hai."""
+def get_user_preferences(user_id):
+    """Supabase se user ki saved voice aur access check karta hai"""
     uid = str(user_id)
     try:
-        data = supabase.table("tts_users").select("*").eq("user_id", uid).execute().data
-        if not data:
-            # Create Default Profile
-            new_user = {"user_id": uid, "selected_voice": "👩 Priyanka", "has_access": False}
-            supabase.table("tts_users").insert(new_user).execute()
-            return new_user
-        return data[0]
+        response = supabase.table("tts_users").select("*").eq("user_id", uid).execute()
+        if response.data:
+            return response.data[0]
+        else:
+            # Agar user naya hai, to default entry banao
+            default_data = {"user_id": uid, "selected_voice": "👩 Priyanka", "has_access": False}
+            supabase.table("tts_users").insert(default_data).execute()
+            return default_data
     except Exception as e:
         print(f"DB Error: {e}")
         return None
@@ -17150,31 +17149,21 @@ def get_user_data(user_id):
 # 🎤 COMMANDS
 # ==================================================
 
-# 1. GIVE ACCESS (Only Owner)
-@bot.tree.command(name="give_access", description="👑 Owner Only: Give TTS access to a user")
+# 1. GIVE ACCESS (Owner Only)
+@bot.tree.command(name="give_access", description="👑 Owner Only: Give TTS access")
 async def give_access(interaction: discord.Interaction, user: discord.User):
-    # Security Check
     if interaction.user.id != OWNER_ID:
-        embed = discord.Embed(title="⛔ Access Denied", description="Sirf Owner hi access de sakta hai!", color=0xFF0000)
-        return await interaction.response.send_message(embed=embed, ephemeral=True)
+        return await interaction.response.send_message("❌ Sirf Owner ye kar sakta hai!", ephemeral=True)
 
-    # Update Database
-    uid = str(user.id)
     try:
-        # Check if user exists, else upsert
-        data = {"user_id": uid, "has_access": True}
+        # Upsert (Insert or Update)
+        data = {"user_id": str(user.id), "has_access": True}
         supabase.table("tts_users").upsert(data).execute()
-        
-        embed = discord.Embed(title="✅ Access Granted", color=0x00FF00)
-        embed.description = f"**{user.mention}** ab `/speak` command use kar sakta hai."
-        embed.set_footer(text="Powered by ElevenLabs Premium")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        
+        await interaction.response.send_message(f"✅ **{user.name}** ab `/speak` use kar sakta hai!", ephemeral=True)
     except Exception as e:
-        await interaction.response.send_message(f"❌ Database Error: {e}", ephemeral=True)
+        await interaction.response.send_message(f"❌ DB Error: {e}", ephemeral=True)
 
-
-# 2. VOICE SWITCH (User Preference)
+# 2. VOICE SWITCH (User yahan voice set karega)
 async def voice_autocomplete(interaction: discord.Interaction, current: str):
     choices = []
     for name in VOICE_DB:
@@ -17182,118 +17171,101 @@ async def voice_autocomplete(interaction: discord.Interaction, current: str):
             choices.append(app_commands.Choice(name=name, value=name))
     return choices[:25]
 
-@bot.tree.command(name="voice_switch", description="🎙️ Set your permanent voice for TTS")
+@bot.tree.command(name="voice_switch", description="🎙️ Apni permanent aawaz set karein")
 @app_commands.autocomplete(voice=voice_autocomplete)
 async def voice_switch(interaction: discord.Interaction, voice: str):
-    # Validation
     if voice not in VOICE_DB:
-        return await interaction.response.send_message("❌ Invalid Voice Name!", ephemeral=True)
+        return await interaction.response.send_message("❌ List me se select karo!", ephemeral=True)
 
-    uid = str(interaction.user.id)
-    
-    # Update Database
     try:
-        # User ka data update karo (Upsert ensure karega ki entry ban jaye agar nahi hai)
-        supabase.table("tts_users").upsert({"user_id": uid, "selected_voice": voice}).execute()
+        # User ki choice database me save karo
+        data = {"user_id": str(interaction.user.id), "selected_voice": voice}
+        supabase.table("tts_users").upsert(data).execute()
         
-        embed = discord.Embed(title="🎙️ Voice Updated", color=0xFFD700) # Gold Color
-        embed.add_field(name="Selected Voice", value=f"**{voice}**", inline=False)
-        embed.set_footer(text="Ab /speak command isi aawaz me bolega.")
-        
+        embed = discord.Embed(title="🎙️ Voice Updated", description=f"Ab se main **{voice}** ki aawaz me bolunga.", color=0x00FF00)
         await interaction.response.send_message(embed=embed, ephemeral=True)
-        
     except Exception as e:
         await interaction.response.send_message(f"❌ Save Error: {e}", ephemeral=True)
 
-
-import asyncio
-import functools
-
-# Client Setup
-client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
-
-# --- HELPER: Autocomplete ---
-async def voice_autocomplete(interaction: discord.Interaction, current: str):
-    choices = []
-    for name in VOICE_OPTIONS:
-        if current.lower() in name.lower():
-            choices.append(app_commands.Choice(name=name, value=name))
-    return choices[:25]
-
-# --- COMMAND: SPEAK (FIXED) ---
-@bot.tree.command(name="speak", description="🗣️ Speak text in selected Hindi/Indian voice")
-@app_commands.describe(text="Kya bulwana hai?", voice="Kiski aawaz me?")
-@app_commands.autocomplete(voice=voice_autocomplete)
-async def speak(interaction: discord.Interaction, text: str, voice: str):
+# 3. SPEAK (Automatic Voice Selection)
+@bot.tree.command(name="speak", description="🗣️ Speak text (Uses your saved voice)")
+async def speak(interaction: discord.Interaction, text: str):
     
-    # 1. VC Check
+    # A. Check Voice Channel
     if not interaction.user.voice:
-        return await interaction.response.send_message("❌ Pehle Voice Channel join karo!", ephemeral=True)
-    
+        return await interaction.response.send_message("❌ Pehle VC join karo!", ephemeral=True)
+
     await interaction.response.defer()
 
-    try:
-        # 2. Get Voice ID
-        # Default fallback agar naam match na ho
-        voice_id = VOICE_OPTIONS.get(voice, "1zUSi8LeHs9M2mV8X6YS")
+    # B. Database Check (Access & Voice)
+    user_data = get_user_preferences(interaction.user.id)
+    
+    if not user_data:
+        return await interaction.followup.send("❌ Database connection error.")
 
-        # 3. Connect to VC
+    # Access Check
+    if not user_data.get('has_access', False):
+        return await interaction.followup.send("⛔ Aapke paas is command ka **Access** nahi hai.")
+
+    # Voice Fetch (Jo DB me saved hai wahi lega)
+    saved_voice_name = user_data.get('selected_voice', "👩 Priyanka")
+    voice_id = VOICE_DB.get(saved_voice_name, VOICE_DB["👩 Priyanka"]) # Fallback ID
+
+    try:
+        # C. Join VC
         channel = interaction.user.voice.channel
         vc = interaction.guild.voice_client
-        
         if not vc:
             vc = await channel.connect()
         else:
             if vc.channel.id != channel.id:
                 await vc.move_to(channel)
 
-        # 4. Generate Audio (NEW METHOD ✅)
-        # client.generate ki jagah ab ye use hota hai:
+        # D. Generate Audio (NEW LIB METHOD ✅)
         audio_generator = client.text_to_speech.convert(
             text=text,
             voice_id=voice_id,
             model_id="eleven_multilingual_v2"
         )
         
-        # 5. Save Audio File (Manual Method)
-        # Naye version me audio 'chunks' me aata hai, isliye aise save karna padta hai
+        # E. Save File
         filename = f"tts_{interaction.id}.mp3"
         with open(filename, "wb") as f:
             for chunk in audio_generator:
                 if chunk:
                     f.write(chunk)
         
-        # 6. Play Audio
-        # FFmpeg check (Render vs Local)
+        # F. Play & Auto Cleanup
         if os.path.exists("./ffmpeg"):
             ffmpeg_exe = "./ffmpeg"
         else:
-            ffmpeg_exe = "ffmpeg" # Local fallback
+            ffmpeg_exe = "ffmpeg"
 
         source = discord.FFmpegPCMAudio(filename, executable=ffmpeg_exe)
-        
-        # Cleanup Function (Auto-delete)
+
         def cleanup(error):
             if os.path.exists(filename):
                 os.remove(filename)
 
         if not vc.is_playing():
             vc.play(source, after=cleanup)
-            
-        await interaction.followup.send(f"🗣️ **Speaking as {voice}:** {text}")
+
+        # G. Success Msg
+        embed = discord.Embed(description=f"🗣️ **Said:** {text}", color=0x00FF00)
+        embed.set_footer(text=f"Voice: {saved_voice_name}")
+        await interaction.followup.send(embed=embed)
 
     except Exception as e:
         await interaction.followup.send(f"❌ Error: {e}")
 
-
-
-# 4. LEAVE VC
-@bot.tree.command(name="leave_voice", description="👋 Bot leaves VC")
+# 4. LEAVE
+@bot.tree.command(name="leave_voice", description="👋 Disconnect bot")
 async def leave_voice(interaction: discord.Interaction):
     if interaction.guild.voice_client:
         await interaction.guild.voice_client.disconnect()
         await interaction.response.send_message("👋 Bye!", ephemeral=True)
-
+    else:
+        await interaction.response.send_message("❌ Main VC me nahi hu.", ephemeral=True)
         
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
