@@ -2,197 +2,176 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quantum QR Reward</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quantum Rewards</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     
     <style>
-        /* --- 1. CORE VISUALS --- */
+        /* --- CORE SETTINGS --- */
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #bc13fe;
+            --dark-bg: #050505;
+        }
+        * { box-sizing: border-box; }
         body {
             margin: 0; padding: 0;
-            background-color: #050505;
+            background-color: var(--dark-bg);
+            color: white; font-family: 'Share Tech Mono', monospace;
+            overflow: hidden; height: 100vh; width: 100vw;
+        }
+
+        /* --- ANIMATED BACKGROUND --- */
+        .cyber-grid {
+            position: fixed; top: 0; left: 0; width: 200%; height: 200%;
             background-image: 
-                radial-gradient(circle at 50% 50%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
-                linear-gradient(0deg, rgba(0,0,0,1) 0%, rgba(10,10,10,1) 100%);
-            color: white; font-family: 'Rajdhani', sans-serif;
-            overflow: hidden; height: 100vh; cursor: none; /* Hide default cursor */
+                linear-gradient(rgba(0, 243, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transform: perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+            animation: gridMove 20s linear infinite;
+            pointer-events: none; z-index: 0;
         }
-
-        /* --- 2. CUSTOM CURSOR & TRAIL --- */
-        .cursor-dot, .cursor-dot-outline {
-            position: fixed; top: 0; left: 0;
-            transform: translate(-50%, -50%);
-            border-radius: 50%; z-index: 9999;
-            pointer-events: none;
-        }
-        .cursor-dot { width: 8px; height: 8px; background-color: #0ff; }
-        .cursor-dot-outline { width: 40px; height: 40px; border: 1px solid rgba(0, 255, 255, 0.5); transition: width 0.2s, height 0.2s; }
         
-        /* The Trail Particles */
-        .trail {
-            position: absolute; width: 6px; height: 6px;
-            background: #0ff; border-radius: 50%;
-            pointer-events: none; opacity: 0.7;
-            animation: fadeOut 1s linear forwards;
-        }
-        @keyframes fadeOut { to { opacity: 0; transform: scale(0); } }
-
-        /* --- 3. HUD HEADER --- */
-        .hud-header {
-            position: absolute; top: 0; left: 0; width: 100%;
-            padding: 20px 40px; display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
-            background: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
-            z-index: 10;
-        }
-        .player-info { display: flex; align-items: center; gap: 15px; }
-        .p-avatar { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #0ff; box-shadow: 0 0 15px #0ff; }
-        .p-name { font-family: 'Orbitron', sans-serif; font-size: 1.5rem; color: #fff; text-shadow: 0 0 10px #0ff; }
-        .p-bal { 
-            background: linear-gradient(90deg, #11998e, #38ef7d); 
-            padding: 5px 20px; border-radius: 4px; font-weight: bold; font-size: 1.2rem;
-            box-shadow: 0 0 20px rgba(56, 239, 125, 0.4);
+        .particles {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, transparent 0%, #000 80%);
+            z-index: 1; pointer-events: none;
         }
 
-        /* --- 4. QR CONTAINER --- */
-        .main-stage {
-            height: 100vh; display: flex; flex-direction: column; 
+        @keyframes gridMove {
+            0% { transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); }
+            100% { transform: perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px); }
+        }
+
+        /* --- HUD HEADER (FIXED) --- */
+        .hud-bar {
+            position: fixed; top: 0; left: 0; width: 100%;
+            height: 70px; padding: 0 15px;
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(5, 5, 5, 0.8);
+            border-bottom: 2px solid var(--neon-blue);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
+            backdrop-filter: blur(10px); z-index: 50;
+        }
+        
+        .user-pill {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(0, 243, 255, 0.1); padding: 5px 10px;
+            border: 1px solid var(--neon-blue); border-radius: 30px;
+        }
+        .u-avatar { width: 35px; height: 35px; border-radius: 50%; border: 2px solid #fff; }
+        .u-name { font-family: 'Orbitron', sans-serif; font-size: 0.9rem; color: #fff; letter-spacing: 1px; }
+        
+        .bal-display {
+            font-family: 'Orbitron', sans-serif; font-size: 1rem; color: var(--neon-blue);
+            text-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        /* --- MAIN STAGE --- */
+        .stage {
+            position: relative; z-index: 10;
+            height: 100vh; width: 100%;
+            display: flex; flex-direction: column;
             align-items: center; justify-content: center;
+        }
+
+        /* --- QR CARD --- */
+        .qr-wrapper {
+            position: relative; padding: 4px;
+            background: linear-gradient(180deg, var(--neon-blue), var(--neon-pink));
+            border-radius: 20px;
+            box-shadow: 0 0 40px rgba(188, 19, 254, 0.4);
+            animation: float 4s ease-in-out infinite;
+        }
+        
+        .qr-inner {
+            background: #000; padding: 20px; border-radius: 18px;
+            width: 280px; height: 280px;
+            display: flex; align-items: center; justify-content: center;
             position: relative;
         }
 
-        .qr-frame {
-            position: relative; padding: 5px;
-            background: linear-gradient(45deg, #0ff, #f0f, #0ff);
-            background-size: 400% 400%;
-            animation: borderGlow 3s ease infinite;
-            border-radius: 20px;
-            box-shadow: 0 0 50px rgba(0, 255, 255, 0.3);
-        }
-        
-        .qr-box {
-            background: #fff; padding: 20px; border-radius: 15px;
-            width: 300px; height: 300px; display: flex; 
-            align-items: center; justify-content: center;
-            position: relative; overflow: hidden;
+        /* Scanner Line */
+        .scanner-beam {
+            position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+            background: #fff; box-shadow: 0 0 10px #fff, 0 0 20px var(--neon-pink);
+            animation: scan 2s linear infinite; z-index: 20;
         }
 
-        /* Scanning Line Animation */
-        .scan-line {
-            position: absolute; top: 0; left: 0; width: 100%; height: 5px;
-            background: #f0f; box-shadow: 0 0 15px #f0f;
-            animation: scanMove 2s linear infinite;
-            z-index: 5;
+        .status-text {
+            margin-top: 30px; text-align: center;
+        }
+        .status-title {
+            font-family: 'Orbitron', sans-serif; font-size: 1.5rem; color: #fff;
+            letter-spacing: 2px; text-transform: uppercase;
+        }
+        .status-sub {
+            color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 5px;
         }
 
-        .instruction {
-            margin-top: 30px; font-family: 'Orbitron', sans-serif;
-            font-size: 1.2rem; letter-spacing: 2px;
-            color: rgba(255,255,255,0.7); text-transform: uppercase;
-            text-align: center;
-        }
-        .instruction span { color: #f0f; animation: blink 1s infinite; }
-
-        @keyframes borderGlow { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-        @keyframes scanMove { 0% {top:0;} 50% {top:100%;} 100% {top:0;} }
-        @keyframes blink { 50% {opacity: 0.5;} }
+        /* Animations */
+        @keyframes scan { 0% {top: 10px; opacity:0;} 50% {opacity:1;} 100% {top: 270px; opacity:0;} }
+        @keyframes float { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-15px);} }
 
     </style>
 </head>
 <body>
 
-    <div class="cursor-dot" id="cursor-dot"></div>
-    <div class="cursor-dot-outline" id="cursor-outline"></div>
+    <div class="cyber-grid"></div>
+    <div class="particles"></div>
 
-    <div class="hud-header">
-        <div class="player-info">
-            <img src="{{ user.avatar_url }}" class="p-avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
-            <div>
-                <div class="text-xs text-cyan-400">OPERATOR</div>
-                <div class="p-name">{{ user.username }}</div>
-            </div>
+    <div class="hud-bar">
+        <div class="user-pill">
+            <img src="{{ user.avatar_url }}" class="u-avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+            <div class="u-name">{{ user.username }}</div>
         </div>
-        <div class="p-bal">
-            ${{ "{:,}".format(balance) }}
+        <div class="bal-display">
+            $ {{ "{:,}".format(balance) }}
         </div>
     </div>
 
-    <div class="main-stage">
+    <div class="stage">
         
-        <div class="qr-frame">
-            <div class="qr-box" id="qrcode">
-                <div class="scan-line"></div>
+        <div class="qr-wrapper">
+            <div class="qr-inner" id="qrcode-container">
+                <div class="scanner-beam"></div>
             </div>
         </div>
 
-        <div class="instruction">
-            Scan to Claim <br> <span>[ REWARD PROTOCOL ACTIVE ]</span>
-        </div>
-
-        <div class="absolute bottom-10 text-gray-500 text-xs font-mono">
-            SECURE_LINK: {{ scan_url }} <br>
-            CHANCE_RATE: 0.01% LEGENDARY
+        <div class="status-text">
+            <div class="status-title">Scan to Claim</div>
+            <div class="status-sub">
+                SECURE CONNECTION ESTABLISHED <br>
+                <span style="color:var(--neon-pink)">JACKPOT CHANCE: 0.01%</span>
+            </div>
         </div>
 
     </div>
 
     <script>
-        // --- 1. QR GENERATION ---
-        // Server se jo link aaya hai, uska QR banao
+        // Server URL
         const scanUrl = "{{ scan_url }}"; 
         
-        new QRCode(document.getElementById("qrcode"), {
+        // Generate QR
+        new QRCode(document.getElementById("qrcode-container"), {
             text: scanUrl,
-            width: 260,
-            height: 260,
-            colorDark : "#000000",
-            colorLight : "#ffffff",
+            width: 240,
+            height: 240,
+            colorDark : "#ffffff", // Inverted for Dark Mode
+            colorLight : "#000000",
             correctLevel : QRCode.CorrectLevel.H
         });
 
-        // --- 2. CURSOR & TRAIL EFFECT ---
-        const cursorDot = document.getElementById("cursor-dot");
-        const cursorOutline = document.getElementById("cursor-outline");
-
-        window.addEventListener("mousemove", function(e) {
-            const posX = e.clientX;
-            const posY = e.clientY;
-
-            // Move custom cursor
-            cursorDot.style.left = `${posX}px`;
-            cursorDot.style.top = `${posY}px`;
-
-            // Delayed follow for outline
-            cursorOutline.animate({
-                left: `${posX}px`,
-                top: `${posY}px`
-            }, { duration: 500, fill: "forwards" });
-
-            // Create Trail Particle
-            createTrail(posX, posY);
+        // 3D Tilt Effect on Mouse Move
+        const card = document.querySelector('.qr-wrapper');
+        document.addEventListener('mousemove', (e) => {
+            const x = (window.innerWidth / 2 - e.pageX) / 25;
+            const y = (window.innerHeight / 2 - e.pageY) / 25;
+            card.style.transform = `rotateY(${x}deg) rotateX(${y}deg)`;
         });
-
-        function createTrail(x, y) {
-            const trail = document.createElement("div");
-            trail.className = "trail";
-            trail.style.left = `${x}px`;
-            trail.style.top = `${y}px`;
-            
-            // Randomize color slightly (Cyan to Purple)
-            const colors = ['#0ff', '#00bcd4', '#e040fb', '#f0f'];
-            const randomColor = colors[Math.floor(Math.random() * colors.length)];
-            trail.style.background = randomColor;
-
-            document.body.appendChild(trail);
-
-            // Remove from DOM after animation
-            setTimeout(() => {
-                trail.remove();
-            }, 1000);
-        }
-
     </script>
 </body>
 </html>
