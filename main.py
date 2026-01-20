@@ -18346,6 +18346,65 @@ async def claim_reward_scan(target_id):
     </html>
     """
 
+# --- PLINKO GAME ROUTES ---
+
+@app.route('/games/plinko')
+def plinko_game():
+    if 'user_info' not in session: return redirect('/')
+    
+    # Fetch Balance
+    uid = session['user_info']['id']
+    try:
+        data = db.supabase.table("economy").select("balance").eq("user_id", str(uid)).execute().data
+        balance = data[0]['balance'] if data else 0
+    except:
+        balance = 0
+
+    return render_template('plinko.html', user=session['user_info'], balance=balance)
+
+@app.route('/api/plinko/result', methods=['POST'])
+async def plinko_result():
+    # Frontend se data aayega: { "bet": 1000, "multiplier": 10 }
+    data = request.json
+    uid = session['user_info']['id']
+    
+    bet_amount = int(data.get('bet', 0))
+    multiplier = float(data.get('multiplier', 0))
+    
+    if bet_amount <= 0: return {"status": "error", "msg": "Invalid Bet"}
+
+    try:
+        # 1. Get Current Balance
+        user_data = db.supabase.table("economy").select("balance").eq("user_id", str(uid)).execute().data
+        if not user_data: return {"status": "error", "msg": "User not found"}
+        
+        current_bal = user_data[0]['balance']
+        
+        # 2. Check Funds
+        if current_bal < bet_amount:
+            return {"status": "error", "msg": "Insufficient Funds"}
+            
+        # 3. Calculate Win/Loss
+        # Pehle bet kaato
+        temp_bal = current_bal - bet_amount
+        
+        # Phir win add karo (Agar 0.2x hai to loss hoga, 10x hai to profit)
+        winnings = int(bet_amount * multiplier)
+        final_bal = temp_bal + winnings
+        
+        # 4. Update Database
+        db.supabase.table("economy").update({"balance": final_bal}).eq("user_id", str(uid)).execute()
+        
+        return {
+            "status": "success", 
+            "new_balance": final_bal, 
+            "won": winnings
+        }
+        
+    except Exception as e:
+        print(f"Plinko Error: {e}")
+        return {"status": "error", "msg": str(e)}
+
 
 # ==========================================
 # 🚀 ULTIMATE BUSINESS SYSTEM (UPDATED)
