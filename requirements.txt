@@ -14,3 +14,4 @@ pytz
 flask-socketio
 eventlet
 yt-dlp
+elevenlabs
