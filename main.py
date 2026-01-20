@@ -17104,8 +17104,13 @@ from supabase import create_client, Client
 # ⚙️ CONFIGURATION
 # ==================================================
 
-# 1. API Keys (Environment Variables se lega)
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "Sk_4ca015b756289af65b3cd920a084ed0f9062f0b5ded984d2")
+# Naya Code (Sahi) ✅
+# Ab ye sirf Render ke Environment variables se key uthayega
+ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
+
+if not ELEVENLABS_API_KEY:
+    print("❌ ERROR: API Key nahi mili! Render Environment check karo.")
+
 SUPABASE_URL = os.getenv("SUPABASE_URL", "APNI_SUPABASE_URL_DALO")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "APNI_SUPABASE_KEY_DALO")
 OWNER_ID = 123456789012345678  # Apna Discord ID yahan dalo
