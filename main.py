@@ -18178,91 +18178,174 @@ def handle_horse_race(data):
 
 import random
 import string
+from flask import request, session, redirect, render_template
 
-# --- CONFIG ---
-MAIN_GUILD_ID = 1257403231127076915 # 🔴 APNI SERVER ID YAHAN DALO
+# --- CONFIGURATION ---
+# 🔴 Yahan apni saari Server IDs comma (,) laga kar daal do
+ALLOWED_GUILD_IDS = [
+    1431694952080871566,  # Server 1
+    1257403231127076915,  # Server 2
+    555555555555555555   # Server 3 (Aur bhi add kar sakte ho)
+]
 
-# --- 1. QR PAGE ROUTE ---
+ENTRY_FEE = 50000  # QR Generate karne ki fees
+
+# --- 1. QR PAGE ROUTE (Entry Fee Logic) ---
 @app.route('/games/qr_gen')
 def qr_generator():
     if 'user_info' not in session: return redirect('/')
     
     uid = session['user_info']['id']
     
-    # Fetch Balance for Header
     try:
-        data = db.supabase.table("economy").select("balance").eq("user_id", str(uid)).execute().data
-        balance = data[0]['balance'] if data else 0
-    except:
-        balance = 0
+        # 1. Check Balance
+        response = db.supabase.table("economy").select("balance").eq("user_id", str(uid)).execute()
+        
+        if not response.data:
+            # Agar user DB me nahi hai
+            return f"<h1 style='color:red; text-align:center;'>❌ Account Not Found! Type /start in Discord.</h1>"
+            
+        current_balance = response.data[0]['balance']
+        
+        # 2. Check Sufficient Funds
+        if current_balance < ENTRY_FEE:
+            return f"""
+            <body style="background:#000; color:white; font-family:sans-serif; text-align:center; padding-top:100px;">
+                <h1 style="color:#ff0000; font-size:3rem;">❌ INSUFFICIENT FUNDS</h1>
+                <p>You need <b>${ENTRY_FEE:,}</b> to generate a Quantum QR.</p>
+                <p>Your Balance: ${current_balance:,}</p>
+                <a href="/" style="color:#00f3ff;">Go Back</a>
+            </body>
+            """
 
-    # QR Link generate karte hain (Jo scan hone par khulega)
-    # Ye link seedha hamare claim route par jayega
-    # Example: https://your-website.com/api/scan_reward/123456789
+        # 3. Deduct Fee (50k kaat lo)
+        new_balance = current_balance - ENTRY_FEE
+        db.supabase.table("economy").update({"balance": new_balance}).eq("user_id", str(uid)).execute()
+
+    except Exception as e:
+        print(f"Error in QR Gen: {e}")
+        return "Database Error"
+
+    # 4. Generate Link & Render Page
+    # (Ab user ke paise kat gaye hain, to QR dikha do)
     scan_url = f"{request.url_root}api/scan_reward/{uid}"
     
-    return render_template('qr.html', user=session['user_info'], balance=balance, scan_url=scan_url)
+    return render_template('qr.html', user=session['user_info'], balance=new_balance, scan_url=scan_url)
 
-# --- 2. THE SCAN & CLAIM API ---
+
+# --- 2. THE SCAN & CLAIM API (Probability Logic) ---
 @app.route('/api/scan_reward/<target_id>')
 async def claim_reward_scan(target_id):
-    # Security: Rate limit laga sakte hain, abhi direct logic de raha hu
-    
-    # A. Calculate Random Money (100k to 10M)
-    amount = random.randint(100_000, 10_000_000)
-    
-    # B. Calculate Rare Role (0.01% Chance)
-    # 0.01% = 1 in 10,000
-    is_rare_win = (random.randint(1, 10000) == 1)
-    role_msg = ""
-    
-    try:
-        # C. Update Database (Money Give)
-        data = db.supabase.table("economy").select("*").eq("user_id", str(target_id)).execute().data
-        if not data:
-            return "❌ User Database me nahi mila."
-            
-        current_bal = data[0]['balance']
-        new_bal = current_bal + amount
-        
-        db.supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(target_id)).execute()
-        
-        # D. Role Logic (Agar Jackpot laga)
-        if is_rare_win:
-            guild = bot.get_guild(MAIN_GUILD_ID)
-            if guild:
-                member = await guild.fetch_member(int(target_id))
-                if member:
-                    # Check if role exists, else create
-                    role_name = "💎 The Chosen One"
-                    role = discord.utils.get(guild.roles, name=role_name)
-                    
-                    if not role:
-                        # Bot creates role automatically
-                        role = await guild.create_role(name=role_name, color=discord.Color.gold(), hover=True, reason="QR Jackpot Win")
-                    
-                    # Assign Role
-                    if role not in member.roles:
-                        await member.add_roles(role)
-                        role_msg = f"<br>👑 <b>JACKPOT!</b> You won the '{role_name}' Role!"
-    
-    except Exception as e:
-        print(f"Error in reward: {e}")
-        return f"Error processing reward: {e}"
+    # --- TRACKING (Logs ke liye) ---
+    user_ip = request.remote_addr
+    platform = request.user_agent.platform or "Unknown"
+    browser = request.user_agent.browser or "Unknown"
+    print(f"🚨 SCAN: Target {target_id} | IP: {user_ip} | Device: {platform}")
 
-    # E. Return HTML Page to the Scanner (Phone screen)
+    # --- PROBABILITY LOGIC ---
+    
+    # 1. Money Chance (10%)
+    # Random number 1 se 100. Agar <= 10 aaya to JEETA.
+    luck_roll = random.randint(1, 100)
+    has_won_money = (luck_roll <= 10) 
+
+    # 2. Role Chance (0.01% -> 1 in 10,000)
+    role_roll = random.randint(1, 10000)
+    is_rare_win = (role_roll == 1)
+
+    status_html = ""
+    amount = 0
+    role_msg = ""
+
+    try:
+        # DB Data fetch
+        data = db.supabase.table("economy").select("*").eq("user_id", str(target_id)).execute().data
+        if not data: return "❌ User ID Invalid."
+        
+        current_bal = data[0]['balance']
+
+        # --- A. MONEY LOGIC ---
+        if has_won_money:
+            amount = random.randint(100_000, 10_000_000) # Random amount
+            new_bal = current_bal + amount
+            
+            # Update DB
+            db.supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(target_id)).execute()
+            
+            status_html = f"""
+                <h1 style="color:#00ff00; font-size:3rem;">🎉 YOU WON!</h1>
+                <h2 style="color:#f1c40f; font-size:4rem; text-shadow:0 0 20px #f1c40f;">+${amount:,}</h2>
+                <p style="color:#ccc;">Added to account balance.</p>
+            """
+        else:
+            # 90% chance Haar gaye (Empty Scan)
+            status_html = f"""
+                <h1 style="color:#ff5555; font-size:3rem;">❌ EMPTY SCAN</h1>
+                <p style="color:#ccc; font-size:1.5rem;">Better luck next time!</p>
+                <p style="color:#555;">(10% Chance to Win Money)</p>
+            """
+
+        # --- B. RARE ROLE LOGIC (Multi-Guild) ---
+        if is_rare_win:
+            role_name = "💎 The Chosen One"
+            role_given_count = 0
+            
+            # Loop through ALL Guild IDs provided in Config
+            for guild_id in ALLOWED_GUILD_IDS:
+                guild = bot.get_guild(guild_id)
+                if guild:
+                    try:
+                        member = await guild.fetch_member(int(target_id))
+                        if member:
+                            # Role dhoondo ya banao
+                            role = discord.utils.get(guild.roles, name=role_name)
+                            if not role:
+                                role = await guild.create_role(name=role_name, color=discord.Color.gold(), hover=True, reason="QR Jackpot")
+                            
+                            # Role do
+                            if role not in member.roles:
+                                await member.add_roles(role)
+                                role_given_count += 1
+                    except Exception as e:
+                        print(f"User not in guild {guild_id}: {e}")
+
+            if role_given_count > 0:
+                role_msg = f"""
+                <div style="margin-top:30px; padding:20px; border:2px solid gold; border-radius:10px; background:rgba(255, 215, 0, 0.1);">
+                    <h2 style="color:gold; margin:0;">👑 JACKPOT HIT!</h2>
+                    <p style="color:#fff;"><b>0.01% LEGENDARY DROP</b></p>
+                    <p style="color:#ccc;">'The Chosen One' Role added in {role_given_count} Server(s).</p>
+                </div>
+                """
+
+    except Exception as e:
+        print(f"Reward Error: {e}")
+        return "Server Error"
+
+    # --- FINAL HTML RETURN (Mobile Friendly) ---
     return f"""
     <html>
-    <body style="background:#000; color:#0f0; font-family:sans-serif; text-align:center; padding-top:50px;">
-        <h1 style="font-size:3rem;">SCAN SUCCESSFUL!</h1>
-        <p style="font-size:1.5rem; color:#fff;">User ID: {target_id}</p>
-        <hr style="border-color:#333;">
-        <h2 style="color:#f1c40f; font-size:2.5rem;">+${amount:,}</h2>
-        <p style="color:#ccc;">Added to account.</p>
-        {role_msg}
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {{ background:#050505; color:white; font-family:'Courier New', monospace; text-align:center; padding:20px; display:flex; flex-direction:column; justify-content:center; height:100vh; margin:0; }}
+            .container {{ border: 1px solid #333; padding: 20px; border-radius: 20px; background: #0a0a0a; box-shadow: 0 0 50px rgba(0,0,0,0.8); }}
+            .device-info {{ font-size: 0.8rem; color: #444; margin-top: 20px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            {status_html}
+            {role_msg}
+            <div class="device-info">
+                Scanner ID: {target_id} <br>
+                Device: {platform} | Browser: {browser}
+            </div>
+        </div>
     </body>
     </html>
     """
+
 
 # ==========================================
 # 🚀 ULTIMATE BUSINESS SYSTEM (UPDATED)
