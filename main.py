@@ -17206,77 +17206,90 @@ async def voice_switch(interaction: discord.Interaction, voice: str):
         await interaction.response.send_message(f"❌ Save Error: {e}", ephemeral=True)
 
 
-# 3. SPEAK (Main Command)
+import asyncio
+import functools
+
+# --- HELPER: Non-Blocking Audio Generation ---
+async def generate_audio_async(text, voice_id):
+    """
+    Ye function ElevenLabs ki heavy processing ko 
+    alag thread me chalayega taaki bot hang na ho.
+    """
+    func = functools.partial(
+        client.generate,
+        text=text,
+        voice=voice_id,
+        model="eleven_multilingual_v2"
+    )
+    # Alag thread me run karo
+    return await bot.loop.run_in_executor(None, func)
+
+# --- COMMAND: SPEAK (FIXED) ---
 @bot.tree.command(name="speak", description="🗣️ Speak text in your selected voice")
 async def speak(interaction: discord.Interaction, text: str):
     # 1. Check Voice Channel
     if not interaction.user.voice:
-        embed = discord.Embed(title="⚠️ Join VC", description="Pehle kisi **Voice Channel** me aao!", color=0xFF0000)
-        return await interaction.response.send_message(embed=embed, ephemeral=True)
+        return await interaction.response.send_message("❌ Pehle kisi Voice Channel me aao!", ephemeral=True)
 
-    await interaction.response.defer(ephemeral=True)
+    # 2. Defer (Thinking state)
+    await interaction.response.defer()
 
-    # 2. Check Database Access & Voice
+    # 3. Database Check
     user_data = get_user_data(interaction.user.id)
-    
-    if not user_data:
-        return await interaction.followup.send("❌ Database Error. Try again.")
-
-    # Access Check
-    if user_data['has_access'] == False:
-        embed = discord.Embed(title="⛔ No Access", description="Aapko **Access** nahi mila hai.\nOwner se contact karein.", color=0xFF0000)
+    if not user_data or user_data.get('has_access') == False:
+        embed = discord.Embed(title="⛔ No Access", description="Owner se contact karein access ke liye.", color=0xFF0000)
         return await interaction.followup.send(embed=embed)
 
-    # Voice Fetch
-    voice_name = user_data['selected_voice']
+    voice_name = user_data.get('selected_voice', "👩 Priyanka")
     voice_id = VOICE_DB.get(voice_name, VOICE_DB["👩 Priyanka"])
 
     try:
-        # 3. Join VC
+        # 4. Join VC (Safe Connect)
         channel = interaction.user.voice.channel
         vc = interaction.guild.voice_client
+        
         if not vc:
-            vc = await channel.connect()
+            try:
+                vc = await channel.connect()
+            except Exception as e:
+                return await interaction.followup.send(f"❌ VC Join Error: {e}")
         else:
             if vc.channel.id != channel.id:
                 await vc.move_to(channel)
 
-        # 4. Generate Audio
-        audio = el_client.generate(
-            text=text,
-            voice=voice_id,
-            model="eleven_multilingual_v2"
-        )
+        # 5. Generate Audio (NON-BLOCKING FIX ✅)
+        # Ab ye bot ko hang nahi karega
+        audio = await generate_audio_async(text, voice_id)
         
         filename = f"tts_{interaction.id}.mp3"
         save(audio, filename)
         
-        # 5. Play & Cleanup (YAHAN CHANGE HUA HAI 👇)
-        source = discord.FFmpegPCMAudio(filename)
+        # 6. Play Audio (FFmpeg Path Fix ✅)
+        # Render pe ffmpeg root folder me hota hai, isliye './ffmpeg' diya hai
+        if os.path.exists("./ffmpeg"):
+            ffmpeg_executable = "./ffmpeg"
+        else:
+            ffmpeg_executable = "ffmpeg" # Local PC fallback
 
-        # --- CLEANUP FUNCTION (Delete file after playing) ---
+        source = discord.FFmpegPCMAudio(filename, executable=ffmpeg_executable)
+
+        # Cleanup Function
         def cleanup(error):
-            if error:
-                print(f"Error in playback: {error}")
-            try:
-                if os.path.exists(filename):
-                    os.remove(filename) # File delete kar do
-                    print(f"Deleted: {filename}")
-            except Exception as e:
-                print(f"Error deleting file: {e}")
-        # ----------------------------------------------------
+            if os.path.exists(filename):
+                os.remove(filename)
 
         if not vc.is_playing():
-            # 'after=cleanup' ka matlab: Jab audio khatam ho, cleanup function chalao
             vc.play(source, after=cleanup)
 
-        # 6. Success Embed
+        # 7. Success Message
         embed = discord.Embed(description=f"🗣️ **Said:** {text}", color=0x00FF00)
         embed.set_author(name=f"Voice: {voice_name}", icon_url=interaction.user.display_avatar.url)
         await interaction.followup.send(embed=embed)
 
     except Exception as e:
-        await interaction.followup.send(f"❌ Error: {e}")
+        print(f"Error: {e}") # Logs me print karega
+        await interaction.followup.send(f"❌ Error aaya: {e}")
+
 
 
 # 4. LEAVE VC
