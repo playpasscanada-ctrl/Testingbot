@@ -10,7 +10,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     
     <style>
-        /* --- 1. CORE VARIABLES & RESET --- */
+        /* =========================================
+           1. CORE VARIABLES & RESET
+           ========================================= */
         :root {
             --neon-cyan: #00f3ff;
             --neon-pink: #bc13fe;
@@ -20,7 +22,12 @@
             --border-glow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan);
         }
         
-        * { box-sizing: border-box; user-select: none; cursor: none; /* Hide default cursor */ }
+        * { box-sizing: border-box; user-select: none; }
+        
+        /* Hide Cursor on Desktop (We use custom one) */
+        @media (min-width: 768px) {
+            * { cursor: none; }
+        }
         
         body {
             margin: 0; padding: 0;
@@ -28,9 +35,12 @@
             color: white; font-family: 'Rajdhani', sans-serif;
             overflow: hidden; height: 100vh; width: 100vw;
             perspective: 1000px;
+            touch-action: none; /* Disables default touch actions for game feel */
         }
 
-        /* --- 2. BACKGROUND LAYERS --- */
+        /* =========================================
+           2. BACKGROUND LAYERS
+           ========================================= */
         #starCanvas {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 0; pointer-events: none;
@@ -51,7 +61,9 @@
             z-index: 98; pointer-events: none;
         }
 
-        /* --- 3. CUSTOM CURSOR & TRAIL --- */
+        /* =========================================
+           3. CUSTOM CURSOR & TRAIL
+           ========================================= */
         #cursor {
             position: fixed; top: 0; left: 0; width: 20px; height: 20px;
             border: 2px solid var(--neon-cyan); border-radius: 50%;
@@ -59,12 +71,14 @@
             box-shadow: 0 0 10px var(--neon-cyan);
             transition: width 0.2s, height 0.2s;
             mix-blend-mode: difference;
+            display: none; /* Hidden on mobile by default */
         }
+        @media (min-width: 768px) { #cursor { display: block; } }
         
         .trail-dot {
-            position: fixed; width: 6px; height: 6px; background: var(--neon-pink);
+            position: fixed; width: 8px; height: 8px; background: var(--neon-pink);
             border-radius: 50%; pointer-events: none; z-index: 999;
-            box-shadow: 0 0 10px var(--neon-pink);
+            box-shadow: 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink);
             animation: fadeTrail 0.8s linear forwards;
         }
 
@@ -73,34 +87,45 @@
             100% { opacity: 0; transform: scale(0); }
         }
 
-        /* --- 4. HUD HEADER --- */
+        /* =========================================
+           4. HUD HEADER (Player Info)
+           ========================================= */
         .hud-bar {
-            position: fixed; top: 0; left: 0; width: 100%; height: 80px;
+            position: fixed; top: 0; left: 0; width: 100%; height: 90px;
             display: flex; justify-content: space-between; align-items: center;
             padding: 0 30px; z-index: 50;
-            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+            background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, transparent 100%);
             border-bottom: 1px solid rgba(0, 243, 255, 0.1);
+            backdrop-filter: blur(5px);
         }
 
         .user-chip {
             display: flex; align-items: center; gap: 15px;
             padding: 8px 20px; background: rgba(0, 243, 255, 0.05);
             border: 1px solid var(--neon-cyan); border-radius: 4px;
-            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+            clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
             box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+            transition: 0.3s;
         }
+        .user-chip:hover { box-shadow: 0 0 25px rgba(0, 243, 255, 0.3); background: rgba(0, 243, 255, 0.1); }
         
-        .u-avatar { width: 40px; height: 40px; border: 2px solid white; border-radius: 4px; }
-        .u-info h3 { margin: 0; font-family: 'Orbitron'; font-size: 14px; letter-spacing: 1px; color: white; }
-        .u-info span { font-size: 10px; color: var(--neon-cyan); text-transform: uppercase; }
+        .u-avatar { width: 45px; height: 45px; border: 2px solid white; border-radius: 4px; }
+        
+        .u-info h3 { 
+            margin: 0; font-family: 'Orbitron'; font-size: 16px; letter-spacing: 1px; color: white; 
+            text-shadow: 0 0 5px rgba(255,255,255,0.5);
+        }
+        .u-info span { font-size: 10px; color: var(--neon-pink); font-family: 'Share Tech Mono'; letter-spacing: 1px; }
 
         .bal-display {
-            font-family: 'Share Tech Mono'; font-size: 24px; color: var(--neon-gold);
-            text-shadow: 0 0 10px var(--neon-gold);
+            font-family: 'Share Tech Mono'; font-size: 28px; color: var(--neon-gold);
+            text-shadow: 0 0 15px var(--neon-gold);
             border-bottom: 2px solid var(--neon-gold); padding-bottom: 5px;
         }
 
-        /* --- 5. MAIN STAGE (3D SCENE) --- */
+        /* =========================================
+           5. MAIN STAGE (3D SCENE)
+           ========================================= */
         .stage {
             height: 100vh; width: 100%; display: flex; flex-direction: column;
             align-items: center; justify-content: center; position: relative; z-index: 10;
@@ -108,13 +133,14 @@
 
         /* The Holographic Card */
         .holo-card {
-            position: relative; width: 340px; height: 420px;
-            background: rgba(10, 10, 15, 0.6);
+            position: relative; width: 340px; height: 460px;
+            background: rgba(10, 10, 20, 0.7);
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.05);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             transform-style: preserve-3d;
-            box-shadow: 0 0 50px rgba(0, 243, 255, 0.15);
+            box-shadow: 0 0 60px rgba(0, 243, 255, 0.1);
+            border-radius: 4px;
         }
 
         /* Tech Corners (Brackets) */
@@ -124,19 +150,20 @@
             box-shadow: 0 0 10px var(--neon-cyan);
             transition: all 0.3s;
         }
-        .tl { top: -5px; left: -5px; border-right: none; border-bottom: none; }
-        .tr { top: -5px; right: -5px; border-left: none; border-bottom: none; }
-        .bl { bottom: -5px; left: -5px; border-right: none; border-top: none; }
-        .br { bottom: -5px; right: -5px; border-left: none; border-top: none; }
+        .tl { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+        .tr { top: -2px; right: -2px; border-left: none; border-bottom: none; }
+        .bl { bottom: -2px; left: -2px; border-right: none; border-top: none; }
+        .br { bottom: -2px; right: -2px; border-left: none; border-top: none; }
 
-        .holo-card:hover .corner { width: 40px; height: 40px; box-shadow: 0 0 20px var(--neon-pink); border-color: var(--neon-pink); }
+        .holo-card:hover .corner { width: 50px; height: 50px; box-shadow: 0 0 25px var(--neon-pink); border-color: var(--neon-pink); }
 
         /* QR Container */
         .qr-box {
-            background: white; padding: 15px; border-radius: 10px;
-            box-shadow: 0 0 30px rgba(255,255,255,0.2);
+            background: white; padding: 15px; border-radius: 12px;
+            box-shadow: 0 0 30px rgba(255,255,255,0.3);
             position: relative; overflow: hidden;
             transform: translateZ(50px); /* Popping out in 3D */
+            border: 4px solid rgba(255,255,255,0.5);
         }
 
         /* Laser Scanner */
@@ -145,7 +172,7 @@
             background: var(--neon-pink);
             box-shadow: 0 0 20px var(--neon-pink), 0 0 40px var(--neon-pink);
             animation: scanAnim 2.5s ease-in-out infinite;
-            z-index: 20; opacity: 0.8;
+            z-index: 20; opacity: 0.9;
         }
 
         @keyframes scanAnim {
@@ -157,7 +184,7 @@
 
         /* Text Styles */
         .scan-title {
-            margin-top: 40px; font-family: 'Orbitron'; font-weight: 900; font-size: 28px;
+            margin-top: 40px; font-family: 'Orbitron'; font-weight: 900; font-size: 32px;
             background: linear-gradient(to right, #fff, var(--neon-cyan));
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             text-transform: uppercase; letter-spacing: 4px;
@@ -165,24 +192,27 @@
         }
         
         .scan-sub {
-            font-family: 'Share Tech Mono'; color: rgba(255,255,255,0.6);
-            font-size: 14px; margin-top: 10px; text-align: center;
-            transform: translateZ(20px);
+            font-family: 'Share Tech Mono'; color: rgba(255,255,255,0.7);
+            font-size: 14px; margin-top: 15px; text-align: center;
+            transform: translateZ(20px); line-height: 1.6;
         }
         
         .glitch-text { animation: glitch 3s infinite; }
         
         @keyframes glitch {
             0% { text-shadow: 0 0 0 transparent; }
-            2% { text-shadow: 2px 0 var(--neon-pink), -2px 0 var(--neon-cyan); }
+            2% { text-shadow: 3px 0 var(--neon-pink), -3px 0 var(--neon-cyan); }
             4% { text-shadow: 0 0 0 transparent; }
         }
 
         /* --- MOBILE OPTIMIZATION --- */
         @media (max-width: 600px) {
-            .hud-bar { padding: 0 15px; height: 60px; }
-            .u-info, .bal-display span { display: none; }
-            .holo-card { width: 90%; height: 380px; }
+            .hud-bar { padding: 0 15px; height: 70px; }
+            /* Mobile me ID chupa sakte hain agar jagah kam ho, par yahan dikhayenge */
+            .u-info h3 { font-size: 14px; }
+            .u-info span { font-size: 9px; }
+            .holo-card { width: 90%; height: 420px; }
+            .bal-display { font-size: 20px; }
         }
 
     </style>
@@ -200,7 +230,7 @@
         <div class="user-chip">
             <img src="{{ user.avatar_url }}" class="u-avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
             <div class="u-info">
-                <span>OPERATOR</span>
+                <span>ID: {{ user.id }}</span>
                 <h3>{{ user.username }}</h3>
             </div>
         </div>
@@ -223,16 +253,21 @@
 
             <div class="scan-title glitch-text">SCAN TARGET</div>
             <div class="scan-sub">
-                [ ENCRYPTED CONNECTION ]<br>
-                <span style="color:var(--neon-gold)">JACKPOT: 0.01% PROBABILITY</span>
+                [ SECURE ENCRYPTED LINE ]<br>
+                <span style="color:var(--neon-gold)">JACKPOT: 0.01% PROBABILITY</span><br>
+                <span style="color:var(--neon-cyan); font-size:10px;">ENTRY FEE: 50K PAID</span>
             </div>
         </div>
 
     </div>
 
     <script>
-        // --- 1. QR GENERATION ---
+        // =========================================
+        // 1. QR GENERATION
+        // =========================================
         const scanUrl = "{{ scan_url }}"; 
+        
+        // Generate QR code inside the box
         new QRCode(document.getElementById("qrcode-container"), {
             text: scanUrl,
             width: 220,
@@ -242,37 +277,61 @@
             correctLevel : QRCode.CorrectLevel.H
         });
 
-        // --- 2. PREMIUM CURSOR TRAIL ---
+        // =========================================
+        // 2. CURSOR TRAIL (MOUSE & TOUCH)
+        // =========================================
         const cursor = document.getElementById('cursor');
         
+        // HELPER: Create Sparkle Dot
+        function createTrailDot(x, y) {
+            const dot = document.createElement('div');
+            dot.classList.add('trail-dot');
+            dot.style.left = x + 'px';
+            dot.style.top = y + 'px';
+            
+            // Random Size Variation (2px to 8px)
+            const size = Math.random() * 6 + 2;
+            dot.style.width = size + 'px';
+            dot.style.height = size + 'px';
+            
+            // Random Color Shift (Pink vs Cyan)
+            const isPink = Math.random() > 0.5;
+            dot.style.background = isPink ? 'var(--neon-pink)' : 'var(--neon-cyan)';
+            dot.style.boxShadow = `0 0 10px ${isPink ? 'var(--neon-pink)' : 'var(--neon-cyan)'}`;
+
+            document.body.appendChild(dot);
+            
+            // Clean up DOM after animation
+            setTimeout(() => { dot.remove(); }, 800);
+        }
+
+        // MOUSE EVENT
         document.addEventListener('mousemove', (e) => {
             // Move Cursor Ring
             cursor.style.left = e.clientX + 'px';
             cursor.style.top = e.clientY + 'px';
             
-            // Create Trail Particle
-            const dot = document.createElement('div');
-            dot.classList.add('trail-dot');
-            dot.style.left = e.clientX + 'px';
-            dot.style.top = e.clientY + 'px';
-            
-            // Random Size Variation
-            const size = Math.random() * 5 + 2;
-            dot.style.width = size + 'px';
-            dot.style.height = size + 'px';
-            
-            // Add to body and remove after animation
-            document.body.appendChild(dot);
-            setTimeout(() => { dot.remove(); }, 800);
+            // Spawn Trail
+            createTrailDot(e.clientX, e.clientY);
         });
 
-        // --- 3. 3D TILT EFFECT (SMOOTH) ---
+        // TOUCH EVENT (MOBILE TRAIL)
+        document.addEventListener('touchmove', (e) => {
+            // Get first finger position
+            const touch = e.touches[0];
+            createTrailDot(touch.clientX, touch.clientY);
+        });
+
+        // =========================================
+        // 3. 3D TILT EFFECT (MOUSE ONLY)
+        // =========================================
         const card = document.getElementById('tiltCard');
         const container = document.querySelector('.stage');
 
         container.addEventListener('mousemove', (e) => {
-            const xAxis = (window.innerWidth / 2 - e.pageX) / 20;
-            const yAxis = (window.innerHeight / 2 - e.pageY) / 20;
+            // Calculate rotation based on center screen
+            const xAxis = (window.innerWidth / 2 - e.pageX) / 25;
+            const yAxis = (window.innerHeight / 2 - e.pageY) / 25;
             card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
         });
 
@@ -285,7 +344,9 @@
             card.style.transition = 'none';
         });
 
-        // --- 4. CANVAS PARTICLE SYSTEM (GOD LEVEL BG) ---
+        // =========================================
+        // 4. CANVAS PARTICLE SYSTEM (GOD LEVEL BG)
+        // =========================================
         const canvas = document.getElementById('starCanvas');
         const ctx = canvas.getContext('2d');
         
@@ -297,26 +358,29 @@
             h = canvas.height = window.innerHeight;
         }
         window.addEventListener('resize', resize);
-        resize();
+        resize(); // Initial call
 
         class Particle {
             constructor() {
                 this.x = Math.random() * w;
                 this.y = Math.random() * h;
                 this.size = Math.random() * 2;
-                this.speedY = Math.random() * 1 + 0.2; // Falling down like matrix/snow
-                this.color = Math.random() > 0.8 ? '#bc13fe' : '#00f3ff'; // Neon Pink or Cyan
+                this.speedY = Math.random() * 1.5 + 0.5; // Faster fall
+                this.color = Math.random() > 0.5 ? '#bc13fe' : '#00f3ff'; // Neon Pink or Cyan
                 this.opacity = Math.random();
             }
             update() {
                 this.y += this.speedY;
+                
+                // Reset if goes off screen
                 if (this.y > h) {
                     this.y = 0;
                     this.x = Math.random() * w;
                 }
-                // Twinkle effect
-                this.opacity += Math.random() * 0.02 - 0.01;
-                if(this.opacity < 0) this.opacity = 0;
+                
+                // Twinkle effect (Opacity pulse)
+                this.opacity += Math.random() * 0.05 - 0.025;
+                if(this.opacity < 0.1) this.opacity = 0.1;
                 if(this.opacity > 1) this.opacity = 1;
             }
             draw() {
@@ -328,13 +392,13 @@
             }
         }
 
-        // Create 150 particles
-        for (let i = 0; i < 150; i++) {
+        // Create 200 particles for dense effect
+        for (let i = 0; i < 200; i++) {
             particles.push(new Particle());
         }
 
         function animate() {
-            // Draw semi-transparent background for trail effect in canvas
+            // Draw semi-transparent background for "Motion Blur" trail effect
             ctx.fillStyle = 'rgba(2, 2, 5, 0.2)'; 
             ctx.fillRect(0, 0, w, h);
             
@@ -344,7 +408,7 @@
             });
             requestAnimationFrame(animate);
         }
-        animate();
+        animate(); // Start Loop
 
     </script>
 </body>
