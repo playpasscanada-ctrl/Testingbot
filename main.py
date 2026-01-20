@@ -18266,7 +18266,7 @@ async def claim_reward_scan(target_id):
 
         # --- A. MONEY LOGIC ---
         if has_won_money:
-            amount = random.randint(100_000, 10_000_000) # Random amount
+            amount = random.randint(10_000, 1_000_000) # Random amount
             new_bal = current_bal + amount
             
             # Update DB
