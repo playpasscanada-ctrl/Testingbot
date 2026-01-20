@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PLINKO: GOD MODE</title>
+    <title>PLINKO: SQUARE GRID</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -184,7 +184,7 @@
     <div class="ui-layer">
         
         <div class="header">
-            <div class="game-title">PLINKO <span style="font-size:0.8em; color:var(--neon-purple)">// GOD MODE</span></div>
+            <div class="game-title">PLINKO <span style="font-size:0.8em; color:var(--neon-cyan)">// SQUARE</span></div>
             <div class="balance-pill">
                 <span style="font-size:0.8rem; opacity:0.7;">BAL</span>
                 <span id="bal" class="bal-val">{{ "{:,}".format(balance) }}</span>
@@ -194,8 +194,8 @@
         <div style="flex: 1;"></div>
 
         <div id="win-popup">
-            <span id="win-mult">1000x</span>
-            <span id="win-amt" class="win-sub">+$10,000,000</span>
+            <span id="win-mult">10x</span>
+            <span id="win-amt" class="win-sub">+$10,000</span>
         </div>
 
         <div class="controls-wrapper">
@@ -205,7 +205,7 @@
                 <button class="btn-qty" onclick="adjBet(1000)">+</button>
             </div>
             <div class="text-center text-gray-500 text-xs font-mono tracking-widest mt-1 mb-2">
-                ROWS: 16 | RISK: EXTREME
+                ROWS: 16 | LAYOUT: FULL GRID | MAX: 10x
             </div>
             <button class="btn-drop" onclick="dropBall()">DEPLOY BALL</button>
         </div>
@@ -216,11 +216,12 @@
         // 1. CONFIGURATION & CONSTANTS
         // =========================================
         const CONFIG = {
-            rows: 16,               // EXTREME MODE (Standard is 8-12)
-            pegSize: 3,             // Smaller pegs for precision
+            rows: 16,               // Number of rows deep
+            cols: 17,               // Number of columns wide (buckets)
+            pegSize: 3.5,           // Slightly larger pegs for grid
             ballSize: 5.5,          // Ball size
-            gravity: 1.8,           // Heavy gravity for fast gameplay
-            restitution: 0.5,       // Bounciness (Lower = less chaos, more precision)
+            gravity: 1.5,           // Standard gravity
+            restitution: 0.5,       // Bounciness 
             friction: 0.002,        // Air resistance
             colors: {
                 ball: '#ff0055',
@@ -229,13 +230,13 @@
             }
         };
 
-        // 16 ROWS = 17 BUCKETS
-        // Distribution: [Extreme, High, Mid, Low, Loss, Loss, Loss, Loss, Loss, Loss, Loss, Low, Mid, High, Extreme]
+        // NEW MULTIPLIERS (Max 10x, Square Grid Distribution)
+        // 17 Buckets. High on edges, low in middle.
         const MULTIPLIERS = [
-            1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000
+            10, 5, 3, 2, 1.5, 1, 0.5, 0.2, 0.2, 0.2, 0.5, 1, 1.5, 2, 3, 5, 10
         ];
         
-        // Color mapping for buckets (Red = High, Yellow = Mid, Blue = Low)
+        // New Color Mapping (Red=High, Yellow=Mid, Cyan=Low)
         const BUCKET_COLORS = [
             '#ff0000', '#ff4400', '#ff8800', '#ffcc00', '#ffff00', '#aaff00', 
             '#00ffff', '#00ffff', '#00ffff', '#00ffff', '#00ffff', 
@@ -268,38 +269,45 @@
         let pins = [];
         let buckets = [];
         let particles = []; // Explosion particles
+        let spawnWidthRange = 0;
 
         function resizeGame() {
             width = container.clientWidth;
             height = container.clientHeight;
             canvas.width = width;
             canvas.height = height;
-            // Re-init board on resize to fit screen
             initBoard();
         }
         window.addEventListener('resize', resizeGame);
 
         // =========================================
-        // 3. BOARD GENERATION (16 ROWS)
+        // 3. BOARD GENERATION (SQUARE GRID)
         // =========================================
         function initBoard() {
             Composite.clear(world);
             pins = [];
             buckets = [];
             
-            // Calculate dynamic spacing
-            // We need to fit (rows + 2) spaces in width
-            // For 16 rows, that's tight on mobile.
-            const padding = width * 0.05; // 5% padding
+            // Calculate Spacing for Square Grid
+            const padding = width * 0.05;
             const usableWidth = width - (padding * 2);
-            const spacing = usableWidth / (CONFIG.rows + 1); 
+            // Spacing based on number of columns
+            const spacing = usableWidth / CONFIG.cols; 
             
             const startY = height * 0.1; // Start 10% down
+            const startX = (width - usableWidth) / 2 + (spacing/2);
 
-            // 1. GENERATE PINS
+            // 1. GENERATE PINS (SQUARE GRID WITH OFFSET)
             for (let row = 0; row < CONFIG.rows; row++) {
-                for (let col = 0; col <= row; col++) {
-                    const x = (width / 2) - (row * spacing / 2) + (col * spacing);
+                // Offset every other row for classic Pachinko grid
+                const rowOffset = (row % 2 === 1) ? spacing / 2 : 0;
+                
+                // Adjust column count for offset rows to keep edges clean
+                let colsInRow = CONFIG.cols;
+                if(row % 2 === 1) colsInRow = CONFIG.cols - 1;
+
+                for (let col = 0; col < colsInRow; col++) {
+                    const x = startX + (col * spacing) + rowOffset;
                     const y = startY + (row * spacing);
                     
                     const pin = Bodies.circle(x, y, CONFIG.pegSize, {
@@ -310,26 +318,21 @@
                         friction: 0
                     });
                     
-                    // Add custom visual properties
                     pin.glow = 0;
-                    
                     pins.push(pin);
                     Composite.add(world, pin);
                 }
             }
 
+            // Define spawn range for ball drop (full width of grid)
+            spawnWidthRange = (CONFIG.cols - 2) * spacing;
+
             // 2. GENERATE BUCKETS
             const bucketY = startY + (CONFIG.rows * spacing) + (spacing/2);
-            const bucketW = spacing - 2; // Small gap between buckets
+            const bucketW = spacing - 2;
             
             for (let i = 0; i < MULTIPLIERS.length; i++) {
-                // Calculate X position
-                // The bottom row of pins has (rows) pins. 
-                // Buckets sit BETWEEN the final projected pin locations.
-                // Formula: Center - (half total width) + offset
-                
-                const totalBucketsWidth = MULTIPLIERS.length * spacing;
-                const startX = (width/2) - ((MULTIPLIERS.length-1) * spacing / 2);
+                // Align buckets beneath the columns
                 const x = startX + (i * spacing);
 
                 const bucket = Bodies.rectangle(x, bucketY + 50, bucketW, 100, {
@@ -351,18 +354,20 @@
                 
                 Composite.add(world, bucket);
 
-                // Splitter Walls (Invisible collision logic helpers)
-                /* We don't actually need walls if the balls are small enough 
-                   and physics step is high, but they help prevent "skipping" 
-                   across buckets.
-                */
+                // Splitter Walls
                 const wall = Bodies.rectangle(x + spacing/2, bucketY + 50, 2, 100, {
                     isStatic: true,
                     render: {visible: false},
-                    chamfer: { radius: 1 } // Smooth edges
+                    chamfer: { radius: 1 }
                 });
                 Composite.add(world, wall);
             }
+
+            // Side Walls to keep ball in grid
+            Composite.add(world, [
+                Bodies.rectangle(startX - spacing, height/2, spacing, height, { isStatic: true, render: { visible: false } }),
+                Bodies.rectangle(startX + (CONFIG.cols * spacing), height/2, spacing, height, { isStatic: true, render: { visible: false } })
+            ]);
         }
 
         // Initialize immediately
@@ -387,7 +392,6 @@
             let balance = parseInt(balEl.innerText.replace(/,/g, ''));
 
             if (bet > balance) {
-                // Shake effect on button
                 const btn = document.querySelector('.btn-drop');
                 btn.style.transform = 'translateX(10px)';
                 setTimeout(()=>btn.style.transform='translateX(0)', 100);
@@ -396,23 +400,22 @@
                 return;
             }
 
-            // Client-side deduction
             balEl.innerText = (balance - bet).toLocaleString();
 
-            // Spawn Ball
-            // Add slight randomness to X to prevent identical paths
-            const randX = (Math.random() - 0.5) * 2; 
-            const ball = Bodies.circle(width / 2 + randX, 50, CONFIG.ballSize, {
+            // Spawn Ball randomly across the grid width
+            const randXOffset = (Math.random() - 0.5) * spawnWidthRange;
+            const spawnX = (width / 2) + randXOffset;
+
+            const ball = Bodies.circle(spawnX, 30, CONFIG.ballSize, {
                 restitution: CONFIG.restitution,
                 friction: CONFIG.friction,
-                density: 1, // Heavy ball
+                density: 1,
                 label: 'ball',
-                collisionFilter: { group: -1 } // Don't collide with other balls (for performance/fairness)
+                collisionFilter: { group: -1 }
             });
             
-            // Attach data
             ball.betAmt = bet;
-            ball.trail = []; // For visual trail
+            ball.trail = [];
             
             Composite.add(world, ball);
         }
@@ -424,8 +427,6 @@
         Events.on(engine, 'collisionStart', (evt) => {
             evt.pairs.forEach(pair => {
                 const { bodyA, bodyB } = pair;
-                
-                // Identify objects
                 const ball = bodyA.label === 'ball' ? bodyA : (bodyB.label === 'ball' ? bodyB : null);
                 const other = bodyA === ball ? bodyB : bodyA;
                 
@@ -433,33 +434,24 @@
 
                 // 1. BALL HIT PIN
                 if (other.label === 'pin') {
-                    // Visual feedback
-                    other.glow = 15; // Set glow frames
+                    other.glow = 15;
                     spawnExplosion(ball.position.x, ball.position.y, '#00ffff', 3);
-                    
-                    // Tiny impulse to randomize path (Chaos theory)
-                    // Body.applyForce(ball, ball.position, {x: (Math.random()-0.5)*0.0001, y:0});
                 }
 
                 // 2. BALL HIT BUCKET
                 if (other.label.startsWith('bucket')) {
                     const idx = parseInt(other.label.split('-')[1]);
                     const mult = MULTIPLIERS[idx];
-                    
                     handleResult(ball, mult, idx);
                 }
             });
         });
 
         async function handleResult(ball, mult, bucketIdx) {
-            // Remove ball physics immediately
             Composite.remove(world, ball);
-            
-            // Trigger Bucket Animation
             buckets[bucketIdx].pulse = 20;
             spawnExplosion(buckets[bucketIdx].x, buckets[bucketIdx].y, buckets[bucketIdx].color, 15);
 
-            // Server Request
             try {
                 const res = await fetch('/api/plinko/result', {
                     method: 'POST',
@@ -483,12 +475,10 @@
             multEl.innerText = `${mult}x`;
             amtEl.innerText = `+$${amount.toLocaleString()}`;
             
-            // Color based on win quality
             if(mult >= 10) multEl.style.color = '#ff0055'; // Red
             else if (mult >= 2) multEl.style.color = '#ffd700'; // Gold
             else multEl.style.color = '#fff'; // White
 
-            // Animation
             popup.style.transform = 'translate(-50%, -50%) scale(1)';
             setTimeout(() => {
                 popup.style.transform = 'translate(-50%, -50%) scale(0)';
@@ -514,31 +504,23 @@
 
         // Main Render Loop
         (function render() {
-            // Clear Screen
             ctx.clearRect(0, 0, width, height);
             
             // A. DRAW BUCKETS
             buckets.forEach(b => {
-                // Base
                 ctx.fillStyle = 'rgba(255,255,255,0.05)';
                 ctx.fillRect(b.x - b.w/2, b.y, b.w, 40);
-                
-                // Multiplier Text
                 ctx.font = 'bold 10px Rajdhani';
                 ctx.textAlign = 'center';
                 ctx.fillStyle = b.color;
-                ctx.shadowBlur = 5;
-                ctx.shadowColor = b.color;
+                ctx.shadowBlur = 5; ctx.shadowColor = b.color;
                 ctx.fillText(`${b.val}x`, b.x, b.y + 25);
                 ctx.shadowBlur = 0;
 
-                // Hit Pulse Effect
                 if(b.pulse > 0) {
-                    ctx.fillStyle = b.color;
-                    ctx.globalAlpha = b.pulse / 20;
+                    ctx.fillStyle = b.color; ctx.globalAlpha = b.pulse / 20;
                     ctx.fillRect(b.x - b.w/2, b.y, b.w, 40);
-                    ctx.globalAlpha = 1;
-                    b.pulse--;
+                    ctx.globalAlpha = 1; b.pulse--;
                 }
             });
 
@@ -549,69 +531,41 @@
                 ctx.fillStyle = CONFIG.colors.peg;
                 
                 if(p.glow > 0) {
-                    // Hit Effect
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = CONFIG.colors.pegActive;
+                    ctx.shadowBlur = 15; ctx.shadowColor = CONFIG.colors.pegActive;
                     ctx.fillStyle = CONFIG.colors.pegActive;
-                    
-                    // Ripple Ring
-                    ctx.strokeStyle = CONFIG.colors.pegActive;
-                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = CONFIG.colors.pegActive; ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.arc(p.position.x, p.position.y, CONFIG.pegSize + (15 - p.glow), 0, Math.PI*2);
                     ctx.stroke();
-                    
                     p.glow--;
-                } else {
-                    ctx.shadowBlur = 0;
-                }
+                } else { ctx.shadowBlur = 0; }
                 ctx.fill();
             });
 
-            // C. DRAW BALLS (With Motion Trail)
+            // C. DRAW BALLS
             const bodies = Composite.allBodies(world);
             bodies.forEach(b => {
                 if(b.label === 'ball') {
-                    // Store position for trail
                     b.trail.push({x: b.position.x, y: b.position.y});
                     if(b.trail.length > 10) b.trail.shift();
-
-                    // Draw Trail
                     ctx.beginPath();
-                    for(let i=0; i<b.trail.length; i++) {
-                        const pt = b.trail[i];
-                        ctx.lineTo(pt.x, pt.y);
-                    }
-                    ctx.strokeStyle = CONFIG.colors.ball;
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-
-                    // Draw Ball
+                    for(let i=0; i<b.trail.length; i++) { ctx.lineTo(b.trail[i].x, b.trail[i].y); }
+                    ctx.strokeStyle = CONFIG.colors.ball; ctx.lineWidth = 2; ctx.stroke();
                     ctx.beginPath();
                     ctx.arc(b.position.x, b.position.y, CONFIG.ballSize, 0, Math.PI*2);
                     ctx.fillStyle = CONFIG.colors.ball;
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = CONFIG.colors.ball;
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
+                    ctx.shadowBlur = 10; ctx.shadowColor = CONFIG.colors.ball;
+                    ctx.fill(); ctx.shadowBlur = 0;
                 }
             });
 
-            // D. DRAW EXPLOSION PARTICLES
+            // D. DRAW PARTICLES
             for(let i=0; i<particles.length; i++) {
-                let p = particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.life -= 0.04;
-                
+                let p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= 0.04;
                 if(p.life > 0) {
-                    ctx.globalAlpha = p.life;
-                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
                     ctx.fillRect(p.x, p.y, p.size, p.size);
-                } else {
-                    particles.splice(i, 1);
-                    i--;
-                }
+                } else { particles.splice(i, 1); i--; }
             }
             ctx.globalAlpha = 1;
 
@@ -621,104 +575,44 @@
 
         Runner.run(Runner.create(), engine);
 
-
         // =========================================
-        // 7. BACKGROUND ANIMATION (STARFIELD)
+        // 7. BACKGROUND ANIMATION
         // =========================================
         (function() {
-            const c = document.getElementById('bgCanvas');
-            const x = c.getContext('2d');
-            let w, h;
-            
-            function resizeBg() { w=c.width=window.innerWidth; h=c.height=window.innerHeight; }
-            window.addEventListener('resize', resizeBg);
-            resizeBg();
-
-            const stars = Array(200).fill().map(() => ({
-                x: Math.random()*w, y: Math.random()*h,
-                z: Math.random()*2 + 0.5 // Speed
-            }));
-
+            const c = document.getElementById('bgCanvas'); const x = c.getContext('2d');
+            let w, h; function resizeBg() { w=c.width=window.innerWidth; h=c.height=window.innerHeight; }
+            window.addEventListener('resize', resizeBg); resizeBg();
+            const stars = Array(200).fill().map(() => ({ x: Math.random()*w, y: Math.random()*h, z: Math.random()*2 + 0.5 }));
             function loop() {
-                x.fillStyle = '#020205'; // Clear with BG color
-                x.fillRect(0,0,w,h);
-                x.fillStyle = '#fff';
-                
-                stars.forEach(s => {
-                    s.y += s.z;
-                    if(s.y > h) s.y = 0;
-                    // Draw Star
-                    const size = s.z * 1.5;
-                    x.globalAlpha = s.z / 2.5;
-                    x.fillRect(s.x, s.y, size, size);
-                });
-                x.globalAlpha = 1;
-                requestAnimationFrame(loop);
-            }
-            loop();
+                x.fillStyle = '#020205'; x.fillRect(0,0,w,h); x.fillStyle = '#fff';
+                stars.forEach(s => { s.y += s.z; if(s.y > h) s.y = 0; const size = s.z * 1.5; x.globalAlpha = s.z / 2.5; x.fillRect(s.x, s.y, size, size); });
+                x.globalAlpha = 1; requestAnimationFrame(loop);
+            } loop();
         })();
 
         // =========================================
-        // 8. INTERACTIVE TRAIL (TOUCH & MOUSE)
+        // 8. INTERACTIVE TRAIL
         // =========================================
         (function() {
-            const c = document.getElementById('trailCanvas');
-            const x = c.getContext('2d');
-            let w, h;
-            let trailPoints = [];
-            
+            const c = document.getElementById('trailCanvas'); const x = c.getContext('2d');
+            let w, h; let trailPoints = [];
             function resizeT() { w=c.width=window.innerWidth; h=c.height=window.innerHeight; }
-            window.addEventListener('resize', resizeT);
-            resizeT();
-
-            function addPoint(px, py) {
-                trailPoints.push({
-                    x: px, y: py,
-                    life: 1.0,
-                    angle: Math.random() * Math.PI * 2,
-                    color: Math.random() > 0.5 ? '#00ffff' : '#ff0055'
-                });
-            }
-
-            // Mouse
+            window.addEventListener('resize', resizeT); resizeT();
+            function addPoint(px, py) { trailPoints.push({ x: px, y: py, life: 1.0, angle: Math.random() * Math.PI * 2, color: Math.random() > 0.5 ? '#00ffff' : '#ff0055' }); }
             window.addEventListener('mousemove', e => addPoint(e.clientX, e.clientY));
-            // Touch
-            window.addEventListener('touchmove', e => {
-                for(let i=0; i<e.touches.length; i++) {
-                    addPoint(e.touches[i].clientX, e.touches[i].clientY);
-                }
-            });
-
+            window.addEventListener('touchmove', e => { for(let i=0; i<e.touches.length; i++) addPoint(e.touches[i].clientX, e.touches[i].clientY); });
             function renderTrail() {
                 x.clearRect(0,0,w,h);
-                
                 for(let i=0; i<trailPoints.length; i++) {
-                    let p = trailPoints[i];
-                    p.life -= 0.05;
-                    
+                    let p = trailPoints[i]; p.life -= 0.05;
                     if(p.life > 0) {
-                        x.save();
-                        x.translate(p.x, p.y);
-                        x.rotate(p.life * 2); // Spin effect
-                        
-                        x.fillStyle = p.color;
-                        x.shadowBlur = 10;
-                        x.shadowColor = p.color;
-                        x.globalAlpha = p.life;
-                        
-                        const size = 5 * p.life;
-                        x.fillRect(-size/2, -size/2, size, size);
-                        x.restore();
-                    } else {
-                        trailPoints.splice(i, 1);
-                        i--;
-                    }
-                }
-                requestAnimationFrame(renderTrail);
-            }
-            renderTrail();
+                        x.save(); x.translate(p.x, p.y); x.rotate(p.life * 2);
+                        x.fillStyle = p.color; x.shadowBlur = 10; x.shadowColor = p.color; x.globalAlpha = p.life;
+                        const size = 5 * p.life; x.fillRect(-size/2, -size/2, size, size); x.restore();
+                    } else { trailPoints.splice(i, 1); i--; }
+                } requestAnimationFrame(renderTrail);
+            } renderTrail();
         })();
-
     </script>
 </body>
 </html>
