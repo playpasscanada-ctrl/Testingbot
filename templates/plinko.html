@@ -3,426 +3,611 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Plinko // ULTRA</title>
+    <title>PLINKO: GOD MODE</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Rajdhani:wght@600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 
     <style>
-        :root { --neon-pink: #ff00ff; --neon-cyan: #00ffff; --bg-dark: #050505; }
-        
-        body {
-            margin: 0; padding: 0; overflow: hidden;
-            background-color: var(--bg-dark); color: white;
-            font-family: 'Rajdhani', sans-serif; user-select: none;
-            touch-action: none;
+        /* =========================================
+           1. CORE STYLES & VARIABLES
+           ========================================= */
+        :root {
+            --neon-pink: #ff0055;
+            --neon-cyan: #00ffff;
+            --neon-gold: #ffd700;
+            --neon-purple: #bc13fe;
+            --void-bg: #020205;
         }
 
-        /* --- UI OVERLAY --- */
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--void-bg);
+            color: white;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            height: 100vh; width: 100vw;
+            touch-action: none; /* Critical for mobile game feel */
+        }
+
+        /* =========================================
+           2. LAYERS (Z-INDEX MANAGEMENT)
+           ========================================= */
+        
+        /* Layer 1: Background Animation (Stars) */
+        #bgCanvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0; pointer-events: none;
+        }
+
+        /* Layer 2: Physics Game Container */
+        #game-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        /* Layer 3: Touch/Mouse Trails */
+        #trailCanvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 2; pointer-events: none;
+        }
+
+        /* Layer 4: UI Overlay */
         .ui-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 10;
-            display: flex; flex-direction: column; justify-content: space-between;
+            z-index: 10; pointer-events: none;
+            display: flex; flex-direction: column;
         }
 
-        /* HEADER */
+        /* =========================================
+           3. UI COMPONENTS
+           ========================================= */
+
+        /* Header */
         .header {
-            padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
-            background: linear-gradient(180deg, rgba(0,0,0,0.9), transparent);
-        }
-        .balance-box {
-            font-family: 'Orbitron'; color: #ffd700; font-size: 1.2rem; text-shadow: 0 0 10px #ffd700;
-            background: rgba(255, 215, 0, 0.1); padding: 5px 15px; border-radius: 20px; border: 1px solid #ffd700;
+            padding: 15px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            backdrop-filter: blur(5px);
+            pointer-events: auto;
         }
 
-        /* CONTROLS (Bottom) */
-        .controls {
-            pointer-events: auto; background: rgba(10, 10, 15, 0.9);
-            padding: 20px; border-top: 1px solid #333;
-            display: flex; gap: 10px; flex-direction: column;
-            backdrop-filter: blur(10px);
+        .game-title {
+            font-family: 'Orbitron'; font-weight: 900; font-size: 1.5rem;
+            background: linear-gradient(to right, #fff, var(--neon-cyan));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px var(--neon-cyan);
         }
-        
-        .bet-row { display: flex; gap: 10px; align-items: center; justify-content: center; }
-        
-        .input-box {
-            background: #000; border: 1px solid #444; color: white;
-            padding: 10px; text-align: center; font-family: 'Orbitron'; font-size: 1.2rem;
-            width: 100px; border-radius: 8px; outline: none;
-        }
-        
-        .btn-action {
-            width: 100%; padding: 15px; border: none; border-radius: 8px;
-            font-family: 'Orbitron'; font-weight: 900; font-size: 1.2rem;
-            background: linear-gradient(90deg, var(--neon-pink), var(--neon-cyan));
-            color: #000; cursor: pointer; text-transform: uppercase;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
-            transition: 0.2s;
-        }
-        .btn-action:active { transform: scale(0.98); filter: brightness(1.2); }
 
-        /* MULTIPLIER BAR (Canvas ke upar draw hoga but HTML labels better hain positioning ke liye) */
-        .multipliers {
-            display: flex; justify-content: space-around; padding: 0 10px; margin-bottom: 5px;
+        .balance-pill {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(255, 215, 0, 0.05);
+            border: 1px solid var(--neon-gold);
+            padding: 5px 15px; border-radius: 30px;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.1);
         }
-        .mult-tag {
-            font-size: 10px; font-weight: bold; padding: 2px 5px; border-radius: 4px;
-            text-align: center; min-width: 30px;
+        .bal-val {
+            font-family: 'Share Tech Mono'; font-size: 1.3rem; color: var(--neon-gold);
+            text-shadow: 0 0 10px var(--neon-gold);
         }
+
+        /* Controls Area */
+        .controls-wrapper {
+            margin-top: auto; /* Push to bottom */
+            background: rgba(5, 5, 10, 0.95);
+            border-top: 2px solid var(--neon-purple);
+            padding: 20px; padding-bottom: 30px;
+            pointer-events: auto;
+            display: flex; flex-direction: column; gap: 15px;
+            box-shadow: 0 -10px 50px rgba(0,0,0,0.8);
+            position: relative;
+        }
+
+        /* Neon Glow Line on top of controls */
+        .controls-wrapper::before {
+            content: ''; position: absolute; top: -2px; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, var(--neon-pink), var(--neon-cyan), var(--neon-purple));
+            animation: borderRun 2s linear infinite;
+        }
+        @keyframes borderRun { 0% {filter: hue-rotate(0deg);} 100% {filter: hue-rotate(360deg);} }
+
+        /* Bet Controls */
+        .bet-control-row {
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+        }
+
+        .btn-qty {
+            width: 50px; height: 50px; background: #1a1a2e; border: 1px solid #333;
+            color: white; border-radius: 12px; font-size: 1.5rem; cursor: pointer;
+            transition: 0.2s; box-shadow: 0 4px 0 #000;
+        }
+        .btn-qty:active { transform: translateY(4px); box-shadow: none; }
+
+        .bet-input-display {
+            flex: 1; max-width: 150px;
+            background: #000; border: 2px solid #333;
+            color: white; text-align: center;
+            font-family: 'Orbitron'; font-size: 1.5rem;
+            padding: 10px; border-radius: 12px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+        }
+
+        /* DROP BUTTON (The Big One) */
+        .btn-drop {
+            width: 100%; padding: 18px;
+            background: linear-gradient(135deg, var(--neon-pink) 0%, #ff00aa 100%);
+            border: none; border-radius: 12px;
+            font-family: 'Orbitron'; font-weight: 900; font-size: 1.4rem; letter-spacing: 2px;
+            color: white; text-transform: uppercase; cursor: pointer;
+            box-shadow: 0 0 30px rgba(255, 0, 85, 0.4), 0 6px 0 #990033;
+            transition: all 0.1s; position: relative; overflow: hidden;
+        }
+        .btn-drop:active { transform: translateY(6px); box-shadow: 0 0 10px rgba(255, 0, 85, 0.2); }
+        
+        /* Shine effect on button */
+        .btn-drop::after {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+            transform: rotate(45deg); animation: shine 3s infinite;
+        }
+        @keyframes shine { 0% {left: -100%;} 20% {left: 200%;} 100% {left: 200%;} }
+
+        /* Win Popup */
+        #win-popup {
+            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            font-family: 'Orbitron'; font-weight: 900; font-size: 3rem;
+            color: white; text-shadow: 0 0 20px white;
+            pointer-events: none; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 100; display: flex; flex-direction: column; align-items: center;
+        }
+        .win-sub { font-size: 1.2rem; color: var(--neon-gold); font-family: 'Rajdhani'; }
 
     </style>
 </head>
 <body>
 
-    <div id="game-container" style="position: absolute; top:0; left:0; width:100%; height:100%; z-index:0;"></div>
+    <canvas id="bgCanvas"></canvas>
+
+    <div id="game-container"></div>
+
+    <canvas id="trailCanvas"></canvas>
 
     <div class="ui-layer">
         
         <div class="header">
-            <div class="text-xl font-bold italic text-cyan-400">PLINKO <span class="text-pink-500">NEON</span></div>
-            <div class="balance-box">$<span id="bal">{{ "{:,}".format(balance) }}</span></div>
+            <div class="game-title">PLINKO <span style="font-size:0.8em; color:var(--neon-purple)">// GOD MODE</span></div>
+            <div class="balance-pill">
+                <span style="font-size:0.8rem; opacity:0.7;">BAL</span>
+                <span id="bal" class="bal-val">{{ "{:,}".format(balance) }}</span>
+            </div>
         </div>
 
-        <div style="flex:1;"></div> <div class="controls">
-            <div id="win-msg" class="text-center text-green-400 font-bold mb-2 h-6"></div>
+        <div style="flex: 1;"></div>
 
-            <div class="bet-row">
-                <button onclick="adjBet(-100)" class="w-10 h-10 bg-gray-800 rounded text-white">-</button>
-                <input type="number" id="bet-input" class="input-box" value="1000">
-                <button onclick="adjBet(100)" class="w-10 h-10 bg-gray-800 rounded text-white">+</button>
+        <div id="win-popup">
+            <span id="win-mult">1000x</span>
+            <span id="win-amt" class="win-sub">+$10,000,000</span>
+        </div>
+
+        <div class="controls-wrapper">
+            <div class="bet-control-row">
+                <button class="btn-qty" onclick="adjBet(-1000)">-</button>
+                <input type="number" id="bet-input" class="bet-input-display" value="1000" readonly>
+                <button class="btn-qty" onclick="adjBet(1000)">+</button>
             </div>
-            
-            <button class="btn-action" onclick="dropBall()">DROP BALL</button>
+            <div class="text-center text-gray-500 text-xs font-mono tracking-widest mt-1 mb-2">
+                ROWS: 16 | RISK: EXTREME
+            </div>
+            <button class="btn-drop" onclick="dropBall()">DEPLOY BALL</button>
         </div>
     </div>
 
     <script>
-        // --- 1. SETUP MATTER.JS ---
+        // =========================================
+        // 1. CONFIGURATION & CONSTANTS
+        // =========================================
+        const CONFIG = {
+            rows: 16,               // EXTREME MODE (Standard is 8-12)
+            pegSize: 3,             // Smaller pegs for precision
+            ballSize: 5.5,          // Ball size
+            gravity: 1.8,           // Heavy gravity for fast gameplay
+            restitution: 0.5,       // Bounciness (Lower = less chaos, more precision)
+            friction: 0.002,        // Air resistance
+            colors: {
+                ball: '#ff0055',
+                peg: '#ffffff',
+                pegActive: '#00ffff'
+            }
+        };
+
+        // 16 ROWS = 17 BUCKETS
+        // Distribution: [Extreme, High, Mid, Low, Loss, Loss, Loss, Loss, Loss, Loss, Loss, Low, Mid, High, Extreme]
+        const MULTIPLIERS = [
+            1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000
+        ];
+        
+        // Color mapping for buckets (Red = High, Yellow = Mid, Blue = Low)
+        const BUCKET_COLORS = [
+            '#ff0000', '#ff4400', '#ff8800', '#ffcc00', '#ffff00', '#aaff00', 
+            '#00ffff', '#00ffff', '#00ffff', '#00ffff', '#00ffff', 
+            '#aaff00', '#ffff00', '#ffcc00', '#ff8800', '#ff4400', '#ff0000'
+        ];
+
+        // =========================================
+        // 2. MATTER.JS SETUP
+        // =========================================
         const Engine = Matter.Engine,
               Render = Matter.Render,
               Runner = Matter.Runner,
               Composite = Matter.Composite,
               Bodies = Matter.Bodies,
               Events = Matter.Events,
-              Body = Matter.Body;
+              Body = Matter.Body,
+              Vector = Matter.Vector;
 
         const engine = Engine.create();
         const world = engine.world;
-        
-        // Physics settings for realistic drop
-        engine.gravity.y = 1.2; 
+        engine.gravity.y = CONFIG.gravity;
 
-        // Container
+        // Custom Canvas Renderer Setup
         const container = document.getElementById('game-container');
-        const width = container.clientWidth;
-        const height = container.clientHeight;
-
-        // Custom Renderer (Canvas)
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        container.appendChild(canvas);
         const ctx = canvas.getContext('2d');
+        container.appendChild(canvas);
 
-        // Game Variables
+        let width, height;
         let pins = [];
-        let particles = []; // For explosion effects
         let buckets = [];
-        let activeBalls = 0;
-        
-        // --- CONFIG ---
-        // Multipliers (High Risk -> Low Risk -> High Risk)
-        const MULTIPLIERS = [10, 5, 2, 0.5, 0.2, 0.5, 2, 5, 10];
-        const COLORS = [
-            '#ff0055', '#ff4400', '#ffaa00', '#ffff00', '#00ff00', 
-            '#ffff00', '#ffaa00', '#ff4400', '#ff0055'
-        ];
-        
-        const rows = 9; // Pyramid height
-        const pegSize = 4; // Pin radius
-        
-        // Resize Handler
-        function resize() {
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
-        }
-        window.addEventListener('resize', resize);
+        let particles = []; // Explosion particles
 
-        // --- 2. BUILD THE BOARD ---
+        function resizeGame() {
+            width = container.clientWidth;
+            height = container.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+            // Re-init board on resize to fit screen
+            initBoard();
+        }
+        window.addEventListener('resize', resizeGame);
+
+        // =========================================
+        // 3. BOARD GENERATION (16 ROWS)
+        // =========================================
         function initBoard() {
             Composite.clear(world);
             pins = [];
             buckets = [];
+            
+            // Calculate dynamic spacing
+            // We need to fit (rows + 2) spaces in width
+            // For 16 rows, that's tight on mobile.
+            const padding = width * 0.05; // 5% padding
+            const usableWidth = width - (padding * 2);
+            const spacing = usableWidth / (CONFIG.rows + 1); 
+            
+            const startY = height * 0.1; // Start 10% down
 
-            const startY = height * 0.15;
-            const spacing = width / (rows + 2); // Dynamic spacing based on screen width
-
-            // 1. Create Pins (Pyramid)
-            for (let row = 0; row < rows; row++) {
+            // 1. GENERATE PINS
+            for (let row = 0; row < CONFIG.rows; row++) {
                 for (let col = 0; col <= row; col++) {
                     const x = (width / 2) - (row * spacing / 2) + (col * spacing);
                     const y = startY + (row * spacing);
                     
-                    const pin = Bodies.circle(x, y, pegSize, {
+                    const pin = Bodies.circle(x, y, CONFIG.pegSize, {
                         isStatic: true,
                         label: 'pin',
-                        render: { fillStyle: '#ffffff' },
-                        restitution: 0.8 // Bounciness
+                        render: { visible: false },
+                        restitution: 0.5,
+                        friction: 0
                     });
+                    
+                    // Add custom visual properties
+                    pin.glow = 0;
                     
                     pins.push(pin);
                     Composite.add(world, pin);
                 }
             }
 
-            // 2. Create Buckets (Sensors at bottom)
-            const bucketY = startY + (rows * spacing) + 30;
-            const totalWidth = (rows) * spacing;
-            const startX = (width / 2) - (totalWidth / 2);
+            // 2. GENERATE BUCKETS
+            const bucketY = startY + (CONFIG.rows * spacing) + (spacing/2);
+            const bucketW = spacing - 2; // Small gap between buckets
             
-            // Adjust bucket width to catch balls
-            const bucketW = spacing; 
+            for (let i = 0; i < MULTIPLIERS.length; i++) {
+                // Calculate X position
+                // The bottom row of pins has (rows) pins. 
+                // Buckets sit BETWEEN the final projected pin locations.
+                // Formula: Center - (half total width) + offset
+                
+                const totalBucketsWidth = MULTIPLIERS.length * spacing;
+                const startX = (width/2) - ((MULTIPLIERS.length-1) * spacing / 2);
+                const x = startX + (i * spacing);
 
-            for(let i=0; i<MULTIPLIERS.length; i++) {
-                // Determine X position for buckets (align with gaps)
-                // The pins form a triangle, balls fall BETWEEN pins.
-                // Row 8 has 9 pins. So there are 8 gaps? No, standard Plinko logic.
-                // Visual adjustment: Align buckets under the last row's gaps.
-                
-                // Position logic: Center of screen + offset
-                // Last row index is rows-1. It has 'rows' pins.
-                // We need 'rows' buckets? Or rows+1?
-                // Let's stick to simple layout: Align beneath the last row.
-                
-                const x = (width / 2) - ((MULTIPLIERS.length - 1) * spacing / 2) + (i * spacing);
-                
-                const bucket = Bodies.rectangle(x, bucketY + 20, bucketW - 5, 40, {
+                const bucket = Bodies.rectangle(x, bucketY + 50, bucketW, 100, {
                     isStatic: true,
-                    isSensor: true, // Ball passes through, triggers event
-                    label: 'bucket-' + i, // Store index
-                    render: { visible: false } // Custom draw
-                });
-                buckets.push({ body: bucket, val: MULTIPLIERS[i], color: COLORS[i] });
-                Composite.add(world, bucket);
-                
-                // Add walls between buckets (Visual splitters)
-                const wall = Bodies.rectangle(x + spacing/2, bucketY + 20, 2, 40, {
-                    isStatic: true,
+                    isSensor: true,
+                    label: `bucket-${i}`,
                     render: { visible: false }
+                });
+                
+                buckets.push({
+                    body: bucket,
+                    val: MULTIPLIERS[i],
+                    color: BUCKET_COLORS[i],
+                    x: x,
+                    y: bucketY,
+                    w: bucketW,
+                    pulse: 0
+                });
+                
+                Composite.add(world, bucket);
+
+                // Splitter Walls (Invisible collision logic helpers)
+                /* We don't actually need walls if the balls are small enough 
+                   and physics step is high, but they help prevent "skipping" 
+                   across buckets.
+                */
+                const wall = Bodies.rectangle(x + spacing/2, bucketY + 50, 2, 100, {
+                    isStatic: true,
+                    render: {visible: false},
+                    chamfer: { radius: 1 } // Smooth edges
                 });
                 Composite.add(world, wall);
             }
-            
-            // Invisible Side Walls to keep ball in bounds
-            Composite.add(world, [
-                Bodies.rectangle(0, height/2, 10, height, { isStatic: true, render: { visible: false } }),
-                Bodies.rectangle(width, height/2, 10, height, { isStatic: true, render: { visible: false } })
-            ]);
         }
 
-        initBoard();
+        // Initialize immediately
+        resizeGame();
 
-        // --- 3. GAME LOGIC ---
+        // =========================================
+        // 4. GAMEPLAY LOGIC
+        // =========================================
         
         function adjBet(val) {
-            let el = document.getElementById('bet-input');
+            const el = document.getElementById('bet-input');
             let v = parseInt(el.value) + val;
-            if(v >= 100) el.value = v;
+            if(v < 100) v = 100;
+            if(v > 100000) v = 100000;
+            el.value = v;
         }
 
         async function dropBall() {
-            const betAmt = parseInt(document.getElementById('bet-input').value);
+            const betInput = document.getElementById('bet-input');
             const balEl = document.getElementById('bal');
-            let currentBal = parseInt(balEl.innerText.replace(/,/g, ''));
+            let bet = parseInt(betInput.value);
+            let balance = parseInt(balEl.innerText.replace(/,/g, ''));
 
-            if (betAmt > currentBal) {
-                alert("Insufficient Balance!");
+            if (bet > balance) {
+                // Shake effect on button
+                const btn = document.querySelector('.btn-drop');
+                btn.style.transform = 'translateX(10px)';
+                setTimeout(()=>btn.style.transform='translateX(0)', 100);
+                setTimeout(()=>btn.style.transform='translateX(-10px)', 200);
+                setTimeout(()=>btn.style.transform='translateX(0)', 300);
                 return;
             }
-            if (betAmt < 100) return;
 
-            // Optimistic Update (Client side deduction)
-            balEl.innerText = (currentBal - betAmt).toLocaleString();
+            // Client-side deduction
+            balEl.innerText = (balance - bet).toLocaleString();
 
-            // Spawn Ball at Top (Randomized X slightly)
-            const randomX = (width / 2) + (Math.random() * 4 - 2); 
-            const ball = Bodies.circle(randomX, 50, 6, {
-                restitution: 0.7, // Bounciness
-                friction: 0.001,
-                density: 0.04,
+            // Spawn Ball
+            // Add slight randomness to X to prevent identical paths
+            const randX = (Math.random() - 0.5) * 2; 
+            const ball = Bodies.circle(width / 2 + randX, 50, CONFIG.ballSize, {
+                restitution: CONFIG.restitution,
+                friction: CONFIG.friction,
+                density: 1, // Heavy ball
                 label: 'ball',
-                render: { fillStyle: '#ff00ff' }
+                collisionFilter: { group: -1 } // Don't collide with other balls (for performance/fairness)
             });
             
-            // Tag ball with bet amount
-            ball.betAmount = betAmt;
+            // Attach data
+            ball.betAmt = bet;
+            ball.trail = []; // For visual trail
             
             Composite.add(world, ball);
-            activeBalls++;
         }
 
-        // --- 4. COLLISION HANDLING (WIN LOGIC) ---
-        Events.on(engine, 'collisionStart', (event) => {
-            const pairs = event.pairs;
-            
-            pairs.forEach(pair => {
-                const bodyA = pair.bodyA;
-                const bodyB = pair.bodyB;
+        // =========================================
+        // 5. PHYSICS EVENTS & RESULT HANDLING
+        // =========================================
+        
+        Events.on(engine, 'collisionStart', (evt) => {
+            evt.pairs.forEach(pair => {
+                const { bodyA, bodyB } = pair;
+                
+                // Identify objects
+                const ball = bodyA.label === 'ball' ? bodyA : (bodyB.label === 'ball' ? bodyB : null);
+                const other = bodyA === ball ? bodyB : bodyA;
+                
+                if(!ball) return;
 
-                // Check Ball Hit Pin (Sparks)
-                if ((bodyA.label === 'ball' && bodyB.label === 'pin') || 
-                    (bodyB.label === 'ball' && bodyA.label === 'pin')) {
+                // 1. BALL HIT PIN
+                if (other.label === 'pin') {
+                    // Visual feedback
+                    other.glow = 15; // Set glow frames
+                    spawnExplosion(ball.position.x, ball.position.y, '#00ffff', 3);
                     
-                    const ball = bodyA.label === 'ball' ? bodyA : bodyB;
-                    const pin = bodyA.label === 'pin' ? bodyA : bodyB;
-                    
-                    // Create Spark Effect
-                    createSparks(pin.position.x, pin.position.y, '#00ffff');
-                    
-                    // "Glow" the pin momentarily (visual logic handled in render loop)
-                    pin.glow = 10; 
+                    // Tiny impulse to randomize path (Chaos theory)
+                    // Body.applyForce(ball, ball.position, {x: (Math.random()-0.5)*0.0001, y:0});
                 }
 
-                // Check Ball Hit Bucket (Win)
-                if ((bodyA.label === 'ball' && bodyB.label.startsWith('bucket')) || 
-                    (bodyB.label === 'ball' && bodyA.label.startsWith('bucket'))) {
+                // 2. BALL HIT BUCKET
+                if (other.label.startsWith('bucket')) {
+                    const idx = parseInt(other.label.split('-')[1]);
+                    const mult = MULTIPLIERS[idx];
                     
-                    const ball = bodyA.label === 'ball' ? bodyA : bodyB;
-                    const bucketBody = bodyA.label.startsWith('bucket') ? bodyA : bodyB;
-                    
-                    // Find multiplier
-                    const bucketIndex = parseInt(bucketBody.label.split('-')[1]);
-                    const multiplier = MULTIPLIERS[bucketIndex];
-                    
-                    // Process Result
-                    handleWin(ball, multiplier);
+                    handleResult(ball, mult, idx);
                 }
             });
         });
 
-        async function handleWin(ball, multiplier) {
-            // Remove ball immediately to prevent double triggers
+        async function handleResult(ball, mult, bucketIdx) {
+            // Remove ball physics immediately
             Composite.remove(world, ball);
-            activeBalls--;
             
-            // Server Call
+            // Trigger Bucket Animation
+            buckets[bucketIdx].pulse = 20;
+            spawnExplosion(buckets[bucketIdx].x, buckets[bucketIdx].y, buckets[bucketIdx].color, 15);
+
+            // Server Request
             try {
-                const response = await fetch('/api/plinko/result', {
+                const res = await fetch('/api/plinko/result', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ bet: ball.betAmount, multiplier: multiplier })
+                    body: JSON.stringify({ bet: ball.betAmt, multiplier: mult })
                 });
-                
-                const data = await response.json();
+                const data = await res.json();
                 
                 if(data.status === 'success') {
-                    // Update Balance with Server truth
                     document.getElementById('bal').innerText = data.new_balance.toLocaleString();
-                    
-                    // Show Win Message
-                    const msgEl = document.getElementById('win-msg');
-                    const wonAmt = data.won;
-                    if(wonAmt > ball.betAmount) {
-                        msgEl.innerText = `+${wonAmt} (x${multiplier})`;
-                        msgEl.style.color = '#00ff00';
-                        createSparks(ball.position.x, ball.position.y, '#00ff00', 20); // Big explosion
-                    } else {
-                        msgEl.innerText = `-${ball.betAmount - wonAmt} (x${multiplier})`;
-                        msgEl.style.color = '#ff4444';
-                    }
-                    setTimeout(() => msgEl.innerText = '', 2000);
+                    showWinPopup(mult, data.won);
                 }
             } catch(e) { console.error(e); }
         }
 
-        // --- 5. CUSTOM RENDER LOOP (GOD LEVEL VISUALS) ---
+        function showWinPopup(mult, amount) {
+            const popup = document.getElementById('win-popup');
+            const multEl = document.getElementById('win-mult');
+            const amtEl = document.getElementById('win-amt');
+
+            multEl.innerText = `${mult}x`;
+            amtEl.innerText = `+$${amount.toLocaleString()}`;
+            
+            // Color based on win quality
+            if(mult >= 10) multEl.style.color = '#ff0055'; // Red
+            else if (mult >= 2) multEl.style.color = '#ffd700'; // Gold
+            else multEl.style.color = '#fff'; // White
+
+            // Animation
+            popup.style.transform = 'translate(-50%, -50%) scale(1)';
+            setTimeout(() => {
+                popup.style.transform = 'translate(-50%, -50%) scale(0)';
+            }, 1500);
+        }
+
+        // =========================================
+        // 6. VISUAL ENGINE (CANVAS DRAWING)
+        // =========================================
         
-        function createSparks(x, y, color, count=5) {
+        function spawnExplosion(x, y, color, count) {
             for(let i=0; i<count; i++) {
                 particles.push({
                     x: x, y: y,
-                    vx: (Math.random() - 0.5) * 5,
-                    vy: (Math.random() - 0.5) * 5,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4,
                     life: 1.0,
-                    color: color
+                    color: color,
+                    size: Math.random() * 3 + 1
                 });
             }
         }
 
-        (function renderLoop() {
-            // 1. Clear & Update Physics
+        // Main Render Loop
+        (function render() {
+            // Clear Screen
             ctx.clearRect(0, 0, width, height);
-            Engine.update(engine, 1000 / 60);
+            
+            // A. DRAW BUCKETS
+            buckets.forEach(b => {
+                // Base
+                ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                ctx.fillRect(b.x - b.w/2, b.y, b.w, 40);
+                
+                // Multiplier Text
+                ctx.font = 'bold 10px Rajdhani';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = b.color;
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = b.color;
+                ctx.fillText(`${b.val}x`, b.x, b.y + 25);
+                ctx.shadowBlur = 0;
 
-            // 2. Draw Pins (Glowing)
-            pins.forEach(pin => {
-                ctx.beginPath();
-                ctx.arc(pin.position.x, pin.position.y, pegSize, 0, Math.PI * 2);
-                ctx.fillStyle = '#fff';
-                
-                // Glow Logic
-                if(pin.glow > 0) {
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = '#00ffff';
-                    ctx.fillStyle = '#00ffff';
-                    pin.glow--;
-                } else {
-                    ctx.shadowBlur = 5;
-                    ctx.shadowColor = 'rgba(255,255,255,0.2)';
+                // Hit Pulse Effect
+                if(b.pulse > 0) {
+                    ctx.fillStyle = b.color;
+                    ctx.globalAlpha = b.pulse / 20;
+                    ctx.fillRect(b.x - b.w/2, b.y, b.w, 40);
+                    ctx.globalAlpha = 1;
+                    b.pulse--;
                 }
-                
-                ctx.fill();
-                ctx.shadowBlur = 0; // Reset
             });
 
-            // 3. Draw Balls (Neon Trail)
-            const bodies = Composite.allBodies(world);
-            bodies.forEach(body => {
-                if (body.label === 'ball') {
-                    // Ball Glow
+            // B. DRAW PINS
+            pins.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.position.x, p.position.y, CONFIG.pegSize, 0, Math.PI*2);
+                ctx.fillStyle = CONFIG.colors.peg;
+                
+                if(p.glow > 0) {
+                    // Hit Effect
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = CONFIG.colors.pegActive;
+                    ctx.fillStyle = CONFIG.colors.pegActive;
+                    
+                    // Ripple Ring
+                    ctx.strokeStyle = CONFIG.colors.pegActive;
+                    ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(body.position.x, body.position.y, 6, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ff00ff';
-                    ctx.shadowBlur = 20;
-                    ctx.shadowColor = '#ff00ff';
+                    ctx.arc(p.position.x, p.position.y, CONFIG.pegSize + (15 - p.glow), 0, Math.PI*2);
+                    ctx.stroke();
+                    
+                    p.glow--;
+                } else {
+                    ctx.shadowBlur = 0;
+                }
+                ctx.fill();
+            });
+
+            // C. DRAW BALLS (With Motion Trail)
+            const bodies = Composite.allBodies(world);
+            bodies.forEach(b => {
+                if(b.label === 'ball') {
+                    // Store position for trail
+                    b.trail.push({x: b.position.x, y: b.position.y});
+                    if(b.trail.length > 10) b.trail.shift();
+
+                    // Draw Trail
+                    ctx.beginPath();
+                    for(let i=0; i<b.trail.length; i++) {
+                        const pt = b.trail[i];
+                        ctx.lineTo(pt.x, pt.y);
+                    }
+                    ctx.strokeStyle = CONFIG.colors.ball;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Draw Ball
+                    ctx.beginPath();
+                    ctx.arc(b.position.x, b.position.y, CONFIG.ballSize, 0, Math.PI*2);
+                    ctx.fillStyle = CONFIG.colors.ball;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = CONFIG.colors.ball;
                     ctx.fill();
                     ctx.shadowBlur = 0;
                 }
             });
 
-            // 4. Draw Buckets (Multipliers)
-            buckets.forEach(b => {
-                const pos = b.body.position;
-                ctx.fillStyle = b.color;
-                
-                // Box Glow
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = b.color;
-                
-                // Draw rounded rect (simplified)
-                ctx.fillRect(pos.x - 15, pos.y - 15, 30, 30);
-                
-                // Text
-                ctx.fillStyle = '#000';
-                ctx.font = 'bold 10px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(b.val + 'x', pos.x, pos.y + 4);
-                
-                ctx.shadowBlur = 0;
-            });
-
-            // 5. Draw Particles (Sparks)
+            // D. DRAW EXPLOSION PARTICLES
             for(let i=0; i<particles.length; i++) {
                 let p = particles[i];
                 p.x += p.vx;
                 p.y += p.vy;
-                p.life -= 0.05;
+                p.life -= 0.04;
                 
                 if(p.life > 0) {
                     ctx.globalAlpha = p.life;
                     ctx.fillStyle = p.color;
-                    ctx.fillRect(p.x, p.y, 2, 2);
+                    ctx.fillRect(p.x, p.y, p.size, p.size);
                 } else {
                     particles.splice(i, 1);
                     i--;
@@ -430,11 +615,109 @@
             }
             ctx.globalAlpha = 1;
 
-            requestAnimationFrame(renderLoop);
+            Engine.update(engine, 1000/60);
+            requestAnimationFrame(render);
         })();
 
-        // Start Physics Engine
         Runner.run(Runner.create(), engine);
+
+
+        // =========================================
+        // 7. BACKGROUND ANIMATION (STARFIELD)
+        // =========================================
+        (function() {
+            const c = document.getElementById('bgCanvas');
+            const x = c.getContext('2d');
+            let w, h;
+            
+            function resizeBg() { w=c.width=window.innerWidth; h=c.height=window.innerHeight; }
+            window.addEventListener('resize', resizeBg);
+            resizeBg();
+
+            const stars = Array(200).fill().map(() => ({
+                x: Math.random()*w, y: Math.random()*h,
+                z: Math.random()*2 + 0.5 // Speed
+            }));
+
+            function loop() {
+                x.fillStyle = '#020205'; // Clear with BG color
+                x.fillRect(0,0,w,h);
+                x.fillStyle = '#fff';
+                
+                stars.forEach(s => {
+                    s.y += s.z;
+                    if(s.y > h) s.y = 0;
+                    // Draw Star
+                    const size = s.z * 1.5;
+                    x.globalAlpha = s.z / 2.5;
+                    x.fillRect(s.x, s.y, size, size);
+                });
+                x.globalAlpha = 1;
+                requestAnimationFrame(loop);
+            }
+            loop();
+        })();
+
+        // =========================================
+        // 8. INTERACTIVE TRAIL (TOUCH & MOUSE)
+        // =========================================
+        (function() {
+            const c = document.getElementById('trailCanvas');
+            const x = c.getContext('2d');
+            let w, h;
+            let trailPoints = [];
+            
+            function resizeT() { w=c.width=window.innerWidth; h=c.height=window.innerHeight; }
+            window.addEventListener('resize', resizeT);
+            resizeT();
+
+            function addPoint(px, py) {
+                trailPoints.push({
+                    x: px, y: py,
+                    life: 1.0,
+                    angle: Math.random() * Math.PI * 2,
+                    color: Math.random() > 0.5 ? '#00ffff' : '#ff0055'
+                });
+            }
+
+            // Mouse
+            window.addEventListener('mousemove', e => addPoint(e.clientX, e.clientY));
+            // Touch
+            window.addEventListener('touchmove', e => {
+                for(let i=0; i<e.touches.length; i++) {
+                    addPoint(e.touches[i].clientX, e.touches[i].clientY);
+                }
+            });
+
+            function renderTrail() {
+                x.clearRect(0,0,w,h);
+                
+                for(let i=0; i<trailPoints.length; i++) {
+                    let p = trailPoints[i];
+                    p.life -= 0.05;
+                    
+                    if(p.life > 0) {
+                        x.save();
+                        x.translate(p.x, p.y);
+                        x.rotate(p.life * 2); // Spin effect
+                        
+                        x.fillStyle = p.color;
+                        x.shadowBlur = 10;
+                        x.shadowColor = p.color;
+                        x.globalAlpha = p.life;
+                        
+                        const size = 5 * p.life;
+                        x.fillRect(-size/2, -size/2, size, size);
+                        x.restore();
+                    } else {
+                        trailPoints.splice(i, 1);
+                        i--;
+                    }
+                }
+                requestAnimationFrame(renderTrail);
+            }
+            renderTrail();
+        })();
 
     </script>
 </body>
