@@ -18176,6 +18176,93 @@ def handle_horse_race(data):
         'multiplier': multiplier
     }, to=request.sid)
 
+import random
+import string
+
+# --- CONFIG ---
+MAIN_GUILD_ID = 1257403231127076915 # 🔴 APNI SERVER ID YAHAN DALO
+
+# --- 1. QR PAGE ROUTE ---
+@app.route('/games/qr_gen')
+def qr_generator():
+    if 'user_info' not in session: return redirect('/')
+    
+    uid = session['user_info']['id']
+    
+    # Fetch Balance for Header
+    try:
+        data = db.supabase.table("economy").select("balance").eq("user_id", str(uid)).execute().data
+        balance = data[0]['balance'] if data else 0
+    except:
+        balance = 0
+
+    # QR Link generate karte hain (Jo scan hone par khulega)
+    # Ye link seedha hamare claim route par jayega
+    # Example: https://your-website.com/api/scan_reward/123456789
+    scan_url = f"{request.url_root}api/scan_reward/{uid}"
+    
+    return render_template('qr.html', user=session['user_info'], balance=balance, scan_url=scan_url)
+
+# --- 2. THE SCAN & CLAIM API ---
+@app.route('/api/scan_reward/<target_id>')
+async def claim_reward_scan(target_id):
+    # Security: Rate limit laga sakte hain, abhi direct logic de raha hu
+    
+    # A. Calculate Random Money (100k to 10M)
+    amount = random.randint(100_000, 10_000_000)
+    
+    # B. Calculate Rare Role (0.01% Chance)
+    # 0.01% = 1 in 10,000
+    is_rare_win = (random.randint(1, 10000) == 1)
+    role_msg = ""
+    
+    try:
+        # C. Update Database (Money Give)
+        data = db.supabase.table("economy").select("*").eq("user_id", str(target_id)).execute().data
+        if not data:
+            return "❌ User Database me nahi mila."
+            
+        current_bal = data[0]['balance']
+        new_bal = current_bal + amount
+        
+        db.supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(target_id)).execute()
+        
+        # D. Role Logic (Agar Jackpot laga)
+        if is_rare_win:
+            guild = bot.get_guild(MAIN_GUILD_ID)
+            if guild:
+                member = await guild.fetch_member(int(target_id))
+                if member:
+                    # Check if role exists, else create
+                    role_name = "💎 The Chosen One"
+                    role = discord.utils.get(guild.roles, name=role_name)
+                    
+                    if not role:
+                        # Bot creates role automatically
+                        role = await guild.create_role(name=role_name, color=discord.Color.gold(), hover=True, reason="QR Jackpot Win")
+                    
+                    # Assign Role
+                    if role not in member.roles:
+                        await member.add_roles(role)
+                        role_msg = f"<br>👑 <b>JACKPOT!</b> You won the '{role_name}' Role!"
+    
+    except Exception as e:
+        print(f"Error in reward: {e}")
+        return f"Error processing reward: {e}"
+
+    # E. Return HTML Page to the Scanner (Phone screen)
+    return f"""
+    <html>
+    <body style="background:#000; color:#0f0; font-family:sans-serif; text-align:center; padding-top:50px;">
+        <h1 style="font-size:3rem;">SCAN SUCCESSFUL!</h1>
+        <p style="font-size:1.5rem; color:#fff;">User ID: {target_id}</p>
+        <hr style="border-color:#333;">
+        <h2 style="color:#f1c40f; font-size:2.5rem;">+${amount:,}</h2>
+        <p style="color:#ccc;">Added to account.</p>
+        {role_msg}
+    </body>
+    </html>
+    """
 
 # ==========================================
 # 🚀 ULTIMATE BUSINESS SYSTEM (UPDATED)
