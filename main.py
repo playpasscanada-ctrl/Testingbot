@@ -17209,86 +17209,81 @@ async def voice_switch(interaction: discord.Interaction, voice: str):
 import asyncio
 import functools
 
-# --- HELPER: Non-Blocking Audio Generation ---
-async def generate_audio_async(text, voice_id):
-    """
-    Ye function ElevenLabs ki heavy processing ko 
-    alag thread me chalayega taaki bot hang na ho.
-    """
-    func = functools.partial(
-        client.generate,
-        text=text,
-        voice=voice_id,
-        model="eleven_multilingual_v2"
-    )
-    # Alag thread me run karo
-    return await bot.loop.run_in_executor(None, func)
+# Client Setup
+client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
+
+# --- HELPER: Autocomplete ---
+async def voice_autocomplete(interaction: discord.Interaction, current: str):
+    choices = []
+    for name in VOICE_OPTIONS:
+        if current.lower() in name.lower():
+            choices.append(app_commands.Choice(name=name, value=name))
+    return choices[:25]
 
 # --- COMMAND: SPEAK (FIXED) ---
-@bot.tree.command(name="speak", description="🗣️ Speak text in your selected voice")
-async def speak(interaction: discord.Interaction, text: str):
-    # 1. Check Voice Channel
+@bot.tree.command(name="speak", description="🗣️ Speak text in selected Hindi/Indian voice")
+@app_commands.describe(text="Kya bulwana hai?", voice="Kiski aawaz me?")
+@app_commands.autocomplete(voice=voice_autocomplete)
+async def speak(interaction: discord.Interaction, text: str, voice: str):
+    
+    # 1. VC Check
     if not interaction.user.voice:
-        return await interaction.response.send_message("❌ Pehle kisi Voice Channel me aao!", ephemeral=True)
-
-    # 2. Defer (Thinking state)
+        return await interaction.response.send_message("❌ Pehle Voice Channel join karo!", ephemeral=True)
+    
     await interaction.response.defer()
 
-    # 3. Database Check
-    user_data = get_user_data(interaction.user.id)
-    if not user_data or user_data.get('has_access') == False:
-        embed = discord.Embed(title="⛔ No Access", description="Owner se contact karein access ke liye.", color=0xFF0000)
-        return await interaction.followup.send(embed=embed)
-
-    voice_name = user_data.get('selected_voice', "👩 Priyanka")
-    voice_id = VOICE_DB.get(voice_name, VOICE_DB["👩 Priyanka"])
-
     try:
-        # 4. Join VC (Safe Connect)
+        # 2. Get Voice ID
+        # Default fallback agar naam match na ho
+        voice_id = VOICE_OPTIONS.get(voice, "1zUSi8LeHs9M2mV8X6YS")
+
+        # 3. Connect to VC
         channel = interaction.user.voice.channel
         vc = interaction.guild.voice_client
         
         if not vc:
-            try:
-                vc = await channel.connect()
-            except Exception as e:
-                return await interaction.followup.send(f"❌ VC Join Error: {e}")
+            vc = await channel.connect()
         else:
             if vc.channel.id != channel.id:
                 await vc.move_to(channel)
 
-        # 5. Generate Audio (NON-BLOCKING FIX ✅)
-        # Ab ye bot ko hang nahi karega
-        audio = await generate_audio_async(text, voice_id)
+        # 4. Generate Audio (NEW METHOD ✅)
+        # client.generate ki jagah ab ye use hota hai:
+        audio_generator = client.text_to_speech.convert(
+            text=text,
+            voice_id=voice_id,
+            model_id="eleven_multilingual_v2"
+        )
         
+        # 5. Save Audio File (Manual Method)
+        # Naye version me audio 'chunks' me aata hai, isliye aise save karna padta hai
         filename = f"tts_{interaction.id}.mp3"
-        save(audio, filename)
+        with open(filename, "wb") as f:
+            for chunk in audio_generator:
+                if chunk:
+                    f.write(chunk)
         
-        # 6. Play Audio (FFmpeg Path Fix ✅)
-        # Render pe ffmpeg root folder me hota hai, isliye './ffmpeg' diya hai
+        # 6. Play Audio
+        # FFmpeg check (Render vs Local)
         if os.path.exists("./ffmpeg"):
-            ffmpeg_executable = "./ffmpeg"
+            ffmpeg_exe = "./ffmpeg"
         else:
-            ffmpeg_executable = "ffmpeg" # Local PC fallback
+            ffmpeg_exe = "ffmpeg" # Local fallback
 
-        source = discord.FFmpegPCMAudio(filename, executable=ffmpeg_executable)
-
-        # Cleanup Function
+        source = discord.FFmpegPCMAudio(filename, executable=ffmpeg_exe)
+        
+        # Cleanup Function (Auto-delete)
         def cleanup(error):
             if os.path.exists(filename):
                 os.remove(filename)
 
         if not vc.is_playing():
             vc.play(source, after=cleanup)
-
-        # 7. Success Message
-        embed = discord.Embed(description=f"🗣️ **Said:** {text}", color=0x00FF00)
-        embed.set_author(name=f"Voice: {voice_name}", icon_url=interaction.user.display_avatar.url)
-        await interaction.followup.send(embed=embed)
+            
+        await interaction.followup.send(f"🗣️ **Speaking as {voice}:** {text}")
 
     except Exception as e:
-        print(f"Error: {e}") # Logs me print karega
-        await interaction.followup.send(f"❌ Error aaya: {e}")
+        await interaction.followup.send(f"❌ Error: {e}")
 
 
 
