@@ -18459,7 +18459,7 @@ def circle_win():
 # ==========================================
 # 🚀 ULTIMATE BUSINESS SYSTEM (UPDATED)
 # ==========================================
-@app.route('/business')
+@app.route('/error')
 def business_dashboard():
     # 1. Auth Check
     if 'user_info' not in session: return redirect('/')
