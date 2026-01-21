@@ -18405,6 +18405,56 @@ async def plinko_result():
         print(f"Plinko Error: {e}")
         return {"status": "error", "msg": str(e)}
 
+# --- CIRCLE GAME ROUTES ---
+
+@app.route('/games/circle')
+def circle_game():
+    if 'user_info' not in session: return redirect('/')
+    
+    uid = session['user_info']['id']
+    try:
+        data = db.supabase.table("economy").select("balance").eq("user_id", str(uid)).execute().data
+        balance = data[0]['balance'] if data else 0
+    except:
+        balance = 0
+
+    return render_template('circle.html', user=session['user_info'], balance=balance)
+
+@app.route('/api/circle/bet', methods=['POST'])
+def circle_bet():
+    # Bet place karne par paise kato
+    data = request.json
+    uid = session['user_info']['id']
+    bet_amount = int(data.get('bet', 0))
+
+    user_data = db.supabase.table("economy").select("balance").eq("user_id", str(uid)).execute().data
+    current_bal = user_data[0]['balance']
+
+    if current_bal < bet_amount:
+        return {"status": "error", "msg": "Low Balance"}
+
+    # Deduct
+    new_bal = current_bal - bet_amount
+    db.supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(uid)).execute()
+    
+    return {"status": "success", "new_balance": new_bal}
+
+@app.route('/api/circle/win', methods=['POST'])
+def circle_win():
+    # Cashout karne par paise do
+    data = request.json
+    uid = session['user_info']['id']
+    amount = int(data.get('amount', 0))
+
+    user_data = db.supabase.table("economy").select("balance").eq("user_id", str(uid)).execute().data
+    current_bal = user_data[0]['balance']
+    
+    new_bal = current_bal + amount
+    db.supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(uid)).execute()
+    
+    return {"status": "success", "new_balance": new_bal}
+
+
 
 # ==========================================
 # 🚀 ULTIMATE BUSINESS SYSTEM (UPDATED)
