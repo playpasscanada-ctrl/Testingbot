@@ -16,6 +16,35 @@ from deep_translator import GoogleTranslator
 from concurrent.futures import ThreadPoolExecutor
 import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
 from business_config import BUSINESSES, MARKET_EVENTS, ILLEGAL_BIZ, MANAGER_PRICES
+from flask import request, redirect, url_for
+
+# --- 🔒 SECURITY GATEKEEPER ---
+@app.before_request
+def check_user_status():
+    # 1. Ye check karega ki user kaunse page par ja raha hai
+    # 'static', 'account_seized', 'login' walo ko allow karo taaki loop na bane
+    if request.endpoint in ['static', 'account_seized', 'login', 'discord_login', 'callback']:
+        return
+
+    # 2. Agar user logged in hai, to check karo
+    if 'user_info' in session:
+        uid = session['user_info']['id']
+        
+        try:
+            # Database se check karo ki account seized hai ya nahi
+            response = db.supabase.table("economy").select("is_seized").eq("user_id", str(uid)).execute()
+            
+            if response.data:
+                is_locked = response.data[0]['is_seized']
+                
+                # 3. AGAR SEIZED HAI -> TO SIDHA BLOCK PAGE PAR BHEJ DO
+                if is_locked == True:
+                    return redirect(url_for('account_seized'))
+                    
+        except Exception as e:
+            print(f"Security Check Error: {e}")
+
+    
 
 active_web_matches = {}
 
@@ -17456,6 +17485,12 @@ def home():
 
     except Exception as e:
         return f"<h1>Dashboard Error</h1><p>{e}</p>"
+
+# --- 🚫 THE BLOCKED PAGE ROUTE ---
+@app.route('/seized')
+def account_seized():
+    # Ye wo page hai jo block hone par dikhega
+    return render_template('seized.html')
 
 # --- 2. SHOP ROUTE ---
 @app.route('/shop')
