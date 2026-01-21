@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Circle Evolution // ULTRA</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root { --neon-blue: #00f3ff; --neon-pink: #ff0055; --bg-dark: #050505; }
+        
+        body {
+            margin: 0; padding: 0; overflow: hidden;
+            background-color: var(--bg-dark); color: white;
+            font-family: 'Rajdhani', sans-serif; touch-action: none;
+        }
+
+        /* --- MENUS & OVERLAYS --- */
+        #main-menu {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 5, 5, 0.95); z-index: 50;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .menu-title {
+            font-family: 'Orbitron'; font-size: 3rem; font-weight: 900;
+            background: linear-gradient(to right, #fff, var(--neon-blue));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 40px; text-shadow: 0 0 20px var(--neon-blue);
+        }
+
+        .mode-card {
+            width: 300px; padding: 30px; margin: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px;
+            text-align: center; cursor: pointer; transition: 0.3s;
+            position: relative; overflow: hidden;
+        }
+        .mode-card:hover { transform: scale(1.05); border-color: var(--neon-blue); background: rgba(0, 243, 255, 0.1); }
+        
+        .mode-icon { font-size: 3rem; margin-bottom: 15px; }
+        .mode-name { font-family: 'Orbitron'; font-size: 1.5rem; font-weight: bold; margin-bottom: 5px; }
+        .mode-desc { font-size: 0.9rem; color: #aaa; }
+
+        /* --- GAME UI (Betting Mode) --- */
+        #game-ui {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 20; display: none; /* Hidden by default */
+        }
+
+        .hud-top {
+            position: absolute; top: 0; left: 0; width: 100%; padding: 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8), transparent);
+        }
+        
+        .stat-box {
+            text-align: center; font-family: 'Orbitron';
+        }
+        .stat-val { font-size: 2rem; font-weight: 900; color: var(--neon-pink); text-shadow: 0 0 10px var(--neon-pink); }
+        .stat-label { font-size: 0.8rem; color: #fff; opacity: 0.7; }
+
+        .controls-bottom {
+            position: absolute; bottom: 0; left: 0; width: 100%; padding: 30px;
+            background: linear-gradient(0deg, rgba(0,0,0,0.9), transparent);
+            pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 15px;
+        }
+
+        /* BUTTONS */
+        .btn-main {
+            padding: 15px 40px; font-family: 'Orbitron'; font-weight: bold; font-size: 1.2rem;
+            border: none; border-radius: 50px; cursor: pointer; color: white;
+            transition: 0.2s; text-transform: uppercase; width: 100%; max-width: 300px;
+        }
+        .btn-start { background: linear-gradient(90deg, #00f3ff, #0066ff); box-shadow: 0 0 20px rgba(0, 243, 255, 0.4); }
+        .btn-cashout { background: linear-gradient(90deg, #ffdd00, #ffaa00); color: black; box-shadow: 0 0 20px rgba(255, 221, 0, 0.4); display: none; }
+        
+        .bet-input-group { display: flex; align-items: center; gap: 10px; background: #000; padding: 5px; border-radius: 30px; border: 1px solid #333; }
+        .bet-in { background: transparent; border: none; color: white; text-align: center; font-family: 'Orbitron'; font-size: 1.2rem; width: 100px; outline: none; }
+        
+        /* BACK BUTTON */
+        .back-btn {
+            position: absolute; top: 20px; left: 20px; z-index: 60;
+            background: rgba(255,255,255,0.1); border-radius: 50%; width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.2); display: none;
+        }
+
+        /* CANVAS */
+        #game-canvas { position: absolute; top: 0; left: 0; z-index: 0; }
+        
+    </style>
+</head>
+<body>
+
+    <div class="back-btn" id="btn-back" onclick="goToMenu()">←</div>
+
+    <div id="main-menu">
+        <div class="menu-title">CIRCLE EVOLUTION</div>
+        
+        <div class="mode-card" onclick="startGame('infinity')">
+            <div class="mode-icon">♾️</div>
+            <div class="mode-name">INFINITY LOOP</div>
+            <div class="mode-desc">Relaxing. No limits. Just balls doubling forever.</div>
+        </div>
+
+        <div class="mode-card" onclick="startGame('betting')" style="border-color: var(--neon-pink);">
+            <div class="mode-icon">💰</div>
+            <div class="mode-name">HIGH STAKES</div>
+            <div class="mode-desc">Bet Money. Balls Multiply = Money Multiplies. Cash out before CRASH.</div>
+        </div>
+    </div>
+
+    <div id="game-ui">
+        <div class="hud-top">
+            <div class="stat-box">
+                <div class="stat-label">MULTIPLIER</div>
+                <div class="stat-val" id="mult-display">1.0x</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">BALANCE</div>
+                <div class="text-xl font-mono text-yellow-400" id="bal-display">${{ "{:,}".format(balance) }}</div>
+            </div>
+        </div>
+
+        <div class="controls-bottom">
+            <div id="msg-area" class="text-white font-bold h-6 mb-2"></div>
+
+            <div class="bet-input-group" id="bet-panel">
+                <button onclick="adjBet(-100)" class="text-gray-400 px-3">-</button>
+                <input type="number" id="bet-amount" class="bet-in" value="1000">
+                <button onclick="adjBet(100)" class="text-gray-400 px-3">+</button>
+            </div>
+
+            <button class="btn-main btn-start" id="btn-play" onclick="placeBet()">START ROUND</button>
+            <button class="btn-main btn-cashout" id="btn-cash" onclick="cashOut()">CASH OUT</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. PHYSICS SETUP ---
+        const Engine = Matter.Engine, Render = Matter.Render, Runner = Matter.Runner,
+              Composite = Matter.Composite, Bodies = Matter.Bodies, Body = Matter.Body, Events = Matter.Events;
+
+        const engine = Engine.create();
+        const world = engine.world;
+        engine.gravity.y = 0.8;
+
+        const render = Render.create({
+            element: document.body,
+            engine: engine,
+            options: {
+                width: window.innerWidth, height: window.innerHeight,
+                wireframes: false, background: '#050505', pixelRatio: 1
+            }
+        });
+
+        // --- 2. CONFIG ---
+        let MODE = 'menu'; // menu, infinity, betting
+        let balls = [];
+        let circleParts = [];
+        let rotation = 0;
+        let isPlaying = false;
+        
+        // Betting Vars
+        let currentMult = 1.0;
+        let myBet = 0;
+        let crashTime = 0; // When will it crash?
+        let startTime = 0;
+
+        const CONFIG = {
+            centerX: window.innerWidth / 2,
+            centerY: window.innerHeight / 2,
+            radius: Math.min(window.innerWidth, window.innerHeight) * 0.35,
+            thickness: 30,
+            gapDeg: 40,
+            spinSpeed: 0.02,
+            maxBalls: 400
+        };
+
+        // --- 3. CIRCLE GENERATION ---
+        function createCircle() {
+            Composite.remove(world, circleParts);
+            circleParts = [];
+            
+            const segments = 60;
+            const step = (Math.PI * 2) / segments;
+            const gapRad = (CONFIG.gapDeg * Math.PI) / 180;
+
+            for(let i=0; i<segments; i++) {
+                const angle = i * step;
+                if(angle < gapRad) continue; // The Opening
+
+                const x = CONFIG.centerX + Math.cos(angle) * CONFIG.radius;
+                const y = CONFIG.centerY + Math.sin(angle) * CONFIG.radius;
+
+                const rect = Bodies.rectangle(x, y, 60, CONFIG.thickness, {
+                    isStatic: true, angle: angle + Math.PI/2,
+                    render: { fillStyle: '#00f3ff' },
+                    friction: 0, restitution: 1
+                });
+                circleParts.push(rect);
+            }
+            Composite.add(world, circleParts);
+        }
+
+        function spawnBall(x, y, vx, vy) {
+            if(balls.length > CONFIG.maxBalls) return;
+            const ball = Bodies.circle(x, y, 8, {
+                restitution: 1.05, // Super bouncy
+                render: { fillStyle: MODE==='infinity' ? '#ff0055' : '#ffd700' },
+                label: 'ball'
+            });
+            Body.setVelocity(ball, {x: vx||0, y: vy||0});
+            balls.push(ball);
+            Composite.add(world, ball);
+        }
+
+        // --- 4. GAME LOOP ---
+        Events.on(engine, 'beforeUpdate', () => {
+            if(MODE === 'menu') return;
+
+            // Rotate Circle
+            rotation += CONFIG.spinSpeed;
+            Composite.rotate(Composite.create({bodies: circleParts}), CONFIG.spinSpeed, {x: CONFIG.centerX, y: CONFIG.centerY});
+
+            // Logic for Balls escaping
+            for(let i = balls.length-1; i >= 0; i--) {
+                const b = balls[i];
+                const dx = b.position.x - CONFIG.centerX;
+                const dy = b.position.y - CONFIG.centerY;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+
+                if(dist > CONFIG.radius + 40) {
+                    // Ball Escaped!
+                    Composite.remove(world, b);
+                    balls.splice(i, 1);
+
+                    // LOGIC: Multiply
+                    // Spawn 2 new ones at center
+                    spawnBall(CONFIG.centerX, CONFIG.centerY, Math.random()*4-2, -5);
+                    spawnBall(CONFIG.centerX, CONFIG.centerY, Math.random()*4-2, 5);
+
+                    // BETTING MODE LOGIC
+                    if(MODE === 'betting' && isPlaying) {
+                        currentMult += 0.2; // Every split increases multiplier
+                        document.getElementById('mult-display').innerText = currentMult.toFixed(2) + 'x';
+                    }
+                }
+            }
+
+            // CRASH LOGIC (Betting Mode)
+            if(MODE === 'betting' && isPlaying) {
+                // If balls get too many (lag) or random crash
+                if(Date.now() > crashTime) {
+                    gameOver("CRASHED!");
+                }
+            }
+        });
+
+        // --- 5. GAME CONTROL FUNCTIONS ---
+
+        function goToMenu() {
+            MODE = 'menu';
+            document.getElementById('main-menu').style.display = 'flex';
+            document.getElementById('game-ui').style.display = 'none';
+            document.getElementById('btn-back').style.display = 'none';
+            resetPhysics();
+        }
+
+        function startGame(selectedMode) {
+            MODE = selectedMode;
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('btn-back').style.display = 'flex';
+            
+            resetPhysics();
+            createCircle();
+
+            if(MODE === 'infinity') {
+                document.getElementById('game-ui').style.display = 'none';
+                spawnBall(CONFIG.centerX, CONFIG.centerY, 0, -5); // Auto start
+            } else {
+                document.getElementById('game-ui').style.display = 'block';
+                // Reset UI
+                document.getElementById('bet-panel').style.display = 'flex';
+                document.getElementById('btn-play').style.display = 'block';
+                document.getElementById('btn-cash').style.display = 'none';
+                document.getElementById('mult-display').innerText = "1.00x";
+                document.getElementById('mult-display').style.color = "#ff0055";
+            }
+        }
+
+        function resetPhysics() {
+            Composite.remove(world, balls);
+            Composite.remove(world, circleParts);
+            balls = [];
+            circleParts = [];
+            rotation = 0;
+            isPlaying = false;
+        }
+
+        // --- 6. BETTING LOGIC ---
+        
+        function adjBet(v) {
+            let el = document.getElementById('bet-amount');
+            let val = parseInt(el.value) + v;
+            if(val >= 100) el.value = val;
+        }
+
+        async function placeBet() {
+            const amt = parseInt(document.getElementById('bet-amount').value);
+            const balEl = document.getElementById('bal-display');
+            let currentBal = parseInt(balEl.innerText.replace(/[^0-9]/g, ''));
+
+            if(amt > currentBal) { alert("Low Balance!"); return; }
+
+            // Deduct locally for speed
+            balEl.innerText = "$" + (currentBal - amt).toLocaleString();
+            
+            // Server Call
+            fetch('/api/circle/bet', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({bet: amt})
+            });
+
+            // Start Game
+            myBet = amt;
+            isPlaying = true;
+            currentMult = 1.0;
+            startTime = Date.now();
+            
+            // Random Crash Time (5 to 15 seconds from now)
+            // Logic: The longer it runs, more balls = more lag + higher win.
+            // Crash logic: Circle Turns RED and explodes.
+            const duration = Math.random() * 10000 + 5000; 
+            crashTime = Date.now() + duration;
+
+            // UI Changes
+            document.getElementById('bet-panel').style.display = 'none';
+            document.getElementById('btn-play').style.display = 'none';
+            document.getElementById('btn-cash').style.display = 'block';
+            document.getElementById('mult-display').style.color = "#00f3ff";
+            document.getElementById('msg-area').innerText = "";
+
+            resetPhysics();
+            createCircle();
+            spawnBall(CONFIG.centerX, CONFIG.centerY, 0, -5);
+        }
+
+        async function cashOut() {
+            if(!isPlaying) return;
+            isPlaying = false;
+
+            const winAmount = Math.floor(myBet * currentMult);
+            
+            // UI Feedback
+            document.getElementById('msg-area').innerText = `WON $${winAmount.toLocaleString()}!`;
+            document.getElementById('msg-area').style.color = "#00ff00";
+            
+            // Update Balance
+            const balEl = document.getElementById('bal-display');
+            let currentBal = parseInt(balEl.innerText.replace(/[^0-9]/g, ''));
+            balEl.innerText = "$" + (currentBal + winAmount).toLocaleString();
+
+            // Server Call
+            fetch('/api/circle/win', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({amount: winAmount})
+            });
+
+            gameOver("CASHOUT SUCCESS");
+        }
+
+        function gameOver(reason) {
+            isPlaying = false;
+            document.getElementById('btn-cash').style.display = 'none';
+            
+            // If crashed
+            if(reason === "CRASHED!") {
+                document.getElementById('mult-display').innerText = "CRASHED";
+                document.getElementById('mult-display').style.color = "red";
+                document.getElementById('msg-area').innerText = "CIRCLE BROKE! LOST BET.";
+                document.getElementById('msg-area').style.color = "red";
+                
+                // Visual Effect: Destroy Circle
+                circleParts.forEach(p => {
+                    Body.setStatic(p, false); // Walls fall down
+                    p.render.fillStyle = 'red';
+                });
+            }
+
+            setTimeout(() => {
+                document.getElementById('bet-panel').style.display = 'flex';
+                document.getElementById('btn-play').style.display = 'block';
+            }, 2000);
+        }
+
+        // Start Engine
+        Render.run(render);
+        Runner.run(Runner.create(), engine);
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            render.canvas.width = window.innerWidth;
+            render.canvas.height = window.innerHeight;
+            CONFIG.centerX = window.innerWidth/2;
+            CONFIG.centerY = window.innerHeight/2;
+        });
+
+    </script>
+</body>
+</html>
