@@ -4528,7 +4528,7 @@ async def audit(i: discord.Interaction):
 
         try:
             # ✅ FIX: requests.get ki jagah bot.session use kiya (Fast)
-            async with bot.session.get("https://testingbot-z0y6.onrender.com/ping", timeout=6) as r:
+            async with bot.session.get("https://testingbot-8pb1.onrender.com/ping", timeout=6) as r:
                 text = await r.text()
                 backend_online = (text.strip() == "pong")
                 latency = int((time.time() - t) * 1000)
@@ -17099,14 +17099,14 @@ async def sell_business_request(interaction: discord.Interaction, business_id: s
         print("❌ Error: APPROVAL_CHANNEL_ID galat hai!")
 
 
-# --- YOUR SLASH COMMAND (Full 23 Options) ---
+## --- MAIN SLASH COMMAND (ALL OPTIONS) ---
 @bot.tree.command(name="doraemon", description="Watch Doraemon Seasons 1-21, Movies & Specials")
 @app_commands.describe(category="Select the Season or Collection")
 @app_commands.choices(category=[
-    # MOVIES & SPECIALS
+    # SPECIAL COLLECTIONS
     app_commands.Choice(name="🎬 All Movies", value="all_movies"),
     app_commands.Choice(name="🌟 Special Episodes", value="special"),
-    app_commands.Choice(name="📼 Classic Doraemon (Old)", value="classic"),
+    app_commands.Choice(name="📼 Classic Doraemon", value="classic"),
 
     # SEASONS 1-21
     app_commands.Choice(name="Season 1", value="Season_1"),
@@ -17126,16 +17126,14 @@ async def sell_business_request(interaction: discord.Interaction, business_id: s
     app_commands.Choice(name="Season 15", value="Season_15"),
     app_commands.Choice(name="Season 16", value="Season_16"),
     app_commands.Choice(name="Season 17", value="Season_17"),
-    app_commands.Choice(name="Season 18", value="Season_18"),
+    app_commands.Choice(name="Season 18", value="sLSeason_18"),
     app_commands.Choice(name="Season 19", value="Season_19"),
     app_commands.Choice(name="Season 20", value="Season_20"),
     app_commands.Choice(name="Season 21", value="Season_21"),
 ])
 async def doraemon(interaction: discord.Interaction, category: app_commands.Choice[str]):
-    # Render Website Link (Automatic detection)
-    # Jab deploy karoge to ye khud ka URL dhoond lega, ya manually daal dena
-    # Testing ke liye hardcode kar sakte ho, lekin production me yahi rehne do
-    # Agar Render ka URL fix hai to neeche wali line me replace kar dena
+    # ⚠️ IMPORTANT: Deploy karne ke baad yahan apna Render URL jarur dalna
+    # Example: base_url = "https://vikas-doraemon.onrender.com"
     base_url = "https://testingbot-8pb1.onrender.com" 
     
     target_link = f"{base_url}/library/doraemon?season={category.value}"
@@ -17143,14 +17141,15 @@ async def doraemon(interaction: discord.Interaction, category: app_commands.Choi
     embed = discord.Embed(
         title=f"📺 DORAEMON: {category.name}",
         description=f"**Collection Loaded:** {category.name}\nTap the secure link below to open the archive.",
-        color=0x00f3ff # Neon Cyan Color
+        color=0x00f3ff 
     )
     embed.set_thumbnail(url="https://i.imgur.com/7J6f2g3.png") 
+    
     embed.add_field(name="🔓 Access Library", value=f"**[▶️ CLICK TO WATCH NOW]({target_link})**", inline=False)
     embed.set_footer(text="Verified Stream • Powered by Render")
     
     await interaction.response.send_message(embed=embed)
-
+    
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
 import time
@@ -17182,6 +17181,35 @@ user_cache = {}
 settings_cache = {"data": None, "time": 0}
 
 # --- 3. HELPER FUNCTIONS (FROM YOUR CODE) ---
+
+# 👇 YAHAN AAPKE SAARE LINKS ADD KAR DIYE HAIN
+CHANNEL_MAP = {
+    "season_1": "https://t.me/doraemonimporter",
+    "season_2": "https://t.me/doraemonimporter2",
+    "season_3": "https://t.me/doraemonimporter3",
+    "season_4": "https://t.me/doraemonimporter4",
+    "season_5": "https://t.me/doraemonimporter5",
+    "season_6": "https://t.me/doraemonimporter6",
+    "season_7": "https://t.me/doraemonimporter7",
+    "season_8": "https://t.me/+H0S4dcZfvWJkZjBl",
+    "season_9": "https://t.me/+s1Q7lien4j0wNGRl",
+    "season_10": "https://t.me/+Da7V7Zoelxs2MzVl",
+    "season_11": "https://t.me/+1JLgDh_S_AYyZGRl",
+    "season_12": "https://t.me/+ag7M_eA_mlYwNGI1",
+    "season_13": "https://t.me/+FAnoHipijfNiZmNl",
+    "season_14": "https://t.me/+hJXp65I7YQdjMDZl",
+    "season_15": "https://t.me/+1WbDmdyiqs0wZGZl",
+    "season_16": "https://t.me/+dSkYCxBJscllYjg1",
+    "season_17": "https://t.me/+2B5WiUpHj-ZiNzZl",
+    "season_18": "https://t.me/+MS78sAhlmUNhM2E9",
+    "season_19": "https://t.me/+uhjzHp7eKY9iYzE1",
+    "season_20": "https://t.me/+mjmJA7qi7wMxOThl",
+    "season_21": "https://t.me/+uXVZyC6Ew3c3YWJl",
+    "all_movies": "https://t.me/+Xrz0CfDOEX83NDI1",
+    "special": "https://t.me/+dhKaXxGWvC03OTM9",
+    "classic": "https://t.me/+xmcyFMf9tn44Mjdl",
+    "default": "https://t.me/doraemonimporter" # Backup Link
+}
 
 # ========= SAFE QUERY =========
 def safe_query(table, **filters):
@@ -17413,17 +17441,32 @@ def stopstatus():
 
 @app.route('/library/doraemon')
 def doraemon_library():
+    # 1. URL se season check karo
     season_query = request.args.get('season', 'movies')
+    
+    # 2. Database se episode nikalo
     try:
-        response = supabase.table("doraemon_episodes").select("*").eq("season", season_query).order("id").execute()
+        response = supabase.table("doraemon_episodes")\
+            .select("*")\
+            .eq("season", season_query)\
+            .order("id", desc=False)\
+            .execute()
         episodes_list = response.data
-    except:
+    except Exception as e:
+        print(f"Database Fetch Error: {e}")
         episodes_list = []
-        
-    display_name = season_query.replace('_', ' ').upper()
-    return render_template('library.html', episodes=episodes_list, current_season=display_name)
-            
 
+    # 3. Display Name (Ex: season_1 -> SEASON 1)
+    display_name = season_query.replace('_', ' ').upper()
+    
+    # 4. 🔥 SMART LINK LOGIC: Sahi channel ka link nikalo
+    current_invite_link = CHANNEL_MAP.get(season_query, CHANNEL_MAP["default"])
+    
+    # 5. HTML ko bhejo
+    return render_template('library.html', 
+                         episodes=episodes_list, 
+                         current_season=display_name,
+                         invite_link=current_invite_link)
         
 # ========= DISABLE SPAM LOG =========
 import logging
