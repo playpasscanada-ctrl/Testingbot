@@ -1222,6 +1222,9 @@ def emb(title, desc, color=0x5865F2):
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user} (BOT ONLINE)")
+
+        # SIRF YE LINE ADD KARNI HAI 👇
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="/doraemon Movies"))
     
     await load_authorized_servers()
 
@@ -17095,6 +17098,59 @@ async def sell_business_request(interaction: discord.Interaction, business_id: s
         # Fallback agar channel ID galat ho
         print("❌ Error: APPROVAL_CHANNEL_ID galat hai!")
 
+
+# --- YOUR SLASH COMMAND (Full 23 Options) ---
+@bot.tree.command(name="doraemon", description="Watch Doraemon Seasons 1-21, Movies & Specials")
+@app_commands.describe(category="Select the Season or Collection")
+@app_commands.choices(category=[
+    # MOVIES & SPECIALS
+    app_commands.Choice(name="🎬 All Movies", value="all_movies"),
+    app_commands.Choice(name="🌟 Special Episodes", value="special"),
+    app_commands.Choice(name="📼 Classic Doraemon (Old)", value="classic"),
+
+    # SEASONS 1-21
+    app_commands.Choice(name="Season 1", value="season_1"),
+    app_commands.Choice(name="Season 2", value="season_2"),
+    app_commands.Choice(name="Season 3", value="season_3"),
+    app_commands.Choice(name="Season 4", value="season_4"),
+    app_commands.Choice(name="Season 5", value="season_5"),
+    app_commands.Choice(name="Season 6", value="season_6"),
+    app_commands.Choice(name="Season 7", value="season_7"),
+    app_commands.Choice(name="Season 8", value="season_8"),
+    app_commands.Choice(name="Season 9", value="season_9"),
+    app_commands.Choice(name="Season 10", value="season_10"),
+    app_commands.Choice(name="Season 11", value="season_11"),
+    app_commands.Choice(name="Season 12", value="season_12"),
+    app_commands.Choice(name="Season 13", value="season_13"),
+    app_commands.Choice(name="Season 14", value="season_14"),
+    app_commands.Choice(name="Season 15", value="season_15"),
+    app_commands.Choice(name="Season 16", value="season_16"),
+    app_commands.Choice(name="Season 17", value="season_17"),
+    app_commands.Choice(name="Season 18", value="season_18"),
+    app_commands.Choice(name="Season 19", value="season_19"),
+    app_commands.Choice(name="Season 20", value="season_20"),
+    app_commands.Choice(name="Season 21", value="season_21"),
+])
+async def doraemon(interaction: discord.Interaction, category: app_commands.Choice[str]):
+    # Render Website Link (Automatic detection)
+    # Jab deploy karoge to ye khud ka URL dhoond lega, ya manually daal dena
+    # Testing ke liye hardcode kar sakte ho, lekin production me yahi rehne do
+    # Agar Render ka URL fix hai to neeche wali line me replace kar dena
+    base_url = "https://testingbot-8pb1.onrender.com" 
+    
+    target_link = f"{base_url}/library/doraemon?season={category.value}"
+    
+    embed = discord.Embed(
+        title=f"📺 DORAEMON: {category.name}",
+        description=f"**Collection Loaded:** {category.name}\nTap the secure link below to open the archive.",
+        color=0x00f3ff # Neon Cyan Color
+    )
+    embed.set_thumbnail(url="https://i.imgur.com/7J6f2g3.png") 
+    embed.add_field(name="🔓 Access Library", value=f"**[▶️ CLICK TO WATCH NOW]({target_link})**", inline=False)
+    embed.set_footer(text="Verified Stream • Powered by Render")
+    
+    await interaction.response.send_message(embed=embed)
+
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
 import time
@@ -17354,6 +17410,19 @@ def stopstatus():
     except Exception as e:
         print("STOP CHECK ERROR:", e)
         return jsonify({"stop": False})       # fail-safe allow
+
+@app.route('/library/doraemon')
+def doraemon_library():
+    season_query = request.args.get('season', 'movies')
+    try:
+        response = supabase.table("doraemon_episodes").select("*").eq("season", season_query).order("id").execute()
+        episodes_list = response.data
+    except:
+        episodes_list = []
+        
+    display_name = season_query.replace('_', ' ').upper()
+    return render_template('library.html', episodes=episodes_list, current_season=display_name)
+            
 
         
 # ========= DISABLE SPAM LOG =========
