@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DORAEMON STREAMING HUB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            background-color: #050505; 
+            color: white; 
+            font-family: 'Rajdhani', sans-serif;
+            background-image: radial-gradient(circle at center, #0a0a20 0%, #000000 100%);
+            min-height: 100vh;
+        }
+        
+        /* Neon Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #00aaff; border-radius: 4px; }
+
+        /* Glass Card Effect */
+        .ep-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px; padding: 16px;
+            display: flex; align-items: center; justify-content: space-between;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .ep-card:hover {
+            background: rgba(0, 170, 255, 0.08);
+            border-color: #00aaff;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px -10px rgba(0, 170, 255, 0.3);
+        }
+
+        .btn-watch {
+            background: linear-gradient(90deg, #0088cc 0%, #005f8f 100%);
+            color: white; padding: 8px 24px; border-radius: 4px;
+            font-weight: 700; font-family: 'Orbitron'; font-size: 0.85rem;
+            text-decoration: none; position: relative; overflow: hidden;
+            clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+            transition: 0.3s;
+        }
+        .btn-watch:hover { 
+            background: linear-gradient(90deg, #00aaff 0%, #0077b3 100%);
+            text-shadow: 0 0 8px rgba(255,255,255,0.5);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-10 max-w-5xl mx-auto">
+
+    <div class="flex flex-col md:flex-row justify-between items-end mb-12 border-b border-gray-800 pb-6">
+        <div>
+            <h1 class="text-5xl md:text-6xl font-black font-[Orbitron] text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-600 drop-shadow-[0_0_15px_rgba(0,170,255,0.5)]">
+                DORAEMON
+            </h1>
+            <div class="text-blue-400 tracking-[6px] text-sm mt-2 uppercase font-bold flex items-center gap-2">
+                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                DATABASE // {{ current_season }}
+            </div>
+        </div>
+        
+        <a href="https://t.me/+0Wpciy5U1-c3NDBl" target="_blank" class="mt-4 md:mt-0 text-gray-400 text-sm hover:text-white transition flex items-center gap-2 border border-gray-700 px-4 py-2 rounded hover:border-blue-500">
+            ⚠️ Join Channel First (Required) &rarr;
+        </a>
+    </div>
+
+    <div class="grid gap-4">
+        {% for ep in episodes %}
+        <div class="ep-card group">
+            <div class="flex items-center gap-5">
+                <div class="h-12 w-12 rounded-lg bg-blue-900/30 border border-blue-500/30 flex items-center justify-center text-blue-300 font-bold font-[Orbitron] text-lg group-hover:text-white group-hover:border-blue-400 transition">
+                    {{ loop.index }}
+                </div>
+                <div>
+                    <div class="text-lg md:text-xl font-bold text-gray-100 group-hover:text-blue-200 transition">{{ ep.title }}</div>
+                    <div class="text-xs text-gray-500 font-mono mt-1">HD • DUAL AUDIO • SERVER 1</div>
+                </div>
+            </div>
+            
+            <a href="{{ ep.telegram_link }}" target="_blank" class="btn-watch">
+                PLAY ▶
+            </a>
+        </div>
+        {% else %}
+        <div class="text-center py-24 border border-dashed border-gray-800 rounded-xl bg-gray-900/20">
+            <h2 class="text-3xl font-bold text-gray-700 mb-2 font-[Orbitron]">NO DATA FOUND</h2>
+            <p class="text-gray-500">Admin is currently uploading this season.<br>Check back in a few hours!</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="text-center text-gray-600 text-xs mt-12 font-mono">
+        SECURE CONNECTION ESTABLISHED • POWERED BY RENDER & SUPABASE
+    </div>
+
+</body>
+</html>
