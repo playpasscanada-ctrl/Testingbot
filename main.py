@@ -17143,7 +17143,7 @@ async def doraemon(interaction: discord.Interaction, category: app_commands.Choi
         description=f"**Collection Loaded:** {category.name}\nTap the secure link below to open the archive.",
         color=0x00f3ff 
     )
-    embed.set_thumbnail(url="https://i.imgur.com/7J6f2g3.png") 
+    embed.set_thumbnail(url="https://i.imgur.com/vHpxE8k.png") 
     
     embed.add_field(name="🔓 Access Library", value=f"**[▶️ CLICK TO WATCH NOW]({target_link})**", inline=False)
     embed.set_footer(text="Verified Stream • Powered by Render")
@@ -17184,27 +17184,27 @@ settings_cache = {"data": None, "time": 0}
 
 # 👇 YAHAN AAPKE SAARE LINKS ADD KAR DIYE HAIN
 CHANNEL_MAP = {
-    "season_1": "https://t.me/doraemonimporter",
-    "season_2": "https://t.me/doraemonimporter2",
-    "season_3": "https://t.me/doraemonimporter3",
-    "season_4": "https://t.me/doraemonimporter4",
-    "season_5": "https://t.me/doraemonimporter5",
-    "season_6": "https://t.me/doraemonimporter6",
-    "season_7": "https://t.me/doraemonimporter7",
-    "season_8": "https://t.me/+H0S4dcZfvWJkZjBl",
-    "season_9": "https://t.me/+s1Q7lien4j0wNGRl",
-    "season_10": "https://t.me/+Da7V7Zoelxs2MzVl",
-    "season_11": "https://t.me/+1JLgDh_S_AYyZGRl",
-    "season_12": "https://t.me/+ag7M_eA_mlYwNGI1",
-    "season_13": "https://t.me/+FAnoHipijfNiZmNl",
-    "season_14": "https://t.me/+hJXp65I7YQdjMDZl",
-    "season_15": "https://t.me/+1WbDmdyiqs0wZGZl",
-    "season_16": "https://t.me/+dSkYCxBJscllYjg1",
-    "season_17": "https://t.me/+2B5WiUpHj-ZiNzZl",
-    "season_18": "https://t.me/+MS78sAhlmUNhM2E9",
-    "season_19": "https://t.me/+uhjzHp7eKY9iYzE1",
-    "season_20": "https://t.me/+mjmJA7qi7wMxOThl",
-    "season_21": "https://t.me/+uXVZyC6Ew3c3YWJl",
+    "Season_1": "https://t.me/doraemonimporter",
+    "Season_2": "https://t.me/doraemonimporter2",
+    "Season_3": "https://t.me/doraemonimporter3",
+    "Season_4": "https://t.me/doraemonimporter4",
+    "Season_5": "https://t.me/doraemonimporter5",
+    "Season_6": "https://t.me/doraemonimporter6",
+    "Season_7": "https://t.me/doraemonimporter7",
+    "Season_8": "https://t.me/+H0S4dcZfvWJkZjBl",
+    "Season_9": "https://t.me/+s1Q7lien4j0wNGRl",
+    "Season_10": "https://t.me/+Da7V7Zoelxs2MzVl",
+    "Season_11": "https://t.me/+1JLgDh_S_AYyZGRl",
+    "Season_12": "https://t.me/+ag7M_eA_mlYwNGI1",
+    "Season_13": "https://t.me/+FAnoHipijfNiZmNl",
+    "Season_14": "https://t.me/+hJXp65I7YQdjMDZl",
+    "Season_15": "https://t.me/+1WbDmdyiqs0wZGZl",
+    "Season_16": "https://t.me/+dSkYCxBJscllYjg1",
+    "Season_17": "https://t.me/+2B5WiUpHj-ZiNzZl",
+    "Season_18": "https://t.me/+MS78sAhlmUNhM2E9",
+    "Season_19": "https://t.me/+uhjzHp7eKY9iYzE1",
+    "Season_20": "https://t.me/+mjmJA7qi7wMxOThl",
+    "Season_21": "https://t.me/+uXVZyC6Ew3c3YWJl",
     "all_movies": "https://t.me/+Xrz0CfDOEX83NDI1",
     "special": "https://t.me/+dhKaXxGWvC03OTM9",
     "classic": "https://t.me/+xmcyFMf9tn44Mjdl",
