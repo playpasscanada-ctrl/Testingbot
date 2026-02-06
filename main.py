@@ -17150,82 +17150,72 @@ async def doraemon(interaction: discord.Interaction, category: app_commands.Choi
     
     await interaction.response.send_message(embed=embed)
 
-# 1. JUMPSCARE (Targeted)
-@bot.tree.command(name="scare", description="Jumpscare a specific player")
-@app_commands.describe(username="Roblox Username (Exact Spelling)")
-async def scare(interaction: discord.Interaction, username: str):
-    if not owner(interaction):
-        return await interaction.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=True)
-
-    # Queue me add karo
-    command_queue[username] = {"type": "jumpscare"}
+# 1. SPAM COMMAND (With Limit & ID)
+@bot.tree.command(name="spam", description="Spam chat message with limit")
+@app_commands.describe(userid="Roblox User ID (Number)", message="Kya spam karna hai?", amount="Kitni baar? (e.g. 50)")
+async def spam(interaction: discord.Interaction, userid: str, message: str, amount: int):
+    # Owner Check Laga Lena (Jo tumhare paas already hai)
     
-    embed = discord.Embed(title="👻 Jumpscare Triggered", description=f"Target: **{username}**", color=0xff0000)
-    embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/1998/1998610.png")
-    embed.add_field(name="Status", value="Queued for Client", inline=True)
-    embed.set_footer(text="Powered by Vikas Hub")
+    # Supabase me daalo
+    data = {
+        "target_id": userid,
+        "command_type": "spam",
+        "payload": {"msg": message, "limit": amount}, # Limit add kar di
+        "status": "pending"
+    }
+    supabase.table('troll_commands').insert(data).execute()
     
-    await interaction.response.send_message(embed=embed)
+    await interaction.response.send_message(f"✅ **Spam Queued!**\nTarget ID: `{userid}`\nMsg: `{message}`\nCount: `{amount}`")
 
-# 2. SPAM (Targeted)
-@bot.tree.command(name="spam", description="Spam chat for a specific player")
-@app_commands.describe(username="Roblox Username", message="Spam text")
-async def spam(interaction: discord.Interaction, username: str, message: str):
-    if not owner(interaction):
-        return await interaction.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=True)
-
-    command_queue[username] = {"type": "spam", "msg": message}
+# 2. JUMPSCARE (With ID)
+@bot.tree.command(name="scare", description="Jumpscare specific user by ID")
+@app_commands.describe(userid="Roblox User ID (Number)")
+async def scare(interaction: discord.Interaction, userid: str):
     
-    embed = discord.Embed(title="💬 Chat Spam Initiated", description=f"Target: **{username}**", color=0x00ffcc)
-    embed.add_field(name="Message", value=f"`{message}`", inline=False)
+    data = {
+        "target_id": userid,
+        "command_type": "jumpscare",
+        "payload": {},
+        "status": "pending"
+    }
+    supabase.table('troll_commands').insert(data).execute()
     
-    await interaction.response.send_message(embed=embed)
+    await interaction.response.send_message(f"👻 **Jumpscare Sent!**\nTarget ID: `{userid}`\nJab wo script execute karega tab fatega.")
 
-# 3. AUDIO BLASTER (Targeted Menu)
+# 3. AUDIO (With ID & Menu)
+# (Iske liye View class wahi use kro bas callback change hoga)
+
 class SoundSelect(discord.ui.Select):
-    def __init__(self, target_user):
-        self.target_user = target_user # Target user ko yaad rakho
+    def __init__(self, target_id):
+        self.target_id = target_id
+        # SOUND_MAP tumhare paas upar define hona chahiye
         options = [discord.SelectOption(label=name, emoji="💿") for name in SOUND_MAP.keys()]
-        super().__init__(placeholder="🎵 Select Audio Track...", max_values=1, min_values=1, options=options)
+        super().__init__(placeholder="Select Audio...", max_values=1, min_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        if not owner(interaction):
-             return await interaction.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=True)
-
         sound_name = self.values[0]
         sound_id = SOUND_MAP[sound_name]
         
-        # Queue me daalo sirf specific user ke liye
-        command_queue[self.target_user] = {"type": "audio", "id": sound_id}
+        data = {
+            "target_id": self.target_id,
+            "command_type": "audio",
+            "payload": {"id": sound_id},
+            "status": "pending"
+        }
+        supabase.table('troll_commands').insert(data).execute()
         
-        # FIXED: datetime error hata kar discord.utils.utcnow() lagaya
-        embed = discord.Embed(
-            title="🔊 Audio Blaster Activated",
-            description=f"Injecting audio stream.",
-            color=0xffd700, 
-            timestamp=discord.utils.utcnow() 
-        )
-        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/3075/3075977.png")
-        embed.add_field(name="Target User", value=f"**{self.target_user}**", inline=False)
-        embed.add_field(name="🎶 Track", value=f"**{sound_name}**", inline=True)
-        embed.add_field(name="🆔 ID", value=f"`{sound_id}`", inline=True)
-        
-        await interaction.response.edit_message(embed=embed, view=None)
+        await interaction.response.edit_message(content=f"🔊 **Audio Queued!**\nTarget: `{self.target_id}`\nSong: {sound_name}", view=None, embed=None)
 
 class SoundView(discord.ui.View):
-    def __init__(self, target_user):
+    def __init__(self, target_id):
         super().__init__()
-        self.add_item(SoundSelect(target_user))
+        self.add_item(SoundSelect(target_id))
 
-@bot.tree.command(name="audio", description="Play audio for a specific player")
-@app_commands.describe(username="Roblox Username")
-async def audio(interaction: discord.Interaction, username: str):
-    if not owner(interaction):
-        return await interaction.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=True)
-
-    # View ko username pass karo
-    await interaction.response.send_message(f"👇 **Select track for {username}:**", view=SoundView(username))
-    
+@bot.tree.command(name="audio", description="Play audio for player by ID")
+@app_commands.describe(userid="Roblox User ID (Number)")
+async def audio(interaction: discord.Interaction, userid: str):
+    await interaction.response.send_message(f"👇 **Select track for ID: {userid}:**", view=SoundView(userid))
+ 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
 import time
@@ -17551,37 +17541,35 @@ from flask import Flask, jsonify, request
 from threading import Thread
 import datetime
 
-# --- SOUNDS MAPPING ---
-SOUND_MAP = {
-    "🔥 Special Track (Vikas)": "118794169375235",
-    "💀 Loud Scream": "9119827059",
-    "🤣 Rick Roll": "1838457617",
-    "💨 Fart Sound": "131843063",
-    "💣 Vine Boom": "6308606116"
-}
-
-# --- COMMAND QUEUE (Targeting System) ---
-# Format: {"PlayerName": {"type": "jumpscare"}}
-command_queue = {}
-
-# --- HELPER FUNCTIONS ---
-def owner(interaction: discord.Interaction):
-    return interaction.user.id == OWNER_ID
-
-def emb(title, description, color=0xff0000):
-    embed = discord.Embed(title=title, description=description, color=color)
-    return embed
-
-
+# --- FLASK ROUTE (Roblox Request Karega) ---
 @app.route('/api/get_command', methods=['GET'])
 def get_command():
-    # Roblox script apna username bhejega "?user=Vikas"
-    user = request.args.get('user')
+    # Roblox apna UserID bhejega
+    user_id = request.args.get('userid')
     
-    if user and user in command_queue:
-        # Agar is user ke liye koi command hai, to nikal kar bhejo
-        cmd = command_queue.pop(user)
-        return jsonify(cmd)
+    if not user_id:
+        return jsonify({"type": "none"})
+
+    # 1. Supabase check karo: Kya is UserID ke liye koi 'pending' command hai?
+    response = supabase.table('troll_commands').select("*")\
+        .eq('target_id', user_id)\
+        .eq('status', 'pending')\
+        .limit(1).execute()
+    
+    data = response.data
+
+    if data and len(data) > 0:
+        command = data[0]
+        
+        # 2. Command mil gya! Ab status ko 'executed' kar do taaki dobara na baje
+        # (Audio loop Roblox side sambhal lega)
+        supabase.table('troll_commands').update({'status': 'executed'}).eq('id', command['id']).execute()
+        
+        # Roblox ko data bhejo
+        return jsonify({
+            "type": command['command_type'],
+            "payload": command['payload']
+        })
     
     return jsonify({"type": "none"})
         
