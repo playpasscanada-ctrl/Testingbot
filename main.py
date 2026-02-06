@@ -17149,6 +17149,83 @@ async def doraemon(interaction: discord.Interaction, category: app_commands.Choi
     embed.set_footer(text="Verified Stream • Powered by Render")
     
     await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="scare", description="Trigger a jumpscare on the client")
+async def scare(interaction: discord.Interaction):
+    # --- SECURITY CHECK ---
+    if not owner(interaction):
+        return await interaction.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=True)
+    # ----------------------
+
+    global active_command
+    active_command = {"type": "jumpscare"}
+    
+    embed = discord.Embed(title="👻 Jumpscare Triggered", description="Target client screen has been hijacked.", color=0xff0000)
+    embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/1998/1998610.png")
+    embed.add_field(name="Status", value="Sent to Executor", inline=True)
+    embed.set_footer(text="Powered by Vikas Hub", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    
+    await interaction.response.send_message(embed=embed)
+
+# 2. SPAM (SECURE)
+@bot.tree.command(name="spam", description="Spam chat messages")
+async def spam(interaction: discord.Interaction, message: str):
+    # --- SECURITY CHECK ---
+    if not owner(interaction):
+        return await interaction.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=True)
+    # ----------------------
+
+    global active_command
+    active_command = {"type": "spam", "msg": message}
+    
+    embed = discord.Embed(title="💬 Chat Spam Initiated", description=f"Broadcasting message to server.", color=0x00ffcc)
+    embed.add_field(name="Message", value=f"`{message}`", inline=False)
+    
+    await interaction.response.send_message(embed=embed)
+
+# 3. AUDIO BLASTER (SECURE)
+class SoundSelect(discord.ui.Select):
+    def __init__(self):
+        options = [discord.SelectOption(label=name, emoji="💿") for name in SOUND_MAP.keys()]
+        super().__init__(placeholder="🎵 Select Audio Track...", max_values=1, min_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        # Dropdown ke andar bhi check laga diya (Double Security)
+        if not owner(interaction):
+             return await interaction.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=True)
+
+        sound_name = self.values[0]
+        sound_id = SOUND_MAP[sound_name]
+        
+        global active_command
+        active_command = {"type": "audio", "id": sound_id}
+        
+        embed = discord.Embed(
+            title="🔊 Audio Blaster Activated",
+            description=f"Injecting audio stream to target client.",
+            color=0xffd700, 
+            timestamp=datetime.datetime.now()
+        )
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/3075/3075977.png")
+        embed.add_field(name="🎶 Track Name", value=f"**{sound_name}**", inline=False)
+        embed.add_field(name="🆔 Asset ID", value=f"`{sound_id}`", inline=True)
+        embed.set_footer(text=f"Requested by {interaction.user.name}")
+        
+        await interaction.response.send_message(embed=embed)
+
+class SoundView(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+        self.add_item(SoundSelect())
+
+@bot.tree.command(name="audio", description="Play looped audio on client")
+async def audio(interaction: discord.Interaction):
+    # --- SECURITY CHECK ---
+    if not owner(interaction):
+        return await interaction.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=True)
+    # ----------------------
+
+    await interaction.response.send_message("👇 **Select a track from the database:**", view=SoundView())
     
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
@@ -17467,6 +17544,39 @@ def doraemon_library():
                          episodes=episodes_list, 
                          current_season=display_name,
                          invite_link=current_invite_link)
+
+# --- SOUNDS MAPPING ---
+SOUND_MAP = {
+    "🔥 Special Track (Vikas)": "118794169375235",
+    "💀 Loud Scream": "9119827059",
+    "🤣 Rick Roll": "1838457617",
+    "💨 Fart Sound": "131843063",
+    "💣 Vine Boom": "6308606116"
+}
+
+# Command Store (Global Variable)
+active_command = {"type": "none"}
+
+# --- HELPER FUNCTIONS (Tumhare Screenshot Jaisa Style) ---
+
+# 1. Check Owner Function
+def owner(interaction: discord.Interaction):
+    # Agar tumhara Supabase wala logic alag hai, toh is function ko replace kar dena.
+    # Filhal ye seedha ID match karega jo sabse fast aur secure hai.
+    return interaction.user.id == OWNER_ID
+
+# 2. Embed Helper Function
+def emb(title, description):
+    embed = discord.Embed(title=title, description=description, color=0xff0000) # Red Color for Errors
+    return embed
+
+@app.route('/api/get_command', methods=['GET'])
+def get_command():
+    global active_command
+    response = active_command.copy()
+    active_command = {"type": "none"} 
+    return jsonify(response)
+
         
 # ========= DISABLE SPAM LOG =========
 import logging
