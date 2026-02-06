@@ -17150,82 +17150,81 @@ async def doraemon(interaction: discord.Interaction, category: app_commands.Choi
     
     await interaction.response.send_message(embed=embed)
 
-@bot.tree.command(name="scare", description="Trigger a jumpscare on the client")
-async def scare(interaction: discord.Interaction):
-    # --- SECURITY CHECK ---
+# 1. JUMPSCARE (Targeted)
+@bot.tree.command(name="scare", description="Jumpscare a specific player")
+@app_commands.describe(username="Roblox Username (Exact Spelling)")
+async def scare(interaction: discord.Interaction, username: str):
     if not owner(interaction):
         return await interaction.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=True)
-    # ----------------------
 
-    global active_command
-    active_command = {"type": "jumpscare"}
+    # Queue me add karo
+    command_queue[username] = {"type": "jumpscare"}
     
-    embed = discord.Embed(title="👻 Jumpscare Triggered", description="Target client screen has been hijacked.", color=0xff0000)
+    embed = discord.Embed(title="👻 Jumpscare Triggered", description=f"Target: **{username}**", color=0xff0000)
     embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/1998/1998610.png")
-    embed.add_field(name="Status", value="Sent to Executor", inline=True)
-    embed.set_footer(text="Powered by Vikas Hub", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    embed.add_field(name="Status", value="Queued for Client", inline=True)
+    embed.set_footer(text="Powered by Vikas Hub")
     
     await interaction.response.send_message(embed=embed)
 
-# 2. SPAM (SECURE)
-@bot.tree.command(name="spam", description="Spam chat messages")
-async def spam(interaction: discord.Interaction, message: str):
-    # --- SECURITY CHECK ---
+# 2. SPAM (Targeted)
+@bot.tree.command(name="spam", description="Spam chat for a specific player")
+@app_commands.describe(username="Roblox Username", message="Spam text")
+async def spam(interaction: discord.Interaction, username: str, message: str):
     if not owner(interaction):
         return await interaction.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=True)
-    # ----------------------
 
-    global active_command
-    active_command = {"type": "spam", "msg": message}
+    command_queue[username] = {"type": "spam", "msg": message}
     
-    embed = discord.Embed(title="💬 Chat Spam Initiated", description=f"Broadcasting message to server.", color=0x00ffcc)
+    embed = discord.Embed(title="💬 Chat Spam Initiated", description=f"Target: **{username}**", color=0x00ffcc)
     embed.add_field(name="Message", value=f"`{message}`", inline=False)
     
     await interaction.response.send_message(embed=embed)
 
-# 3. AUDIO BLASTER (SECURE)
+# 3. AUDIO BLASTER (Targeted Menu)
 class SoundSelect(discord.ui.Select):
-    def __init__(self):
+    def __init__(self, target_user):
+        self.target_user = target_user # Target user ko yaad rakho
         options = [discord.SelectOption(label=name, emoji="💿") for name in SOUND_MAP.keys()]
         super().__init__(placeholder="🎵 Select Audio Track...", max_values=1, min_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        # Dropdown ke andar bhi check laga diya (Double Security)
         if not owner(interaction):
              return await interaction.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=True)
 
         sound_name = self.values[0]
         sound_id = SOUND_MAP[sound_name]
         
-        global active_command
-        active_command = {"type": "audio", "id": sound_id}
+        # Queue me daalo sirf specific user ke liye
+        command_queue[self.target_user] = {"type": "audio", "id": sound_id}
         
+        # FIXED: datetime error hata kar discord.utils.utcnow() lagaya
         embed = discord.Embed(
             title="🔊 Audio Blaster Activated",
-            description=f"Injecting audio stream to target client.",
+            description=f"Injecting audio stream.",
             color=0xffd700, 
-            timestamp=datetime.datetime.now()
+            timestamp=discord.utils.utcnow() 
         )
         embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/3075/3075977.png")
-        embed.add_field(name="🎶 Track Name", value=f"**{sound_name}**", inline=False)
-        embed.add_field(name="🆔 Asset ID", value=f"`{sound_id}`", inline=True)
-        embed.set_footer(text=f"Requested by {interaction.user.name}")
+        embed.add_field(name="Target User", value=f"**{self.target_user}**", inline=False)
+        embed.add_field(name="🎶 Track", value=f"**{sound_name}**", inline=True)
+        embed.add_field(name="🆔 ID", value=f"`{sound_id}`", inline=True)
         
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.edit_message(embed=embed, view=None)
 
 class SoundView(discord.ui.View):
-    def __init__(self):
+    def __init__(self, target_user):
         super().__init__()
-        self.add_item(SoundSelect())
+        self.add_item(SoundSelect(target_user))
 
-@bot.tree.command(name="audio", description="Play looped audio on client")
-async def audio(interaction: discord.Interaction):
-    # --- SECURITY CHECK ---
+@bot.tree.command(name="audio", description="Play audio for a specific player")
+@app_commands.describe(username="Roblox Username")
+async def audio(interaction: discord.Interaction, username: str):
     if not owner(interaction):
         return await interaction.response.send_message(embed=emb("❌ NO PERMISSION", "Owner only"), ephemeral=True)
-    # ----------------------
 
-    await interaction.response.send_message("👇 **Select a track from the database:**", view=SoundView())
+    # View ko username pass karo
+    await interaction.response.send_message(f"👇 **Select track for {username}:**", view=SoundView(username))
     
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
@@ -17545,6 +17544,13 @@ def doraemon_library():
                          current_season=display_name,
                          invite_link=current_invite_link)
 
+import discord
+from discord import app_commands
+from discord.ext import commands
+from flask import Flask, jsonify, request
+from threading import Thread
+import datetime
+
 # --- SOUNDS MAPPING ---
 SOUND_MAP = {
     "🔥 Special Track (Vikas)": "118794169375235",
@@ -17554,29 +17560,30 @@ SOUND_MAP = {
     "💣 Vine Boom": "6308606116"
 }
 
-# Command Store (Global Variable)
-active_command = {"type": "none"}
+# --- COMMAND QUEUE (Targeting System) ---
+# Format: {"PlayerName": {"type": "jumpscare"}}
+command_queue = {}
 
-# --- HELPER FUNCTIONS (Tumhare Screenshot Jaisa Style) ---
-
-# 1. Check Owner Function
+# --- HELPER FUNCTIONS ---
 def owner(interaction: discord.Interaction):
-    # Agar tumhara Supabase wala logic alag hai, toh is function ko replace kar dena.
-    # Filhal ye seedha ID match karega jo sabse fast aur secure hai.
     return interaction.user.id == OWNER_ID
 
-# 2. Embed Helper Function
-def emb(title, description):
-    embed = discord.Embed(title=title, description=description, color=0xff0000) # Red Color for Errors
+def emb(title, description, color=0xff0000):
+    embed = discord.Embed(title=title, description=description, color=color)
     return embed
+
 
 @app.route('/api/get_command', methods=['GET'])
 def get_command():
-    global active_command
-    response = active_command.copy()
-    active_command = {"type": "none"} 
-    return jsonify(response)
-
+    # Roblox script apna username bhejega "?user=Vikas"
+    user = request.args.get('user')
+    
+    if user and user in command_queue:
+        # Agar is user ke liye koi command hai, to nikal kar bhejo
+        cmd = command_queue.pop(user)
+        return jsonify(cmd)
+    
+    return jsonify({"type": "none"})
         
 # ========= DISABLE SPAM LOG =========
 import logging
