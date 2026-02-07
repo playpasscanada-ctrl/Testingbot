@@ -17476,13 +17476,15 @@ from flask import Flask, jsonify, request
 from supabase import create_client, Client
 import datetime # Timestamp ke liye
 
-# --- SOUNDS MAPPING ---
+# --- SOUNDS MAPPING (TESTED & WORKING) ---
 SOUND_MAP = {
-    "🔥 Special Track (Vikas)": "118794169375235", # Tumhari wali ID
-    "💀 Loud Scream": "9119827059",
-    "🤣 Rick Roll": "1838457617",
-    "💨 Fart Sound": "131843063",
-    "💣 Vine Boom": "6308606116"
+    "💀 Jumpscare Scream": "9119827059",    # Verified Scream
+    "🤣 Rick Roll (Public)": "1838457617",  # Famous ID
+    "🔥 Bad to the Bone": "9048705979",     # Riff
+    "💨 Fart Sound": "131843063",          # Classic
+    "🎷 Careless Whisper": "137225797",     # Saxophone
+    "💣 Vine Boom": "6308606116",           # Meme Sound
+    "🔊 OOF Spam": "1545638475"            # Loud
 }
 
 # --- HELPER: PREMIUM EMBED GENERATOR ---
@@ -17573,22 +17575,21 @@ async def audio(interaction: discord.Interaction, userid: str):
     await interaction.response.send_message(embed=embed, view=SoundView(userid))
 
 
-# --- 2. JUMPSCARE COMMAND (Updated Sound ID + Red Embed) ---
-
+# --- JUMPSCARE COMMAND FIX ---
 @bot.tree.command(name="scare", description="Jumpscare specific user by ID")
 @app_commands.describe(userid="Roblox User ID (Number)")
 async def scare(interaction: discord.Interaction, userid: str):
-    await interaction.response.defer() # Safety Defer
+    await interaction.response.defer()
     
-    # Tumhari specific Sound ID payload me bhej rahe hain
     data = {
         "target_id": userid,
         "command_type": "jumpscare",
-        "payload": {"sound_id": "118794169375235"}, # <-- TUMHARI ID
+        "payload": {"sound_id": "9119827059"}, # <-- Working Scream ID
         "status": "pending"
     }
     supabase.table('troll_commands').insert(data).execute()
-    
+    # ... baki code same ...
+   
     # Premium Horror Embed (Red Color)
     embed = create_premium_embed(
         title="👻 Jumpscare Triggered",
