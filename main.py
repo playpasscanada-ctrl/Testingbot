@@ -17480,8 +17480,9 @@ import datetime # Timestamp ke liye
 SOUND_MAP = {
     "💀 Daadi ji op": "129697356456437",    # Verified Scream
     "🤣 Rick Roll (Public)": "1838457617",  # Famous ID
-    "🔥 tununununu": "108820459035129",     # Riff          # Classic
-    "💣 Vine Boom": "6308606116",           # Meme Sound
+    "🔥 tununununu": "108820459035129", # Riff          # Classic
+    "👽 song" : "140479714896324",
+    "💣 Vine Boom": "6308606116",      
 }
 
 # --- HELPER: PREMIUM EMBED GENERATOR ---
@@ -17581,7 +17582,7 @@ async def scare(interaction: discord.Interaction, userid: str):
     data = {
         "target_id": userid,
         "command_type": "jumpscare",
-        "payload": {"sound_id": "129697356456437"}, # <-- Working Scream ID
+        "payload": {"sound_id": "139918501762915"}, # <-- Working Scream ID
         "status": "pending"
     }
     supabase.table('troll_commands').insert(data).execute()
