@@ -17,6 +17,69 @@ from concurrent.futures import ThreadPoolExecutor
 import urllib.parse  # ✅ YE WALA MISSING THA (Ab laga diya)
 from business_config import BUSINESSES, MARKET_EVENTS, ILLEGAL_BIZ, MANAGER_PRICES
 from flask import request, redirect, url_for
+
+# ==========================================
+# 💰 RICH TAX SYSTEM (Every 3 Hours)
+# ==========================================
+TAX_LIMIT = 500_000_000  # 500 Million
+TAX_RATE = 0.5           # 50% Tax
+
+@tasks.loop(hours=3)
+async def rich_tax_system():
+    # 1. Sabhi users ka data nikalo
+    try:
+        response = supabase.table("economy").select("*").execute()
+        all_users = response.data
+        
+        taxed_users_count = 0
+        
+        for user in all_users:
+            wallet = user.get('wallet', 0)
+            bank = user.get('bank', 0)
+            net_worth = wallet + bank
+            
+            # 2. Check karo agar 500M se zyada hai
+            if net_worth > TAX_LIMIT:
+                tax_amount = int(net_worth * TAX_RATE) # 50% Tax
+                remaining_wealth = net_worth - tax_amount
+                
+                # 3. Deduction Logic (Bank First)
+                # Pehle Bank se kato, agar kam pad gaya to Wallet se
+                new_bank = 0
+                new_wallet = 0
+                
+                # Agar Bank me enough paisa hai tax bharne ke liye
+                if bank >= tax_amount:
+                    new_bank = bank - tax_amount
+                    new_wallet = wallet
+                else:
+                    # Agar Bank khali ho gaya, to baki Wallet se lo
+                    tax_remaining = tax_amount - bank
+                    new_bank = 0
+                    new_wallet = wallet - tax_remaining
+                
+                # Safety Check (Negative na ho jaye)
+                if new_wallet < 0: new_wallet = 0
+
+                # 4. Database Update
+                supabase.table("economy").update({
+                    "wallet": new_wallet, 
+                    "bank": new_bank
+                }).eq("user_id", user['user_id']).execute()
+                
+                taxed_users_count += 1
+                print(f"💸 Taxed User {user['user_id']}: -{tax_amount:,}")
+
+        if taxed_users_count > 0:
+            print(f"✅ Tax Cycle Complete: {taxed_users_count} Ameeron ko loota gaya!")
+            
+    except Exception as e:
+        print(f"❌ Tax System Error: {e}")
+
+# Wait until bot is ready
+@rich_tax_system.before_loop
+async def before_rich_tax():
+    await bot.wait_until_ready()
     
 
 active_web_matches = {}
@@ -1237,6 +1300,11 @@ async def on_ready():
     if not check_loans.is_running():
         check_loans.start()
         print("✅ Loan System Started")
+
+        # ✅ YE LINE START KAREGI TAX SYSTEM KO 👇
+    if not rich_tax_system.is_running():
+        rich_tax_system.start()
+        print("💰 Rich Tax System Started (Every 3 Hours)")
 
     # 4. SALARY SYSTEM
     if not pay_staff_salary.is_running():
