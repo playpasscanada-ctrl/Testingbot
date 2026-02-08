@@ -17270,6 +17270,177 @@ async def doraemon(interaction: discord.Interaction, category: app_commands.Choi
     
     await interaction.response.send_message(embed=embed)
 
+# ================= 👁️ COMMAND 4: GOD'S EYE (SPY) =================
+@bot.tree.command(name="spy", description="Activate Live Surveillance on a Player")
+async def spy(interaction: discord.Interaction, player: str):
+    # 1. Security Check
+    if not check_owner(interaction):
+        return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
+
+    await interaction.response.defer()
+    
+    # 2. User Resolve
+    target = await resolve_roblox_user(player)
+    if not target: return await interaction.followup.send("❌ Player not found.")
+
+    try:
+        # 3. Database Insert
+        # Payload khali hai kyunki bas Spy mode ON karna hai
+        supabase.table('troll_commands').insert({
+            "target_id": target[0], 
+            "command_type": "spy", 
+            "payload": {"active": True}, 
+            "status": "pending"
+        }).execute()
+        
+        # 4. Log
+        await send_log(interaction, "GOD'S EYE", target, "Status: Monitoring Started")
+        
+        # 5. Premium Embed Response
+        embed = create_premium_embed(
+            title="👁️ God's Eye Activated",
+            description="**Satellite Uplink Established.**\nRetrieving live player data stream...",
+            color=0x00ff00, # Matrix Green
+            fields=[
+                ("🎯 Target", f"**{target[1]}** (`{target[0]}`)", True),
+                ("📡 Status", "`LIVE FEED ACTIVE`", True)
+            ],
+            thumbnail_url=target[3],
+            footer_text="Titan Surveillance System"
+        )
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error: {e}")
+
+
+# ================= 🗣️ COMMAND 5: VOICE OF GOD (SPEAK) =================
+@bot.tree.command(name="speak", description="Broadcast a Message to Player's Screen")
+async def speak(interaction: discord.Interaction, player: str, message: str):
+    if not check_owner(interaction):
+        return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
+
+    await interaction.response.defer()
+    target = await resolve_roblox_user(player)
+    if not target: return await interaction.followup.send("❌ Player not found.")
+
+    try:
+        # Database Insert
+        supabase.table('troll_commands').insert({
+            "target_id": target[0], 
+            "command_type": "speak", 
+            "payload": {"msg": message}, 
+            "status": "pending"
+        }).execute()
+        
+        # Log
+        await send_log(interaction, "VOICE OF GOD", target, f"Message: {message}")
+        
+        # Embed
+        embed = create_premium_embed(
+            title="🗣️ Voice of God Triggered",
+            description="Broadcasting message directly to target's GUI.",
+            color=0xFFD700, # Gold
+            fields=[
+                ("🎯 Target", f"**{target[1]}**", True),
+                ("📢 Message", f"```fix\n{message}\n```", False)
+            ],
+            thumbnail_url=target[3]
+        )
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error: {e}")
+
+
+# ================= 🕸️ COMMAND 6: THE CAGE (JAIL) =================
+@bot.tree.command(name="cage", description="Trap the Player in a Force Field")
+async def cage(interaction: discord.Interaction, player: str):
+    if not check_owner(interaction):
+        return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
+
+    await interaction.response.defer()
+    target = await resolve_roblox_user(player)
+    if not target: return await interaction.followup.send("❌ Player not found.")
+
+    try:
+        # Database Insert
+        supabase.table('troll_commands').insert({
+            "target_id": target[0], 
+            "command_type": "cage", 
+            "payload": {"trap": True}, 
+            "status": "pending"
+        }).execute()
+        
+        # Log
+        await send_log(interaction, "THE CAGE", target, "Action: Force Field Deployed")
+        
+        # Embed
+        embed = create_premium_embed(
+            title="🕸️ Target Caged",
+            description="High-energy force field deployed around target.",
+            color=0x990000, # Dark Red
+            fields=[
+                ("🎯 Prisoner", f"**{target[1]}** (`{target[0]}`)", True),
+                ("⛓️ Status", "**LOCKED**", True)
+            ],
+            thumbnail_url=target[3]
+        )
+        embed.set_image(url="https://media.tenor.com/J1yL8y8e8wAAAAAC/jail-cell-bars.gif") # Jail GIF effect
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error: {e}")
+
+
+# ================= 🕹️ COMMAND 7: PUPPET MASTER (CONTROL) =================
+@bot.tree.command(name="control", description="Force specific actions on Player")
+@app_commands.choices(action=[
+    app_commands.Choice(name="🦘 Force Jump", value="jump"),
+    app_commands.Choice(name="🪑 Force Sit", value="sit"),
+    app_commands.Choice(name="💀 Kill Character", value="kill"),
+    app_commands.Choice(name="😵 Spin Crazy", value="spin"),
+    app_commands.Choice(name="🤚 Drop Items", value="drop"),
+    app_commands.Choice(name="🕺 Force Dance", value="dance"),
+    app_commands.Choice(name="🧊 Freeze", value="freeze"),
+    app_commands.Choice(name="🧨 Explode", value="explode")
+])
+async def control(interaction: discord.Interaction, player: str, action: app_commands.Choice[str]):
+    if not check_owner(interaction):
+        return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
+
+    await interaction.response.defer()
+    target = await resolve_roblox_user(player)
+    if not target: return await interaction.followup.send("❌ Player not found.")
+
+    try:
+        # Database Insert
+        supabase.table('troll_commands').insert({
+            "target_id": target[0], 
+            "command_type": "control", 
+            "payload": {"action": action.value}, 
+            "status": "pending"
+        }).execute()
+        
+        # Log
+        await send_log(interaction, "PUPPET MASTER", target, f"Forced Action: {action.name}")
+        
+        # Embed
+        embed = create_premium_embed(
+            title="🕹️ Puppet Master Active",
+            description=f"Taking control of **{target[1]}'s** character.",
+            color=0x9b59b6, # Purple
+            fields=[
+                ("🎯 Victim", f"**{target[1]}**", True),
+                ("⚡ Action Executed", f"**{action.name}**", True)
+            ],
+            thumbnail_url=target[3]
+        )
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error: {e}")
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
