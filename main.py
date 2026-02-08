@@ -17570,22 +17570,60 @@ def create_premium_embed(title, description, color, fields, thumbnail_url=None):
     embed.set_footer(text="Powered by Vikas Hub • Secure Exec", icon_url="https://cdn-icons-png.flaticon.com/512/906/906334.png")
     return embed
 
-# --- FLASK ROUTE (Wait kar raha hai Roblox ka) ---
+from flask import Flask, request, jsonify
+import traceback # Error detail dekhne ke liye
+
+# --- FLASK ROUTE (Roblox Polling Endpoint) ---
 @app.route('/api/get_command', methods=['GET'])
 def get_command():
+    # 1. Roblox se User ID lo
     user_id = request.args.get('userid')
-    if not user_id: return jsonify({"type": "none"})
+    
+    if not user_id: 
+        return jsonify({"type": "none", "message": "No User ID provided"})
 
-    response = supabase.table('troll_commands').select("*")\
-        .eq('target_id', user_id).eq('status', 'pending').limit(1).execute()
+    try:
+        # 2. Database Check: Kya koi 'pending' command hai is user ke liye?
+        response = supabase.table('troll_commands')\
+            .select("*")\
+            .eq('target_id', user_id)\
+            .eq('status', 'pending')\
+            .limit(1)\
+            .execute()
+        
+        # 3. Data Validate karo
+        data = response.data
+        if data and len(data) > 0:
+            command = data[0]
+            command_id = command['id']
+            
+            # 4. Command mil gaya! Ab isko 'executed' mark karo taaki dobara na chale
+            supabase.table('troll_commands')\
+                .update({'status': 'executed'})\
+                .eq('id', command_id)\
+                .execute()
+            
+            # 5. Roblox ko JSON bhejo
+            # Structure wahi hai jo humne Discord bot me set kiya tha:
+            # Audio Payload: {"id": "123..."}
+            # Scare Payload: {"sound_id": "..."}
+            # Spam Payload: {"msg": "...", "limit": 10}
+            
+            print(f"✅ Sent command {command['command_type']} to {user_id}")
+            return jsonify({
+                "type": command['command_type'], 
+                "payload": command['payload']
+            })
+            
+    except Exception as e:
+        # Agar Database down hai ya error aaya, to server crash mat hone do
+        print(f"⚠️ API Error: {str(e)}")
+        # traceback.print_exc() # Debugging ke liye (Optional)
+        return jsonify({"type": "none", "error": "Database Timeout"})
     
-    data = response.data
-    if data and len(data) > 0:
-        command = data[0]
-        supabase.table('troll_commands').update({'status': 'executed'}).eq('id', command['id']).execute()
-        return jsonify({"type": command['command_type'], "payload": command['payload']})
-    
+    # Agar koi command nahi mila
     return jsonify({"type": "none"})
+
 
 import discord
 from discord import app_commands
