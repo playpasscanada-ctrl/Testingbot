@@ -4746,89 +4746,167 @@ async def audit(i: discord.Interaction):
             )
         )
 
-# ================== OWNER MANAGEMENT ==================
-@bot.tree.command(name="owner", description="Manage bot owners (Add/Remove/List)")
+import datetime
+
+# ================== OWNER MANAGEMENT (PREMIUM VERSION) ==================
+@bot.tree.command(name="owner", description="Manage bot owners (Add/Remove/List) [Main Owner Only]")
 @app_commands.choices(action=[
-    app_commands.Choice(name="add", value="add"),
-    app_commands.Choice(name="remove", value="remove"),
-    app_commands.Choice(name="list", value="list"),
+    app_commands.Choice(name="➕ Add Owner", value="add"),
+    app_commands.Choice(name="➖ Remove Owner", value="remove"),
+    app_commands.Choice(name="📜 List Owners", value="list"),
 ])
 @app_commands.describe(user_id="Discord User ID (Required for Add/Remove)")
 async def owner_cmd(i: discord.Interaction, action: app_commands.Choice[str], user_id: str = None):
 
-    # Sirf MAIN OWNER (Environment Variable wala) hi owners manage kar sakta hai
-    if i.user.id != OWNER_ID:
-        return await safe_send(i, emb("❌ DENIED", "Sirf MAIN OWNER hi owners ko manage kar sakta hai."))
+    # --- 1. SECURITY CHECK (MAIN OWNER ONLY) ---
+    # Sirf Environment Variable wala MAIN OWNER hi ye command use kar sakta hai
+    if str(i.user.id) != str(OWNER_ID):
+        embed = discord.Embed(
+            title="🔒 Access Denied",
+            description="**Sirf MAIN OWNER hi owners ko manage kar sakta hai.**\nApni aukaat mein raho.",
+            color=0xff0000
+        )
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/564/564619.png")
+        return await i.response.send_message(embed=embed, ephemeral=True)
 
-    # ================= ADD OWNER =================
+    # ================= ➕ ADD OWNER =================
     if action.value == "add":
         if not user_id:
-            return await safe_send(i, emb("❌ ERROR", "User ID daalna zaroori hai!"))
+            return await i.response.send_message("❌ **Error:** User ID dena zaroori hai add karne ke liye!", ephemeral=True)
+
+        await i.response.defer() # Processing time ke liye defer
 
         try:
-            # Check if user exists on Discord
-            try:
-                user = await bot.fetch_user(int(user_id))
-                name = f"{user.name} ({user.display_name})"
-            except:
-                name = "Unknown User"
+            # Check if already exists
+            existing = supabase.table("bot_admins").select("user_id").eq("user_id", user_id).execute()
+            if existing.data:
+                return await i.followup.send(f"⚠️ **Alert:** User ID `{user_id}` pehle se hi owner list mein hai.")
 
-            supabase.table("bot_admins").upsert({
-                "user_id": user_id
-            }).execute()
+            # User Info Fetch Karo (Premium Display ke liye)
+            user_display = "Unknown User"
+            user_name = "N/A"
+            user_avatar = None
             
-            return await safe_send(i, emb(
-                "👑 OWNER ADDED", 
-                f"**User:** {name}\n**ID:** `{user_id}`\n\nAb ye banda bot commands access kar sakta hai.", 
-                0x00ff00
-            ))
-        except Exception as e:
-            return await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
+            try:
+                user_obj = await bot.fetch_user(int(user_id))
+                user_display = user_obj.display_name
+                user_name = user_obj.name
+                user_avatar = user_obj.display_avatar.url
+            except:
+                pass # Agar user nahi mila, toh ID se kaam chalayenge
 
-    # ================= REMOVE OWNER =================
+            # Database Update
+            supabase.table("bot_admins").insert({"user_id": user_id}).execute()
+            
+            # --- PREMIUM EMBED ---
+            embed = discord.Embed(
+                title="👑 New Owner Added",
+                description=f"**Successfully granted admin permissions.**",
+                color=0x00ff00, # Green
+                timestamp=datetime.datetime.now()
+            )
+            if user_avatar:
+                embed.set_thumbnail(url=user_avatar)
+            
+            embed.add_field(name="👤 Display Name", value=f"`{user_display}`", inline=True)
+            embed.add_field(name="🏷️ Username", value=f"`@{user_name}`", inline=True)
+            embed.add_field(name="🆔 User ID", value=f"`{user_id}`", inline=False)
+            embed.set_footer(text="Titan Security • Owner Management", icon_url=i.user.display_avatar.url)
+            
+            await i.followup.send(embed=embed)
+
+        except Exception as e:
+            await i.followup.send(f"❌ **Database Error:**\n```{e}```")
+
+    # ================= ➖ REMOVE OWNER =================
     if action.value == "remove":
         if not user_id:
-            return await safe_send(i, emb("❌ ERROR", "User ID daalna zaroori hai!"))
+            return await i.response.send_message("❌ **Error:** User ID dena zaroori hai remove karne ke liye!", ephemeral=True)
+
+        await i.response.defer()
 
         try:
-            supabase.table("bot_admins").delete().eq("user_id", user_id).execute()
-            return await safe_send(i, emb("🗑 OWNER REMOVED", f"User ID `{user_id}` ko owner list se hata diya gaya.", 0xff0000))
-        except Exception as e:
-            return await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
-
-    # ================= LIST OWNERS =================
-    if action.value == "list":
-        await i.response.defer() # List fetch karne me time lag sakta hai
-
-        try:
-            data = supabase.table("bot_admins").select("*").execute().data
-            
-            # Main Owner Info
+            # Fetch User Info for display (before deleting)
+            user_avatar = None
+            user_info = f"ID: {user_id}"
             try:
-                main_user = await bot.fetch_user(OWNER_ID)
-                main_txt = f"👑 **MAIN OWNER:** {main_user.mention} (`{main_user.name}`)"
+                user_obj = await bot.fetch_user(int(user_id))
+                user_info = f"{user_obj.name} ({user_obj.id})"
+                user_avatar = user_obj.display_avatar.url
             except:
-                main_txt = f"👑 **MAIN OWNER:** <@{OWNER_ID}>"
+                pass
 
-            txt = f"{main_txt}\n\n**🛡️ EXTRA OWNERS:**\n"
+            # Database Delete
+            supabase.table("bot_admins").delete().eq("user_id", user_id).execute()
 
-            if not data:
-                txt += "None"
-            else:
-                for x in data:
-                    uid = x['user_id']
-                    try:
-                        # Discord se naam fetch karo
-                        u = await bot.fetch_user(int(uid))
-                        txt += f"• {u.mention} — **{u.name}**\n   🆔 `{uid}`\n"
-                    except:
-                        # Agar user Discord chhod chuka hai
-                        txt += f"• <@{uid}> (User Not Found)\n   🆔 `{uid}`\n"
+            # --- PREMIUM EMBED ---
+            embed = discord.Embed(
+                title="🗑️ Owner Removed",
+                description=f"**User ko owner list se hamesha ke liye hata diya gaya.**",
+                color=0xff0000, # Red
+                timestamp=datetime.datetime.now()
+            )
+            if user_avatar:
+                embed.set_thumbnail(url=user_avatar)
+            
+            embed.add_field(name="👤 User Removed", value=f"**{user_info}**", inline=False)
+            embed.set_footer(text=f"Action by: {i.user.name}", icon_url=i.user.display_avatar.url)
 
-            await i.followup.send(embed=emb("👑 BOT OWNER LIST", txt, 0xf1c40f))
+            await i.followup.send(embed=embed)
 
         except Exception as e:
-            await i.followup.send(embed=emb("❌ ERROR", f"List fetch nahi ho payi: `{e}`"))
+            await i.followup.send(f"❌ **Database Error:**\n```{e}```")
+
+    # ================= 📜 LIST OWNERS =================
+    if action.value == "list":
+        await i.response.defer()
+
+        try:
+            # Database se list nikalo
+            data = supabase.table("bot_admins").select("user_id").execute().data
+            
+            # --- MAIN OWNER INFO ---
+            try:
+                main_user_obj = await bot.fetch_user(int(OWNER_ID))
+                main_owner_txt = f"👑 **{main_user_obj.name}**\n🆔 `{OWNER_ID}`\n╰ *System God / Host*"
+            except:
+                main_owner_txt = f"👑 **Unknown**\n🆔 `{OWNER_ID}`"
+
+            # --- CO-OWNERS INFO ---
+            co_owners_list = []
+            if data:
+                for entry in data:
+                    uid = entry['user_id']
+                    try:
+                        u = await bot.fetch_user(int(uid))
+                        co_owners_list.append(f"🛡️ **{u.name}** (`{u.display_name}`)\n🆔 `{uid}`")
+                    except:
+                        co_owners_list.append(f"🛡️ **Unknown User**\n🆔 `{uid}`")
+            
+            if not co_owners_list:
+                co_owners_txt = "No extra owners added."
+            else:
+                co_owners_txt = "\n\n".join(co_owners_list)
+
+            # --- PREMIUM EMBED ---
+            embed = discord.Embed(
+                title="🛡️ Bot Authority List",
+                description="List of all users with `OWNER` permissions.",
+                color=0xFFD700, # Gold
+                timestamp=datetime.datetime.now()
+            )
+            embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/9630/9630328.png") # Shield Icon
+            
+            embed.add_field(name="👑 MAIN OWNER", value=main_owner_txt, inline=False)
+            embed.add_field(name=f"👮 EXTRA OWNERS ({len(data)})", value=co_owners_txt, inline=False)
+            
+            embed.set_footer(text="Titan Security System", icon_url=bot.user.display_avatar.url)
+
+            await i.followup.send(embed=embed)
+
+        except Exception as e:
+            await i.followup.send(f"❌ **Error Fetching List:**\n```{e}```")
+
 
 
 @bot.tree.command(name="stopp", description="Enable / Disable global script execution")
