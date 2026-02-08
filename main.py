@@ -17588,63 +17588,114 @@ def get_command():
     return jsonify({"type": "none"})
 
 
-# --- CONFIGURATION ---
-# Yahan apni Discord ID daalo (Right click on your profile -> Copy User ID)
-MY_MASTER_ID = "804687084249284618" 
+import discord
+from discord import app_commands
+from discord.ext import commands
+import aiohttp # Roblox API call ke liye zaroori hai
+import datetime
 
-# --- OWNER CHECK FUNCTION (Master Key + Database) ---
+# --- CONFIGURATION ---
+MY_MASTER_ID = "804687084249284618"
+LOG_CHANNEL_ID = 1450514760276774967 # <--- YAHAN APNA LOG CHANNEL ID DAALO
+
+# --- HELPER: FETCH ROBLOX USER INFO ---
+# Ye function Roblox ID se Username aur Display Name nikalega
+async def get_roblox_user_info(roblox_id: str):
+    url = f"https://users.roblox.com/v1/users/{roblox_id}"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status == 200:
+                data = await response.json()
+                return data.get("name"), data.get("displayName")
+            else:
+                return "Unknown", "Unknown"
+
+# --- HELPER: SEND LOG TO CHANNEL ---
+# Ye function saari details ek sundar Embed me banakar bhejega
+async def send_command_log(interaction: discord.Interaction, command_name: str, target_id: str, details: str):
+    log_channel = interaction.client.get_channel(LOG_CHANNEL_ID)
+    
+    if not log_channel:
+        print("⚠️ Log Channel ID galat hai ya bot wahan nahi hai.")
+        return
+
+    # Fetch Roblox Details
+    r_username, r_display = await get_roblox_user_info(target_id)
+
+    # Embed Creation
+    embed = discord.Embed(
+        title=f"⚠️ Command Executed: {command_name.upper()}",
+        color=0xff0000, # Red Color for Alert
+        timestamp=datetime.datetime.now()
+    )
+
+    # 1. EXECUTOR DETAILS (Discord User)
+    embed.add_field(
+        name="👮 Executor (Discord)",
+        value=f"**User:** {interaction.user.name}\n**Display:** {interaction.user.display_name}\n**ID:** `{interaction.user.id}`",
+        inline=True
+    )
+
+    # 2. TARGET DETAILS (Roblox Player)
+    embed.add_field(
+        name="🎯 Target (Roblox)",
+        value=f"**Username:** {r_username}\n**Display:** {r_display}\n**ID:** `{target_id}`",
+        inline=True
+    )
+
+    # 3. COMMAND DETAILS
+    embed.add_field(name="📝 Action Details", value=details, inline=False)
+    
+    # Footer
+    embed.set_footer(text="🔒 Security Log System", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+
+    await log_channel.send(embed=embed)
+
+# --- OWNER CHECK FUNCTION ---
 def check_owner(interaction: discord.Interaction) -> bool:
     user_id = str(interaction.user.id)
-    
-    # Debugging ke liye (Console me dekho kya print hota hai)
-    print(f"👮 Checking Access for: {interaction.user.name} (ID: {user_id})")
-
-    # 1. MASTER KEY CHECK (Sabse Pehle)
-    # Agar ye ID match hui, to database check karne ki zarurat hi nahi.
     if user_id == MY_MASTER_ID:
-        print("✅ Access Granted: Master Owner")
         return True
-
-    try:
-        # 2. DATABASE CHECK (bot_admins Table)
-        # Note: Make sure table ka naam 'bot_admins' hai aur column 'user_id' hai
-        response = supabase.table('bot_admins').select('user_id').eq('user_id', user_id).execute()
-        
-        if len(response.data) > 0:
-            print("✅ Access Granted: Found in Database")
-            return True
-            
-    except Exception as e:
-        print(f"⚠️ Database Check Error: {e}")
     
-    print("❌ Access Denied")
+    # Database check (Agar tumhara logic hai)
+    try:
+        response = supabase.table('bot_admins').select('user_id').eq('user_id', user_id).execute()
+        if len(response.data) > 0:
+            return True
+    except:
+        pass
     return False
 
 # --- 1. AUDIO COMMAND ---
 class SoundSelect(discord.ui.Select):
     def __init__(self, target_id):
         self.target_id = target_id
+        # SOUND_MAP tumhare code me defined hona chahiye
         options = [discord.SelectOption(label=name, emoji="💿") for name in SOUND_MAP.keys()]
         super().__init__(placeholder="🎵 Select a Track...", max_values=1, min_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         if not check_owner(interaction):
-            await interaction.response.send_message("❌ **Access Denied:** Sirf Owner use kar sakta hai.", ephemeral=True)
+            await interaction.response.send_message("❌ Access Denied.", ephemeral=True)
             return
 
         await interaction.response.defer()
         sound_name = self.values[0]
         sound_id = SOUND_MAP[sound_name]
         
+        # Database Insert
         data = {"target_id": self.target_id, "command_type": "audio", "payload": {"id": sound_id}, "status": "pending"}
         supabase.table('troll_commands').insert(data).execute()
         
-        embed = create_premium_embed(
-            title="🔊 Audio Injection Active", description="Audio forced on target.", color=0xffd700,
-            fields=[("Target", f"`{self.target_id}`"), ("Track", f"**{sound_name}**")],
-            thumbnail_url="https://cdn-icons-png.flaticon.com/512/3075/3075977.png"
+        # --- LOGGING TRIGGER ---
+        await send_command_log(
+            interaction, 
+            "AUDIO", 
+            self.target_id, 
+            f"**Track Selected:** {sound_name}\n**Sound ID:** `{sound_id}`"
         )
-        await interaction.edit_original_response(content="", embed=embed, view=None)
+        
+        await interaction.edit_original_response(content=f"✅ Audio `{sound_name}` sent to target!", view=None, embed=None)
 
 class SoundView(discord.ui.View):
     def __init__(self, target_id):
@@ -17657,6 +17708,7 @@ async def audio(interaction: discord.Interaction, userid: str):
     if not check_owner(interaction):
         await interaction.response.send_message("❌ **NO PERMISSION**", ephemeral=True)
         return
+    # View bhejne se pehle log nahi, select karne ke baad log karenge (upar callback me)
     await interaction.response.send_message(embed=discord.Embed(description="👇 Select track:", color=0x2b2d31), view=SoundView(userid))
 
 # --- 2. JUMPSCARE COMMAND ---
@@ -17668,11 +17720,20 @@ async def scare(interaction: discord.Interaction, userid: str):
         return
 
     await interaction.response.defer()
+    
+    # Database Insert
     data = {"target_id": userid, "command_type": "jumpscare", "payload": {"sound_id": "139918501762915"}, "status": "pending"}
     supabase.table('troll_commands').insert(data).execute()
     
-    embed = create_premium_embed(title="👻 Jumpscare Sent", description="Target will be scared.", color=0xff0000, fields=[("Target", f"`{userid}`")], thumbnail_url="https://cdn-icons-png.flaticon.com/512/1998/1998610.png")
-    await interaction.followup.send(embed=embed)
+    # --- LOGGING TRIGGER ---
+    await send_command_log(
+        interaction, 
+        "JUMPSCARE", 
+        userid, 
+        "**Action:** Sent a Screamer Jumpscare\n**Sound ID:** `139918501762915`"
+    )
+    
+    await interaction.followup.send("👻 Jumpscare sent!")
 
 # --- 3. SPAM COMMAND ---
 @bot.tree.command(name="spam", description="Spam Chat (Owner Only)")
@@ -17683,12 +17744,20 @@ async def spam(interaction: discord.Interaction, userid: str, message: str, amou
         return
 
     await interaction.response.defer()
+    
+    # Database Insert
     data = {"target_id": userid, "command_type": "spam", "payload": {"msg": message, "limit": amount}, "status": "pending"}
     supabase.table('troll_commands').insert(data).execute()
     
-    embed = create_premium_embed(title="💬 Spam Started", description="Injecting messages.", color=0x00ffcc, fields=[("Target", f"`{userid}`"), ("Count", f"{amount}")], thumbnail_url="https://cdn-icons-png.flaticon.com/512/2919/2919600.png")
-    await interaction.followup.send(embed=embed)
-
+    # --- LOGGING TRIGGER ---
+    await send_command_log(
+        interaction, 
+        "SPAM CHAT", 
+        userid, 
+        f"**Message:** `{message}`\n**Amount:** {amount} times"
+    )
+    
+    await interaction.followup.send(f"💬 Spamming `{message}` ({amount}x) started!")
         
 # ========= DISABLE SPAM LOG =========
 import logging
