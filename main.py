@@ -17548,63 +17548,120 @@ from flask import Flask, request, jsonify
 from threading import Thread
 
 # --- ⚙️ CONFIGURATION ⚙️ ---
-MY_MASTER_ID = "804687084249284618"  # Tera Discord ID
-LOG_CHANNEL_ID = 1450514760276774967 # Tera Log Channel ID
+MY_MASTER_ID = "804687084249284618"  # Hardcoded Master ID
+LOG_CHANNEL_ID = 1450514760276774967 # Log Channel ID (Integer)
 
-# --- SOUNDS MAPPING (TESTED & WORKING) ---
+
+# --- 🎵 SOUND LIST ---
 SOUND_MAP = {
+    "Screamer": "139918501762915",
+    "Error Sound": "12221967",
+    "Bruh Sound": "5164264387",
     "💀 Daadi ji op": "129697356456437",    # Verified Scream
     "🤣 Rick Roll (Public)": "1838457617",  # Famous ID
     "🔥 tununununu": "108820459035129", # Riff          # Classic
     "👽 song" : "140479714896324",
-    "💣 Vine Boom": "6308606116",      
+    "💣 Vine Boom": "6308606116"   
 }
 
+# --- 🔒 SECURITY: ADVANCED OWNER CHECK ---
+def check_owner(interaction: discord.Interaction) -> bool:
+    user_id = str(interaction.user.id)
+    
+    # 1. Check Master ID (Fastest)
+    if user_id == MY_MASTER_ID:
+        return True
+    
+    # 2. Check Supabase 'bot_admins' Table
+    try:
+        if supabase:
+            response = supabase.table('bot_admins').select('user_id').eq('user_id', user_id).execute()
+            if response.data and len(response.data) > 0:
+                return True
+    except Exception as e:
+        print(f"⚠️ Auth Check Error: {e}")
+        
+    return False
+
 # --- 🎨 HELPER: ULTRA PREMIUM EMBED BUILDER ---
-def create_premium_embed(title, description, color, fields=None, thumbnail_url=None, author_name=None, author_icon=None):
+def create_premium_embed(title, description, color, fields=None, thumbnail_url=None, footer_text="Titan Security • System Active"):
     embed = discord.Embed(
         title=title,
         description=description,
         color=color,
-        timestamp=discord.utils.utcnow() # ✅ Date Error Fixed
+        timestamp=discord.utils.utcnow()
     )
     
-    # Thumbnail (Target ka photo)
     if thumbnail_url:
         embed.set_thumbnail(url=thumbnail_url)
     
-    # Author (Executor info)
-    if author_name:
-        embed.set_author(name=author_name, icon_url=author_icon)
-    
-    # Fields (Details)
     if fields:
         for name, value, inline in fields:
             embed.add_field(name=name, value=value, inline=inline)
-    
-    # Footer
-    embed.set_footer(text="⚡ TITAN SECURITY | SYSTEM ACTIVE", icon_url="https://cdn-icons-png.flaticon.com/512/2092/2092663.png")
-    
+            
+    embed.set_footer(text=footer_text, icon_url="https://cdn-icons-png.flaticon.com/512/906/906334.png")
     return embed
 
-# --- 🔍 HELPER: ROBLOX USER RESOLVER (Username OR ID) ---
+# --- 📝 HELPER: ADVANCED LOGGING SYSTEM ---
+async def send_log(interaction: discord.Interaction, command_type: str, target_data: tuple, extra_details: str):
+    try:
+        log_channel = bot.get_channel(LOG_CHANNEL_ID)
+        if not log_channel:
+            print(f"❌ Log Channel ID {LOG_CHANNEL_ID} not found!")
+            return
+
+        tid, tuser, tdisplay, tavatar = target_data
+        
+        # Log Embed Design
+        embed = discord.Embed(
+            title=f"🚨 COMMAND EXECUTED: {command_type}",
+            description="**Authorized Admin Action Detected**",
+            color=0xff4500, # Orange-Red
+            timestamp=discord.utils.utcnow()
+        )
+        
+        # Executor Info
+        embed.add_field(
+            name="👮 Executor (Admin)",
+            value=f"**User:** {interaction.user.mention}\n**ID:** `{interaction.user.id}`",
+            inline=True
+        )
+        
+        # Target Info with Profile Link
+        profile_link = f"https://www.roblox.com/users/{tid}/profile"
+        embed.add_field(
+            name="🎯 Target (Victim)",
+            value=f"**Name:** {tuser} (@{tdisplay})\n**ID:** `{tid}`\n[View Profile]({profile_link})",
+            inline=True
+        )
+        
+        # Details
+        embed.add_field(name="⚙️ Action Details", value=f"```{extra_details}```", inline=False)
+        
+        # Visuals
+        if tavatar: embed.set_thumbnail(url=tavatar)
+        embed.set_footer(text="Titan Logging Facility", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+        
+        await log_channel.send(embed=embed)
+        print("✅ Log Sent Successfully")
+        
+    except Exception as e:
+        print(f"⚠️ Logging Failed: {e}")
+
+# --- 🔍 HELPER: ROBLOX USER RESOLVER ---
 async def resolve_roblox_user(user_input: str):
-    """
-    Input: "Vikas" OR "123456"
-    Output: (id, username, display_name, avatar_url)
-    """
     user_input = str(user_input).strip()
     target_id = None
     username = "Unknown"
     display_name = "Unknown"
-    avatar_url = "https://tr.rbxcdn.com/53eb9b17fe1432a809c73a1329d58c6e/150/150/Image/Png" # Default Noob
+    avatar_url = "https://tr.rbxcdn.com/53eb9b17fe1432a809c73a1329d58c6e/150/150/Image/Png"
 
     async with aiohttp.ClientSession() as session:
-        # 1. Check agar input sirf number hai (ID)
+        # 1. ID Check
         if user_input.isdigit():
             target_id = user_input
         else:
-            # 2. Agar Username hai to ID nikalo
+            # 2. Username to ID
             payload = {"usernames": [user_input], "excludeBannedUsers": True}
             async with session.post("https://users.roblox.com/v1/usernames/users", json=payload) as resp:
                 if resp.status == 200:
@@ -17612,18 +17669,17 @@ async def resolve_roblox_user(user_input: str):
                     if data["data"]:
                         target_id = str(data["data"][0]["id"])
                     else:
-                        return None # User nahi mila
+                        return None 
 
-        # 3. User Info & Avatar Fetch karo
+        # 3. Fetch Details
         if target_id:
-            # Info
             async with session.get(f"https://users.roblox.com/v1/users/{target_id}") as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     username = data.get("name", "Unknown")
                     display_name = data.get("displayName", "Unknown")
 
-            # Avatar (Headshot)
+            # Avatar Headshot
             async with session.get(f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={target_id}&size=420x420&format=Png&isCircular=false") as av_resp:
                 if av_resp.status == 200:
                     av_data = await av_resp.json()
@@ -17631,55 +17687,22 @@ async def resolve_roblox_user(user_input: str):
                         avatar_url = av_data["data"][0]["imageUrl"]
             
             return target_id, username, display_name, avatar_url
-            
     return None
 
-# --- 📝 HELPER: LOGGING SYSTEM (Log Channel) ---
-async def send_log(interaction: discord.Interaction, command_name: str, target_data: tuple, details: str):
-    try:
-        log_channel = interaction.client.get_channel(LOG_CHANNEL_ID)
-        if not log_channel: return
-
-        tid, tuser, tdisplay, tavatar = target_data
-        
-        # Log Embed
-        embed = create_premium_embed(
-            title=f"🚨 COMMAND EXECUTED: {command_name}",
-            description="**An Admin executed a troll command.**",
-            color=0xff0000, # Red Color
-            fields=[
-                ("👮 Executor (Admin)", f"{interaction.user.mention}\n`{interaction.user.id}`", True),
-                ("🎯 Target (Victim)", f"**{tuser}** (@{tdisplay})\nID: `{tid}`", True),
-                ("⚙️ Command Details", f"```{details}```", False)
-            ],
-            thumbnail_url=tavatar,
-            author_name=interaction.user.name,
-            author_icon=interaction.user.avatar.url if interaction.user.avatar else None
-        )
-        
-        await log_channel.send(embed=embed)
-    except Exception as e:
-        print(f"Log Failed: {e}")
-
-# --- 🔒 OWNER CHECK ---
-def check_owner(interaction: discord.Interaction) -> bool:
-    return str(interaction.user.id) == MY_MASTER_ID
-
 # --- 🎧 COMMAND 1: AUDIO ---
-@bot.tree.command(name="audio", description="Play loud audio on a player (Username or ID)")
+@bot.tree.command(name="audio", description="Play loud audio on a player (Owner Only)")
 async def audio(interaction: discord.Interaction, player: str):
     if not check_owner(interaction):
-        return await interaction.response.send_message("❌ **Access Denied:** Owner Only.", ephemeral=True)
+        return await interaction.response.send_message("❌ **Access Denied:** You are not in the database.", ephemeral=True)
 
     await interaction.response.defer()
-    
-    # User Resolve
     target = await resolve_roblox_user(player)
+    
     if not target:
         return await interaction.followup.send(embed=create_premium_embed("❌ Error", f"Player `{player}` not found.", 0x000000))
 
-    # Dropdown Menu
-    select = discord.ui.Select(placeholder="🎵 Select a Track...", options=[discord.SelectOption(label=k, emoji="💿") for k in SOUND_MAP.keys()])
+    # Dropdown View
+    select = discord.ui.Select(placeholder="🎵 Select a Track to Inject...", options=[discord.SelectOption(label=k, emoji="💿") for k in SOUND_MAP.keys()])
     
     async def callback(interaction_select):
         if not check_owner(interaction_select): return
@@ -17687,22 +17710,20 @@ async def audio(interaction: discord.Interaction, player: str):
         sound_name = select.values[0]
         sound_id = SOUND_MAP[sound_name]
         
-        # DB Insert
         try:
             supabase.table('troll_commands').insert({
                 "target_id": target[0], "command_type": "audio", "payload": {"id": sound_id}, "status": "pending"
             }).execute()
             
-            # 1. Log Send
-            await send_log(interaction_select, "AUDIO INJECTION", target, f"Track: {sound_name}\nID: {sound_id}")
+            # Log & Reply
+            await send_log(interaction_select, "AUDIO", target, f"Track: {sound_name}\nID: {sound_id}")
             
-            # 2. Reply to User (Premium Embed)
             success_embed = create_premium_embed(
-                title="✅ Audio Command Sent",
-                description=f"Audio injection queued for target.",
-                color=0x00ff00, # Green
+                title="✅ Audio Injection Active",
+                description="Command successfully queued to database.",
+                color=0x00ff00,
                 fields=[
-                    ("🎯 Target", f"**{target[1]}** (`{target[0]}`)", True),
+                    ("🎯 Target", f"**{target[1]}**", True),
                     ("🎵 Track", f"**{sound_name}**", True)
                 ],
                 thumbnail_url=target[3]
@@ -17710,18 +17731,16 @@ async def audio(interaction: discord.Interaction, player: str):
             await interaction_select.response.edit_message(content="", embed=success_embed, view=None)
             
         except Exception as e:
-            await interaction_select.response.send_message(f"⚠️ DB Error: {e}", ephemeral=True)
+            await interaction_select.response.send_message(f"Database Error: {e}", ephemeral=True)
 
     select.callback = callback
     view = discord.ui.View()
     view.add_item(select)
     
-    # Initial Message
-    init_embed = create_premium_embed("🎵 Audio Panel", f"Target Found: **{target[1]}**\nSelect a sound below.", 0x2b2d31, thumbnail_url=target[3])
-    await interaction.followup.send(embed=init_embed, view=view)
+    await interaction.followup.send(embed=create_premium_embed("🎵 Audio Panel", f"Target: **{target[1]}**\nSelect a sound below.", 0x2b2d31, thumbnail_url=target[3]), view=view)
 
 # --- 👻 COMMAND 2: JUMPSCARE ---
-@bot.tree.command(name="scare", description="Jumpscare a player (Username or ID)")
+@bot.tree.command(name="scare", description="Jumpscare a player (Owner Only)")
 async def scare(interaction: discord.Interaction, player: str):
     if not check_owner(interaction):
         return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
@@ -17735,14 +17754,12 @@ async def scare(interaction: discord.Interaction, player: str):
             "target_id": target[0], "command_type": "jumpscare", "payload": {"sound_id": "139918501762915"}, "status": "pending"
         }).execute()
         
-        # Log
         await send_log(interaction, "JUMPSCARE", target, "Type: Screamer (Default)")
         
-        # Reply
         embed = create_premium_embed(
             title="👻 Jumpscare Triggered",
-            description="Sending a screamer to the target.",
-            color=0xff5500,
+            description="Target will receive a loud screamer.",
+            color=0xff0000,
             fields=[("🎯 Target", f"**{target[1]}** (`{target[0]}`)", True)],
             thumbnail_url=target[3]
         )
@@ -17751,7 +17768,7 @@ async def scare(interaction: discord.Interaction, player: str):
         await interaction.followup.send(f"Error: {e}")
 
 # --- 💬 COMMAND 3: SPAM ---
-@bot.tree.command(name="spam", description="Spam chat on a player (Username or ID)")
+@bot.tree.command(name="spam", description="Spam chat on a player (Owner Only)")
 async def spam(interaction: discord.Interaction, player: str, message: str, amount: int):
     if not check_owner(interaction):
         return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
@@ -17765,18 +17782,16 @@ async def spam(interaction: discord.Interaction, player: str, message: str, amou
             "target_id": target[0], "command_type": "spam", "payload": {"msg": message, "limit": amount}, "status": "pending"
         }).execute()
         
-        # Log
         await send_log(interaction, "CHAT SPAM", target, f"Message: {message}\nCount: {amount}")
         
-        # Reply
         embed = create_premium_embed(
             title="💬 Spam Attack Started",
-            description="Flooding target's chat.",
+            description="Flooding target's chat history.",
             color=0x00aaff,
             fields=[
                 ("🎯 Target", f"**{target[1]}**", True),
                 ("📝 Message", f"`{message}`", True),
-                ("🔢 Amount", f"**{amount}x**", True)
+                ("🔢 Count", f"**{amount}x**", True)
             ],
             thumbnail_url=target[3]
         )
@@ -17790,12 +17805,10 @@ def get_command():
     if not user_id: return jsonify({"type": "none"})
 
     try:
-        # DB Check
         response = supabase.table('troll_commands').select("*").eq('target_id', user_id).eq('status', 'pending').limit(1).execute()
         
         if response.data:
             cmd = response.data[0]
-            # Execute Mark
             supabase.table('troll_commands').update({'status': 'executed'}).eq('id', cmd['id']).execute()
             return jsonify({"type": cmd['command_type'], "payload": cmd['payload']})
             
