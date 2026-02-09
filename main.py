@@ -17271,47 +17271,83 @@ async def doraemon(interaction: discord.Interaction, category: app_commands.Choi
     await interaction.response.send_message(embed=embed)
 
 # ================= 👁️ COMMAND 4: GOD'S EYE (SPY) =================
-@bot.tree.command(name="spy", description="Activate Live Surveillance on a Player")
+# Imports mein 'asyncio' zaroori hai
+import asyncio 
+
+# --- GLOBAL DICTIONARY TO STORE LIVE SPY DATA ---
+# Format: { "User_ID": { "health": 90, "tool": "Sword", "loc": "10, 20, 30" } }
+live_spy_data = {}
+
+# ================= 👁️ UPDATED SPY COMMAND (LIVE EDIT) =================
+@bot.tree.command(name="spy", description="Activate Live Data Stream (Real-Time)")
 async def spy(interaction: discord.Interaction, player: str):
-    # 1. Security Check
     if not check_owner(interaction):
         return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
 
     await interaction.response.defer()
-    
-    # 2. User Resolve
-    target = await resolve_roblox_user(player)
+    target = await resolve_roblox_user(player) # Returns (id, username, display, avatar)
     if not target: return await interaction.followup.send("❌ Player not found.")
+    
+    target_id = str(target[0])
 
     try:
-        # 3. Database Insert
-        # Payload khali hai kyunki bas Spy mode ON karna hai
+        # 1. Roblox ko Command bhejo
         supabase.table('troll_commands').insert({
-            "target_id": target[0], 
+            "target_id": target_id, 
             "command_type": "spy", 
-            "payload": {"active": True}, 
+            "payload": {"active": True, "duration": 30}, # 30 seconds ke liye spy
             "status": "pending"
         }).execute()
         
-        # 4. Log
-        await send_log(interaction, "GOD'S EYE", target, "Status: Monitoring Started")
-        
-        # 5. Premium Embed Response
+        # 2. Initial Loading Embed
         embed = create_premium_embed(
-            title="👁️ God's Eye Activated",
-            description="**Satellite Uplink Established.**\nRetrieving live player data stream...",
-            color=0x00ff00, # Matrix Green
-            fields=[
-                ("🎯 Target", f"**{target[1]}** (`{target[0]}`)", True),
-                ("📡 Status", "`LIVE FEED ACTIVE`", True)
-            ],
-            thumbnail_url=target[3],
-            footer_text="Titan Surveillance System"
+            title="👁️ Establishing Uplink...",
+            description="Connecting to target's client...\nWaiting for data stream.",
+            color=0xFFA500, # Orange
+            thumbnail_url=target[3]
         )
-        await interaction.followup.send(embed=embed)
+        msg = await interaction.followup.send(embed=embed)
+        
+        # 3. LIVE UPDATE LOOP (30 Seconds)
+        for i in range(15): # 15 updates x 2 seconds = 30 seconds total
+            await asyncio.sleep(2) # Wait 2 seconds
+            
+            if target_id in live_spy_data:
+                # Data mil gaya! Embed update karo
+                data = live_spy_data[target_id]
+                
+                # Health Bar Calculation
+                hp = int(data['health'])
+                max_hp = int(data['max_health'])
+                bar_len = 10
+                filled = int((hp / max_hp) * bar_len)
+                health_bar = "🟩" * filled + "⬛" * (bar_len - filled)
+                
+                new_embed = create_premium_embed(
+                    title="👁️ LIVE SPY FEED",
+                    description=f"**Target:** {target[1]} (`{target_id}`)\n**Connection:** 🟢 Stable",
+                    color=0x00ff00, # Live Green
+                    fields=[
+                        ("❤️ Health Status", f"{health_bar} `{hp}/{max_hp}`", False),
+                        ("🎒 Equipped Item", f"**{data['tool']}**", True),
+                        ("🏃 Activity", f"`{data['activity']}`", True),
+                        ("📍 Coordinates", f"`{data['loc']}`", False)
+                    ],
+                    thumbnail_url=target[3],
+                    footer_text=f"Live Update: {i+1}/15"
+                )
+                await msg.edit(embed=new_embed)
+            else:
+                # Agar data abhi tak nahi aaya
+                await msg.edit(embed=create_premium_embed("📡 Searching...", "Waiting for signal from Roblox...", 0x808080))
+        
+        # Loop End
+        final_embed = create_premium_embed("🔴 Connection Closed", "Spy session ended to save resources.", 0xff0000, thumbnail_url=target[3])
+        await msg.edit(embed=final_embed)
 
     except Exception as e:
         await interaction.followup.send(f"⚠️ Error: {e}")
+
 
 
 # ================= 🗣️ COMMAND 5: VOICE OF GOD (SPEAK) =================
@@ -18040,6 +18076,26 @@ def get_command():
         return jsonify({"type": "none"}) 
     
     return jsonify({"type": "none"})
+
+        
+# ================= 🌐 NEW FLASK ROUTE (RECEIVE DATA) =================
+@app.route('/api/report_spy', methods=['POST'])
+def report_spy():
+    try:
+        data = request.json
+        user_id = str(data.get('userid'))
+        
+        # Data Save kar lo memory mein
+        live_spy_data[user_id] = {
+            "health": data.get('health', 'Unknown'),
+            "max_health": data.get('max_health', 100),
+            "tool": data.get('tool', 'None'),
+            "loc": data.get('loc', 'Unknown'),
+            "activity": data.get('activity', 'Standing')
+        }
+        return jsonify({"status": "received"})
+    except Exception as e:
+        return jsonify({"error": str(e)})
         
 # ========= DISABLE SPAM LOG =========
 import logging
