@@ -17723,7 +17723,65 @@ async def abduct(interaction: discord.Interaction, player: str):
         await interaction.followup.send(embed=embed)
     except Exception as e:
         await interaction.followup.send(f"⚠️ Error: {e}")
-                
+
+
+# ================= 🆘 COMMAND: AUTO HELP (DYNAMIC SCANNER) =================
+@bot.tree.command(name="help", description="Show all available commands and their usage 📜")
+async def help(interaction: discord.Interaction):
+    # 1. Loading...
+    await interaction.response.defer()
+
+    try:
+        # 2. Scanner Start
+        commands_list = []
+        titan_commands_list = []
+        
+        # Bot ke saare commands ko scan karo
+        for cmd in bot.tree.get_commands():
+            
+            # CASE A: Agar ye Group hai (Jaise '/titan')
+            if isinstance(cmd, app_commands.Group):
+                for sub_cmd in cmd.commands:
+                    # Format: /titan singularity - Description
+                    titan_commands_list.append(f"**`/{cmd.name} {sub_cmd.name}`**\n╰ *{sub_cmd.description}*")
+            
+            # CASE B: Agar ye Normal Command hai (Jaise '/bol')
+            else:
+                # 'help' command ko list me mat dikhao (Optional)
+                if cmd.name != "help":
+                    commands_list.append(f"**`/{cmd.name}`**\n╰ *{cmd.description}*")
+
+        # 3. Embed Taiyar Karo
+        embed = discord.Embed(
+            title="📜 Titan Bot Command Menu", 
+            description="Niche diye gaye commands use karke server pe raaj karo! 😎",
+            color=0x00FFFF # Cyan Color
+        )
+        
+        # General Commands Section
+        if commands_list:
+            embed.add_field(
+                name="🛠️ General Utility", 
+                value="\n".join(commands_list), 
+                inline=False
+            )
+        
+        # Titan/Troll Commands Section (Alag se highlight)
+        if titan_commands_list:
+            embed.add_field(
+                name="💀 Titan God Mode (Troll)", 
+                value="\n".join(titan_commands_list), 
+                inline=False
+            )
+            
+        # Footer
+        embed.set_footer(text=f"Requested by {interaction.user.name}", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/4712/4712109.png") # Help Icon
+
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error loading help: {e}", ephemeral=True)
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
