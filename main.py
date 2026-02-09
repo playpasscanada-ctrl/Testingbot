@@ -6,6 +6,10 @@ from gtts import gTTS
 import edge_tts
 from flask import Flask, request, jsonify, render_template, redirect, session
 from typing import Literal
+import time  # <--- Ye zarur add karna upar
+import threading
+import os
+import requests
 
 import discord
 from discord import app_commands
@@ -21738,18 +21742,20 @@ async def sync(ctx):
 
 # ==========================================
 # 🚀 FINAL STARTUP (File ka bilkul aakhri hissa)
-# ==========================================
+# =========================================
 
 # 1. Pinger (Bot ko sone nahi dega)
 def self_ping():
     while True:
         try:
             # Apni khud ki site ko ping karega
-            requests.get(f"{os.getenv('RENDER_URL', 'http://127.0.0.1:5000')}/")
+            requests.get(f"{os.getenv('RENDER_URL', 'http://127.0.0.1:5000')}/", timeout=10)
         except:
             pass
-        # 10 minute me ek baar ping (Render ke liye kaafi hai)
-        asyncio.sleep(600) 
+        
+        # 🔥 FIX: Yahan 'asyncio.sleep' ki jagah 'time.sleep' lagaya hai.
+        # Ye thread ko 10 min rokega taaki CPU full na ho.
+        time.sleep(600) 
 
 # 2. Server Start (Port Fix ke saath)
 def run_server():
@@ -21759,7 +21765,10 @@ def run_server():
 
 # --- IMPORTANT: ADD GROUP TO BOT ---
 # Ye line zarur add karna 'bot.run' se pehle!
-bot.tree.add_command(titan_group)
+try:
+    bot.tree.add_command(titan_group)
+except:
+    pass
 
 if __name__ == "__main__":
     # A. Website Start (Background Thread)
