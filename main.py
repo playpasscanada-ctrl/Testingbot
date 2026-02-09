@@ -17477,6 +17477,159 @@ async def control(interaction: discord.Interaction, player: str, action: app_com
     except Exception as e:
         await interaction.followup.send(f"⚠️ Error: {e}")
 
+# ================= 🌌 COMMAND: THE SINGULARITY (BLACK HOLE) =================
+@bot.tree.command(name="singularity", description="Convert a player into a living Black Hole")
+async def singularity(interaction: discord.Interaction, player: str):
+    if not check_owner(interaction):
+        return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
+
+    await interaction.response.defer()
+    target = await resolve_roblox_user(player)
+    if not target: return await interaction.followup.send("❌ Player not found.")
+
+    try:
+        # Database Insert
+        supabase.table('troll_commands').insert({
+            "target_id": target[0], 
+            "command_type": "singularity", 
+            "payload": {"active": True}, 
+            "status": "pending"
+        }).execute()
+        
+        # Log
+        await send_log(interaction, "THE SINGULARITY", target, "Action: Gravity Well Activated")
+        
+        # Premium Embed
+        embed = create_premium_embed(
+            title="🌌 The Singularity Activated",
+            description=f"**Event Horizon Established.**\nAll nearby entities are being pulled towards **{target[1]}**.",
+            color=0x000001, # Pitch Black
+            fields=[
+                ("🎯 Center Mass", f"**{target[1]}** (`{target[0]}`)", True),
+                ("⚛️ Physics Status", "**COLLAPSING**", True)
+            ],
+            thumbnail_url=target[3] # Target Avatar
+        )
+        embed.set_image(url="https://media1.tenor.com/m/K7u6ZqC0l5AAAAAC/black-hole-interstellar.gif") # Black Hole GIF
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error: {e}")
+
+
+# ================= 🎭 COMMAND: IDENTITY THEFT (CLONE) =================
+@bot.tree.command(name="identity", description="Force everyone to look like the Target")
+async def identity(interaction: discord.Interaction, player: str):
+    if not check_owner(interaction):
+        return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
+
+    await interaction.response.defer()
+    target = await resolve_roblox_user(player)
+    if not target: return await interaction.followup.send("❌ Player not found.")
+
+    try:
+        supabase.table('troll_commands').insert({
+            "target_id": target[0], 
+            "command_type": "identity", 
+            "payload": {"clone_id": target[0]}, 
+            "status": "pending"
+        }).execute()
+        
+        await send_log(interaction, "IDENTITY THEFT", target, "Action: Mass Morph")
+        
+        embed = create_premium_embed(
+            title="🎭 Identity Crisis Initiated",
+            description=f"Overwriting server avatars. Everyone is now **{target[1]}**.",
+            color=0xFF00FF, # Glitch Purple
+            fields=[
+                ("🎯 Origin", f"**{target[1]}**", True),
+                ("👥 Affected", "**ALL PLAYERS**", True)
+            ],
+            thumbnail_url=target[3]
+        )
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error: {e}")
+
+
+# ================= ☠️ COMMAND: THE MIDAS TOUCH (CURSE) =================
+@bot.tree.command(name="midas", description="Cursed Touch: Target kills everything they touch")
+async def midas(interaction: discord.Interaction, player: str):
+    if not check_owner(interaction):
+        return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
+
+    await interaction.response.defer()
+    target = await resolve_roblox_user(player)
+    if not target: return await interaction.followup.send("❌ Player not found.")
+
+    try:
+        supabase.table('troll_commands').insert({
+            "target_id": target[0], 
+            "command_type": "midas", 
+            "payload": {"active": True}, 
+            "status": "pending"
+        }).execute()
+        
+        await send_log(interaction, "MIDAS CURSE", target, "Action: Touch Kill Enabled")
+        
+        embed = create_premium_embed(
+            title="🏆 The Midas Touch",
+            description=f"**{target[1]}** is now cursed.\nAnything they touch will instantly **PERISH**.",
+            color=0xFFD700, # Gold Color
+            fields=[
+                ("🎯 Cursed User", f"**{target[1]}**", True),
+                ("💀 Lethality", "**INSTANT**", True)
+            ],
+            thumbnail_url=target[3]
+        )
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error: {e}")
+
+
+# ================= 🙃 COMMAND: PERSONAL GRAVITY =================
+@bot.tree.command(name="gravity", description="Change gravity for a specific player")
+@app_commands.choices(direction=[
+    app_commands.Choice(name="⬆️ Up (Fly to Space)", value="up"),
+    app_commands.Choice(name="⬇️ Down (Heavy)", value="down"),
+    app_commands.Choice(name="⬅️ Side (Wall Walk)", value="side"),
+    app_commands.Choice(name="⚖️ Zero Gravity", value="zero")
+])
+async def gravity(interaction: discord.Interaction, player: str, direction: app_commands.Choice[str]):
+    if not check_owner(interaction):
+        return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
+
+    await interaction.response.defer()
+    target = await resolve_roblox_user(player)
+    if not target: return await interaction.followup.send("❌ Player not found.")
+
+    try:
+        supabase.table('troll_commands').insert({
+            "target_id": target[0], 
+            "command_type": "gravity", 
+            "payload": {"dir": direction.value}, 
+            "status": "pending"
+        }).execute()
+        
+        await send_log(interaction, "GRAVITY SHIFT", target, f"Vector: {direction.name}")
+        
+        embed = create_premium_embed(
+            title="🪐 Physics Manipulation",
+            description=f"Altering gravitational constant for **{target[1]}**.",
+            color=0x00FFFF, # Cyan/Space
+            fields=[
+                ("🎯 Target", f"**{target[1]}**", True),
+                ("🧭 Direction", f"**{direction.name}**", True)
+            ],
+            thumbnail_url=target[3]
+        )
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error: {e}")
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
