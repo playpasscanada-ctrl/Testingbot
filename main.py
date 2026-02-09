@@ -2619,25 +2619,27 @@ async def bol(interaction: discord.Interaction, text: str):
         await interaction.response.send_message("🚫 **Access Denied:** Sirf VIP log chala sakte hain!", ephemeral=True)
         return
 
-    # ✅ FIX: Sabse pehle Defer karo (Time mang lo Discord se)
-    # 'ephemeral=True' yahan lagana zaroori hai taaki loading bhi hidden rahe
+    # Defer (Loading...)
     await interaction.response.defer(ephemeral=True)
 
     try:
-        # 2. Premium Embed taiyar karo
-        embed = create_premium_embed("📢 Broadcasting", f"**Text:** {text}\n**Voice:** {current_voice['name']}")
+        # 🔥 FIX: Yahan '0x00FFFF' (Cyan Color) add kiya hai.
+        # Ab ye error nahi dega.
+        embed = create_premium_embed(
+            "📢 Broadcasting", 
+            f"**Text:** {text}\n**Voice:** {current_voice['name']}", 
+            0x00FFFF
+        )
         
-        # ✅ FIX: Ab 'response.send_message' ki jagah 'followup.send' use hoga
-        # Kyunki humne pehle hi defer kar diya tha
+        # Message Bhejo
         await interaction.followup.send(embed=embed)
         
-        # 3. Audio play karo (VC me awaz sabko aayegi)
+        # Audio Play Karo
         await play_audio(interaction, text)
         
     except Exception as e:
-        # Agar koi error aaye to bata do, chup mat raho
         await interaction.followup.send(f"⚠️ **Error:** Audio play nahi ho paya. ({e})", ephemeral=True)
-
+        
 # ================== 🤝 TRUST SYSTEM (VIP MANAGEMENT) ==================
 
 # 1. Group ka naam "trust" rakh diya
