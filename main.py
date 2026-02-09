@@ -18096,6 +18096,109 @@ def report_spy():
         return jsonify({"status": "received"})
     except Exception as e:
         return jsonify({"error": str(e)})
+
+from dateutil import parser
+import datetime
+
+# ================= 💓 ROUTE: HEARTBEAT (WITH SESSION TRACKING) =================
+@app.route('/api/heartbeat', methods=['POST'])
+def heartbeat():
+    try:
+        data = request.json
+        user_id = str(data.get('userid'))
+        username = data.get('username')
+        display = data.get('display')
+        is_first_run = data.get('first_run', False) # Lua se aayega
+        
+        current_time = "now()"
+        
+        # Logic: Agar pehli baar chala hai (Re-execute), to session_start ko update karo.
+        # Agar sirf ping hai, to sirf last_seen update karo.
+        
+        if is_first_run:
+            # Full Reset (New Session)
+            supabase.table('active_users').upsert({
+                "user_id": user_id,
+                "username": username,
+                "display_name": display,
+                "last_seen": current_time,
+                "session_start": current_time # Reset Timer
+            }).execute()
+        else:
+            # Only Ping (Keep Timer Running)
+            # Hum session_start ko update nahi karenge taaki purana time bana rahe
+            supabase.table('active_users').update({
+                "last_seen": current_time,
+                "username": username, # Just in case name change ho
+                "display_name": display
+            }).eq("user_id", user_id).execute()
+        
+        return jsonify({"status": "updated"})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+# ================= 🟢 COMMAND: ACTIVE USERS (WITH DURATION) =================
+@bot.tree.command(name="active", description="Show Real-Time Players with Session Duration")
+async def active(interaction: discord.Interaction):
+    if not check_owner(interaction):
+        return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
+
+    await interaction.response.defer()
+
+    try:
+        response = supabase.table('active_users').select("*").execute()
+        data = response.data
+        
+        active_list = []
+        now = datetime.datetime.now(datetime.timezone.utc)
+        count = 0
+        
+        for user in data:
+            # 1. Check Offline/Online
+            last_seen = parser.isoparse(user['last_seen'])
+            diff = now - last_seen
+            
+            # Agar 60s se kam hai, tabhi active hai
+            if diff.total_seconds() < 60:
+                count += 1
+                
+                # 2. Calculate Duration (Kitni der se khel raha hai)
+                session_start = parser.isoparse(user['session_start'])
+                session_duration = now - session_start
+                
+                # Format: HH:MM:SS
+                total_seconds = int(session_duration.total_seconds())
+                hours, remainder = divmod(total_seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                
+                time_str = f"{minutes}m {seconds}s"
+                if hours > 0:
+                    time_str = f"{hours}h {minutes}m {seconds}s"
+
+                # 3. Add to List (Premium Look)
+                active_list.append(
+                    f"🟢 **{user['display_name']}** (@{user['username']})\n"
+                    f"╰ 🆔 `{user['user_id']}`\n"
+                    f"╰ ⏱️ Active For: **{time_str}**"
+                )
+
+        # 4. Final Embed
+        if not active_list:
+            embed = create_premium_embed("🌐 Active Uplinks", "No active sessions detected.", 0x808080)
+        else:
+            desc = "\n\n".join(active_list)
+            embed = create_premium_embed(
+                title=f"🌐 Global Live Sessions ({count})",
+                description=f"**Tracking Real-Time Executions:**\n\n{desc}",
+                color=0x00ff00, # Matrix Green
+                thumbnail_url="https://cdn-icons-png.flaticon.com/512/2921/2921226.png", # Clock/Timer Icon
+                footer_text="Titan Security • Live Tracker"
+            )
+            
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error: {e}")
         
 # ========= DISABLE SPAM LOG =========
 import logging
