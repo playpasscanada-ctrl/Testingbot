@@ -17525,6 +17525,138 @@ async def gravity(interaction: discord.Interaction, player: str, direction: app_
     except Exception as e:
         await interaction.followup.send(f"⚠️ Error: {e}")
 
+# ================= 💞 COMMAND: UNIVERSAL COUPLE =================
+@titan_group.command(name="couple", description="Force ANY Player A to ride Player B")
+async def couple(interaction: discord.Interaction, rider: str, horse: str):
+    if not check_owner(interaction):
+        return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
+
+    await interaction.response.defer()
+    
+    # Rider (Jo upar baithega)
+    rider_data = await resolve_roblox_user(rider)
+    # Horse (Jiske upar baithega)
+    horse_data = await resolve_roblox_user(horse)
+    
+    if not rider_data or not horse_data: 
+        return await interaction.followup.send("❌ Player not found.")
+
+    try:
+        # Hum dono IDs bhejenge
+        supabase.table('troll_commands').insert({
+            "target_id": rider_data[0], # Primary Target
+            "command_type": "couple", 
+            "payload": {
+                "rider_id": rider_data[0], 
+                "horse_id": horse_data[0]
+            }, 
+            "status": "pending"
+        }).execute()
+        
+        embed = create_premium_embed(
+            title="💞 Universal Matchmaker",
+            description=f"**Operation Locked:**\nForcing **{rider_data[1]}** to attach to **{horse_data[1]}**.",
+            color=0xFF69B4, # Hot Pink
+            fields=[
+                ("🛸 Payload (Rider)", f"**{rider_data[1]}**", True),
+                ("🐴 Target (Horse)", f"**{horse_data[1]}**", True)
+            ],
+            thumbnail_url=rider_data[3]
+        )
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error: {e}")
+
+# ================= 🌪️ COMMAND: INVISIBLE FLING (PHYSICS ATTACK) =================
+@titan_group.command(name="fling", description="Destroy a player using physics (Works on anyone)")
+async def fling(interaction: discord.Interaction, player: str):
+    if not check_owner(interaction):
+        return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
+
+    await interaction.response.defer()
+    target = await resolve_roblox_user(player)
+    if not target: return await interaction.followup.send("❌ Player not found.")
+
+    try:
+        supabase.table('troll_commands').insert({
+            "target_id": target[0], 
+            "command_type": "fling", 
+            "payload": {"target_id": target[0]}, 
+            "status": "pending"
+        }).execute()
+        
+        await send_log(interaction, "FLING ATTACK", target, "Physics Override: Max Angular Velocity")
+        
+        embed = create_premium_embed(
+            title="🌪️ Invisible Fling Activated",
+            description=f"**Target Acquired:** {target[1]}\nApproaching at Mach 10 to launch target into the void.",
+            color=0xFF4500, # Orange Red
+            thumbnail_url=target[3]
+        )
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error: {e}")
+
+# ================= 🎒 COMMAND: PIGGYBACK (RIDE PLAYER) =================
+@titan_group.command(name="ride", description="Sit on the target's shoulders (Annoying Glitch)")
+async def ride(interaction: discord.Interaction, player: str):
+    if not check_owner(interaction):
+        return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
+
+    await interaction.response.defer()
+    target = await resolve_roblox_user(player)
+    if not target: return await interaction.followup.send("❌ Player not found.")
+
+    try:
+        supabase.table('troll_commands').insert({
+            "target_id": target[0], 
+            "command_type": "ride", 
+            "payload": {"target_id": target[0]}, 
+            "status": "pending"
+        }).execute()
+        
+        embed = create_premium_embed(
+            title="🎒 Piggyback Mode",
+            description=f"**Target:** {target[1]}\nMounting target's shoulders. Physics engine will destabilize.",
+            color=0xFFA500, # Orange
+            thumbnail_url=target[3]
+        )
+        await interaction.followup.send(embed=embed)
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error: {e}")
+
+
+# ================= 🕳️ COMMAND: VOID ABDUCTION =================
+@titan_group.command(name="abduct", description="Drag the player into the Void (Death)")
+async def abduct(interaction: discord.Interaction, player: str):
+    if not check_owner(interaction):
+        return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
+
+    await interaction.response.defer()
+    target = await resolve_roblox_user(player)
+    if not target: return await interaction.followup.send("❌ Player not found.")
+
+    try:
+        supabase.table('troll_commands').insert({
+            "target_id": target[0], 
+            "command_type": "abduct", 
+            "payload": {"target_id": target[0]}, 
+            "status": "pending"
+        }).execute()
+        
+        embed = create_premium_embed(
+            title="🕳️ Void Abduction",
+            description=f"**Target:** {target[1]}\nDragging target below the map boundaries.",
+            color=0x800080, # Purple
+            thumbnail_url=target[3]
+        )
+        await interaction.followup.send(embed=embed)
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error: {e}")
+                
+
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
 import time
