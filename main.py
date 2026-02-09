@@ -2619,14 +2619,24 @@ async def bol(interaction: discord.Interaction, text: str):
         await interaction.response.send_message("🚫 **Access Denied:** Sirf VIP log chala sakte hain!", ephemeral=True)
         return
 
-    # 2. Premium Embed taiyar karo
-    embed = create_premium_embed("📢 Broadcasting", f"**Text:** {text}\n**Voice:** {current_voice['name']}")
-    
-    # ✅ FIX: Yahan 'ephemeral=True' dala hai taaki sirf aapko dikhe
-    await interaction.response.send_message(embed=embed, ephemeral=True)
-    
-    # 3. Audio play karo (VC me awaz sabko aayegi, message sirf aapko dikhega)
-    await play_audio(interaction, text)
+    # ✅ FIX: Sabse pehle Defer karo (Time mang lo Discord se)
+    # 'ephemeral=True' yahan lagana zaroori hai taaki loading bhi hidden rahe
+    await interaction.response.defer(ephemeral=True)
+
+    try:
+        # 2. Premium Embed taiyar karo
+        embed = create_premium_embed("📢 Broadcasting", f"**Text:** {text}\n**Voice:** {current_voice['name']}")
+        
+        # ✅ FIX: Ab 'response.send_message' ki jagah 'followup.send' use hoga
+        # Kyunki humne pehle hi defer kar diya tha
+        await interaction.followup.send(embed=embed)
+        
+        # 3. Audio play karo (VC me awaz sabko aayegi)
+        await play_audio(interaction, text)
+        
+    except Exception as e:
+        # Agar koi error aaye to bata do, chup mat raho
+        await interaction.followup.send(f"⚠️ **Error:** Audio play nahi ho paya. ({e})", ephemeral=True)
 
 # ================== 🤝 TRUST SYSTEM (VIP MANAGEMENT) ==================
 
