@@ -17725,63 +17725,111 @@ async def abduct(interaction: discord.Interaction, player: str):
         await interaction.followup.send(f"⚠️ Error: {e}")
 
 
-# ================= 🆘 COMMAND: AUTO HELP (DYNAMIC SCANNER) =================
-@bot.tree.command(name="help", description="Show all available commands and their usage 📜")
+# ================= 📦 HELPER CLASS: PAGINATION VIEW =================
+class HelpPaginator(discord.ui.View):
+    def __init__(self, embeds, user_id):
+        super().__init__(timeout=60) # 60 Seconds baad buttons expire honge
+        self.embeds = embeds
+        self.user_id = user_id
+        self.current_page = 0
+        
+        # Pehle page par "Back" button disable rakho
+        self.children[0].disabled = True 
+        
+        # Agar sirf 1 page hai, to "Next" bhi disable karo
+        if len(embeds) == 1:
+            self.children[1].disabled = True
+
+    # --- ⬅️ BACK BUTTON ---
+    @discord.ui.button(emoji="⬅️", style=discord.ButtonStyle.primary, custom_id="prev_btn")
+    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("❌ Yeh menu apke liye nahi hai!", ephemeral=True)
+
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_buttons()
+            await interaction.response.edit_message(embed=self.embeds[self.current_page], view=self)
+
+    # --- ➡️ NEXT BUTTON ---
+    @discord.ui.button(emoji="➡️", style=discord.ButtonStyle.primary, custom_id="next_btn")
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("❌ Yeh menu apke liye nahi hai!", ephemeral=True)
+
+        if self.current_page < len(self.embeds) - 1:
+            self.current_page += 1
+            self.update_buttons()
+            await interaction.response.edit_message(embed=self.embeds[self.current_page], view=self)
+
+    # --- 🗑️ CLOSE BUTTON ---
+    @discord.ui.button(emoji="🗑️", style=discord.ButtonStyle.danger, custom_id="close_btn")
+    async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("❌ Yeh menu apke liye nahi hai!", ephemeral=True)
+        await interaction.message.delete()
+
+    # --- LOGIC TO UPDATE BUTTONS ---
+    def update_buttons(self):
+        # Back Button Logic
+        self.children[0].disabled = (self.current_page == 0)
+        # Next Button Logic
+        self.children[1].disabled = (self.current_page == len(self.embeds) - 1)
+
+
+# ================= 🆘 COMMAND: AUTO HELP (PAGINATED) =================
+@bot.tree.command(name="help", description="Show all commands (Pages + Buttons) 📜")
 async def help(interaction: discord.Interaction):
-    # 1. Loading...
     await interaction.response.defer()
 
     try:
-        # 2. Scanner Start
-        commands_list = []
-        titan_commands_list = []
+        all_commands = []
         
-        # Bot ke saare commands ko scan karo
+        # 1. SARE COMMANDS SCAN KARO
         for cmd in bot.tree.get_commands():
-            
-            # CASE A: Agar ye Group hai (Jaise '/titan')
+            # Agar Group hai (Titan)
             if isinstance(cmd, app_commands.Group):
                 for sub_cmd in cmd.commands:
-                    # Format: /titan singularity - Description
-                    titan_commands_list.append(f"**`/{cmd.name} {sub_cmd.name}`**\n╰ *{sub_cmd.description}*")
-            
-            # CASE B: Agar ye Normal Command hai (Jaise '/bol')
+                    # Titan commands ko alag style me dikhao
+                    all_commands.append(f"💀 **/titan {sub_cmd.name}**\n╰ *{sub_cmd.description}*")
+            # Agar Normal Command hai
             else:
-                # 'help' command ko list me mat dikhao (Optional)
-                if cmd.name != "help":
-                    commands_list.append(f"**`/{cmd.name}`**\n╰ *{cmd.description}*")
+                if cmd.name != "help": # Help ko list me mat dikhao
+                    all_commands.append(f"🛠️ **/{cmd.name}**\n╰ *{cmd.description}*")
 
-        # 3. Embed Taiyar Karo
-        embed = discord.Embed(
-            title="📜 Titan Bot Command Menu", 
-            description="Niche diye gaye commands use karke server pe raaj karo! 😎",
-            color=0x00FFFF # Cyan Color
-        )
+        # 2. CHUNKING (List ko 10-10 ke tukdo me todo)
+        chunk_size = 10
+        chunks = [all_commands[i:i + chunk_size] for i in range(0, len(all_commands), chunk_size)]
         
-        # General Commands Section
-        if commands_list:
-            embed.add_field(
-                name="🛠️ General Utility", 
-                value="\n".join(commands_list), 
-                inline=False
-            )
-        
-        # Titan/Troll Commands Section (Alag se highlight)
-        if titan_commands_list:
-            embed.add_field(
-                name="💀 Titan God Mode (Troll)", 
-                value="\n".join(titan_commands_list), 
-                inline=False
+        # 3. EMBEDS BANANA (Har chunk ke liye ek Embed)
+        embeds = []
+        for i, chunk in enumerate(chunks):
+            # Embed Design
+            embed = discord.Embed(
+                title="📜 Titan Bot Menu", 
+                description=f"**Total Commands:** {len(all_commands)}\nNiche diye gaye buttons se page badlo.",
+                color=0x00FFFF # Cyan
             )
             
-        # Footer
-        embed.set_footer(text=f"Requested by {interaction.user.name}", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
-        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/4712/4712109.png") # Help Icon
+            # Commands add karo
+            embed.add_field(name=f"📄 Page {i+1} of {len(chunks)}", value="\n\n".join(chunk), inline=False)
+            
+            # Footer
+            embed.set_footer(text=f"Requested by {interaction.user.name}", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+            embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/4712/4712109.png")
+            
+            embeds.append(embed)
 
-        await interaction.followup.send(embed=embed)
+        # 4. SEND MESSAGE WITH BUTTONS
+        if len(embeds) > 0:
+            view = HelpPaginator(embeds, interaction.user.id)
+            await interaction.followup.send(embed=embeds[0], view=view)
+        else:
+            await interaction.followup.send("⚠️ Koi command nahi mila bhai.")
 
     except Exception as e:
         await interaction.followup.send(f"⚠️ Error loading help: {e}", ephemeral=True)
+        
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
