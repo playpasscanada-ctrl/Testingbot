@@ -2423,6 +2423,11 @@ async def roast(i: discord.Interaction, user: discord.Member):
     embed.set_thumbnail(url=user.display_avatar.url)
     await i.followup.send(content=f"{user.mention}", embed=embed)
 
+import discord
+import edge_tts
+import asyncio
+import os
+
 # ==========================================
 # ⚙️ GLOBAL VOICE SETTINGS (RAM Based)
 # ==========================================
@@ -2446,64 +2451,100 @@ def create_premium_embed(title, description, color=None):
     # Agar color nahi diya, toh current voice ka color use karo
     if color is None:
         color = current_voice["color"]
-        
+    
+    # Embed Create
     embed = discord.Embed(title=title, description=description, color=color)
-    embed.set_footer(text=f"🔥 Voice Mode: {current_voice['name']} | Powered by Neural AI")
+    
+    # Footer me current voice ka naam dikhega
+    embed.set_footer(text=f"🔥 Voice Mode: {current_voice['name']} | Powered by Titan AI")
     embed.set_thumbnail(url=current_voice["avatar"])
     return embed
 
 # 2. SECURITY CHECK (Owner + Admin + VIP)
 def has_voice_access(interaction):
     user_id = str(interaction.user.id)
-    # Check 1: Main Owner
-    if interaction.user.id == OWNER_ID: return True
-    # Check 2: Old Admin Table
-    if owner(interaction): return True
-    # Check 3: New VIP Table
+    
+    # Check 1: Main Owner (OWNER_ID global variable hona chahiye main file me)
+    try:
+        if interaction.user.id == OWNER_ID: return True
+    except:
+        pass # Agar OWNER_ID define nahi hai to skip karo
+
+    # Check 2: Custom Admin Function
+    try:
+        if check_owner(interaction): return True
+    except:
+        pass
+
+    # Check 3: Supabase VIP Table
     try:
         data = supabase.table("voice_vip").select("user_id").eq("user_id", user_id).execute()
         if data.data: return True
     except:
         pass
+        
     return False
 
 # 3. AUDIO PLAYER (Global Settings Use Karega)
 async def play_audio(interaction, text):
+    # Step A: User Voice Channel Check
     if not interaction.user.voice:
         embed = create_premium_embed("❌ Error", "Abe VC mein toh aaja pehle! 🖕", 0xFF0000)
         await interaction.followup.send(embed=embed, ephemeral=True)
         return
 
     channel = interaction.user.voice.channel
+    vc = interaction.guild.voice_client
+
+    # Step B: Smart Connection Logic
     try:
-        vc = await channel.connect()
-    except:
-        vc = interaction.guild.voice_client
-        if vc and vc.channel.id != channel.id:
-            await vc.move_to(channel)
-        elif not vc:
-            vc = await channel.connect()
+        if vc and vc.is_connected():
+            if vc.channel.id != channel.id:
+                await vc.move_to(channel) # Agar dusre channel me hai to move karo
+        else:
+            vc = await channel.connect() # Naya connection
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ VC Connection Error: {e}", ephemeral=True)
+        return
 
-    # Generate Audio using GLOBAL 'current_voice' settings
+    # Step C: Generate Audio (DYNAMIC VOICE ID)
+    # Yahan hum 'current_voice' dictionary se fresh data uthayenge
     output_file = f"audio_{interaction.id}.mp3"
-    communicate = edge_tts.Communicate(
-        text, 
-        current_voice["id"], 
-        rate=current_voice["rate"], 
-        pitch=current_voice["pitch"]
-    )
-    await communicate.save(output_file)
+    
+    try:
+        communicate = edge_tts.Communicate(
+            text, 
+            current_voice["id"],           # 👈 Ye line Male/Female switch karegi
+            rate=current_voice["rate"], 
+            pitch=current_voice["pitch"]
+        )
+        await communicate.save(output_file)
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ TTS Error: {e}", ephemeral=True)
+        return
 
+    # Step D: Play Audio
     if not vc.is_playing():
-        vc.play(discord.FFmpegPCMAudio(source=output_file, executable="./ffmpeg"))
+        # 🔥 FIX: 'executable' hata diya taaki Render/Linux par error na aaye
+        vc.play(discord.FFmpegPCMAudio(output_file), after=lambda e: clean_up(output_file))
+        
+        # Wait jab tak bol raha hai
         while vc.is_playing():
             await asyncio.sleep(1)
-        await vc.disconnect()
-        if os.path.exists(output_file):
-            os.remove(output_file)
+            
+        # Optional: Disconnect after speaking (Isko hata sakte ho agar bot 24/7 chahiye)
+        # await vc.disconnect() 
     else:
-        embed = create_premium_embed("⚠️ Busy", "Ruk ja, abhi line busy hai! 🚫", 0xFFA500)
-        await interaction.followup.send(embed=embed)
+        embed = create_premium_embed("⚠️ Busy", "Ruk ja, abhi bol raha hu! 🚫", 0xFFA500)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+# Helper to delete file
+def clean_up(file_path):
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    except:
+        pass
 
 # ==========================================
 # 🔥 COMMANDS START HERE
