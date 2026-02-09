@@ -17478,7 +17478,13 @@ async def control(interaction: discord.Interaction, player: str, action: app_com
         await interaction.followup.send(f"⚠️ Error: {e}")
 
 # ================= 🌌 COMMAND: THE SINGULARITY (BLACK HOLE) =================
-@bot.tree.command(name="singularity", description="Convert a player into a living Black Hole")
+# --- 🛠️ TITAN GROUP COMMANDS (Limit Fix) ---
+# Commands ab aise chalenge: /titan singularity, /titan midas, etc.
+
+titan_group = app_commands.Group(name="titan", description="Advanced Titan Security & Troll Protocols")
+
+# 1. SINGULARITY (Black Hole)
+@titan_group.command(name="singularity", description="Convert a player into a living Black Hole")
 async def singularity(interaction: discord.Interaction, player: str):
     if not check_owner(interaction):
         return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
@@ -17488,37 +17494,31 @@ async def singularity(interaction: discord.Interaction, player: str):
     if not target: return await interaction.followup.send("❌ Player not found.")
 
     try:
-        # Database Insert
+        # Payload me 'target_id' add kiya hai taaki Lua script ko pata chale center kaun hai
         supabase.table('troll_commands').insert({
             "target_id": target[0], 
             "command_type": "singularity", 
-            "payload": {"active": True}, 
+            "payload": {"active": True, "target_id": target[0]}, 
             "status": "pending"
         }).execute()
         
-        # Log
-        await send_log(interaction, "THE SINGULARITY", target, "Action: Gravity Well Activated")
+        await send_log(interaction, "THE SINGULARITY", target, "Gravity Well Activated")
         
-        # Premium Embed
         embed = create_premium_embed(
             title="🌌 The Singularity Activated",
             description=f"**Event Horizon Established.**\nAll nearby entities are being pulled towards **{target[1]}**.",
             color=0x000001, # Pitch Black
-            fields=[
-                ("🎯 Center Mass", f"**{target[1]}** (`{target[0]}`)", True),
-                ("⚛️ Physics Status", "**COLLAPSING**", True)
-            ],
-            thumbnail_url=target[3] # Target Avatar
+            thumbnail_url=target[3]
         )
-        embed.set_image(url="https://media1.tenor.com/m/K7u6ZqC0l5AAAAAC/black-hole-interstellar.gif") # Black Hole GIF
+        embed.set_image(url="https://media1.tenor.com/m/K7u6ZqC0l5AAAAAC/black-hole-interstellar.gif")
         await interaction.followup.send(embed=embed)
 
     except Exception as e:
         await interaction.followup.send(f"⚠️ Error: {e}")
 
 
-# ================= 🎭 COMMAND: IDENTITY THEFT (CLONE) =================
-@bot.tree.command(name="identity", description="Force everyone to look like the Target")
+# 2. IDENTITY THEFT (Clone)
+@titan_group.command(name="identity", description="Force everyone to look like the Target")
 async def identity(interaction: discord.Interaction, player: str):
     if not check_owner(interaction):
         return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
@@ -17535,12 +17535,12 @@ async def identity(interaction: discord.Interaction, player: str):
             "status": "pending"
         }).execute()
         
-        await send_log(interaction, "IDENTITY THEFT", target, "Action: Mass Morph")
+        await send_log(interaction, "IDENTITY THEFT", target, "Mass Morph")
         
         embed = create_premium_embed(
             title="🎭 Identity Crisis Initiated",
             description=f"Overwriting server avatars. Everyone is now **{target[1]}**.",
-            color=0xFF00FF, # Glitch Purple
+            color=0xFF00FF,
             fields=[
                 ("🎯 Origin", f"**{target[1]}**", True),
                 ("👥 Affected", "**ALL PLAYERS**", True)
@@ -17553,8 +17553,8 @@ async def identity(interaction: discord.Interaction, player: str):
         await interaction.followup.send(f"⚠️ Error: {e}")
 
 
-# ================= ☠️ COMMAND: THE MIDAS TOUCH (CURSE) =================
-@bot.tree.command(name="midas", description="Cursed Touch: Target kills everything they touch")
+# 3. MIDAS TOUCH (Curse)
+@titan_group.command(name="midas", description="Cursed Touch: Target kills everything they touch")
 async def midas(interaction: discord.Interaction, player: str):
     if not check_owner(interaction):
         return await interaction.response.send_message("❌ **Access Denied**", ephemeral=True)
@@ -17567,20 +17567,16 @@ async def midas(interaction: discord.Interaction, player: str):
         supabase.table('troll_commands').insert({
             "target_id": target[0], 
             "command_type": "midas", 
-            "payload": {"active": True}, 
+            "payload": {"active": True, "target_id": target[0]}, 
             "status": "pending"
         }).execute()
         
-        await send_log(interaction, "MIDAS CURSE", target, "Action: Touch Kill Enabled")
+        await send_log(interaction, "MIDAS CURSE", target, "Touch Kill Enabled")
         
         embed = create_premium_embed(
             title="🏆 The Midas Touch",
             description=f"**{target[1]}** is now cursed.\nAnything they touch will instantly **PERISH**.",
-            color=0xFFD700, # Gold Color
-            fields=[
-                ("🎯 Cursed User", f"**{target[1]}**", True),
-                ("💀 Lethality", "**INSTANT**", True)
-            ],
+            color=0xFFD700,
             thumbnail_url=target[3]
         )
         await interaction.followup.send(embed=embed)
@@ -17589,8 +17585,8 @@ async def midas(interaction: discord.Interaction, player: str):
         await interaction.followup.send(f"⚠️ Error: {e}")
 
 
-# ================= 🙃 COMMAND: PERSONAL GRAVITY =================
-@bot.tree.command(name="gravity", description="Change gravity for a specific player")
+# 4. PERSONAL GRAVITY
+@titan_group.command(name="gravity", description="Change gravity for a specific player")
 @app_commands.choices(direction=[
     app_commands.Choice(name="⬆️ Up (Fly to Space)", value="up"),
     app_commands.Choice(name="⬇️ Down (Heavy)", value="down"),
@@ -17606,10 +17602,11 @@ async def gravity(interaction: discord.Interaction, player: str, direction: app_
     if not target: return await interaction.followup.send("❌ Player not found.")
 
     try:
+        # Payload me target_id zaroori hai gravity apply karne ke liye
         supabase.table('troll_commands').insert({
             "target_id": target[0], 
             "command_type": "gravity", 
-            "payload": {"dir": direction.value}, 
+            "payload": {"dir": direction.value, "target_id": target[0]}, 
             "status": "pending"
         }).execute()
         
@@ -17618,7 +17615,7 @@ async def gravity(interaction: discord.Interaction, player: str, direction: app_
         embed = create_premium_embed(
             title="🪐 Physics Manipulation",
             description=f"Altering gravitational constant for **{target[1]}**.",
-            color=0x00FFFF, # Cyan/Space
+            color=0x00FFFF,
             fields=[
                 ("🎯 Target", f"**{target[1]}**", True),
                 ("🧭 Direction", f"**{direction.name}**", True)
@@ -17629,7 +17626,6 @@ async def gravity(interaction: discord.Interaction, player: str, direction: app_
 
     except Exception as e:
         await interaction.followup.send(f"⚠️ Error: {e}")
-
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
@@ -21730,7 +21726,11 @@ def run_server():
     port = int(os.environ.get("PORT", 10000))
     # Threading mode me 'allow_unsafe_werkzeug=True' zaroori hai
     socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
-    
+
+# --- IMPORTANT: ADD GROUP TO BOT ---
+# Ye line zarur add karna 'bot.run' se pehle!
+bot.tree.add_command(titan_group)
+
 if __name__ == "__main__":
     # A. Website Start (Background Thread)
     t1 = threading.Thread(target=run_server, daemon=True)
