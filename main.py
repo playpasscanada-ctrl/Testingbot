@@ -18137,7 +18137,10 @@ def heartbeat():
     except Exception as e:
         return jsonify({"error": str(e)})
 
-# ================= 🟢 COMMAND: ACTIVE USERS (WITH DURATION) =================
+# Is line ko top par rehne dena agar nahi hai
+from dateutil import parser 
+
+# ================= 🟢 COMMAND: ACTIVE USERS (FIXED) =================
 @bot.tree.command(name="active", description="Show Real-Time Players with Session Duration")
 async def active(interaction: discord.Interaction):
     if not check_owner(interaction):
@@ -18150,7 +18153,10 @@ async def active(interaction: discord.Interaction):
         data = response.data
         
         active_list = []
-        now = datetime.datetime.now(datetime.timezone.utc)
+        
+        # 🔥 FIX: 'datetime.datetime.now' hata kar 'discord.utils.utcnow()' lagaya hai
+        now = discord.utils.utcnow()
+        
         count = 0
         
         for user in data:
@@ -18162,7 +18168,7 @@ async def active(interaction: discord.Interaction):
             if diff.total_seconds() < 60:
                 count += 1
                 
-                # 2. Calculate Duration (Kitni der se khel raha hai)
+                # 2. Calculate Duration
                 session_start = parser.isoparse(user['session_start'])
                 session_duration = now - session_start
                 
@@ -18175,7 +18181,7 @@ async def active(interaction: discord.Interaction):
                 if hours > 0:
                     time_str = f"{hours}h {minutes}m {seconds}s"
 
-                # 3. Add to List (Premium Look)
+                # 3. Add to List
                 active_list.append(
                     f"🟢 **{user['display_name']}** (@{user['username']})\n"
                     f"╰ 🆔 `{user['user_id']}`\n"
@@ -18191,7 +18197,7 @@ async def active(interaction: discord.Interaction):
                 title=f"🌐 Global Live Sessions ({count})",
                 description=f"**Tracking Real-Time Executions:**\n\n{desc}",
                 color=0x00ff00, # Matrix Green
-                thumbnail_url="https://cdn-icons-png.flaticon.com/512/2921/2921226.png", # Clock/Timer Icon
+                thumbnail_url="https://cdn-icons-png.flaticon.com/512/2921/2921226.png", 
                 footer_text="Titan Security • Live Tracker"
             )
             
@@ -18199,6 +18205,7 @@ async def active(interaction: discord.Interaction):
 
     except Exception as e:
         await interaction.followup.send(f"⚠️ Error: {e}")
+
         
 # ========= DISABLE SPAM LOG =========
 import logging
