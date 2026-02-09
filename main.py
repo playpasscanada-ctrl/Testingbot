@@ -17829,6 +17829,154 @@ async def help(interaction: discord.Interaction):
 
     except Exception as e:
         await interaction.followup.send(f"⚠️ Error loading help: {e}", ephemeral=True)
+
+
+# ================= 🎛️ HELPER: SOUND & VC SELECT MENU =================
+
+# 1. VC Selection Dropdown
+class VoiceDropdown(discord.ui.Select):
+    def __init__(self, voice_channels):
+        options = []
+        # Sirf pehle 25 channels dikhayenge (Discord Limit)
+        for vc in voice_channels[:25]:
+            options.append(discord.SelectOption(
+                label=vc.name, 
+                value=str(vc.id), 
+                emoji="🔊", 
+                description=f"{len(vc.members)} log baithe hain"
+            ))
+        
+        super().__init__(placeholder="🔊 Select Target Voice Channel...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        # Selection save kar lenge view ke andar
+        self.view.selected_channel_id = int(self.values[0])
+        await interaction.response.defer() # Silent accept
+
+# 2. Sound Selection Dropdown (Optional)
+class SoundDropdown(discord.ui.Select):
+    def __init__(self, sound_files):
+        options = []
+        options.append(discord.SelectOption(label="❌ No Sound", value="none", description="Sirf text bolo"))
+        
+        # Pehle 24 sounds dikhayenge
+        for sound in sound_files[:24]:
+            options.append(discord.SelectOption(
+                label=sound, 
+                value=sound, 
+                emoji="🎵"
+            ))
+        
+        super().__init__(placeholder="🎵 Select Intro Sound (Optional)...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        self.view.selected_sound = self.values[0]
+        await interaction.response.defer()
+
+# 3. Main View (Remote Control)
+class ConnectView(discord.ui.View):
+    def __init__(self, voice_channels, sound_files, text_to_speak, user_id):
+        super().__init__(timeout=60)
+        self.user_id = user_id
+        self.text = text_to_speak
+        self.selected_channel_id = None
+        self.selected_sound = "none"
+
+        # Components add karo
+        self.add_item(VoiceDropdown(voice_channels))
+        if sound_files:
+            self.add_item(SoundDropdown(sound_files))
+
+    # --- 🚀 LAUNCH BUTTON ---
+    @discord.ui.button(label="Connect & Play", style=discord.ButtonStyle.green, emoji="🚀")
+    async def launch(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("❌ Abe tera remote nahi hai ye!", ephemeral=True)
+
+        if not self.selected_channel_id:
+            return await interaction.response.send_message("⚠️ Pehle VC toh select kar bhai!", ephemeral=True)
+
+        await interaction.response.defer()
+        
+        # 1. Connect Logic
+        channel = interaction.guild.get_channel(self.selected_channel_id)
+        vc = interaction.guild.voice_client
+
+        try:
+            if vc:
+                if vc.channel.id != channel.id:
+                    await vc.move_to(channel)
+            else:
+                vc = await channel.connect()
+        except Exception as e:
+            return await interaction.followup.send(f"⚠️ Connection Failed: {e}", ephemeral=True)
+
+        # 2. Embed Update (Success)
+        embed = create_premium_embed(
+            "✅ Connected Successfully",
+            f"**VC:** {channel.name}\n**Sound:** {self.selected_sound}\n**Text:** {self.text if self.text else 'None'}",
+            0x00FF00
+        )
+        await interaction.followup.send(embed=embed)
+        
+        # 3. Play Sound (Agar select kiya hai)
+        if self.selected_sound != "none":
+            file_path = f"sounds/{self.selected_sound}"
+            if os.path.exists(file_path):
+                # Stop anything playing
+                if vc.is_playing(): vc.stop()
+                
+                # Play MP3
+                vc.play(discord.FFmpegPCMAudio(file_path))
+                
+                # Wait for MP3 to finish before speaking text
+                while vc.is_playing():
+                    await asyncio.sleep(1)
+        
+        # 4. Speak Text (Agar diya hai)
+        if self.text:
+            await play_audio(interaction, self.text)
+
+
+# ================= 📡 COMMAND: REMOTE CONNECT =================
+@bot.tree.command(name="connect", description="Bot ko kisi bhi VC me bhejo + Sound/Text bajao 🎛️")
+@app_commands.describe(text="Kya bulwana hai? (Optional)")
+async def connect(interaction: discord.Interaction, text: str = None):
+    # 1. Security Check
+    if not has_voice_access(interaction):
+        await interaction.response.send_message("🚫 **Access Denied:** Sirf VIP log chala sakte hain!", ephemeral=True)
+        return
+
+    # 2. Defer (Timeout Fix)
+    await interaction.response.defer(ephemeral=True)
+
+    try:
+        # A. Fetch Voice Channels
+        voice_channels = interaction.guild.voice_channels
+        if not voice_channels:
+            return await interaction.followup.send("⚠️ Is server mein koi Voice Channel hi nahi hai!", ephemeral=True)
+
+        # B. Fetch Sounds from Folder
+        sound_files = []
+        if os.path.exists("sounds"):
+            sound_files = [f for f in os.listdir("sounds") if f.endswith(".mp3")]
+        else:
+            # Agar folder nahi hai to bana do
+            os.makedirs("sounds")
+
+        # C. Create Panel
+        view = ConnectView(voice_channels, sound_files, text, interaction.user.id)
+        
+        embed = create_premium_embed(
+            "🎛️ Remote Control Center",
+            f"**User:** {interaction.user.name}\n**Input Text:** {text if text else 'None'}\n\n👇 **Niche se VC aur Sound select karo aur Launch dabao!**",
+            0xFFA500 # Orange
+        )
+        
+        await interaction.followup.send(embed=embed, view=view)
+
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Error: {e}", ephemeral=True)
         
 
 # ================== OPTIMIZED FLASK BACKEND ==================
