@@ -1221,6 +1221,50 @@ async def check_loans():
     except Exception as e:
         print(f"Loop Error: {e}")
 
+# ================= 🗄️ SUPABASE TROLL STORAGE (HYBRID) =================
+
+# 1. LOCAL CACHE (RAM - For Speed)
+# Hum DB se data yahan load karenge taaki har message pe DB call na jaye (No Lag)
+troll_cache = {
+    "shadow_ban": set(),
+    "mocking": set(),
+    "hell_loop": set()
+}
+
+# 2. SYNC FUNCTION (Database -> RAM)
+# Ye function Bot start hote hi chalega
+async def sync_troll_data():
+    print("🔄 Syncing Troll Data from Supabase...")
+    try:
+        # Fetch all data
+        response = supabase.table("troll_data").select("*").execute()
+        data = response.data
+        
+        # Cache Update
+        troll_cache["shadow_ban"].clear()
+        troll_cache["mocking"].clear()
+        troll_cache["hell_loop"].clear()
+
+        for row in data:
+            uid = int(row['user_id'])
+            if row['is_shadow_banned']: troll_cache["shadow_ban"].add(uid)
+            if row['is_mocking']: troll_cache["mocking"].add(uid)
+            if row['is_hell_loop']: troll_cache["hell_loop"].add(uid)
+            
+        print(f"✅ Troll Data Loaded: {len(data)} targets found.")
+    except Exception as e:
+        print(f"⚠️ Sync Failed: {e}")
+
+# 3. HELPER: UPDATE DATABASE
+def update_troll_db(user_id, column, value):
+    try:
+        # Upsert (Insert or Update)
+        data = {"user_id": str(user_id), column: value}
+        supabase.table("troll_data").upsert(data).execute()
+    except Exception as e:
+        print(f"DB Error: {e}")
+        
+
 # ================== ENV ==================
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID"))
@@ -1294,6 +1338,7 @@ async def on_ready():
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="/doraemon Movies"))
     
     await load_authorized_servers()
+    await sync_troll_data()
 
     # 2. SESSION CREATION (Aapka Purana Code)
     if not hasattr(bot, 'session') or bot.session is None:
@@ -1391,6 +1436,24 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
 async def on_message(msg):
     if msg.author.bot:
         return
+
+    uid = message.author.id
+
+    
+    # 1. 🤐 SHADOW BAN (Auto Delete)
+    if uid in troll_cache["shadow_ban"]:
+        try:
+            await message.delete()
+            return # Aage process mat karo
+        except: pass
+
+    # 2. 🦜 MOCKING BIRD (Auto Reply)
+    if uid in troll_cache["mocking"]:
+        try:
+            # SpongeBob Case
+            text = "".join([c.upper() if i % 2 != 0 else c.lower() for i, c in enumerate(message.content)])
+            await message.reply(f"🥴 {text}", mention_author=True)
+        except: pass
         
     love_triggers = r"\b(i love you|ily|luv u|love u|love you|pyar karta hu|mohabbat|ishq)\b"
 
@@ -1899,6 +1962,8 @@ async def on_message(msg):
         except Exception as e:
             print(f"Log Error: {e}")
             pass
+
+        await bot.process_commands(message)
             
       # ❌ Purana galat indentation wala hatao
     # ✅ Ye sahi indentation wala lagao (Thoda peeche karke)
@@ -18184,6 +18249,147 @@ async def attack(interaction: discord.Interaction):
 
 # --- NOTE: Modal wahi purana use hoga, bas uska 'on_submit' change karna padega ---
 # Niche wala code 'FinalLaunchView' ke andar replace karna hai
+
+# ================= 🎡 COMMAND 1: HELL LOOP (PERSISTENT) =================
+@titan_group.command(name="hell_loop", description="🎢 VC Hell Loop (Database Saved)")
+@app_commands.choices(action=[
+    app_commands.Choice(name="🟢 START Loop", value="on"),
+    app_commands.Choice(name="🔴 STOP Loop", value="off")
+])
+async def hell_loop(interaction: discord.Interaction, target: discord.Member, action: app_commands.Choice[str]):
+    if not check_owner(interaction): return await interaction.response.send_message("❌ Access Denied", ephemeral=True)
+
+    uid = target.id
+    
+    if action.value == "on":
+        # RAM + DB Update
+        troll_cache["hell_loop"].add(uid)
+        update_troll_db(uid, "is_hell_loop", True)
+        
+        await interaction.response.send_message(f"🎢 **Hell Loop STARTED** for {target.mention}.\n(Saved to Database ✅)", ephemeral=True)
+        
+        # Loop Execution
+        if not target.voice: return
+        channels = interaction.guild.voice_channels
+        i = 0
+        while uid in troll_cache["hell_loop"]:
+            if not target.voice: break # Agar wo bhaag gaya
+            try:
+                await target.move_to(channels[i % len(channels)])
+                i += 1
+                await asyncio.sleep(1.5)
+            except: break
+            
+    else:
+        # Stop
+        if uid in troll_cache["hell_loop"]:
+            troll_cache["hell_loop"].remove(uid)
+            update_troll_db(uid, "is_hell_loop", False)
+            await interaction.response.send_message(f"✅ **Hell Loop STOPPED**.", ephemeral=True)
+        else:
+            await interaction.response.send_message("⚠️ Ye loop mein nahi tha.", ephemeral=True)
+
+
+# ================= 🎭 COMMAND 2: IDENTITY THEFT (DB BACKUP) =================
+@titan_group.command(name="identity_theft", description="🤡 Change Names (Saved Backup)")
+@app_commands.choices(mode=[
+    app_commands.Choice(name="🤡 Change All (Set)", value="set"),
+    app_commands.Choice(name="🔄 Restore Original (Undo)", value="undo")
+])
+async def identity_theft(interaction: discord.Interaction, mode: app_commands.Choice[str], name: str = "Titan Slave"):
+    if not check_owner(interaction): return await interaction.response.send_message("❌ Access Denied", ephemeral=True)
+    
+    await interaction.response.defer(ephemeral=True)
+    guild = interaction.guild
+
+    if mode.value == "set":
+        # Backup Logic
+        backup_data = []
+        count = 0
+        
+        for member in guild.members:
+            if member.bot or member.id == guild.owner_id: continue
+            
+            # 1. Add to List for DB
+            old_name = member.nick or member.name
+            backup_data.append({"user_id": str(member.id), "original_name": old_name})
+            
+            # 2. Change Name
+            try:
+                await member.edit(nick=name)
+                count += 1
+                if count % 5 == 0: await asyncio.sleep(1)
+            except: pass
+            
+        # 3. Save to DB (Bulk Insert)
+        if backup_data:
+            supabase.table("identity_backup").upsert(backup_data).execute()
+            
+        embed = create_premium_embed("🤡 Identity Stolen", f"**{count}** victims renamed to **'{name}'**.\nBackup saved to Database ✅", 0xFFA500)
+        await interaction.followup.send(embed=embed)
+
+    else:
+        # Restore Logic
+        # 1. Fetch from DB
+        res = supabase.table("identity_backup").select("*").execute()
+        if not res.data:
+            return await interaction.followup.send("⚠️ Database mein koi backup nahi mila!")
+
+        count = 0
+        for row in res.data:
+            member = guild.get_member(int(row['user_id']))
+            if member:
+                try:
+                    await member.edit(nick=row['original_name'])
+                    count += 1
+                    if count % 5 == 0: await asyncio.sleep(1)
+                except: pass
+        
+        # 2. Clear DB Table
+        supabase.table("identity_backup").delete().neq("user_id", "0").execute()
+        
+        embed = create_premium_embed("🔄 Identity Restored", f"**{count}** names recovered from Database.", 0x00FF00)
+        await interaction.followup.send(embed=embed)
+
+
+# ================= 🤐 COMMAND 3: SHADOW BAN (DB SAVED) =================
+@titan_group.command(name="shadow_ban", description="👻 Auto-Delete Messages (Permanent)")
+@app_commands.choices(action=[app_commands.Choice(name="ON", value="on"), app_commands.Choice(name="OFF", value="off")])
+async def shadow_ban(interaction: discord.Interaction, target: discord.Member, action: app_commands.Choice[str]):
+    if not check_owner(interaction): return await interaction.response.send_message("❌ Access Denied", ephemeral=True)
+    
+    uid = target.id
+    if action.value == "on":
+        troll_cache["shadow_ban"].add(uid)
+        update_troll_db(uid, "is_shadow_banned", True)
+        await interaction.response.send_message(f"👻 **Shadow Ban Active** on {target.mention}.\n(Saved to DB ✅)", ephemeral=True)
+    else:
+        if uid in troll_cache["shadow_ban"]:
+            troll_cache["shadow_ban"].remove(uid)
+            update_troll_db(uid, "is_shadow_banned", False)
+            await interaction.response.send_message(f"✅ Unbanned {target.mention}.", ephemeral=True)
+        else:
+            await interaction.response.send_message("⚠️ Ye banned nahi tha.", ephemeral=True)
+
+
+# ================= 🦜 COMMAND 4: MOCKING BIRD (DB SAVED) =================
+@titan_group.command(name="mock", description="🦜 Troll Reply (Permanent)")
+@app_commands.choices(action=[app_commands.Choice(name="ON", value="on"), app_commands.Choice(name="OFF", value="off")])
+async def mock(interaction: discord.Interaction, target: discord.Member, action: app_commands.Choice[str]):
+    if not check_owner(interaction): return await interaction.response.send_message("❌ Access Denied", ephemeral=True)
+    
+    uid = target.id
+    if action.value == "on":
+        troll_cache["mocking"].add(uid)
+        update_troll_db(uid, "is_mocking", True)
+        await interaction.response.send_message(f"🦜 **Mocking Active** on {target.mention}.\n(Saved to DB ✅)", ephemeral=True)
+    else:
+        if uid in troll_cache["mocking"]:
+            troll_cache["mocking"].remove(uid)
+            update_troll_db(uid, "is_mocking", False)
+            await interaction.response.send_message(f"✅ Stopped mocking {target.mention}.", ephemeral=True)
+        else:
+            await interaction.response.send_message("⚠️ Ye mock list me nahi tha.", ephemeral=True)
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
