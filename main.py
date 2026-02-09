@@ -2522,7 +2522,13 @@ async def switch_voice(interaction: discord.Interaction, gender: app_commands.Ch
         await interaction.response.send_message("🚫 **Access Denied:** Sirf Owner ye change kar sakta hai!", ephemeral=True)
         return
 
+    # ✅ FIX 1: Sabse pehle Defer karo (Loading...)
+    # Isse "Application didn't respond" error nahi aayega
+    await interaction.response.defer()
+
     global current_voice
+    
+    selected_color = 0x000000 # Default black
 
     if gender.value == "female":
         current_voice = {
@@ -2534,6 +2540,7 @@ async def switch_voice(interaction: discord.Interaction, gender: app_commands.Ch
             "color": 0xFF69B4
         }
         desc = "**Swara Activated!** 💃\nBot ab *Teekhi Ladki* ki aawaz mein bolega."
+        selected_color = 0xFF69B4
     else:
         current_voice = {
             "id": "hi-IN-MadhurNeural",
@@ -2544,9 +2551,13 @@ async def switch_voice(interaction: discord.Interaction, gender: app_commands.Ch
             "color": 0x2F3136
         }
         desc = "**Madhur Activated!** 🗿\nBot ab *Bhaari Gangster* aawaz mein bolega."
+        selected_color = 0x2F3136
 
-    embed = create_premium_embed("🎙️ Voice System Updated", desc)
-    await interaction.response.send_message(embed=embed)
+    # ✅ FIX 2: 'create_premium_embed' me 'selected_color' pass kiya hai
+    # Aur 'response.send_message' ki jagah 'followup.send' use kiya hai
+    embed = create_premium_embed("🎙️ Voice System Updated", desc, selected_color)
+    
+    await interaction.followup.send(embed=embed)
 
 
 # 2️⃣ VC ROAST (Premium Embed + Auto Voice + Hindi Brutal Mode)
