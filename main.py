@@ -17483,13 +17483,14 @@ async def control(interaction: discord.Interaction, player: str, action: app_com
 
 titan_group = app_commands.Group(name="titan", description="Advanced Titan Security & Troll Protocols")
 
-# 4. PERSONAL GRAVITY
-@titan_group.command(name="gravity", description="Change gravity for a specific player")
+# ================= 🙃 COMMAND: PERSONAL GRAVITY (PERMANENT) =================
+@titan_group.command(name="gravity", description="Change gravity for a specific player PERMANENTLY")
 @app_commands.choices(direction=[
     app_commands.Choice(name="⬆️ Up (Fly to Space)", value="up"),
     app_commands.Choice(name="⬇️ Down (Heavy)", value="down"),
     app_commands.Choice(name="⬅️ Side (Wall Walk)", value="side"),
-    app_commands.Choice(name="⚖️ Zero Gravity", value="zero")
+    app_commands.Choice(name="⚖️ Zero Gravity (Float)", value="zero"),
+    app_commands.Choice(name="♻️ Normal (Reset)", value="normal") # Ye naya hai
 ])
 async def gravity(interaction: discord.Interaction, player: str, direction: app_commands.Choice[str]):
     if not check_owner(interaction):
@@ -17500,7 +17501,6 @@ async def gravity(interaction: discord.Interaction, player: str, direction: app_
     if not target: return await interaction.followup.send("❌ Player not found.")
 
     try:
-        # Payload me target_id zaroori hai gravity apply karne ke liye
         supabase.table('troll_commands').insert({
             "target_id": target[0], 
             "command_type": "gravity", 
@@ -17512,8 +17512,8 @@ async def gravity(interaction: discord.Interaction, player: str, direction: app_
         
         embed = create_premium_embed(
             title="🪐 Physics Manipulation",
-            description=f"Altering gravitational constant for **{target[1]}**.",
-            color=0x00FFFF,
+            description=f"Altering gravitational constant for **{target[1]}**.\n**Duration:** ♾️ Permanent (Until Reset)",
+            color=0x00FFFF, # Cyan/Space
             fields=[
                 ("🎯 Target", f"**{target[1]}**", True),
                 ("🧭 Direction", f"**{direction.name}**", True)
