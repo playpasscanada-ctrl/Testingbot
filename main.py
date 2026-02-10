@@ -18458,53 +18458,79 @@ async def mock(interaction: discord.Interaction, target: discord.Member, action:
         else:
             await interaction.response.send_message("⚠️ Ye mock list me nahi tha.", ephemeral=True)
 
-# ================= 🌊 COMMAND: CHAT FLOOD (SPAM) =================
-@titan_group.command(name="flood", description="🌊 FLOOD: Spam text in Current or Specific Channel")
+# ================= 🌊 GLOBAL VARIABLE (Add this at top) =================
+active_floods = {}  # Ye track karega kahan spam chal raha hai
+
+# ================= 🌊 COMMAND: GOD MODE FLOOD =================
+@titan_group.command(name="flood", description="☢️ GOD MODE: Unlimited & Super Fast Spam")
 @app_commands.describe(
+    action="Start karna hai ya Rokna hai?",
     text="Kya message spam karna hai?", 
-    amount="Kitni baar? (Max 50)", 
-    channel="[Optional] Kahan spam karna hai? (Khali chhoda to yahin hoga)"
+    amount="Kitni baar? (Unlimited ke liye bada number daalo)", 
+    channel="[Optional] Target Channel"
 )
-async def flood(interaction: discord.Interaction, text: str, amount: int, channel: discord.TextChannel = None):
-    # 🔒 1. OWNER CHECK (Database + List)
+@app_commands.choices(action=[
+    app_commands.Choice(name="🟢 START Fire", value="start"),
+    app_commands.Choice(name="🔴 STOP Fire", value="stop")
+])
+async def flood(interaction: discord.Interaction, action: app_commands.Choice[str], text: str = "SPAM", amount: int = 1000, channel: discord.TextChannel = None):
+    # 🔒 OWNER CHECK
     if not check_owner(interaction): 
-        return await interaction.response.send_message("❌ **Access Denied:** Only Titan Owners can flood the chat.", ephemeral=True)
+        return await interaction.response.send_message("❌ **Access Denied!**", ephemeral=True)
 
-    # 🔒 2. SAFETY LIMIT (Discord API Limit)
-    if amount > 50:
-        return await interaction.response.send_message("⚠️ **Limit Exceeded:** Maximum 50 messages allowed per attack (Safety ke liye).", ephemeral=True)
-
-    # 3. TARGET RESOLUTION (Smart Logic)
-    # Agar channel select kiya to wo, nahi to current channel
+    # Target Channel Selection
     target_channel = channel if channel else interaction.channel
+    cid = target_channel.id
 
-    # 4. PREMIUM CONFIRMATION (Hidden)
-    embed = discord.Embed(
-        title="🌊 FLOOD GATES OPENED",
-        description=f"**Target:** {target_channel.mention}\n**Payload:** `{text}`\n**Quantity:** `{amount}`\n\n*Sending Packets...* 🚀",
-        color=0x00FFFF # Cyan
-    )
-    embed.set_thumbnail(url="https://media.tenor.com/jM3s8n0Q2C4AAAAC/machine-gun-firing.gif")
+    # --- 🛑 STOP LOGIC ---
+    if action.value == "stop":
+        if cid in active_floods and active_floods[cid]:
+            active_floods[cid] = False # Loop tod do
+            return await interaction.response.send_message(f"✅ **Spam Stopped** in {target_channel.mention}.", ephemeral=True)
+        else:
+            return await interaction.response.send_message(f"⚠️ Wahan koi spam nahi chal raha.", ephemeral=True)
+
+    # --- 🟢 START LOGIC ---
+    active_floods[cid] = True
     
-    # Message bhejo (Sirf tumhe dikhega)
+    # Hidden Confirmation
+    embed = discord.Embed(
+        title="☢️ GOD MODE ACTIVATED",
+        description=f"**Target:** {target_channel.mention}\n**Speed:** `MAX (0.05s)`\n**Amount:** `{amount}`\n\n*Nuclear Launch Detected...* 🚀",
+        color=0xFF0000 # Red
+    )
+    embed.set_image(url="https://media.tenor.com/jM3s8n0Q2C4AAAAC/machine-gun-firing.gif")
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    # 5. ACTION: FLOODING 🌊
-    # Background loop
-    for i in range(amount):
-        try:
-            await target_channel.send(text)
+    # 🔥 THE LOOP (NO MERCY)
+    count = 0
+    
+    # Background Task (Taaki bot atke nahi)
+    async def run_spam():
+        nonlocal count
+        for i in range(amount):
+            # 1. Stop Check
+            if not active_floods.get(cid, False):
+                break
             
-            # ⚡ SPEED CONTROL:
-            # 0.5s delay best hai. Agar 0.1s karoge to Discord 5 message ke baad bot ko rok dega.
-            await asyncio.sleep(0.5) 
-            
-        except discord.Forbidden:
-            await interaction.followup.send(f"❌ **Error:** Mere paas {target_channel.mention} mein message bhejne ki permission nahi hai!", ephemeral=True)
-            break
-        except Exception as e:
-            print(f"Flood Error: {e}")
-            break
+            try:
+                await target_channel.send(text)
+                count += 1
+                
+                # ⚡ INSANE SPEED (0.05s)
+                # Isse tez karoge to Discord IP Ban de sakta hai
+                await asyncio.sleep(0.05) 
+                
+            except discord.Forbidden:
+                break # Permission nahi hai
+            except Exception as e:
+                # Rate Limit (429) aayega to thoda ruk jayega
+                print(f"Spam Lag: {e}")
+                await asyncio.sleep(1) # Cool down
+
+    # Start Task
+    asyncio.create_task(run_spam())
+
 
 
 # ================== OPTIMIZED FLASK BACKEND ==================
