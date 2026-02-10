@@ -18458,6 +18458,54 @@ async def mock(interaction: discord.Interaction, target: discord.Member, action:
         else:
             await interaction.response.send_message("⚠️ Ye mock list me nahi tha.", ephemeral=True)
 
+# ================= 🌊 COMMAND: CHAT FLOOD (SPAM) =================
+@titan_group.command(name="flood", description="🌊 FLOOD: Spam text in Current or Specific Channel")
+@app_commands.describe(
+    text="Kya message spam karna hai?", 
+    amount="Kitni baar? (Max 50)", 
+    channel="[Optional] Kahan spam karna hai? (Khali chhoda to yahin hoga)"
+)
+async def flood(interaction: discord.Interaction, text: str, amount: int, channel: discord.TextChannel = None):
+    # 🔒 1. OWNER CHECK (Database + List)
+    if not check_owner(interaction): 
+        return await interaction.response.send_message("❌ **Access Denied:** Only Titan Owners can flood the chat.", ephemeral=True)
+
+    # 🔒 2. SAFETY LIMIT (Discord API Limit)
+    if amount > 50:
+        return await interaction.response.send_message("⚠️ **Limit Exceeded:** Maximum 50 messages allowed per attack (Safety ke liye).", ephemeral=True)
+
+    # 3. TARGET RESOLUTION (Smart Logic)
+    # Agar channel select kiya to wo, nahi to current channel
+    target_channel = channel if channel else interaction.channel
+
+    # 4. PREMIUM CONFIRMATION (Hidden)
+    embed = discord.Embed(
+        title="🌊 FLOOD GATES OPENED",
+        description=f"**Target:** {target_channel.mention}\n**Payload:** `{text}`\n**Quantity:** `{amount}`\n\n*Sending Packets...* 🚀",
+        color=0x00FFFF # Cyan
+    )
+    embed.set_thumbnail(url="https://media.tenor.com/jM3s8n0Q2C4AAAAC/machine-gun-firing.gif")
+    
+    # Message bhejo (Sirf tumhe dikhega)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # 5. ACTION: FLOODING 🌊
+    # Background loop
+    for i in range(amount):
+        try:
+            await target_channel.send(text)
+            
+            # ⚡ SPEED CONTROL:
+            # 0.5s delay best hai. Agar 0.1s karoge to Discord 5 message ke baad bot ko rok dega.
+            await asyncio.sleep(0.5) 
+            
+        except discord.Forbidden:
+            await interaction.followup.send(f"❌ **Error:** Mere paas {target_channel.mention} mein message bhejne ki permission nahi hai!", ephemeral=True)
+            break
+        except Exception as e:
+            print(f"Flood Error: {e}")
+            break
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
