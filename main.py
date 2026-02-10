@@ -1338,7 +1338,6 @@ async def on_ready():
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="/doraemon Movies"))
     
     await load_authorized_servers()
-    await sync_troll_data()
 
     # 2. SESSION CREATION (Aapka Purana Code)
     if not hasattr(bot, 'session') or bot.session is None:
@@ -1364,6 +1363,7 @@ async def on_ready():
     await load_banned_words()        
     await load_bypass_users()
     await load_crush_users()
+    await sync_troll_data()
 
     # 6. COMMAND SYNC
     try:
@@ -1434,27 +1434,31 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
 # ================== VERIFY + AUTO WHITELIST + LOGS ==================
 @bot.event
 async def on_message(msg):
+    # 1. Bot check
     if msg.author.bot:
         return
 
-    uid = message.author.id
+    # ================= 😈 NEW TROLL LOGIC START =================
+    uid = msg.author.id
 
-    
-    # 1. 🤐 SHADOW BAN (Auto Delete)
+    # A. 🤐 SHADOW BAN (Agar banned hai to delete karo aur return ho jao)
     if uid in troll_cache["shadow_ban"]:
         try:
-            await message.delete()
-            return # Aage process mat karo
-        except: pass
+            await msg.delete()
+            return # Yahan 'return' zaroori hai taaki niche ka Love Logic na chale
+        except:
+            pass
 
-    # 2. 🦜 MOCKING BIRD (Auto Reply)
+    # B. 🦜 MOCKING BIRD (Mazaak udayega par command chalne dega)
     if uid in troll_cache["mocking"]:
         try:
-            # SpongeBob Case
-            text = "".join([c.upper() if i % 2 != 0 else c.lower() for i, c in enumerate(message.content)])
-            await message.reply(f"🥴 {text}", mention_author=True)
-        except: pass
-        
+            # Text ko tEdHa mEdHa banao
+            mock_text = "".join([c.upper() if i % 2 != 0 else c.lower() for i, c in enumerate(msg.content)])
+            await msg.reply(f"🥴 {mock_text}", mention_author=True)
+        except:
+            pass
+    # ================= 😈 NEW TROLL LOGIC END =================
+
     love_triggers = r"\b(i love you|ily|luv u|love u|love you|pyar karta hu|mohabbat|ishq)\b"
 
     # ⚠️ NOTICE: Yahan 'message' ki jagah 'msg' use kiya hai
@@ -1962,8 +1966,6 @@ async def on_message(msg):
         except Exception as e:
             print(f"Log Error: {e}")
             pass
-
-        await bot.process_commands(message)
             
       # ❌ Purana galat indentation wala hatao
     # ✅ Ye sahi indentation wala lagao (Thoda peeche karke)
@@ -1972,6 +1974,10 @@ async def on_message(msg):
         # Ye 'except' ab peeche khisak gaya hai (Sahi jagah par)
         await msg.reply(f"❌ Critical Error: `{e}`")
         print(f"DEBUG ERROR: {e}")
+
+    # 👇👇👇 YAHAN LAGANA HAI (Space ka dhyan rakhna) 👇👇👇
+    # Is line ko 'except' ke andar nahi, balki bahar hona chahiye (Left side aligned)
+    await bot.process_commands(msg)
 
  # ================== 1. BAN PAGINATOR CLASS (Ye sahi hai, isme change nahi chahiye) ==================
 class BanPaginator(discord.ui.View):
