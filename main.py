@@ -18256,14 +18256,15 @@ async def attack(interaction: discord.Interaction):
 # --- NOTE: Modal wahi purana use hoga, bas uska 'on_submit' change karna padega ---
 # Niche wala code 'FinalLaunchView' ke andar replace karna hai
 
-# ================= 🎡 COMMAND 1: HELL LOOP (PERSISTENT) =================
+# ================= 🎡 COMMAND 1: HELL LOOP (PREMIUM & PUBLIC) =================
 @titan_group.command(name="hell_loop", description="🎢 VC Hell Loop (Database Saved)")
 @app_commands.choices(action=[
     app_commands.Choice(name="🟢 START Loop", value="on"),
     app_commands.Choice(name="🔴 STOP Loop", value="off")
 ])
 async def hell_loop(interaction: discord.Interaction, target: discord.Member, action: app_commands.Choice[str]):
-    if not check_owner(interaction): return await interaction.response.send_message("❌ Access Denied", ephemeral=True)
+    if not check_owner(interaction): 
+        return await interaction.response.send_message("❌ **Access Denied:** Only Titan Owners allowed.", ephemeral=True)
 
     uid = target.id
     
@@ -18272,14 +18273,23 @@ async def hell_loop(interaction: discord.Interaction, target: discord.Member, ac
         troll_cache["hell_loop"].add(uid)
         update_troll_db(uid, "is_hell_loop", True)
         
-        await interaction.response.send_message(f"🎢 **Hell Loop STARTED** for {target.mention}.\n(Saved to Database ✅)", ephemeral=True)
+        # Premium Embed
+        embed = discord.Embed(
+            title="🎢 THE ENDLESS RIDE BEGINS",
+            description=f"**Target Locked:** {target.mention}\n\nUser has been thrown into the **Infinite Voice Loop**.\nThere is no escape until Mercy is granted.",
+            color=0x00FF00 # Neon Green
+        )
+        embed.set_thumbnail(url="https://media.tenor.com/On7KVX2QxFAAAAAC/loading-spinning.gif") # Spinning GIF
+        embed.set_footer(text="Titan Troll System • Active", icon_url=interaction.user.avatar.url)
+        
+        await interaction.response.send_message(embed=embed, ephemeral=False) # PUBLIC
         
         # Loop Execution
         if not target.voice: return
         channels = interaction.guild.voice_channels
         i = 0
         while uid in troll_cache["hell_loop"]:
-            if not target.voice: break # Agar wo bhaag gaya
+            if not target.voice: break 
             try:
                 await target.move_to(channels[i % len(channels)])
                 i += 1
@@ -18291,21 +18301,29 @@ async def hell_loop(interaction: discord.Interaction, target: discord.Member, ac
         if uid in troll_cache["hell_loop"]:
             troll_cache["hell_loop"].remove(uid)
             update_troll_db(uid, "is_hell_loop", False)
-            await interaction.response.send_message(f"✅ **Hell Loop STOPPED**.", ephemeral=True)
+            
+            embed = discord.Embed(
+                title="🛑 LOOP TERMINATED",
+                description=f"**Mercy Granted to:** {target.mention}\n\nThe user has been released from the torture chamber.",
+                color=0xFF0000 # Red
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=False) # PUBLIC
         else:
-            await interaction.response.send_message("⚠️ Ye loop mein nahi tha.", ephemeral=True)
+            await interaction.response.send_message("⚠️ Ye loop mein nahi tha bhai.", ephemeral=True)
 
 
-# ================= 🎭 COMMAND 2: IDENTITY THEFT (DB BACKUP) =================
-@titan_group.command(name="identity_theft", description="🤡 Change Names (Saved Backup)")
+# ================= 🎭 COMMAND 2: IDENTITY THEFT (DISPLAY NAME FIX) =================
+@titan_group.command(name="identity_theft", description="🤡 Change Server Identity (Premium Backup)")
 @app_commands.choices(mode=[
-    app_commands.Choice(name="🤡 Change All (Set)", value="set"),
-    app_commands.Choice(name="🔄 Restore Original (Undo)", value="undo")
+    app_commands.Choice(name="🤡 Activate Identity Theft (Set Name)", value="set"),
+    app_commands.Choice(name="🔄 Restore Original Identities (Undo)", value="undo")
 ])
 async def identity_theft(interaction: discord.Interaction, mode: app_commands.Choice[str], name: str = "Titan Slave"):
-    if not check_owner(interaction): return await interaction.response.send_message("❌ Access Denied", ephemeral=True)
+    if not check_owner(interaction): 
+        return await interaction.response.send_message("❌ **Access Denied.**", ephemeral=True)
     
-    await interaction.response.defer(ephemeral=True)
+    # Public Loading State
+    await interaction.response.send_message(f"🔄 **Processing Protocol:** `{mode.name}`... This may take a moment.", ephemeral=False)
     guild = interaction.guild
 
     if mode.value == "set":
@@ -18316,86 +18334,130 @@ async def identity_theft(interaction: discord.Interaction, mode: app_commands.Ch
         for member in guild.members:
             if member.bot or member.id == guild.owner_id: continue
             
-            # 1. Add to List for DB
-            old_name = member.nick or member.name
+            # --- 🛠️ FIX: USE DISPLAY_NAME (Not Username) ---
+            # display_name wo hota hai jo server me dikhta hai (Nick or Global Name)
+            old_name = member.display_name 
+            
             backup_data.append({"user_id": str(member.id), "original_name": old_name})
             
-            # 2. Change Name
+            # Change Name
             try:
                 await member.edit(nick=name)
                 count += 1
                 if count % 5 == 0: await asyncio.sleep(1)
             except: pass
             
-        # 3. Save to DB (Bulk Insert)
+        # Save to DB
         if backup_data:
             supabase.table("identity_backup").upsert(backup_data).execute()
             
-        embed = create_premium_embed("🤡 Identity Stolen", f"**{count}** victims renamed to **'{name}'**.\nBackup saved to Database ✅", 0xFFA500)
-        await interaction.followup.send(embed=embed)
+        # Premium Success Embed
+        embed = discord.Embed(
+            title="🤡 IDENTITY THEFT COMPLETE",
+            description=f"**Operation Successful.**\n\n🆔 **Victims Affect:** `{count}`\n📛 **New Identity:** `{name}`\n💾 **Backup Status:** Securely Saved to Database.",
+            color=0xFFA500 # Orange
+        )
+        embed.set_image(url="https://media.tenor.com/bQCh3d5NqowAAAAC/matrix-code.gif") # Hacker Vibe
+        await interaction.edit_original_response(content=None, embed=embed)
 
     else:
         # Restore Logic
-        # 1. Fetch from DB
         res = supabase.table("identity_backup").select("*").execute()
         if not res.data:
-            return await interaction.followup.send("⚠️ Database mein koi backup nahi mila!")
+            return await interaction.edit_original_response(content="⚠️ **Error:** Database mein koi backup nahi mila!")
 
         count = 0
         for row in res.data:
             member = guild.get_member(int(row['user_id']))
             if member:
                 try:
+                    # Restore to original Display Name
                     await member.edit(nick=row['original_name'])
                     count += 1
                     if count % 5 == 0: await asyncio.sleep(1)
                 except: pass
         
-        # 2. Clear DB Table
+        # Clear DB
         supabase.table("identity_backup").delete().neq("user_id", "0").execute()
         
-        embed = create_premium_embed("🔄 Identity Restored", f"**{count}** names recovered from Database.", 0x00FF00)
-        await interaction.followup.send(embed=embed)
+        # Premium Restore Embed
+        embed = discord.Embed(
+            title="✨ IDENTITIES RESTORED",
+            description=f"**System Reset Complete.**\n\n🆔 **Users Restored:** `{count}`\n♻️ **Status:** Original Display Names returned.\n📂 **Database:** Cleared.",
+            color=0x00FFFF # Cyan
+        )
+        await interaction.edit_original_response(content=None, embed=embed)
 
 
-# ================= 🤐 COMMAND 3: SHADOW BAN (DB SAVED) =================
-@titan_group.command(name="shadow_ban", description="👻 Auto-Delete Messages (Permanent)")
+# ================= 🤐 COMMAND 3: SHADOW BAN (PREMIUM) =================
+@titan_group.command(name="shadow_ban", description="👻 Ghost Mode: Auto-Delete Messages (Public)")
 @app_commands.choices(action=[app_commands.Choice(name="ON", value="on"), app_commands.Choice(name="OFF", value="off")])
 async def shadow_ban(interaction: discord.Interaction, target: discord.Member, action: app_commands.Choice[str]):
-    if not check_owner(interaction): return await interaction.response.send_message("❌ Access Denied", ephemeral=True)
+    if not check_owner(interaction): 
+        return await interaction.response.send_message("❌ Access Denied", ephemeral=True)
     
     uid = target.id
     if action.value == "on":
         troll_cache["shadow_ban"].add(uid)
         update_troll_db(uid, "is_shadow_banned", True)
-        await interaction.response.send_message(f"👻 **Shadow Ban Active** on {target.mention}.\n(Saved to DB ✅)", ephemeral=True)
+        
+        embed = discord.Embed(
+            title="👻 SOUL EXTRACTED",
+            description=f"**Target:** {target.mention}\n\nUser has been **Shadow Banned**. Their messages will now vanish into the void immediately.",
+            color=0x2C2F33 # Dark Grey
+        )
+        embed.set_thumbnail(url="https://media.tenor.com/tH0-s3gPjXoAAAAC/ghost-vanishing.gif")
+        await interaction.response.send_message(embed=embed, ephemeral=False) # PUBLIC
+        
     else:
         if uid in troll_cache["shadow_ban"]:
             troll_cache["shadow_ban"].remove(uid)
             update_troll_db(uid, "is_shadow_banned", False)
-            await interaction.response.send_message(f"✅ Unbanned {target.mention}.", ephemeral=True)
+            
+            embed = discord.Embed(
+                title="✨ SOUL RESTORED",
+                description=f"**Target:** {target.mention}\n\nThe Shadow Ban has been lifted. The user may speak again.",
+                color=0xFFFFFF # White
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=False) # PUBLIC
         else:
-            await interaction.response.send_message("⚠️ Ye banned nahi tha.", ephemeral=True)
+            await interaction.response.send_message("⚠️ Ye pehle se innocent tha.", ephemeral=True)
 
 
-# ================= 🦜 COMMAND 4: MOCKING BIRD (DB SAVED) =================
-@titan_group.command(name="mock", description="🦜 Troll Reply (Permanent)")
+# ================= 🦜 COMMAND 4: MOCKING BIRD (PREMIUM) =================
+@titan_group.command(name="mock", description="🦜 Troll Reply (Public)")
 @app_commands.choices(action=[app_commands.Choice(name="ON", value="on"), app_commands.Choice(name="OFF", value="off")])
 async def mock(interaction: discord.Interaction, target: discord.Member, action: app_commands.Choice[str]):
-    if not check_owner(interaction): return await interaction.response.send_message("❌ Access Denied", ephemeral=True)
+    if not check_owner(interaction): 
+        return await interaction.response.send_message("❌ Access Denied", ephemeral=True)
     
     uid = target.id
     if action.value == "on":
         troll_cache["mocking"].add(uid)
         update_troll_db(uid, "is_mocking", True)
-        await interaction.response.send_message(f"🦜 **Mocking Active** on {target.mention}.\n(Saved to DB ✅)", ephemeral=True)
+        
+        embed = discord.Embed(
+            title="🦜 MOCKING PROTOCOL ACTIVATED",
+            description=f"**Target:** {target.mention}\n\nBot will now repeat everything this user says in a **Mocking Tone**.",
+            color=0xFFFF00 # Yellow
+        )
+        embed.set_thumbnail(url="https://media.tenor.com/U_-h-t7jEPIAAAAC/spongebob-mocking.gif")
+        await interaction.response.send_message(embed=embed, ephemeral=False) # PUBLIC
+        
     else:
         if uid in troll_cache["mocking"]:
             troll_cache["mocking"].remove(uid)
             update_troll_db(uid, "is_mocking", False)
-            await interaction.response.send_message(f"✅ Stopped mocking {target.mention}.", ephemeral=True)
+            
+            embed = discord.Embed(
+                title="🤐 MOCKING ENDED",
+                description=f"**Target:** {target.mention}\n\nThe bird has flown away. User is safe now.",
+                color=0x000000 # Black
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=False) # PUBLIC
         else:
             await interaction.response.send_message("⚠️ Ye mock list me nahi tha.", ephemeral=True)
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
