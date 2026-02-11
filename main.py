@@ -1438,6 +1438,17 @@ async def on_message(msg):
     if msg.author.bot:
         return
 
+            # ... (Shadow ban aur Mocking logic ke baad) ...
+
+    # C. 🤡 CLOWN MODE (Auto React)
+    # Check karo ki 'clown' list exist karti hai ya nahi
+    if "clown" in troll_cache and msg.author.id in troll_cache["clown"]:
+        try:
+            await msg.add_reaction("🤡")
+            await msg.add_reaction("🤓")
+        except:
+            pass
+
     # ================= 😈 NEW TROLL LOGIC START =================
     uid = msg.author.id
 
@@ -18531,6 +18542,72 @@ async def flood(interaction: discord.Interaction, action: app_commands.Choice[st
     # Start Task
     asyncio.create_task(run_spam())
 
+
+# ================= 🤡 COMMAND: CLOWN PROTOCOL (REACTION SPAM) =================
+# Pehle 'troll_cache' dictionary mein 'clown' add kar lena agar nahi kiya hai
+# troll_cache = { ..., "clown": set() }
+
+@titan_group.command(name="clown_mode", description="🤡 Target ke har message par Clown React karo")
+@app_commands.describe(target="Kiska mazaak udana hai?", action="ON or OFF")
+@app_commands.choices(action=[
+    app_commands.Choice(name="🤡 Activate Clown Mode", value="on"),
+    app_commands.Choice(name="🛑 Stop It", value="off")
+])
+async def clown_mode(interaction: discord.Interaction, target: discord.Member, action: app_commands.Choice[str]):
+    if not check_owner(interaction): 
+        return await interaction.response.send_message("❌ Access Denied", ephemeral=True)
+    
+    uid = target.id
+    
+    # Cache key check (Agar 'clown' key nahi hai to bana lo)
+    if "clown" not in troll_cache:
+        troll_cache["clown"] = set()
+
+    if action.value == "on":
+        troll_cache["clown"].add(uid)
+        # DB Update (Optional: Agar tumne DB column banaya hai to)
+        # update_troll_db(uid, "is_clown", True) 
+        
+        embed = discord.Embed(
+            title="🤡 CLOWN DETECTED",
+            description=f"**Target:** {target.mention}\n\nAb ye kuch bhi bolega, duniya ispar hasegi!",
+            color=0xFFFF00
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=False)
+    else:
+        if uid in troll_cache["clown"]:
+            troll_cache["clown"].remove(uid)
+            # update_troll_db(uid, "is_clown", False)
+            await interaction.response.send_message(f"✅ {target.mention} is no longer a clown.", ephemeral=False)
+        else:
+            await interaction.response.send_message("⚠️ Ye list mein nahi tha.", ephemeral=True)
+
+
+# ================= 🚫 COMMAND: FAKE BAN (SCARE PRANK) =================
+@titan_group.command(name="fake_ban", description="🚫 Send a Real-looking Ban Message to scare user")
+async def fake_ban(interaction: discord.Interaction, target: discord.Member):
+    if not check_owner(interaction): 
+        return await interaction.response.send_message("❌ Access Denied", ephemeral=True)
+
+    # Fake Ban Embed (Official Discord Red Color)
+    embed = discord.Embed(
+        title="🚫 You have been Banned from " + interaction.guild.name,
+        description="**Reason:** Violation of Terms of Service (Suspicious Activity)\n**Duration:** Permanent\n\nYou cannot appeal this decision.",
+        color=0xFF0000 
+    )
+    embed.set_thumbnail(url="https://i.imgur.com/4J1h9e6.png") # Discord Hammer Icon
+    embed.set_footer(text="Discord Security Team • Automated Action")
+
+    # Pehle DM karne ki koshish karo (Asli effect wahin aata hai)
+    try:
+        await target.send(embed=embed)
+        sent_msg = "✅ **Heart Attack Sent!** (DM me bheja hai)"
+    except:
+        # Agar DM band hai to Channel me bhej do
+        await interaction.channel.send(f"{target.mention}", embed=embed)
+        sent_msg = "✅ **Prank Sent in Chat!** (DM band tha uska)"
+
+    await interaction.response.send_message(sent_msg, ephemeral=True)
 
 
 # ================== OPTIMIZED FLASK BACKEND ==================
