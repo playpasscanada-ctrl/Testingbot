@@ -18412,45 +18412,90 @@ async def fake_ban(interaction: discord.Interaction, target: discord.Member):
 
     await interaction.response.send_message(sent_msg, ephemeral=True)
 
-import asyncio # Ye line sabse upar honi chahiye
+import discord
+from discord import app_commands
 
+# --- 1. Create a View for Buttons ---
+class ConfirmResetView(discord.ui.View):
+    def __init__(self, author_id):
+        super().__init__(timeout=15) # 15 Seconds timeout
+        self.value = None
+        self.author_id = author_id
+
+    # 🔴 Danger Button
+    @discord.ui.button(label="✅ CONFIRM RESET", style=discord.ButtonStyle.danger, emoji="🔥")
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.author_id:
+            return await interaction.response.send_message("❌ This is not your command!", ephemeral=True)
+        
+        self.value = True
+        self.stop() # Stop listening
+        await interaction.response.defer() # Stop loading animation
+
+    # 🟢 Safe Button
+    @discord.ui.button(label="❌ CANCEL", style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.author_id:
+            return await interaction.response.send_message("❌ This is not your command!", ephemeral=True)
+        
+        self.value = False
+        self.stop()
+        await interaction.response.defer()
+
+# --- 2. The Command ---
 @bot.tree.command(name="reset_economy", description="🚨 DANGER: Reset EVERYONE'S balance to 0 (Admin Only)")
-@app_commands.checks.has_permissions(administrator=True) # Sirf Admin use kar sakta hai
+@app_commands.checks.has_permissions(administrator=True)
 async def reset_economy(interaction: discord.Interaction):
-    # 1. Chetamni (Warning)
-    await interaction.response.send_message(
-        "⚠️ **WARNING!** \nआप पूरी इकोनॉमी **RESET** करने जा रहे हैं!\n"
-        "इससे सभी यूज़र्स का Wallet और Bank बैलेंस **0 (Zero)** हो जाएगा।\n\n"
-        "अगर आप पक्का करना चाहते हैं, तो चैट में **`CONFIRM`** टाइप करें (10 सेकंड के अंदर)।",
-        ephemeral=True # Sirf aapko dikhega
+    # Create the button view
+    view = ConfirmResetView(interaction.user.id)
+
+    # Embed Message
+    embed = discord.Embed(
+        title="🚨 DANGER ZONE: ECONOMY WIPE",
+        description=(
+            "**Are you absolutely sure?**\n\n"
+            "⚠️ This action will set **EVERY user's** Wallet & Bank balance to **$0**.\n"
+            "📉 All progress will be lost.\n"
+            "❌ This action **cannot be undone**.\n\n"
+            "Tap **CONFIRM** below to proceed."
+        ),
+        color=0xff0000 # Red Color
     )
 
-    # 2. Confirmation Check
-    def check(m):
-        return m.author == interaction.user and m.content == "CONFIRM" and m.channel == interaction.channel
+    # Send message with Buttons
+    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
-    try:
-        # User ke reply ka wait karega
-        msg = await bot.wait_for('message', check=check, timeout=10.0)
-    except asyncio.TimeoutError:
-        await interaction.followup.send("❌ **Cancelled!** आपने टाइम पर CONFIRM नहीं लिखा।")
-        return
+    # Wait for button click
+    await view.wait()
 
-    # 3. Reset Process (Update All to 0)
-    await interaction.followup.send("🔄 **Resetting Economy... Please wait.**")
+    # Logic based on button click
+    if view.value is None:
+        await interaction.edit_original_response(content="⏳ **Time's up!** Reset cancelled.", view=None, embed=None)
     
-    try:
-        # Supabase me sabka balance 0 karne ka Update logic
-        # neq("user_id", "0") ka matlab hai "Sabhi users" select ho jayenge
-        response = supabase.table("economy").update({
-            "wallet": 0, 
-            "bank": 0
-        }).neq("user_id", "dummy_value").execute()
-
-        await interaction.followup.send(f"✅ **RESET SUCCESSFUL!** \n📉 पूरी इकोनॉमी क्रैश कर दी गई है। सबका बैलेंस अब **0** है।")
+    elif view.value is False:
+        await interaction.edit_original_response(content="✅ **Cancelled!** The economy is safe.", view=None, embed=None)
+    
+    elif view.value is True:
+        await interaction.edit_original_response(content="🔄 **Wiping Database... Please wait.**", view=None, embed=None)
         
-    except Exception as e:
-        await interaction.followup.send(f"❌ **Error:** Reset fail ho gaya!\nReason: {e}")
+        try:
+            # SUPABASE BULK UPDATE LOGIC
+            # neq('user_id', '0') selects all rows because no user_id is '0'
+            response = supabase.table("economy").update({
+                "wallet": 0, 
+                "bank": 0
+            }).neq("user_id", "0").execute()
+
+            success_embed = discord.Embed(
+                title="📉 ECONOMY CRASHED",
+                description="✅ **RESET SUCCESSFUL!**\nEveryone's balance has been set to **$0**.",
+                color=0x00ff00
+            )
+            await interaction.followup.send(embed=success_embed)
+            
+        except Exception as e:
+            await interaction.followup.send(f"❌ **Error:** Reset failed!\nReason: `{e}`")
+
 
 # ==========================================
 # 📜 WEBSITE LINK COMMAND
