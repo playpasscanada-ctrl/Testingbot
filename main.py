@@ -8258,102 +8258,6 @@ async def slap(i: discord.Interaction, target: discord.User):
     
     await i.response.send_message(embed=embed)
 
-# ================== 🔫 RUSSIAN ROULETTE (MAFIA EDITION) ==================
-
-@bot.tree.command(name="roulette", description="💀 Maut ka khel: High Stakes (Banner Edition)")
-@check_seized()
-async def roulette(i: discord.Interaction):
-    import datetime as dt 
-    import asyncio
-    import random
-
-    # 1. Permission Check
-    if not i.guild.me.guild_permissions.moderate_members:
-        return await i.response.send_message("❌ **System Error:** Mere paas 'Timeout' power nahi hai!", ephemeral=True)
-
-    # --- 🖼️ HD BANNERS (No GIFs, Only Class) ---
-    # Ye links kabhi expire nahi honge.
-    img_load = "https://media.discordapp.net/attachments/109000000000000000/110000000000000000/revolver_spin_banner.png?width=800&height=300" 
-    # (Note: Agar upar wala link na chale, toh niche wala use karega code)
-    # Hum generic aesthetic banners use kar rahe hain:
-    
-    banner_spin = "https://t3.ftcdn.net/jpg/05/52/90/11/360_F_552901119_d3Hw1WjD6k7A1A4A.jpg" # Dark Revolver Art
-    banner_dead = "https://wallpapers.com/images/hd/wasted-gta-5-overlay-text-j3823432.jpg"   # Classic Wasted
-    banner_safe = "https://c4.wallpaperflare.com/wallpaper/576/896/633/john-wick-chapter-2-movies-keanu-reeves-actor-wallpaper-preview.jpg" # Cool Survivor Vibe
-
-    # --- PHASE 1: THE SETUP ---
-    
-    embed = discord.Embed(color=0x2b2d31) # Dark/Black Premium Theme
-    
-    # ✅ USER PROFILE ON TOP (Jaisa aapne manga)
-    embed.set_author(name=f"{i.user.display_name} ki kismat daav par...", icon_url=i.user.display_avatar.url)
-    
-    # Systematic Text Layout
-    embed.description = (
-        "## 🎰 RUSSIAN ROULETTE\n"
-        "```yaml\n"
-        "Situation: Gun Loaded\n"
-        "Bullet:    1 in 6\n"
-        "Status:    Spinning Cylinder...\n"
-        "```\n"
-        "👉 **Apne dil ki dhadkano ko sambhalo...**"
-    )
-    
-    embed.set_image(url=banner_spin) # Loading Banner
-    embed.set_footer(text="Faisla 3 second mein...", icon_url=i.guild.icon.url if i.guild.icon else None)
-    
-    await i.response.send_message(embed=embed)
-    
-    await asyncio.sleep(4) # Suspense Time
-    
-    # --- PHASE 2: THE VERDICT ---
-    bullet = random.randint(1, 6)
-    original_msg = await i.original_response()
-
-    if bullet == 1: # 💀 DEAD
-        try:
-            # Mute Logic
-            duration = dt.timedelta(minutes=1)
-            await i.user.timeout(duration, reason="Lost Russian Roulette")
-
-            # Dead Embed
-            dead_embed = discord.Embed(color=0xFF0000) # Red
-            dead_embed.set_author(name=f"{i.user.display_name} Khatam!", icon_url=i.user.display_avatar.url)
-            
-            dead_embed.description = (
-                "## 💀 WASTED\n"
-                "**Result:** `HEADSHOT` 🩸\n\n"
-                "> Gun chali aur sab khatam. Goli seedha bheje ke paar.\n"
-                "> **Saza:** 1 Minute Mute (Rest in Peace)."
-            )
-            dead_embed.set_image(url=banner_dead) # Wasted Banner
-            dead_embed.set_footer(text="Khel Khatam.", icon_url="https://cdn-icons-png.flaticon.com/512/2996/2996395.png")
-
-            await original_msg.edit(embed=dead_embed)
-            
-        except:
-            # Admin Safe
-            safe_embed = discord.Embed(color=0xFFD700)
-            safe_embed.set_author(name=f"{i.user.display_name} Bach Gaya (Admin)", icon_url=i.user.display_avatar.url)
-            safe_embed.description = "## 🛡️ IMMORTAL\n**Result:** `GOLI LAGI PAR ASAR NAHI HUA`\n\nTum Admin ho, Yamraj tumhara kuch nahi bigad sakta. 😎"
-            safe_embed.set_image(url=banner_dead)
-            await original_msg.edit(embed=safe_embed)
-
-    else: # ✅ SURVIVED
-        safe_embed = discord.Embed(color=0x00FF00) # Green
-        safe_embed.set_author(name=f"{i.user.display_name} Zinda Hai!", icon_url=i.user.display_avatar.url)
-        
-        safe_embed.description = (
-            "## 🎉 SURVIVED\n"
-            "**Result:** `EMPTY CHAMBER` 💨\n\n"
-            "> *Click*... awaz aayi par goli nahi chali.\n"
-            "> Kismat aaj tumhare saath hai mere dost."
-        )
-        safe_embed.set_image(url=banner_safe) # Victory Banner
-        safe_embed.set_footer(text="Aaj party hogi!", icon_url=i.user.display_avatar.url)
-
-        await original_msg.edit(embed=safe_embed)
-
 # ================== 🧠 ULTIMATE IQ TEST CHALLENGE ==================
 
 # --- QUESTION BANK (Basic Knowledge) ---
@@ -18640,6 +18544,249 @@ async def on_guild_join(guild):
     except Exception as e:
         print(f"Gatekeeper Error: {e}")
 
+import random
+import datetime
+import pytz # India Time ke liye
+from discord import app_commands
+
+# ==========================================
+# 🎮 GAMES & ECONOMY GROUP
+# ==========================================
+
+games_group = app_commands.Group(name="games", description="🎰 Earn Money: Slots, Flip, Work & Daily")
+
+# --- 🛠️ HELPER FUNCTIONS (Database) ---
+async def get_balance(user_id):
+    res = supabase.table("economy").select("balance").eq("user_id", str(user_id)).execute()
+    if res.data:
+        return res.data[0]['balance']
+    else:
+        # User nahi hai to create karo
+        supabase.table("economy").insert({"user_id": str(user_id), "balance": 0, "bank": 0}).execute()
+        return 0
+
+async def update_balance(user_id, amount):
+    # Amount + (add) ya - (subtract) ho sakta hai
+    current = await get_balance(user_id)
+    new_bal = current + amount
+    supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(user_id)).execute()
+    return new_bal
+
+# ==========================================
+# 💼 COMMAND 1: WORK (HARD TASK)
+# ==========================================
+class WorkButtons(discord.ui.View):
+    def __init__(self, correct_answer, user_id):
+        super().__init__(timeout=10.0) # Sirf 10 Second ka time
+        self.correct_answer = correct_answer
+        self.user_id = user_id
+        self.value = None
+
+        # 3 Galat button aur 1 Sahi button randomize karein
+        options = [correct_answer, "X92B", "7A4K", "M39Z"]
+        random.shuffle(options)
+
+        for opt in options:
+            style = discord.ButtonStyle.primary
+            if opt == correct_answer:
+                # Identification ke liye custom logic (User ko nahi dikhega)
+                pass 
+            
+            self.add_item(discord.ui.Button(label=f"ACCESS CODE: {opt}", custom_id=opt, style=discord.ButtonStyle.secondary))
+
+    # Button interaction handler
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("⚠️ यह तुम्हारा टास्क नहीं है!", ephemeral=True)
+            return False
+
+        btn_id = interaction.data["custom_id"]
+        
+        if btn_id == self.correct_answer:
+            # ✅ SAHI JAWAB
+            earnings = random.randint(500, 2000)
+            new_bal = await update_balance(self.user_id, earnings)
+            
+            embed = discord.Embed(title="✅ SYSTEM BYPASSED", description=f"Hack Successful!\n**Earned:** `${earnings}`\n**New Balance:** `${new_bal}`", color=0x00FF00)
+            await interaction.response.edit_message(embed=embed, view=None)
+        else:
+            # ❌ GALAT JAWAB
+            embed = discord.Embed(title="❌ ACCESS DENIED", description="Security Firewall Triggered!\nMission Failed.", color=0xFF0000)
+            await interaction.response.edit_message(embed=embed, view=None)
+        
+        self.stop()
+        return True
+
+@games_group.command(name="work", description="💻 Perform a high-security cyber task to earn cash")
+@app_commands.checks.cooldown(1, 300) # 5 Min Cooldown
+async def work(interaction: discord.Interaction):
+    # Random Code Generate
+    code = random.choice(["A4X9", "B2Z1", "K9L0", "P5Q2", "R8T3"])
+    
+    embed = discord.Embed(
+        title="🕵️ CYBER INFILTRATION TASK",
+        description=f"**WARNING:** Security Level High.\n\nClick the button matching this code: **`{code}`**\n\n⏱️ You have **10 Seconds**.",
+        color=0xFFA500
+    )
+    embed.set_thumbnail(url=interaction.user.avatar.url if interaction.user.avatar else None)
+    
+    view = WorkButtons(correct_answer=code, user_id=interaction.user.id)
+    await interaction.response.send_message(embed=embed, view=view)
+
+
+# ==========================================
+# 🎰 COMMAND 2: SLOTS (CASINO)
+# ==========================================
+@games_group.command(name="slots", description="🎰 Bet money on the slot machine")
+async def slots(interaction: discord.Interaction, amount: int):
+    user_bal = await get_balance(interaction.user.id)
+    
+    # Validation
+    if amount <= 0:
+        return await interaction.response.send_message("❌ Amount must be positive!", ephemeral=True)
+    if user_bal < amount:
+        return await interaction.response.send_message(f"❌ You are broke! Balance: `${user_bal}`", ephemeral=True)
+
+    # Emojis
+    slots_emojis = ["🍎", "🍊", "🍇", "💎", "🍒", "🔔"]
+    a = random.choice(slots_emojis)
+    b = random.choice(slots_emojis)
+    c = random.choice(slots_emojis)
+
+    result_embed = discord.Embed(title="🎰 TITAN CASINO", color=0xFFD700)
+    result_embed.add_field(name="Machine", value=f"| {a} | {b} | {c} |", inline=False)
+
+    # Logic
+    if a == b == c:
+        # Jackpot (10x)
+        win = amount * 10
+        await update_balance(interaction.user.id, win)
+        result_embed.description = f"**💎 JACKPOT!**\nYou won **${win}**!"
+        result_embed.color = 0x00FF00
+    elif a == b or b == c or a == c:
+        # Small Win (2x)
+        win = amount * 2
+        await update_balance(interaction.user.id, win)
+        result_embed.description = f"**Nice!** 2 matches.\nYou won **${win}**!"
+        result_embed.color = 0x00FFFF
+    else:
+        # Lose
+        await update_balance(interaction.user.id, -amount)
+        result_embed.description = f"**You Lost!**\nBetter luck next time.\nLost: `${amount}`"
+        result_embed.color = 0xFF0000
+
+    result_embed.set_footer(text=f"Player: {interaction.user.name}", icon_url=interaction.user.avatar.url)
+    await interaction.response.send_message(embed=result_embed)
+
+
+# ==========================================
+# 🪙 COMMAND 3: COIN FLIP (DOUBLE OR NOTHING)
+# ==========================================
+@games_group.command(name="coin_flip", description="🪙 Flip a coin. Double your money or lose it all.")
+@app_commands.choices(choice=[
+    app_commands.Choice(name="Heads", value="Heads"),
+    app_commands.Choice(name="Tails", value="Tails")
+])
+@app_commands.checks.cooldown(1, 600) # 10 Minutes Cooldown (600 seconds)
+async def coin_flip(interaction: discord.Interaction, choice: app_commands.Choice[str], amount: int):
+    user_bal = await get_balance(interaction.user.id)
+    
+    if amount <= 0:
+        return await interaction.response.send_message("❌ Positive amount only!", ephemeral=True)
+    if user_bal < amount:
+        return await interaction.response.send_message(f"❌ Insufficient Funds! Balance: `${user_bal}`", ephemeral=True)
+
+    # The Flip
+    outcome = random.choice(["Heads", "Tails"])
+    
+    embed = discord.Embed(title="🪙 COIN FLIP RESULT")
+    embed.set_thumbnail(url=interaction.user.avatar.url)
+
+    if choice.value == outcome:
+        # WIN (Double Money: Amount wapas + utna hi profit)
+        await update_balance(interaction.user.id, amount) 
+        embed.description = f"The coin landed on **{outcome}**!\n\n✅ **YOU WON!**\nProfit: `${amount}`"
+        embed.color = 0x00FF00
+    else:
+        # LOSE (Amount Gayab)
+        await update_balance(interaction.user.id, -amount)
+        embed.description = f"The coin landed on **{outcome}**...\n\n❌ **YOU LOST**\nLost: `${amount}`"
+        embed.color = 0xFF0000
+
+    await interaction.response.send_message(embed=embed)
+
+# Error handler for Cooldown
+@coin_flip.error
+async def coin_flip_error(interaction: discord.Interaction, error):
+    if isinstance(error, app_commands.CommandOnCooldown):
+        minutes = int(error.retry_after // 60)
+        seconds = int(error.retry_after % 60)
+        await interaction.response.send_message(f"⏳ **Cooldown Active!**\nTry again in `{minutes}m {seconds}s`.", ephemeral=True)
+
+
+# ==========================================
+# 📅 COMMAND 4: DAILY (IST MIDNIGHT RESET)
+# ==========================================
+@games_group.command(name="daily", description="💰 Claim your daily reward (Resets 00:00 IST)")
+async def daily(interaction: discord.Interaction):
+    user_id = str(interaction.user.id)
+    
+    # 1. India Time nikalo
+    ist_tz = pytz.timezone('Asia/Kolkata')
+    now_ist = datetime.datetime.now(ist_tz)
+    
+    # 2. Database se Last Claim time nikalo
+    res = supabase.table("economy").select("last_daily").eq("user_id", user_id).execute()
+    
+    can_claim = False
+    
+    if not res.data or not res.data[0]['last_daily']:
+        can_claim = True
+    else:
+        # Last claim time ko convert karo
+        last_claim_str = res.data[0]['last_daily']
+        # String se datetime object (Handle ISO format)
+        last_claim_dt = datetime.datetime.fromisoformat(last_claim_str.replace('Z', '+00:00')).astimezone(ist_tz)
+        
+        # Check karo: Kya Last Claim ki Date, Aaj ki Date se choti hai?
+        if last_claim_dt.date() < now_ist.date():
+            can_claim = True
+        else:
+            can_claim = False
+
+    # 3. Decision
+    if can_claim:
+        reward = random.randint(1000, 10000)
+        
+        # DB Update: Balance + Update Time
+        supabase.table("economy").update({
+            "balance": await get_balance(user_id) + reward,
+            "last_daily": now_ist.isoformat()
+        }).eq("user_id", user_id).execute()
+        
+        embed = discord.Embed(
+            title="📅 DAILY REWARD CLAIMED",
+            description=f"You have received your daily stipend!\n\n💰 **Amount:** `${reward}`\n⏰ **Next Reset:** 00:00 IST",
+            color=0x00FF00
+        )
+        embed.set_thumbnail(url=interaction.user.avatar.url)
+        await interaction.response.send_message(embed=embed)
+        
+    else:
+        # Time bacha hai logic
+        tomorrow = now_ist + datetime.timedelta(days=1)
+        midnight = datetime.datetime(tomorrow.year, tomorrow.month, tomorrow.day, 0, 0, 0, tzinfo=ist_tz)
+        remaining = midnight - now_ist
+        hours = int(remaining.seconds // 3600)
+        minutes = int((remaining.seconds % 3600) // 60)
+        
+        embed = discord.Embed(
+            title="⏳ ALREADY CLAIMED",
+            description=f"You have already claimed your reward for today.\n\n⏰ **Resets in:** `{hours}h {minutes}m` (India Time)",
+            color=0xFF0000
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
@@ -22817,6 +22964,11 @@ except:
 
 try:
     bot.tree.add_command(server_group) 
+except:
+    pass
+
+try:
+    bot.tree.add_command(games_group) 
 except:
     pass
 
