@@ -1334,6 +1334,8 @@ def emb(title, desc, color=0x5865F2):
 async def on_ready():
     print(f"Logged in as {bot.user} (BOT ONLINE)")
 
+    bot.loop.create_task(start_web_server())
+
         # SIRF YE LINE ADD KARNI HAI 👇
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="/doraemon Movies"))
     
@@ -21975,6 +21977,60 @@ def spin_roulette_api():
     except Exception as e:
         print(f"Roulette Error: {e}")
         return jsonify({"status": "error", "msg": "Server Error"})
+
+# ================= 🏦 ROBLOX BANKING ROUTE (ADDED TO EXISTING SERVER) =================
+@app.route('/roblox_pay', methods=['POST'])
+def roblox_pay():
+    try:
+        # Flask se data lo
+        data = request.json
+        roblox_id = str(data.get("roblox_id"))
+        
+        print(f"💰 Transaction Request from Roblox ID: {roblox_id}")
+
+        # 1. LINK CHECK (Bridge: Roblox ID -> Discord ID)
+        user_res = supabase.table("access_users").select("discord_id").eq("user_id", roblox_id).execute()
+        
+        if not user_res.data:
+            return jsonify({"status": "error", "message": "User not linked"}), 403
+            
+        discord_id = user_res.data[0]['discord_id']
+
+        # 2. BALANCE CHECK
+        econ_res = supabase.table("economy").select("balance, bank").eq("user_id", discord_id).execute()
+        
+        if not econ_res.data:
+            return jsonify({"status": "fail", "message": "No bank account found"}), 200
+
+        wallet = econ_res.data[0]['balance']
+        bank = econ_res.data[0]['bank']
+        net_worth = wallet + bank
+        price = 1000000 # 1 Million Cost
+
+        # 3. DEDUCT MONEY LOGIC
+        if net_worth >= price:
+            if wallet >= price:
+                wallet -= price
+            else:
+                remaining = price - wallet
+                wallet = 0
+                bank -= remaining
+
+            # Database Update
+            supabase.table("economy").update({"balance": wallet, "bank": bank}).eq("user_id", discord_id).execute()
+            
+            print(f"✅ 1M Deducted from {discord_id}")
+            return jsonify({"status": "success", "message": "Payment Approved"}), 200
+        else:
+            print(f"❌ Insufficient Funds: {discord_id}")
+            return jsonify({"status": "fail", "message": "Insufficient Balance"}), 200
+
+    except Exception as e:
+        print(f"API Error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# -----------------------------------------------------------
+# 👇 ISKE NICHE TUMHARA PURANA 'def run_server():' HOGA 👇
 
 
 # --- 17. LOGOUT & RUN ---
