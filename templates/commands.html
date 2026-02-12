@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ultimate Bot Commands | Squid Game Edition</title>
+    <title>Ultimate Bot Commands | Premium Edition</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,7 +27,6 @@
             position: relative;
         }
 
-        /* --- FIX: Z-INDEX changed to -1 (Behind text) --- */
         #dust-canvas {
             position: fixed;
             top: 0;
@@ -35,7 +34,7 @@
             width: 100%;
             height: 100%;
             pointer-events: none; 
-            z-index: -1; /* YAHAN CHANGE KIYA HAI */
+            z-index: -1;
         }
 
         /* --- HEADER --- */
@@ -60,7 +59,7 @@
         }
 
         p.subtitle {
-            color: #aaa; /* Thoda brighter kiya */
+            color: #aaa;
             font-size: 1.1rem;
             max-width: 600px;
             margin: 0 auto;
@@ -79,9 +78,8 @@
             z-index: 2;
         }
 
-        /* --- CARDS (BRIGHTER FOR MOBILE) --- */
+        /* --- CARDS (PREMIUM GLOW EFFECTS) --- */
         .card {
-            /* Background thoda light kiya taaki black screen par dikhe */
             background: rgba(30, 30, 35, 0.85); 
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 15px;
@@ -90,7 +88,8 @@
             overflow: hidden;
             backdrop-filter: blur(12px);
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            transition: transform 0.3s ease, border-color 0.3s ease;
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
         }
 
         .card::before {
@@ -101,13 +100,42 @@
             width: 4px;
             height: 100%;
             background: #444;
+            transition: width 0.3s ease;
         }
 
-        /* Category Colors */
+        /* Category Colors & Hover Glows */
         .card.game::before { background: #ff0066; box-shadow: 0 0 10px #ff0066; }
+        .card.game:hover { 
+            border-color: #ff0066; 
+            box-shadow: 0 0 20px rgba(255, 0, 102, 0.4); 
+            transform: translateY(-5px);
+        }
+
         .card.gamble::before { background: #ffcc00; box-shadow: 0 0 10px #ffcc00; }
+        .card.gamble:hover { 
+            border-color: #ffcc00; 
+            box-shadow: 0 0 20px rgba(255, 204, 0, 0.4); 
+            transform: translateY(-5px);
+        }
+
         .card.eco::before { background: #00ffcc; box-shadow: 0 0 10px #00ffcc; }
+        .card.eco:hover { 
+            border-color: #00ffcc; 
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4); 
+            transform: translateY(-5px);
+        }
+
         .card.admin::before { background: #ff3333; box-shadow: 0 0 10px #ff3333; }
+        .card.admin:hover { 
+            border-color: #ff3333; 
+            box-shadow: 0 0 20px rgba(255, 51, 51, 0.4); 
+            transform: translateY(-5px);
+        }
+
+        /* On Hover, colored bar expands slightly */
+        .card:hover::before {
+            width: 6px;
+        }
 
         /* Typography */
         .cmd-title {
@@ -122,11 +150,12 @@
         .cmd-desc {
             font-size: 1rem;
             line-height: 1.5;
-            color: #ddd; /* Text brighter kiya */
+            color: #ddd; 
         }
 
         .highlight { color: #ffcc00; font-weight: bold; }
         .danger { color: #ff4444; font-weight: bold; }
+        .safe { color: #00ffcc; font-weight: bold; }
 
         /* --- FOOTER --- */
         footer {
@@ -153,10 +182,67 @@
 
     <header>
         <h1>Bot Commands</h1>
-        <p class="subtitle">Squid Game • Underworld • High Stakes</p>
+        <p class="subtitle">Squid Game • High Stakes • Ultimate Economy</p>
     </header>
 
     <div class="container">
+
+        <div class="card gamble">
+            <div class="cmd-title">🎰 /slots</div>
+            <div class="cmd-desc">
+                Spin the machine! Symbols: 🍎🍊🍇💎🍒🔔.<br>
+                <span class="highlight">JACKPOT (3x Match):</span> 10x your bet!<br>
+                <span class="safe">MINI WIN (2x Match):</span> Double your money.<br>
+                No Match = Loss. High risk, high reward.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">🕵️ /work</div>
+            <div class="cmd-desc">
+                Hacking Mission. Bot gives you a code (e.g., A4X9). You have 10s to click the correct button among fakes.<br>
+                <b>Success:</b> Earn $500 - $2000.<br>
+                <b>Fail:</b> ACCESS DENIED.<br>
+                <b>Cooldown:</b> 5 Minutes.
+            </div>
+        </div>
+
+        <div class="card eco">
+            <div class="cmd-title">🎁 /daily</div>
+            <div class="cmd-desc">
+                Claim your daily reward. Get a random amount between <span class="highlight">1,000 - 10,000</span> coins every 24 hours.
+            </div>
+        </div>
+
+        <div class="card gamble">
+            <div class="cmd-title">🪙 /coin_flip</div>
+            <div class="cmd-desc">
+                Heads or Tails? Bet an amount and guess the side. <br>
+                <b>Win:</b> Double your money.<br>
+                <b>Lose:</b> Lose your bet.
+            </div>
+        </div>
+
+        <div class="card eco">
+            <div class="cmd-title">♻️ /sell</div>
+            <div class="cmd-desc">
+                Sell items bought from the shop back to the system. You get <span class="highlight">90%</span> of the original value back.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">❌ /tictactoe</div>
+            <div class="cmd-desc">
+                Challenge anyone to a classic game of Tic-Tac-Toe. Place a bet. The winner takes the entire pot (Double).
+            </div>
+        </div>
+
+        <div class="card eco">
+            <div class="cmd-title">📊 /check</div>
+            <div class="cmd-desc">
+                View detailed stats of your owned businesses (if any). Check income, levels, and status.
+            </div>
+        </div>
 
         <div class="card game">
             <div class="cmd-title">🦑 /squid_duel</div>
@@ -338,6 +424,7 @@
             <div class="cmd-desc">
                 <span class="highlight">/balance</span> - Check cash.<br>
                 <span class="highlight">/deposit</span> - Save to bank.<br>
+                <span class="highlight">/withdraw</span> - Take cash out.<br>
                 <span class="highlight">/rob</span> - Steal (Counter with Mines/CCTV).
             </div>
         </div>
@@ -414,7 +501,6 @@
         window.addEventListener('touchmove', (e) => handleInput(e.touches[0].clientX, e.touches[0].clientY));
 
         function animate() {
-            // Fade effect
             ctx.fillStyle = 'rgba(5, 5, 5, 0.1)'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
