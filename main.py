@@ -5226,8 +5226,8 @@ async def squid_duel(i: discord.Interaction, opponent: discord.Member, bullets: 
         )
 
     except Exception as e:
-        await i.followup.send(f"❌ Critical Error: {e}", ephemeral=True)    
-
+        await i.followup.send(f"❌ Critical Error: {e}", ephemeral=True)
+          
 # ================== SAY COMMAND (WITH IMAGE & LOGS) ==================
 
 # 👇 Apki di hui Log Channel ID set kar di hai
