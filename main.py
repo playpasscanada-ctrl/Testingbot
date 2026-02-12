@@ -5109,7 +5109,13 @@ async def on_member_remove(member):
         print(f"LEAVE EVENT ERROR: {e}")
 
 # ================== 🦑 SQUID GAME DUEL (ORIGINAL THEME + VIP FIX) ==================
+import discord
+from discord import app_commands
+import random
+import asyncio
+import datetime as dt
 
+# --- 1. GAME VIEW (Logic 100% Same, Just Stability Fixes) ---
 class SquidGameMaster(discord.ui.View):
     def __init__(self, p1, p2, bullets, punishment_level, cylinder=None, slot_index=0):
         super().__init__(timeout=300)
@@ -5157,17 +5163,17 @@ class SquidGameMaster(discord.ui.View):
         self.add_item(btn_trigger)
 
     def update_embed(self, mode="RPS", extra_text=""):
-        # 🎨 PREMIUM COLOR PALETTE (ORIGINAL)
-        color = 0x00FFFF if mode == "RPS" else 0xFF00E6 # Cyan for RPS, Hot Pink for Gun
+        # 🎨 PREMIUM COLOR PALETTE
+        color = 0x00FFFF if mode == "RPS" else 0xFF00E6 
         
         desc = f"### 💀 ROUND {self.slot_index + 1} / 6\n"
         
         # --- 🎬 VISUALS (GIFs) ---
         gifs = {
-            "rps": "https://media.tenor.com/BfRK3aY2Nn4AAAAC/squid-game.gif", # Squid game guards
-            "gun": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif", # Spinning Gun
-            "safe": "https://media.tenor.com/5yXk8QoZzBkAAAAC/sweating-nervous.gif", # Sweating anime
-            "wasted": "https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif" # GTA Wasted
+            "rps": "https://media.tenor.com/BfRK3aY2Nn4AAAAC/squid-game.gif",
+            "gun": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif",
+            "safe": "https://media.tenor.com/5yXk8QoZzBkAAAAC/sweating-nervous.gif",
+            "wasted": "https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif"
         }
 
         image_url = gifs["rps"]
@@ -5190,13 +5196,13 @@ class SquidGameMaster(discord.ui.View):
                      f"Gun se sirf *Click* ki aawaz aayi.\n\n" \
                      f"{extra_text}"
              image_url = gifs["safe"]
-             color = 0x00FF00 # Green for safe
+             color = 0x00FF00 
 
         # Embed Build
         self.embed = discord.Embed(title="🦑 SQUID GAME: DEATH MATCH", description=desc, color=color)
         self.embed.add_field(name="🔫 Ammo Left", value=f"`{self.bullets}` Bullets", inline=True)
         self.embed.add_field(name="⚖️ Punishment", value=f"**Level {self.punishment_level}**", inline=True)
-        self.embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2822/2822506.png") # Revolver Icon
+        self.embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2822/2822506.png") 
         self.embed.set_image(url=image_url)
         self.embed.set_footer(text="Powered by Russian Roulette System", icon_url="https://cdn-icons-png.flaticon.com/512/9249/9249309.png")
 
@@ -5227,6 +5233,7 @@ class SquidGameMaster(discord.ui.View):
             self.p2_choice = None
             self.update_embed(mode="RPS")
             self.embed.description = "### 🤝 DRAW! Dobara Khelo!\nDono ne same choose kiya."
+            # Use edit_original_response here safely because previous edit finished
             await interaction.edit_original_response(embed=self.embed, view=self)
             return
             
@@ -5242,23 +5249,26 @@ class SquidGameMaster(discord.ui.View):
     async def trigger_callback(self, interaction: discord.Interaction):
         if interaction.user.id != self.round_loser.id:
             return await interaction.response.send_message(f"❌ Ruk ja bhai! Ye saza {self.round_loser.name} ke liye hai.", ephemeral=True)
+        
+        # Defer to prevent interaction failure on database operations
+        await interaction.response.defer() 
             
         is_bullet = self.cylinder[self.slot_index] == 1
         
         if is_bullet:
             self.stop()
             
-            # --- 🔥 NEW: ECONOMY & VIP LOGIC ADDED HERE 🔥 ---
+            # --- 🔥 ECONOMY & VIP LOGIC 🔥 ---
             winner = self.p1 if self.round_loser.id == self.p2.id else self.p2
             
-            # 1. Give Money to Winner
+            # 1. Give Money
             prize = 50000 
             await update_balance(winner.id, prize)
             
-            # 2. Punishment Logic (With VIP Check)
+            # 2. Punishment Logic
             punishment_msg = await self.apply_punishment_with_vip(interaction, self.round_loser)
             
-            # 💀 WASTED EMBED (ORIGINAL STYLE)
+            # 💀 WASTED EMBED
             dead_embed = discord.Embed(title="💀 WASTED!", color=0x880808)
             dead_embed.description = (
                 f"# 💥 BANG!\n"
@@ -5270,12 +5280,12 @@ class SquidGameMaster(discord.ui.View):
             dead_embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
             dead_embed.set_footer(text="Game Over.")
             
-            await interaction.response.edit_message(embed=dead_embed, view=None)
+            await interaction.edit_original_response(embed=dead_embed, view=None)
             
         else:
             self.slot_index += 1
             if self.slot_index >= 6:
-                await interaction.response.edit_message(content="🧊 **Gun Empty!** Kya kismat hai! Game Draw.", view=None)
+                await interaction.edit_original_response(content="🧊 **Gun Empty!** Kya kismat hai! Game Draw.", view=None)
                 return
                 
             self.p1_choice = None
@@ -5284,7 +5294,7 @@ class SquidGameMaster(discord.ui.View):
             
             self.setup_rps_buttons()
             self.update_embed(mode="SAFE", extra_text=f"**{interaction.user.name}** bach gaya! Ab Next Round.")
-            await interaction.response.edit_message(embed=self.embed, view=self)
+            await interaction.edit_original_response(embed=self.embed, view=self)
             
             await asyncio.sleep(2) 
             self.update_embed(mode="RPS")
@@ -5295,35 +5305,26 @@ class SquidGameMaster(discord.ui.View):
         reason = "Lost Squid Game Roulette 💀"
         msg = ""
 
-        # Using smart_timeout for VIP checks on Mutes
         try:
             if level == 1:
-                # 1 Minute Mute
                 msg = await smart_timeout(interaction, loser, 60, reason)
                 
             elif level == 2:
                 msg = "📉 **Saza (L2):** Level/XP Ghat gaya (No Mute)."
                 
             elif level == 3:
-                # Script Ban Only (VIP Mute se bacha sakta hai, par Ban se nahi usually, but lets keep it strictly script ban)
                 ban_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=3)
                 await db_call(lambda: supabase.table("script_bans").upsert({"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}).execute())
                 msg = "🔒 **Saza (L3):** Script Access Blocked for **3 Hours**."
                 
             elif level == 4:
-                # 3 Hours Mute + Script Ban
-                # Mute part (VIP can save)
                 mute_status = await smart_timeout(interaction, loser, 10800, reason)
-                # Script Ban Part
                 ban_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=3)
                 await db_call(lambda: supabase.table("script_bans").upsert({"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}).execute())
                 msg = f"{mute_status}\n🔒 **Script Ban:** 3 Hours applied."
                 
             elif level == 5:
-                # 1 Day Mute + Script Ban
-                # Mute part (VIP can save)
                 mute_status = await smart_timeout(interaction, loser, 86400, reason)
-                # Script Ban Part
                 ban_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=1)
                 await db_call(lambda: supabase.table("script_bans").upsert({"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}).execute())
                 msg = f"{mute_status}\n🔒 **Script Ban:** 1 Day applied."
@@ -5333,7 +5334,7 @@ class SquidGameMaster(discord.ui.View):
         return msg
 
 
-# --- 2. INVITE VIEW (Starting Point) ---
+# --- 2. INVITE VIEW (Fix: Seamless Transition) ---
 class DuelInviteView(discord.ui.View):
     def __init__(self, challenger, opponent, bullets, punishment_level):
         super().__init__(timeout=60)
@@ -5347,11 +5348,9 @@ class DuelInviteView(discord.ui.View):
         if interaction.user.id != self.opponent.id:
             return await interaction.response.send_message("❌ Ye invite tere liye nahi hai!", ephemeral=True)
         
-        # Start The Master Game Loop
+        # Start The Master Game Loop (Using edit_message for seamless switch)
         game_view = SquidGameMaster(self.challenger, self.opponent, self.bullets, self.punishment_level)
-        await interaction.response.edit_message(view=game_view) 
-        # Hack: Game view ka embed turant bhejte hain (Fixing previous display issues)
-        await interaction.edit_original_response(embed=game_view.embed, view=game_view)
+        await interaction.response.edit_message(embed=game_view.embed, view=game_view)
 
     @discord.ui.button(label="🏃 Bhaag Jao", style=discord.ButtonStyle.danger)
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -5360,7 +5359,7 @@ class DuelInviteView(discord.ui.View):
         await interaction.response.edit_message(content=f"🚫 **{interaction.user.name}** ne dar ke maare mana kar diya.", view=None, embed=None)
 
 
-# ================== 🎮 PUBLIC SQUID GAME COMMAND ==================
+# ================== 🎮 PUBLIC SQUID GAME COMMAND (FIXED) ==================
 @bot.tree.command(name="squid_duel", description="🦑 Kisi ko bhi maut ka challenge do (Public)")
 @app_commands.describe(
     opponent="Kisko maut ka challenge dena hai?",
@@ -5377,30 +5376,43 @@ class DuelInviteView(discord.ui.View):
 @check_seized()
 async def squid_duel(i: discord.Interaction, opponent: discord.Member, bullets: int, punishment: int):
     
+    # ⚡ FIX: DEFER INTERACTION IMMEDIATELY (Prevents "Did not respond")
+    await i.response.defer()
+
     if not i.guild.me.guild_permissions.moderate_members:
-        return await i.response.send_message("❌ **Bot Error:** Timeout Permission Missing!", ephemeral=True)
+        return await i.followup.send("❌ **Bot Error:** Timeout Permission Missing!", ephemeral=True)
     
     if opponent.id == i.user.id or opponent.bot:
-        return await i.response.send_message("❌ Invalid Opponent!", ephemeral=True)
+        return await i.followup.send("❌ Invalid Opponent!", ephemeral=True)
         
     if bullets < 1 or bullets > 5:
-        return await i.response.send_message("❌ Bullets 1-5 only.", ephemeral=True)
+        return await i.followup.send("❌ Bullets 1-5 only.", ephemeral=True)
 
-    # --- 📨 SEND PUBLIC INVITE (ORIGINAL THEME) ---
+    # --- 📨 SEND PUBLIC INVITE (PREMIUM PROFILE MIX) ---
     embed = discord.Embed(
-        title="🔺🟥🟢 SQUID GAME CHALLENGE", 
-        description=f"📢 **SUNO SAB LOG!**\n\n**{i.user.mention}** ne **{opponent.mention}** ko Maut ka Challenge diya hai!", 
+        title="💀 SQUID GAME: DEATH NOTE", 
+        description=f"# 📢 OFFICIAL CHALLENGE!\n"
+                    f"**{i.user.mention}** ⚔️ **{opponent.mention}**\n\n"
+                    f"> *\"Maut ka khel shuru hone wala hai. Himmat hai toh accept kar, varna bhaag ja!\"*", 
         color=0xFF00E6
     )
-    embed.add_field(name="📜 Shartein (Rules)", value="• **RPS:** Pehle Toss hoga.\n• **Gun:** Jo hara, wo Trigger dabayega.\n• **Result:** Ya to Maut, ya Zindagi.", inline=False)
-    embed.add_field(name="💣 Risk Info", value=f"🔫 Bullets: `{bullets}/6`\n⚖️ Saza Level: **{punishment}**", inline=False)
     
+    # Premium Fields
+    embed.add_field(name="📜 **Rules of Engagement**", value="```\n1. RPS se faisla hoga.\n2. Jo hara, wo Goli khayega.\n3. Bach gaya toh Paisa, nahi toh Maut.```", inline=False)
+    
+    embed.add_field(name="🔫 **Risk Factor**", value=f"🧨 Ammo: `{bullets}/6`\n⚖️ Saza: **Level {punishment}**", inline=True)
+    embed.add_field(name="💰 **Win Prize**", value=f"💸 `$50,000` Cash", inline=True)
+    
+    # Visuals
     embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
-    embed.set_thumbnail(url=i.user.display_avatar.url)
-    embed.set_footer(text="Accept karo ya Darpok kehlao! 🤡")
+    embed.set_thumbnail(url=opponent.display_avatar.url) # Opponent ka chehra dikhega
+    embed.set_footer(text=f"Challenger: {i.user.name} | Waiting for response...", icon_url=i.user.display_avatar.url)
     
-    await i.response.send_message(f"{opponent.mention}, pure server ke samne izzat ka sawal hai!", embed=embed, view=DuelInviteView(i.user, opponent, bullets, punishment))
+    # Use FOLLOWUP because we deferred
+    await i.followup.send(content=f"🚨 **{opponent.mention}, Aaja maidan me!**", embed=embed, view=DuelInviteView(i.user, opponent, bullets, punishment))
 
+
+    
 
 # ================== SAY COMMAND (WITH IMAGE & LOGS) ==================
 
@@ -18611,6 +18623,136 @@ async def fake_ban(interaction: discord.Interaction, target: discord.Member):
 
     await interaction.response.send_message(sent_msg, ephemeral=True)
 
+import asyncio
+import discord # Ye zaruri hai
+
+# ================= 🚨 COMMAND: GLOBAL ECONOMY RESET (FIXED) =================
+@titan_group.command(name="reset_economy", description="🚨 DANGER: Wipe the entire server economy (0 Balance)")
+async def reset_economy(interaction: discord.Interaction):
+    # 1. ⚠️ PRE-WARNING EMBED
+    embed = discord.Embed(
+        title="⚠️ GLOBAL RESET PROTOCOL INITIATED",
+        description="**You are about to wipe the entire economy database.**\nThis action is **irreversible**.",
+        color=0xFF0000
+    )
+    
+    embed.add_field(name="🏢 Target Server", value=f"**{interaction.guild.name}**", inline=True)
+    embed.add_field(name="👥 Total Victims", value=f"**{interaction.guild.member_count}**", inline=True)
+    embed.add_field(name="💀 Impact", value="All Wallets & Bank Accounts → **0**", inline=False)
+    
+    if interaction.guild.icon:
+        embed.set_thumbnail(url=interaction.guild.icon.url)
+    
+    embed.set_footer(text="Security Override Required • Type CONFIRM within 10s")
+    
+    await interaction.response.send_message(embed=embed, ephemeral=False)
+
+    # 2. 🔒 CONFIRMATION CHECK
+    def check(m):
+        return m.author == interaction.user and m.content == "CONFIRM" and m.channel == interaction.channel
+
+    try:
+        msg = await bot.wait_for('message', check=check, timeout=10.0)
+    except asyncio.TimeoutError:
+        timeout_embed = discord.Embed(title="❌ ABORTED", description="Protocol Timed Out.", color=0x00FF00)
+        await interaction.followup.send(embed=timeout_embed)
+        return
+
+    # 3. 🔄 EXECUTION
+    loading_embed = discord.Embed(title="🔄 SYSTEM PURGE", description="Deleting financial records...", color=0xFFA500)
+    await interaction.followup.send(embed=loading_embed)
+    
+    try:
+        # 4. 📉 SUPABASE LOGIC
+        response = supabase.table("economy").update({
+            "balance": 0,  # Apne column ka naam check karlena (balance/wallet)
+            "bank": 0
+        }).neq("user_id", "dummy_value").execute()
+
+        # 5. ✅ FINAL SUCCESS EMBED (Time Error Fixed Here 👇)
+        crash_embed = discord.Embed(
+            title="📉 THE GREAT DEPRESSION HAS BEGUN",
+            description=f"**Economy Reset Successful.**\nEveryone in **{interaction.guild.name}** is now broke.",
+            color=0x000000, 
+            timestamp=discord.utils.utcnow() # ✅ Ye line sab fix kar degi
+        )
+        crash_embed.set_image(url="https://media1.tenor.com/m/P5575_XmCgAAAAAC/market-crash-stonks.gif")
+        crash_embed.set_footer(text=f"Reset triggered by: {interaction.user.name}")
+        
+        await interaction.followup.send(embed=crash_embed)
+        
+    except Exception as e:
+        error_embed = discord.Embed(title="❌ SYSTEM FAILURE", description=f"Error: `{e}`", color=0xFF0000)
+        await interaction.followup.send(embed=error_embed)
+
+
+# ==========================================
+# 📜 PREMIUM COMMANDS INTERFACE
+# ==========================================
+
+# 👇 YAHAN APNA RENDER URL DALO (Bina last slash ke)
+WEBSITE_BASE_URL = "https://testingbot-8pb1.onrender.com" 
+
+@titan_group.command(name="commands", description="📂 Access the Classified Command Arsenal & Systems")
+async def commands(interaction: discord.Interaction):
+    # Link Generation
+    target_link = f"{WEBSITE_BASE_URL}/commands"
+
+    # --- 1. Premium Button (Link) ---
+    view = discord.ui.View()
+    
+    # Main Website Button
+    btn = discord.ui.Button(
+        label="🚀 Open Command Center", 
+        style=discord.ButtonStyle.link, 
+        url=target_link,
+        emoji="🌐"
+    )
+    view.add_item(btn)
+
+    # --- 2. Ultra Premium Embed ---
+    embed = discord.Embed(
+        title="⚡ TITAN SYSTEM INTERFACE",
+        description=f"**Welcome to the Mainframe, {interaction.user.mention}.**\n"
+                    "All classified protocols, game rules, and economy systems have been synchronized to our secure dashboard.",
+        color=0x00ffcc # Cyan Neon Color
+    )
+
+    # --- 3. Feature Breakdown (Fields) ---
+    embed.add_field(
+        name="🎮 **Game Protocol**",
+        value="> Squid Game, Underworld, Heists & Mafia Wars.\n> *Full rules & payout rates inside.*",
+        inline=True
+    )
+
+    embed.add_field(
+        name="💸 **Economy System**",
+        value="> Banking, Stock Market, Gambling & Jobs.\n> *Check Net Worth & Leaderboards.*",
+        inline=True
+    )
+
+    embed.add_field(
+        name="🔗 **Quick Access**",
+        value=f"👉 **[Click to Launch Dashboard]({target_link})**\n*Optimized for Mobile & PC*",
+        inline=False
+    )
+
+    # --- 4. Visuals & Footer ---
+    # Ek Premium GIF jo "Digital HUD" ya "System" jaisa lage
+    embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif") 
+    
+    # Thumbnail: Bot ka apna logo
+    if interaction.client.user.avatar:
+        embed.set_thumbnail(url=interaction.client.user.avatar.url)
+
+    embed.set_footer(
+        text=f"Titan Security • Requested by {interaction.user.name}",
+        icon_url=interaction.user.avatar.url if interaction.user.avatar else None
+    )
+    embed.timestamp = discord.utils.utcnow()
+
+    await interaction.response.send_message(embed=embed, view=view)
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
@@ -19475,6 +19617,17 @@ def home():
 def account_seized():
     # Ye wo page hai jo block hone par dikhega
     return render_template('seized.html')
+
+# --- IMPORTS (Agar pehle se nahi hai to add kar lena) ---
+from flask import render_template
+
+# ==========================================
+# 📜 COMMANDS WEBSITE ROUTE
+# ==========================================
+@app.route('/commands')
+def commands_page():
+    # Ye 'templates' folder ke andar 'commands.html' dhundega
+    return render_template('commands.html')
 
 # --- 2. SHOP ROUTE ---
 @app.route('/shop')
