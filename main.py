@@ -18546,247 +18546,279 @@ async def on_guild_join(guild):
 
 import random
 import datetime
-import pytz # India Time ke liye
-from discord import app_commands
+import asyncio # Animation ke liye zaruri hai
+from discord import app_commands, ButtonStyle
 
 # ==========================================
-# 🎮 GAMES & ECONOMY GROUP
+# 🎮 TITAN ELITE GAMES & ECONOMY
 # ==========================================
 
 games_group = app_commands.Group(name="games", description="🎰 Earn Money: Slots, Flip, Work & Daily")
 
 # --- 🛠️ HELPER FUNCTIONS (Database) ---
 async def get_balance(user_id):
-    res = supabase.table("economy").select("balance").eq("user_id", str(user_id)).execute()
-    if res.data:
-        return res.data[0]['balance']
-    else:
-        # User nahi hai to create karo
-        supabase.table("economy").insert({"user_id": str(user_id), "balance": 0, "bank": 0}).execute()
+    try:
+        res = supabase.table("economy").select("balance").eq("user_id", str(user_id)).execute()
+        if res.data:
+            return res.data[0]['balance']
+        else:
+            supabase.table("economy").insert({"user_id": str(user_id), "balance": 0, "bank": 0}).execute()
+            return 0
+    except:
         return 0
 
 async def update_balance(user_id, amount):
-    # Amount + (add) ya - (subtract) ho sakta hai
     current = await get_balance(user_id)
     new_bal = current + amount
     supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(user_id)).execute()
     return new_bal
 
 # ==========================================
-# 💼 COMMAND 1: WORK (HARD TASK)
+# 🎰 SYSTEM: ADVANCED SLOTS (WITH SPIN BUTTON)
 # ==========================================
-class WorkButtons(discord.ui.View):
-    def __init__(self, correct_answer, user_id):
-        super().__init__(timeout=10.0) # Sirf 10 Second ka time
-        self.correct_answer = correct_answer
+class SlotsView(discord.ui.View):
+    def __init__(self, user_id, amount, interaction_original):
+        super().__init__(timeout=30)
         self.user_id = user_id
-        self.value = None
+        self.amount = amount
+        self.interaction_original = interaction_original
+        self.pressed = False
 
-        # 3 Galat button aur 1 Sahi button randomize karein
-        options = [correct_answer, "X92B", "7A4K", "M39Z"]
-        random.shuffle(options)
-
-        for opt in options:
-            style = discord.ButtonStyle.primary
-            if opt == correct_answer:
-                # Identification ke liye custom logic (User ko nahi dikhega)
-                pass 
+    @discord.ui.button(label="SPIN 🎰", style=ButtonStyle.success)
+    async def spin_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user_id:
+            return await interaction.response.send_message("❌ यह आपकी मशीन नहीं है!", ephemeral=True)
+        
+        if self.pressed: return
+        self.pressed = True
+        
+        # 1. Paisa pehle kato (Security)
+        bal = await get_balance(self.user_id)
+        if bal < self.amount:
+            return await interaction.response.send_message("❌ आपके पास स्पिन करने के लिए बैलेंस नहीं है!", ephemeral=True)
+        
+        await update_balance(self.user_id, -self.amount) # Deduct bet
+        
+        # 2. Disable Button & Animation Start
+        button.disabled = True
+        button.label = "SPINNING..."
+        button.style = ButtonStyle.secondary
+        
+        # Animation Embed
+        anim_embed = discord.Embed(
+            title="🎰 TITAN CASINO",
+            description=f"**Bet:** `${self.amount}`\n\n| 🌀 | 🌀 | 🌀 |\n\n*Spinning the reels...*",
+            color=0xFFA500
+        )
+        anim_embed.set_thumbnail(url=interaction.user.avatar.url)
+        await interaction.response.edit_message(embed=anim_embed, view=self)
+        
+        # 3. Wait for "Spin" effect
+        await asyncio.sleep(2) 
+        
+        # 4. Final Logic
+        emojis = ["🍎", "🍊", "🍇", "💎", "🍒", "🔔", "7️⃣"]
+        a, b, c = random.choice(emojis), random.choice(emojis), random.choice(emojis)
+        
+        # Payout Logic
+        win_amount = 0
+        result_text = ""
+        color = 0xFF0000 # Default Red (Loss)
+        
+        if a == b == c: # JACKPOT
+            win_amount = self.amount * 10
+            if a == "7️⃣": win_amount = self.amount * 20 # Super Jackpot
             
-            self.add_item(discord.ui.Button(label=f"ACCESS CODE: {opt}", custom_id=opt, style=discord.ButtonStyle.secondary))
+            result_text = f"💎 **JACKPOT HIT!**\nMultiplier: **10x**"
+            color = 0xFFD700 # Gold
+        elif a == b or b == c or a == c: # MINI WIN
+            win_amount = self.amount * 2
+            result_text = f"✅ **NICE MATCH!**\nMultiplier: **2x**"
+            color = 0x00FFFF # Cyan
+        else:
+            result_text = f"❌ **YOU LOST**\nBetter luck next time."
+            color = 0xFF0000
+            
+        # 5. Update DB if won
+        if win_amount > 0:
+            await update_balance(self.user_id, win_amount) # Add Winnings
+            
+        # 6. Final Embed
+        final_embed = discord.Embed(title="🎰 TITAN CASINO RESULT", color=color)
+        final_embed.description = f"**Bet:** `${self.amount}`\n\n# | {a} | {b} | {c} |\n\n{result_text}"
+        
+        if win_amount > 0:
+            final_embed.add_field(name="💰 Winnings", value=f"`+${win_amount}`", inline=True)
+            final_embed.set_image(url="https://media.tenor.com/J_wWwD9sD0gAAAAC/winner-money.gif") # Winner GIF
+        else:
+            final_embed.add_field(name="💸 Loss", value=f"`-${self.amount}`", inline=True)
+            
+        final_embed.set_footer(text=f"Player: {interaction.user.name}", icon_url=interaction.user.avatar.url)
+        
+        await interaction.edit_original_response(embed=final_embed, view=None)
 
-    # Button interaction handler
+@games_group.command(name="slots", description="🎰 Spin the slot machine (Requires 'Spin' button click)")
+async def slots(interaction: discord.Interaction, amount: int):
+    # Initial Check
+    user_bal = await get_balance(interaction.user.id)
+    if amount <= 0:
+        return await interaction.response.send_message("❌ Amount positive होना चाहिए!", ephemeral=True)
+    if user_bal < amount:
+        return await interaction.response.send_message(f"❌ **Insufficient Funds!**\nWallet: `${user_bal}`", ephemeral=True)
+
+    # Intro Embed
+    embed = discord.Embed(
+        title="🎰 TITAN CASINO",
+        description=f"Welcome, **{interaction.user.name}**.\n\n**Bet Amount:** `${amount}`\n**Potential Jackpot:** `${amount * 10}`\n\nClick **SPIN** to start the machine.",
+        color=0x2b2d31
+    )
+    embed.set_thumbnail(url=interaction.user.avatar.url)
+    
+    view = SlotsView(interaction.user.id, amount, interaction)
+    await interaction.response.send_message(embed=embed, view=view)
+
+
+# ==========================================
+# 💼 SYSTEM: HACKING WORK (TERMINAL STYLE)
+# ==========================================
+class WorkView(discord.ui.View):
+    def __init__(self, correct_code, user_id):
+        super().__init__(timeout=10.0)
+        self.correct_code = correct_code
+        self.user_id = user_id
+        
+        # Generate Options
+        options = [correct_code, "X9-B2", "7A-4K", "M3-9Z"]
+        random.shuffle(options)
+        
+        for opt in options:
+            self.add_item(discord.ui.Button(label=opt, custom_id=opt, style=ButtonStyle.primary))
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("⚠️ यह तुम्हारा टास्क नहीं है!", ephemeral=True)
+            await interaction.response.send_message("🚫 Access Denied.", ephemeral=True)
             return False
-
+            
         btn_id = interaction.data["custom_id"]
         
-        if btn_id == self.correct_answer:
-            # ✅ SAHI JAWAB
-            earnings = random.randint(500, 2000)
+        if btn_id == self.correct_code:
+            # Win
+            earnings = random.randint(800, 2500)
             new_bal = await update_balance(self.user_id, earnings)
             
-            embed = discord.Embed(title="✅ SYSTEM BYPASSED", description=f"Hack Successful!\n**Earned:** `${earnings}`\n**New Balance:** `${new_bal}`", color=0x00FF00)
+            embed = discord.Embed(title="✅ SYSTEM BYPASSED", color=0x00FF00)
+            embed.description = f"```diff\n+ ACCESS GRANTED\n+ DOWNLOAD COMPLETE\n```\n💰 **Payment Received:** `${earnings}`\n💳 **New Balance:** `${new_bal}`"
+            embed.set_thumbnail(url=interaction.user.avatar.url)
             await interaction.response.edit_message(embed=embed, view=None)
         else:
-            # ❌ GALAT JAWAB
-            embed = discord.Embed(title="❌ ACCESS DENIED", description="Security Firewall Triggered!\nMission Failed.", color=0xFF0000)
+            # Lose
+            embed = discord.Embed(title="❌ FIREWALL TRIGGERED", color=0xFF0000)
+            embed.description = f"```diff\n- INCORRECT CODE\n- CONNECTION TERMINATED\n```\nYour location has been logged."
             await interaction.response.edit_message(embed=embed, view=None)
         
         self.stop()
         return True
 
-@games_group.command(name="work", description="💻 Perform a high-security cyber task to earn cash")
-@app_commands.checks.cooldown(1, 300) # 5 Min Cooldown
+@games_group.command(name="work", description="💻 Cyber Hacking Task (High Rewards)")
+@app_commands.checks.cooldown(1, 300)
 async def work(interaction: discord.Interaction):
-    # Random Code Generate
-    code = random.choice(["A4X9", "B2Z1", "K9L0", "P5Q2", "R8T3"])
+    code = random.choice(["A4-X9", "B2-Z1", "K9-L0", "P5-Q2"])
     
-    embed = discord.Embed(
-        title="🕵️ CYBER INFILTRATION TASK",
-        description=f"**WARNING:** Security Level High.\n\nClick the button matching this code: **`{code}`**\n\n⏱️ You have **10 Seconds**.",
-        color=0xFFA500
-    )
-    embed.set_thumbnail(url=interaction.user.avatar.url if interaction.user.avatar else None)
+    embed = discord.Embed(title="🕵️ TITAN SECURITY BREACH", color=0x000000)
+    embed.description = f"**TARGET:** Central Bank Firewall\n**STATUS:** Encrypted\n\n⬇️ **AUTHORIZE SEQUENCE:**\n# `{code}`\n\n*You have 10 seconds...*"
+    embed.set_image(url="https://media.tenor.com/GfSX-u7_RR4AAAAC/coding-hacking.gif") # Hacking GIF
     
-    view = WorkButtons(correct_answer=code, user_id=interaction.user.id)
+    view = WorkView(code, interaction.user.id)
     await interaction.response.send_message(embed=embed, view=view)
 
-
-# ==========================================
-# 🎰 COMMAND 2: SLOTS (CASINO)
-# ==========================================
-@games_group.command(name="slots", description="🎰 Bet money on the slot machine")
-async def slots(interaction: discord.Interaction, amount: int):
-    user_bal = await get_balance(interaction.user.id)
-    
-    # Validation
-    if amount <= 0:
-        return await interaction.response.send_message("❌ Amount must be positive!", ephemeral=True)
-    if user_bal < amount:
-        return await interaction.response.send_message(f"❌ You are broke! Balance: `${user_bal}`", ephemeral=True)
-
-    # Emojis
-    slots_emojis = ["🍎", "🍊", "🍇", "💎", "🍒", "🔔"]
-    a = random.choice(slots_emojis)
-    b = random.choice(slots_emojis)
-    c = random.choice(slots_emojis)
-
-    result_embed = discord.Embed(title="🎰 TITAN CASINO", color=0xFFD700)
-    result_embed.add_field(name="Machine", value=f"| {a} | {b} | {c} |", inline=False)
-
-    # Logic
-    if a == b == c:
-        # Jackpot (10x)
-        win = amount * 10
-        await update_balance(interaction.user.id, win)
-        result_embed.description = f"**💎 JACKPOT!**\nYou won **${win}**!"
-        result_embed.color = 0x00FF00
-    elif a == b or b == c or a == c:
-        # Small Win (2x)
-        win = amount * 2
-        await update_balance(interaction.user.id, win)
-        result_embed.description = f"**Nice!** 2 matches.\nYou won **${win}**!"
-        result_embed.color = 0x00FFFF
-    else:
-        # Lose
-        await update_balance(interaction.user.id, -amount)
-        result_embed.description = f"**You Lost!**\nBetter luck next time.\nLost: `${amount}`"
-        result_embed.color = 0xFF0000
-
-    result_embed.set_footer(text=f"Player: {interaction.user.name}", icon_url=interaction.user.avatar.url)
-    await interaction.response.send_message(embed=result_embed)
+@work.error
+async def work_error(interaction, error):
+    if isinstance(error, app_commands.CommandOnCooldown):
+        await interaction.response.send_message(f"⏳ **Cooldown Active:** Wait `{int(error.retry_after)}s`", ephemeral=True)
 
 
 # ==========================================
-# 🪙 COMMAND 3: COIN FLIP (DOUBLE OR NOTHING)
+# 🪙 SYSTEM: COIN FLIP (ANIMATED)
 # ==========================================
-@games_group.command(name="coin_flip", description="🪙 Flip a coin. Double your money or lose it all.")
-@app_commands.choices(choice=[
-    app_commands.Choice(name="Heads", value="Heads"),
-    app_commands.Choice(name="Tails", value="Tails")
-])
-@app_commands.checks.cooldown(1, 600) # 10 Minutes Cooldown (600 seconds)
+@games_group.command(name="coin_flip", description="🪙 Double or Nothing")
+@app_commands.choices(choice=[app_commands.Choice(name="Heads", value="Heads"), app_commands.Choice(name="Tails", value="Tails")])
+@app_commands.checks.cooldown(1, 10)
 async def coin_flip(interaction: discord.Interaction, choice: app_commands.Choice[str], amount: int):
     user_bal = await get_balance(interaction.user.id)
-    
-    if amount <= 0:
-        return await interaction.response.send_message("❌ Positive amount only!", ephemeral=True)
-    if user_bal < amount:
-        return await interaction.response.send_message(f"❌ Insufficient Funds! Balance: `${user_bal}`", ephemeral=True)
+    if amount <= 0 or user_bal < amount:
+        return await interaction.response.send_message(f"❌ Invalid Amount or Balance (${user_bal})", ephemeral=True)
 
-    # The Flip
+    # 1. Flip Animation
+    embed = discord.Embed(title="🪙 FLIPPING COIN...", description="The coin is in the air...", color=0xFFFF00)
+    await interaction.response.send_message(embed=embed)
+    await asyncio.sleep(1.5) # Suspense
+
+    # 2. Result
     outcome = random.choice(["Heads", "Tails"])
+    win = False
     
-    embed = discord.Embed(title="🪙 COIN FLIP RESULT")
-    embed.set_thumbnail(url=interaction.user.avatar.url)
+    final_embed = discord.Embed(title="🪙 FLIP RESULT")
+    final_embed.set_thumbnail(url=interaction.user.avatar.url)
 
     if choice.value == outcome:
-        # WIN (Double Money: Amount wapas + utna hi profit)
-        await update_balance(interaction.user.id, amount) 
-        embed.description = f"The coin landed on **{outcome}**!\n\n✅ **YOU WON!**\nProfit: `${amount}`"
-        embed.color = 0x00FF00
+        await update_balance(interaction.user.id, amount)
+        final_embed.color = 0x00FF00
+        final_embed.description = f"Result: **{outcome}**\n\n✅ **YOU WON!**\nProfit: `+${amount}`"
     else:
-        # LOSE (Amount Gayab)
         await update_balance(interaction.user.id, -amount)
-        embed.description = f"The coin landed on **{outcome}**...\n\n❌ **YOU LOST**\nLost: `${amount}`"
-        embed.color = 0xFF0000
+        final_embed.color = 0xFF0000
+        final_embed.description = f"Result: **{outcome}**\n\n❌ **YOU LOST**\nLoss: `-${amount}`"
 
-    await interaction.response.send_message(embed=embed)
-
-# Error handler for Cooldown
-@coin_flip.error
-async def coin_flip_error(interaction: discord.Interaction, error):
-    if isinstance(error, app_commands.CommandOnCooldown):
-        minutes = int(error.retry_after // 60)
-        seconds = int(error.retry_after % 60)
-        await interaction.response.send_message(f"⏳ **Cooldown Active!**\nTry again in `{minutes}m {seconds}s`.", ephemeral=True)
+    await interaction.edit_original_response(embed=final_embed)
 
 
 # ==========================================
-# 📅 COMMAND 4: DAILY (IST MIDNIGHT RESET)
+# 📅 SYSTEM: DAILY (BANK RECEIPT STYLE)
 # ==========================================
-@games_group.command(name="daily", description="💰 Claim your daily reward (Resets 00:00 IST)")
+@games_group.command(name="daily", description="💰 Daily Stipend (Resets 00:00 IST)")
 async def daily(interaction: discord.Interaction):
+    await interaction.response.defer()
+    
+    # Timezone: India
+    IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+    now = datetime.datetime.now(IST)
     user_id = str(interaction.user.id)
-    
-    # 1. India Time nikalo
-    ist_tz = pytz.timezone('Asia/Kolkata')
-    now_ist = datetime.datetime.now(ist_tz)
-    
-    # 2. Database se Last Claim time nikalo
+
+    # Check Logic
     res = supabase.table("economy").select("last_daily").eq("user_id", user_id).execute()
+    can_claim = True
     
-    can_claim = False
-    
-    if not res.data or not res.data[0]['last_daily']:
-        can_claim = True
-    else:
-        # Last claim time ko convert karo
-        last_claim_str = res.data[0]['last_daily']
-        # String se datetime object (Handle ISO format)
-        last_claim_dt = datetime.datetime.fromisoformat(last_claim_str.replace('Z', '+00:00')).astimezone(ist_tz)
-        
-        # Check karo: Kya Last Claim ki Date, Aaj ki Date se choti hai?
-        if last_claim_dt.date() < now_ist.date():
-            can_claim = True
-        else:
-            can_claim = False
+    if res.data and res.data[0]['last_daily']:
+        try:
+            last_dt = datetime.datetime.fromisoformat(res.data[0]['last_daily'].replace('Z', '+00:00')).astimezone(IST)
+            if last_dt.date() >= now.date():
+                can_claim = False
+        except: pass
 
-    # 3. Decision
     if can_claim:
-        reward = random.randint(1000, 10000)
+        reward = random.randint(1500, 6000)
+        new_bal = await get_balance(user_id) + reward
         
-        # DB Update: Balance + Update Time
-        supabase.table("economy").update({
-            "balance": await get_balance(user_id) + reward,
-            "last_daily": now_ist.isoformat()
-        }).eq("user_id", user_id).execute()
+        supabase.table("economy").update({"balance": new_bal, "last_daily": now.isoformat()}).eq("user_id", user_id).execute()
         
-        embed = discord.Embed(
-            title="📅 DAILY REWARD CLAIMED",
-            description=f"You have received your daily stipend!\n\n💰 **Amount:** `${reward}`\n⏰ **Next Reset:** 00:00 IST",
-            color=0x00FF00
-        )
+        # RECEIPT EMBED
+        embed = discord.Embed(title="🏦 TITAN BANK - TRANSFER RECEIPT", color=0x00FF00)
         embed.set_thumbnail(url=interaction.user.avatar.url)
-        await interaction.response.send_message(embed=embed)
+        embed.add_field(name="👤 Beneficiary", value=f"**{interaction.user.name}**", inline=True)
+        embed.add_field(name="💰 Amount Credited", value=f"`${reward}`", inline=True)
+        embed.add_field(name="💳 Current Balance", value=f"`${new_bal}`", inline=False)
+        embed.set_footer(text=f"Processed at {now.strftime('%H:%M:%S IST')} • Next Claim: 00:00")
         
+        await interaction.followup.send(embed=embed)
     else:
-        # Time bacha hai logic
-        tomorrow = now_ist + datetime.timedelta(days=1)
-        midnight = datetime.datetime(tomorrow.year, tomorrow.month, tomorrow.day, 0, 0, 0, tzinfo=ist_tz)
-        remaining = midnight - now_ist
-        hours = int(remaining.seconds // 3600)
-        minutes = int((remaining.seconds % 3600) // 60)
+        # Time Left Logic
+        tomorrow = now + datetime.timedelta(days=1)
+        midnight = datetime.datetime(tomorrow.year, tomorrow.month, tomorrow.day, 0, 0, 0, tzinfo=IST)
+        diff = midnight - now
+        hours, mins = int(diff.seconds // 3600), int((diff.seconds % 3600) // 60)
         
-        embed = discord.Embed(
-            title="⏳ ALREADY CLAIMED",
-            description=f"You have already claimed your reward for today.\n\n⏰ **Resets in:** `{hours}h {minutes}m` (India Time)",
-            color=0xFF0000
-        )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
+        embed = discord.Embed(title="⏳ TRANSACTION PENDING", description=f"Daily Limit Reached.\n\n**Next Transfer In:**\n`{hours} Hours, {mins} Minutes`", color=0xFF0000)
+        await interaction.followup.send(embed=embed)
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
