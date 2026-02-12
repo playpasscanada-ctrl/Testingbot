@@ -1334,8 +1334,6 @@ def emb(title, desc, color=0x5865F2):
 async def on_ready():
     print(f"Logged in as {bot.user} (BOT ONLINE)")
 
-    bot.loop.create_task(start_web_server())
-
         # SIRF YE LINE ADD KARNI HAI 👇
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="/doraemon Movies"))
     
@@ -18623,135 +18621,81 @@ async def fake_ban(interaction: discord.Interaction, target: discord.Member):
 
     await interaction.response.send_message(sent_msg, ephemeral=True)
 
-import asyncio
-import discord # Ye zaruri hai
+import asyncio # Ye line sabse upar honi chahiye
 
-# ================= 🚨 COMMAND: GLOBAL ECONOMY RESET (FIXED) =================
-@titan_group.command(name="reset_economy", description="🚨 DANGER: Wipe the entire server economy (0 Balance)")
+@bot.tree.command(name="reset_economy", description="🚨 DANGER: Reset EVERYONE'S balance to 0 (Admin Only)")
+@app_commands.checks.has_permissions(administrator=True) # Sirf Admin use kar sakta hai
 async def reset_economy(interaction: discord.Interaction):
-    # 1. ⚠️ PRE-WARNING EMBED
-    embed = discord.Embed(
-        title="⚠️ GLOBAL RESET PROTOCOL INITIATED",
-        description="**You are about to wipe the entire economy database.**\nThis action is **irreversible**.",
-        color=0xFF0000
+    # 1. Chetamni (Warning)
+    await interaction.response.send_message(
+        "⚠️ **WARNING!** \nआप पूरी इकोनॉमी **RESET** करने जा रहे हैं!\n"
+        "इससे सभी यूज़र्स का Wallet और Bank बैलेंस **0 (Zero)** हो जाएगा।\n\n"
+        "अगर आप पक्का करना चाहते हैं, तो चैट में **`CONFIRM`** टाइप करें (10 सेकंड के अंदर)।",
+        ephemeral=True # Sirf aapko dikhega
     )
-    
-    embed.add_field(name="🏢 Target Server", value=f"**{interaction.guild.name}**", inline=True)
-    embed.add_field(name="👥 Total Victims", value=f"**{interaction.guild.member_count}**", inline=True)
-    embed.add_field(name="💀 Impact", value="All Wallets & Bank Accounts → **0**", inline=False)
-    
-    if interaction.guild.icon:
-        embed.set_thumbnail(url=interaction.guild.icon.url)
-    
-    embed.set_footer(text="Security Override Required • Type CONFIRM within 10s")
-    
-    await interaction.response.send_message(embed=embed, ephemeral=False)
 
-    # 2. 🔒 CONFIRMATION CHECK
+    # 2. Confirmation Check
     def check(m):
         return m.author == interaction.user and m.content == "CONFIRM" and m.channel == interaction.channel
 
     try:
+        # User ke reply ka wait karega
         msg = await bot.wait_for('message', check=check, timeout=10.0)
     except asyncio.TimeoutError:
-        timeout_embed = discord.Embed(title="❌ ABORTED", description="Protocol Timed Out.", color=0x00FF00)
-        await interaction.followup.send(embed=timeout_embed)
+        await interaction.followup.send("❌ **Cancelled!** आपने टाइम पर CONFIRM नहीं लिखा।")
         return
 
-    # 3. 🔄 EXECUTION
-    loading_embed = discord.Embed(title="🔄 SYSTEM PURGE", description="Deleting financial records...", color=0xFFA500)
-    await interaction.followup.send(embed=loading_embed)
+    # 3. Reset Process (Update All to 0)
+    await interaction.followup.send("🔄 **Resetting Economy... Please wait.**")
     
     try:
-        # 4. 📉 SUPABASE LOGIC
+        # Supabase me sabka balance 0 karne ka Update logic
+        # neq("user_id", "0") ka matlab hai "Sabhi users" select ho jayenge
         response = supabase.table("economy").update({
-            "balance": 0,  # Apne column ka naam check karlena (balance/wallet)
+            "wallet": 0, 
             "bank": 0
         }).neq("user_id", "dummy_value").execute()
 
-        # 5. ✅ FINAL SUCCESS EMBED (Time Error Fixed Here 👇)
-        crash_embed = discord.Embed(
-            title="📉 THE GREAT DEPRESSION HAS BEGUN",
-            description=f"**Economy Reset Successful.**\nEveryone in **{interaction.guild.name}** is now broke.",
-            color=0x000000, 
-            timestamp=discord.utils.utcnow() # ✅ Ye line sab fix kar degi
-        )
-        crash_embed.set_image(url="https://media1.tenor.com/m/P5575_XmCgAAAAAC/market-crash-stonks.gif")
-        crash_embed.set_footer(text=f"Reset triggered by: {interaction.user.name}")
-        
-        await interaction.followup.send(embed=crash_embed)
+        await interaction.followup.send(f"✅ **RESET SUCCESSFUL!** \n📉 पूरी इकोनॉमी क्रैश कर दी गई है। सबका बैलेंस अब **0** है।")
         
     except Exception as e:
-        error_embed = discord.Embed(title="❌ SYSTEM FAILURE", description=f"Error: `{e}`", color=0xFF0000)
-        await interaction.followup.send(embed=error_embed)
-
+        await interaction.followup.send(f"❌ **Error:** Reset fail ho gaya!\nReason: {e}")
 
 # ==========================================
-# 📜 PREMIUM COMMANDS INTERFACE
+# 📜 WEBSITE LINK COMMAND
 # ==========================================
 
 # 👇 YAHAN APNA RENDER URL DALO (Bina last slash ke)
+# Example: "https://vikas-bot.onrender.com"
 WEBSITE_BASE_URL = "https://testingbot-8pb1.onrender.com" 
 
-@titan_group.command(name="commands", description="📂 Access the Classified Command Arsenal & Systems")
+@bot.tree.command(name="commands", description="📜 View full command list, games & rules on Website")
 async def commands(interaction: discord.Interaction):
-    # Link Generation
+    # Website ka pura link banaya
     target_link = f"{WEBSITE_BASE_URL}/commands"
 
-    # --- 1. Premium Button (Link) ---
+    # --- 1. Create Button ---
     view = discord.ui.View()
-    
-    # Main Website Button
-    btn = discord.ui.Button(
-        label="🚀 Open Command Center", 
-        style=discord.ButtonStyle.link, 
-        url=target_link,
-        emoji="🌐"
-    )
+    # Style=link ka matlab ye click hone par browser kholega
+    btn = discord.ui.Button(label="🌐 Open Command List", style=discord.ButtonStyle.link, url=target_link)
     view.add_item(btn)
 
-    # --- 2. Ultra Premium Embed ---
+    # --- 2. Create Embed ---
     embed = discord.Embed(
-        title="⚡ TITAN SYSTEM INTERFACE",
-        description=f"**Welcome to the Mainframe, {interaction.user.mention}.**\n"
-                    "All classified protocols, game rules, and economy systems have been synchronized to our secure dashboard.",
-        color=0x00ffcc # Cyan Neon Color
+        title="📜 ULTIMATE COMMANDS LIST",
+        description=f"**Squid Game, Underworld, Gambling & Economy!**\n\n"
+                    f"saare games, rules aur prices dekhne ke liye niche button par click karein.\n"
+                    f"👉 **[Click Here to Open Website]({target_link})**",
+        color=0x00ffcc # Cyan Color (Website se match karega)
     )
-
-    # --- 3. Feature Breakdown (Fields) ---
-    embed.add_field(
-        name="🎮 **Game Protocol**",
-        value="> Squid Game, Underworld, Heists & Mafia Wars.\n> *Full rules & payout rates inside.*",
-        inline=True
-    )
-
-    embed.add_field(
-        name="💸 **Economy System**",
-        value="> Banking, Stock Market, Gambling & Jobs.\n> *Check Net Worth & Leaderboards.*",
-        inline=True
-    )
-
-    embed.add_field(
-        name="🔗 **Quick Access**",
-        value=f"👉 **[Click to Launch Dashboard]({target_link})**\n*Optimized for Mobile & PC*",
-        inline=False
-    )
-
-    # --- 4. Visuals & Footer ---
-    # Ek Premium GIF jo "Digital HUD" ya "System" jaisa lage
-    embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif") 
     
-    # Thumbnail: Bot ka apna logo
-    if interaction.client.user.avatar:
-        embed.set_thumbnail(url=interaction.client.user.avatar.url)
-
-    embed.set_footer(
-        text=f"Titan Security • Requested by {interaction.user.name}",
-        icon_url=interaction.user.avatar.url if interaction.user.avatar else None
-    )
-    embed.timestamp = discord.utils.utcnow()
+    # Optional: Cool GIF image lagana hai to
+    embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
+    embed.set_thumbnail(url=interaction.client.user.avatar.url if interaction.client.user.avatar else None)
+    embed.set_footer(text="Mobile Optimized • Premium UI")
 
     await interaction.response.send_message(embed=embed, view=view)
+
 
 
 # ================== OPTIMIZED FLASK BACKEND ==================
