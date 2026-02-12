@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultimate Bot Commands | Squid Game Edition</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- RESET & BASICS --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #050505;
+            color: #ffffff;
+            font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* --- RAINBOW DUST CANVAS --- */
+        #dust-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Let clicks pass through */
+            z-index: 9999;
+        }
+
+        /* --- HEADER & TITLES --- */
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(180deg, rgba(255, 0, 102, 0.1) 0%, rgba(0,0,0,0) 100%);
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, #ff0066, #ffcc00, #00ffcc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(255, 0, 102, 0.5);
+            margin-bottom: 10px;
+        }
+
+        p.subtitle {
+            color: #888;
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* --- GRID LAYOUT (MOBILE OPTIMIZED) --- */
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding-bottom: 60px;
+        }
+
+        /* --- COMMAND CARDS --- */
+        .card {
+            background: rgba(20, 20, 25, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: #333;
+            transition: background 0.3s ease;
+        }
+
+        /* Hover Effects */
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 255, 204, 0.15);
+            border-color: rgba(0, 255, 204, 0.5);
+        }
+
+        /* Category Colors */
+        .card.game::before { background: #ff0066; } /* Pink for Squid Game */
+        .card.gamble::before { background: #ffcc00; } /* Gold for Gambling */
+        .card.eco::before { background: #00ffcc; } /* Cyan for Economy */
+        .card.admin::before { background: #ff3333; } /* Red for Danger/Admin */
+
+        .card:hover.game { box-shadow: 0 10px 30px rgba(255, 0, 102, 0.2); border-color: #ff0066; }
+        .card:hover.gamble { box-shadow: 0 10px 30px rgba(255, 204, 0, 0.2); border-color: #ffcc00; }
+        .card:hover.admin { box-shadow: 0 10px 30px rgba(255, 51, 51, 0.2); border-color: #ff3333; }
+
+        /* Typography inside Cards */
+        .cmd-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cmd-desc {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #ccc;
+        }
+
+        .highlight {
+            color: #ffcc00;
+            font-weight: bold;
+        }
+
+        .danger {
+            color: #ff3333;
+            font-weight: bold;
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            text-align: center;
+            padding: 30px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #555;
+            font-size: 0.9rem;
+            background: #020202;
+        }
+
+        /* --- MOBILE TWEAKS --- */
+        @media (max-width: 600px) {
+            h1 { font-size: 1.8rem; }
+            .container { grid-template-columns: 1fr; padding: 15px; }
+            .card { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="dust-canvas"></canvas>
+
+    <header>
+        <h1>Bot Commands</h1>
+        <p class="subtitle">Squid Game • Underworld • High Stakes Gambling</p>
+    </header>
+
+    <div class="container">
+
+        <div class="card game">
+            <div class="cmd-title">🦑 /squid_duel</div>
+            <div class="cmd-desc">
+                Russian Roulette style death match. Choose 1-6 bullets and a punishment level. Select your opponent. <span class="danger">Warning:</span> If you lose, the punishment applies to YOU.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">👊 /fight</div>
+            <div class="cmd-desc">
+                Underworld fighting. Select an opponent and place your bet. Win to double your money. Visit <span class="highlight">/menu</span> shop to buy <b>Knives, Cleavers, Vests, or Steroids</b> to boost win chances.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">💰 /heist</div>
+            <div class="cmd-desc">
+                Co-op mission (2-4 players). Complete individual tasks. Success = <span class="highlight">200,000</span> instant cash each. Fail = 5-minute timeout penalty.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">⚔️ /duel</div>
+            <div class="cmd-desc">
+                Typing speed battle. First to type the phrase wins <span class="highlight">10,000</span>. The loser gets a 30s timeout.
+            </div>
+        </div>
+
+        <div class="card admin">
+            <div class="cmd-title">💣 /bomb_start</div>
+            <div class="cmd-desc">
+                The ultimate trolling tool. Gives a target user a <span class="danger">1-hour timeout</span>. Cost: <span class="highlight">2 Million</span> coins.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">🧵 /tug_of_war</div>
+            <div class="cmd-desc">
+                Team game. The more people join your side, the easier it is to win. Prize: <span class="highlight">20,000</span>.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">🔮 /marbles</div>
+            <div class="cmd-desc">
+                Odd or Even guessing game. Bet your money (or phone). Prize pool: <span class="highlight">10,000</span>.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">🌉 /glass_bridge</div>
+            <div class="cmd-desc">
+                4 Players. Guess the tempered glass to survive. Fail = Death/Kick. You can choose to sabotage the player in front of you. Play carefully!
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">🙈 /hide_and_seek</div>
+            <div class="cmd-desc">
+                4-5 Players. One random player becomes the Seeker. If the Seeker catches someone, they win. Survivors win if not caught. Caught = Punishment.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">🚦 /red_light</div>
+            <div class="cmd-desc">
+                Red Light, Green Light. Type the button when Green. Win to get the prize. Simple but deadly.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">🏃 /penthalon</div>
+            <div class="cmd-desc">
+                Squad game (2-5 players). Complete 5 tasks together to win the prize pool.
+            </div>
+        </div>
+
+        <div class="card gamble">
+            <div class="cmd-title">🎰 /devil_slots</div>
+            <div class="cmd-desc">
+                High stakes spin. Cost: 100k/spin. Normal Win: 200k. <span class="highlight">JACKPOT: 50 Million</span> (Rare). High risk of losing.
+            </div>
+        </div>
+
+        <div class="card gamble">
+            <div class="cmd-title">🍪 /dalgona</div>
+            <div class="cmd-desc">
+                Bet on shapes. Different shapes have different payouts. Try your luck carving the candy.
+            </div>
+        </div>
+
+        <div class="card gamble">
+            <div class="cmd-title">🎲 /satta</div>
+            <div class="cmd-desc">
+                Pure gambling. Bet any amount. Increase the multiplier for higher rewards, but the chance of winning drops drastically.
+            </div>
+        </div>
+
+        <div class="card gamble">
+            <div class="cmd-title">📈 /crash</div>
+            <div class="cmd-desc">
+                Multiplier game. Watch the multiplier rise and cash out before it crashes. 1.5x is safe, higher is risky. Crash = Lose all bet.
+            </div>
+        </div>
+
+        <div class="card gamble">
+            <div class="cmd-title">🕵️ /black_market</div>
+            <div class="cmd-desc">
+                Entry fee: Only $1. Highly volatile. Rare chance to win <span class="highlight">200k - 500k</span>. Most spins yield nothing.
+            </div>
+        </div>
+
+        <div class="card gamble">
+            <div class="cmd-title">💣 /mines</div>
+            <div class="cmd-desc">
+                5 Levels. Avoid the bombs. Levels 4 & 5 contain a 3-Diamond Jackpot for massive rewards.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">✊ /rps</div>
+            <div class="cmd-desc">
+                Rock Paper Scissors betting. Select your move and your bet amount. Win = Double your money.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">❌ /tictactose</div>
+            <div class="cmd-desc">
+                Classic Tic-Tac-Toe. Bet money against an opponent. Winner takes double.
+            </div>
+        </div>
+        
+        <div class="card game">
+             <div class="cmd-title">🍪 /dalgona_duel</div>
+             <div class="cmd-desc">
+                 Vs Mode. 4 Shapes. Bet money. Crop your cookie faster than your opponent to double your cash.
+             </div>
+         </div>
+
+        <div class="card game">
+            <div class="cmd-title">🧠 /iq_test</div>
+            <div class="cmd-desc">
+                Answer 20 consecutive questions correctly. Prize: <span class="highlight">100,000</span>. One mistake and you fail.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">🟩 /matrix_terminal</div>
+            <div class="cmd-desc">
+                Grid memory game. Locate the green box (e.g., A1). Multiple levels. Entry fee: 5000.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">💻 /hacker_run</div>
+            <div class="cmd-desc">
+                5-6 Levels. Codes appear on screen; type them exactly to clear the level. Fast-paced typing game.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">🎨 /hacker</div>
+            <div class="cmd-desc">
+                Color combination lock. Memorize and repeat the color sequence. Clear levels to win prices.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">❓ /quiz</div>
+            <div class="cmd-desc">
+                Hard difficulty questions. 10k prize per question. Requires deep knowledge.
+            </div>
+        </div>
+
+        <div class="card game">
+            <div class="cmd-title">🧬 /neet_biology</div>
+            <div class="cmd-desc">
+                For Biology experts only. Answer 5 consecutive biology questions correctly to win.
+            </div>
+        </div>
+
+        <div class="card eco">
+            <div class="cmd-title">💳 Economy Basics</div>
+            <div class="cmd-desc">
+                <span class="highlight">/balance</span> - Check your cash.<br>
+                <span class="highlight">/leaderboard</span> - See server richest.<br>
+                <span class="highlight">/deposit</span> - Put cash in bank (Safe).<br>
+                <span class="highlight">/withdraw</span> - Take cash out.
+            </div>
+        </div>
+
+        <div class="card eco">
+            <div class="cmd-title">🦹 /rob</div>
+            <div class="cmd-desc">
+                Steal from others. <br>
+                <b>Defense:</b> Buy <span class="highlight">Mines</span> or <span class="highlight">CCTV</span> from the shop. Banked money cannot be stolen via Rob.
+            </div>
+        </div>
+
+        <div class="card admin">
+            <div class="cmd-title">☠️ /wipeout</div>
+            <div class="cmd-desc">
+                The Ultimate Theft. Steals Target's <b>ENTIRE</b> Bank & Inventory. <br>
+                <b>Req:</b> 'Master Key' (Shop, 50% success rate) & 200M Cash. <br>
+                <b>Fail:</b> You lose your 200M. <br>
+                <b>Defense:</b> Dog Guard or Nuclear Bomb.
+            </div>
+        </div>
+
+        <div class="card eco">
+            <div class="cmd-title">👔 /staff_stats</div>
+            <div class="cmd-desc">
+                Top 3 most active staff members (based on command usage) receive a daily salary of <span class="highlight">50 Million</span>.
+            </div>
+        </div>
+
+        <div class="card eco">
+            <div class="cmd-title">🛍️ /menu</div>
+            <div class="cmd-desc">
+                Opens the main interface. Access the Shop, View website games, and check active bets.
+            </div>
+        </div>
+
+    </div>
+
+    <footer>
+        &copy; 2024 Ultimate Bot System. All Rights Reserved.
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('dust-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let hue = 0;
+
+        // Resize canvas to fill screen
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Particle Class
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 5 + 1; // Random size
+                this.speedX = Math.random() * 3 - 1.5;
+                this.speedY = Math.random() * 3 - 1.5;
+                this.color = 'hsl(' + hue + ', 100%, 50%)';
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.size > 0.2) this.size -= 0.1; // Shrink
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Handle Mouse & Touch Events
+        function handleInput(x, y) {
+            for (let i = 0; i < 3; i++) { // Spawn 3 particles per movement
+                particles.push(new Particle(x, y));
+            }
+        }
+
+        window.addEventListener('mousemove', (e) => handleInput(e.x, e.y));
+        window.addEventListener('touchmove', (e) => handleInput(e.touches[0].clientX, e.touches[0].clientY));
+
+        // Animation Loop
+        function animate() {
+            // Semi-transparent clear for trail effect
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.1)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+                
+                // Remove tiny particles
+                if (particles[i].size <= 0.3) {
+                    particles.splice(i, 1);
+                    i--;
+                }
+            }
+            hue += 2; // Cycle colors
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+</body>
+</html>
