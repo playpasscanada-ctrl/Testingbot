@@ -8259,328 +8259,521 @@ async def slap(i: discord.Interaction, target: discord.User):
     await i.response.send_message(embed=embed)
 
 # ================== 🧠 ULTIMATE IQ TEST CHALLENGE ==================
+import random
+import discord
+from discord import app_commands
 
-# --- QUESTION BANK (Basic Knowledge) ---
-iq_questions = [
-    {"q": "India ki capital kya hai?", "a": "DELHI", "opts": ["MUMBAI", "DELHI", "KOLKATA"]},
-    {"q": "2 + 2 x 2 kitna hota hai?", "a": "6", "opts": ["6", "8", "4"]},
-    {"q": "Sun ek ____ hai.", "a": "STAR", "opts": ["PLANET", "STAR", "MOON"]},
-    {"q": "H2O kiska formula hai?", "a": "WATER", "opts": ["AIR", "WATER", "FIRE"]},
-    {"q": "Human body mein kitni haddiyan (bones) hoti hain?", "a": "206", "opts": ["206", "208", "300"]},
-    {"q": "Rainbow mein kitne colors hote hain?", "a": "7", "opts": ["5", "7", "9"]},
-    {"q": "Duniya ka sabse bada janwar (animal) kaunsa hai?", "a": "BLUE WHALE", "opts": ["ELEPHANT", "BLUE WHALE", "GIRAFFE"]},
-    {"q": "1 Kilogram mein kitne grams hote hain?", "a": "1000", "opts": ["100", "500", "1000"]},
-    {"q": "Moon par pehla kadam kisne rakha?", "a": "NEIL ARMSTRONG", "opts": ["ELON MUSK", "NEIL ARMSTRONG", "EINSTEIN"]},
-    {"q": "Computer ka dimag kise kehte hain?", "a": "CPU", "opts": ["MOUSE", "CPU", "KEYBOARD"]},
-    {"q": "Vowels kitne hote hain?", "a": "5", "opts": ["5", "21", "26"]},
-    # --- ANIME & GAMING (Discord Audience ke liye) ---
-    {"q": "Goku (Dragon Ball) ke transformation ko kya kehte hain?", "a": "SUPER SAIYAN", "opts": ["NINJA", "SUPER SAIYAN", "BANKAI"]},
-    {"q": "PUBG ka full form kya hai?", "a": "PLAYERUNKNOWN'S BATTLEGROUNDS", "opts": ["PUBLIC BATTLE GAME", "PLAYERUNKNOWN'S BATTLEGROUNDS", "PEOPLE UNDER BATTLE"]},
-    {"q": "Minecraft game ka malik kaun hai?", "a": "MICROSOFT", "opts": ["SONY", "MICROSOFT", "TENCENT"]},
-    {"q": "Naruto ke village ka naam kya hai?", "a": "KONOHA (LEAF)", "opts": ["SAND VILLAGE", "MIST VILLAGE", "KONOHA (LEAF)"]},
-    {"q": "Free Fire kis desh ka game hai?", "a": "SINGAPORE", "opts": ["CHINA", "INDIA", "SINGAPORE"]},
+# ==========================================
+# 🧠 QUESTION BANK (English & Premium)
+# ==========================================
+# Har question ka ek unique "id" hai taaki repeat na ho
+iq_questions_en = [
+    # --- SCIENCE & NATURE ---
+    {"id": "q1", "q": "What is the hardest natural substance on Earth?", "a": "DIAMOND", "opts": ["GOLD", "IRON", "DIAMOND"]},
+    {"id": "q2", "q": "Which planet is known as the Red Planet?", "a": "MARS", "opts": ["VENUS", "JUPITER", "MARS"]},
+    {"id": "q3", "q": "How many bones are in the adult human body?", "a": "206", "opts": ["206", "208", "300"]},
+    {"id": "q4", "q": "What gas do plants absorb from the atmosphere?", "a": "CARBON DIOXIDE", "opts": ["OXYGEN", "CARBON DIOXIDE", "NITROGEN"]},
+    {"id": "q5", "q": "What is the chemical symbol for Gold?", "a": "Au", "opts": ["Ag", "Au", "Go"]},
     
-    # --- SCIENCE & TECH (Thoda Dimaag) ---
-    {"q": "Gold (Sona) ka chemical symbol kya hai?", "a": "Au", "opts": ["Ag", "Au", "Go"]},
-    {"q": "Android OS kis company ka hai?", "a": "GOOGLE", "opts": ["SAMSUNG", "APPLE", "GOOGLE"]},
-    {"q": "Bijli ke bulb (Bulb) mein kaunsi gas hoti hai?", "a": "ARGON", "opts": ["OXYGEN", "ARGON", "CARBON DIOXIDE"]},
-    {"q": "Sound (Aawaz) kismen travel nahi kar sakti?", "a": "VACUUM", "opts": ["WATER", "AIR", "VACUUM"]},
-    {"q": "Human heart mein kitne chambers hote hain?", "a": "4", "opts": ["2", "4", "6"]},
-
-    # --- GEOGRAPHY (Tricky) ---
-    {"q": "Canada ki capital kya hai?", "a": "OTTAWA", "opts": ["TORONTO", "VANCOUVER", "OTTAWA"]},
-    {"q": "Duniya ka sabse chhota ocean kaunsa hai?", "a": "ARCTIC OCEAN", "opts": ["INDIAN OCEAN", "ARCTIC OCEAN", "PACIFIC OCEAN"]},
-    {"q": "Japan ki currency kya hai?", "a": "YEN", "opts": ["DOLLAR", "WON", "YEN"]},
-    {"q": "Pyramids kis desh mein hain?", "a": "EGYPT", "opts": ["DUBAI", "EGYPT", "MEXICO"]},
-    {"q": "Kis desh ko 'Land of Rising Sun' kehte hain?", "a": "JAPAN", "opts": ["INDIA", "JAPAN", "NORWAY"]},
-
-    # --- INDIAN GK (Patriotism Check) ---
-    {"q": "Space mein jaane wala pehla Indian?", "a": "RAKESH SHARMA", "opts": ["KALPANA CHAWLA", "RAKESH SHARMA", "VIKRAM SARABHAI"]},
-    {"q": "India ka National Animal kya hai?", "a": "TIGER", "opts": ["LION", "TIGER", "ELEPHANT"]},
-    {"q": "Mahatma Gandhi ka janam kahan hua tha?", "a": "PORBANDAR", "opts": ["MUMBAI", "DELHI", "PORBANDAR"]},
-    {"q": "ISRO ka headquarter kahan hai?", "a": "BENGALURU", "opts": ["DELHI", "MUMBAI", "BENGALURU"]},
-    {"q": "IPL ki sabse pehli trophy kisne jeeti thi?", "a": "RAJASTHAN ROYALS", "opts": ["CSK", "MUMBAI INDIANS", "RAJASTHAN ROYALS"]},
-
-    # --- MATH & LOGIC (Quick Calc) ---
-    {"q": "12 ka Square (12x12) kya hota hai?", "a": "144", "opts": ["124", "144", "122"]},
-    {"q": "Roman Number 'X' ka matlab kya hai?", "a": "10", "opts": ["5", "10", "20"]},
-    {"q": "Ek ghante (Hour) mein kitne seconds hote hain?", "a": "3600", "opts": ["360", "600", "3600"]},
-    {"q": "Tash (Cards) ki gaddi mein kitne patte hote hain?", "a": "52", "opts": ["50", "52", "54"]},
-    {"q": "Agar 1kg Rui aur 1kg Loha fenke, to bhaari kaun?", "a": "BOTH EQUAL", "opts": ["LOHA (IRON)", "RUI (COTTON)", "BOTH EQUAL"]},
-
-    # --- MOVIES & POP CULTURE ---
-    {"q": "Avengers mein 'Iron Man' kaun hai?", "a": "TONY STARK", "opts": ["STEVE ROGERS", "TONY STARK", "BRUCE BANNER"]},
-    {"q": "KGF movie mein hero ka naam kya tha?", "a": "ROCKY", "opts": ["ROLEX", "ROCKY", "ADHEERA"]},
-    {"q": "Netflix kis desh ki company hai?", "a": "USA", "opts": ["UK", "USA", "CHINA"]},
-    {"q": "'Bahubali' ko kisne maara tha?", "a": "KATTAPPA", "opts": ["BHALLALADEVA", "KATTAPPA", "BIJJALADEVA"]},
-    {"q": "Oscar award kis cheez ke liye milta hai?", "a": "FILM/CINEMA", "opts": ["MUSIC ONLY", "SPORTS", "FILM/CINEMA"]},
+    # --- TECH & GAMING ---
+    {"id": "q6", "q": "Which company developed the Android OS?", "a": "GOOGLE", "opts": ["APPLE", "SAMSUNG", "GOOGLE"]},
+    {"id": "q7", "q": "What does CPU stand for?", "a": "CENTRAL PROCESSING UNIT", "opts": ["COMPUTER PERSONAL UNIT", "CENTRAL PROCESSING UNIT", "CORE PROCESSING UNIT"]},
+    {"id": "q8", "q": "In which game do you build and break blocks in a 3D world?", "a": "MINECRAFT", "opts": ["ROBLOX", "TERRARIA", "MINECRAFT"]},
+    {"id": "q9", "q": "Who is the creator of Bitcoin?", "a": "SATOSHI NAKAMOTO", "opts": ["ELON MUSK", "VITALIK BUTERIN", "SATOSHI NAKAMOTO"]},
+    {"id": "q10", "q": "What is the name of Goku's ultimate form?", "a": "ULTRA INSTINCT", "opts": ["SUPER SAIYAN 3", "ULTRA INSTINCT", "GEAR 5"]},
     
-    # --- TRICKY (Dimag Ghumane Wale) ---
-    {"q": "USA ki Capital (Rajdhani) kya hai?", "a": "WASHINGTON DC", "opts": ["NEW YORK", "WASHINGTON DC", "LOS ANGELES"]},
-    {"q": "Ek century (shatabdi) mein kitne saal hote hain?", "a": "100", "opts": ["10", "50", "100"]},
-    {"q": "Agar aaj Monday hai, to 3 din baad kya hoga?", "a": "THURSDAY", "opts": ["WEDNESDAY", "THURSDAY", "FRIDAY"]},
-    {"q": "Duniya ki sabse lambi nadi (river) kaunsi hai?", "a": "NILE", "opts": ["AMAZON", "GANGA", "NILE"]},
-    {"q": "Kaunsa janwar khade-khade sota hai?", "a": "HORSE", "opts": ["DOG", "HORSE", "LION"]},
+    # --- GEOGRAPHY & HISTORY ---
+    {"id": "q11", "q": "What is the smallest country in the world?", "a": "VATICAN CITY", "opts": ["MONACO", "VATICAN CITY", "MALTA"]},
+    {"id": "q12", "q": "Which ocean is the largest on Earth?", "a": "PACIFIC OCEAN", "opts": ["ATLANTIC OCEAN", "INDIAN OCEAN", "PACIFIC OCEAN"]},
+    {"id": "q13", "q": "Who painted the Mona Lisa?", "a": "LEONARDO DA VINCI", "opts": ["PICASSO", "VINCENT VAN GOGH", "LEONARDO DA VINCI"]},
+    {"id": "q14", "q": "In what year did the Titanic sink?", "a": "1912", "opts": ["1905", "1912", "1920"]},
+    {"id": "q15", "q": "What is the capital city of Australia?", "a": "CANBERRA", "opts": ["SYDNEY", "MELBOURNE", "CANBERRA"]},
 
-    # --- TECH & SOCIAL MEDIA ---
-    {"q": "Instagram kisne khareeda tha?", "a": "FACEBOOK (META)", "opts": ["GOOGLE", "FACEBOOK (META)", "TWITTER"]},
-    {"q": "PDF ka full form kya hai?", "a": "PORTABLE DOCUMENT FORMAT", "opts": ["PUBLIC DATA FILE", "PORTABLE DOCUMENT FORMAT", "PC DATA FILE"]},
-    {"q": "Internet par 'WWW' ka matlab kya hai?", "a": "WORLD WIDE WEB", "opts": ["WORLD WEB WIDE", "WORLD WIDE WEB", "WIDE WORLD WEB"]},
-    {"q": "iPhone kis company ka product hai?", "a": "APPLE", "opts": ["SAMSUNG", "NOKIA", "APPLE"]},
-    {"q": "Keyboard mein sabse bada button kaunsa hota hai?", "a": "SPACE BAR", "opts": ["ENTER", "SHIFT", "SPACE BAR"]},
+        # --- WORLD EVENTS & POLITICS (2024-2026) ---
+    {"id": "q76", "q": "Which country officially joined NATO as its 32nd member in 2024?", "a": "SWEDEN", "opts": ["FINLAND", "SWEDEN", "UKRAINE"]},
+    {"id": "q77", "q": "Who won the 2024 US Presidential Election?", "a": "DONALD TRUMP", "opts": ["JOE BIDEN", "DONALD TRUMP", "KAMALA HARRIS"]},
+    {"id": "q78", "q": "Which nation hosted the COP29 Climate Summit in 2024?", "a": "AZERBAIJAN", "opts": ["UAE", "AZERBAIJAN", "BRAZIL"]},
+    {"id": "q79", "q": "What is the name of the world's first AI-powered 'digital human' created for government service in 2025?", "a": "KAI", "opts": ["SOPHIA", "KAI", "AMEC"]},
+    {"id": "q80", "q": "Which country is set to host the FIFA World Cup 2026 alongside USA and Mexico?", "a": "CANADA", "opts": ["BRAZIL", "CANADA", "FRANCE"]},
+    {"id": "q81", "q": "What is the new currency introduced by Zimbabwe in 2024 to fight inflation?", "a": "ZiG", "opts": ["ZIM DOLLAR", "ZiG", "RTGS"]},
+    {"id": "q82", "q": "Which island nation officially removed the British Monarch as its head of state in 2025?", "a": "JAMAICA", "opts": ["BARBADOS", "JAMAICA", "BAHAMAS"]},
 
-    # --- SCIENCE (School Yaad Dilane Wale) ---
-    {"q": "Namak (Salt) ka chemical formula kya hai?", "a": "NaCl", "opts": ["H2O", "NaCl", "CO2"]},
-    {"q": "Plants (Paudhe) apna khana kaise banate hain?", "a": "PHOTOSYNTHESIS", "opts": ["RESPIRATION", "PHOTOSYNTHESIS", "DIGESTION"]},
-    {"q": "Human body ka normal temperature kitna hota hai?", "a": "37°C", "opts": ["37°C", "40°C", "30°C"]},
-    {"q": "Duniya ka sabse hard substance kaunsa hai?", "a": "DIAMOND", "opts": ["IRON", "GOLD", "DIAMOND"]},
-    {"q": "Penicillin ki khoj kisne ki thi?", "a": "ALEXANDER FLEMING", "opts": ["NEWTON", "ALEXANDER FLEMING", "EDISON"]},
+    # --- ADVANCED AI & TECH (Classified Level) ---
+    {"id": "q83", "q": "Which AI model surpassed GPT-4o in logical reasoning benchmarks in late 2024?", "a": "o1-PREVIEW", "opts": ["CLAUDE 3.5", "o1-PREVIEW", "GEMINI 1.5"]},
+    {"id": "q84", "q": "What is the name of Neuralink's first human patient who successfully controlled a computer with his mind?", "a": "NOLAND ARBAUGH", "opts": ["ELON MUSK", "NOLAND ARBAUGH", "CONNOR BENN"]},
+    {"id": "q85", "q": "Which tech giant achieved 'Quantum Supremacy' in late 2025 with a 1000-qubit processor?", "a": "IBM", "opts": ["GOOGLE", "IBM", "MICROSOFT"]},
+    {"id": "q86", "q": "What does the 'S' in OpenAI's 'Sora' model represent?", "a": "SKY", "opts": ["STORY", "SPEED", "SKY"]},
+    {"id": "q87", "q": "Which country launched the 'Shijian-21' satellite to clean space debris in 2024?", "a": "CHINA", "opts": ["USA", "CHINA", "INDIA"]},
+    {"id": "q88", "q": "What is the name of the first-ever programmable robot made of living cells (Xenobots)?", "a": "XENOBOTS 3.0", "opts": ["XENOBOTS 3.0", "BIO-DROID", "CELL-BOT"]},
 
-    # --- INDIA & BOLLYWOOD ---
-    {"q": "Sholay movie mein villain ka naam kya tha?", "a": "GABBAR SINGH", "opts": ["MOGAMBO", "SHAKAAL", "GABBAR SINGH"]},
-    {"q": "India ka National Bird kaunsa hai?", "a": "PEACOCK", "opts": ["PARROT", "EAGLE", "PEACOCK"]},
-    {"q": "Rupee (₹) ka symbol kisne design kiya?", "a": "UDAYA KUMAR", "opts": ["RBI GOVERNOR", "UDAYA KUMAR", "MODI JI"]},
-    {"q": "Dangal movie kis sport par based thi?", "a": "WRESTLING", "opts": ["BOXING", "CRICKET", "WRESTLING"]},
-    {"q": "India mein sabse zyada boli jane wali language?", "a": "HINDI", "opts": ["ENGLISH", "HINDI", "TAMIL"]},
+    # --- INDIA CURRENT AFFAIRS (Elite GK) ---
+    {"id": "q89", "q": "Who was appointed as the Chief Justice of India in late 2024?", "a": "SANJIV KHANNA", "opts": ["D.Y. CHANDRACHUD", "SANJIV KHANNA", "U.U. LALIT"]},
+    {"id": "q90", "q": "Which Indian city was officially named the 'Cleanest City' for the 8th time in 2025?", "a": "INDORE", "opts": ["SURAT", "INDORE", "MYSORE"]},
+    {"id": "q91", "q": "What is the name of India's mission to send humans into space in 2025-26?", "a": "GAGANYAAN", "opts": ["CHANDRAYAAN 4", "GAGANYAAN", "ADITYA L1"]},
+    {"id": "q92", "q": "Which Indian state became the first to implement the Uniform Civil Code (UCC) in 2024?", "a": "UTTARAKHAND", "opts": ["GOA", "UTTARAKHAND", "UP"]},
+    {"id": "q93", "q": "Who is the current ISRO Chairman leading the Gaganyaan mission?", "a": "S. SOMANATH", "opts": ["K. SIVAN", "S. SOMANATH", "MADHAVAN NAIR"]},
 
-    # --- SPORTS ---
-    {"q": "Olympics kitne saal baad hota hai?", "a": "4 YEARS", "opts": ["2 YEARS", "4 YEARS", "5 YEARS"]},
-    {"q": "Football match ki duration kitni hoti hai?", "a": "90 MINS", "opts": ["60 MINS", "90 MINS", "100 MINS"]},
-    {"q": "Sachin Tendulkar ko kya kaha jata hai?", "a": "GOD OF CRICKET", "opts": ["THE WALL", "CAPTAIN COOL", "GOD OF CRICKET"]},
-    {"q": "Chess mein sabse powerful piece kaunsa hai?", "a": "QUEEN", "opts": ["KING", "QUEEN", "ROOK"]},
-    {"q": "Neeraj Chopra kis khel se jude hain?", "a": "JAVELIN THROW", "opts": ["CRICKET", "JAVELIN THROW", "HOCKEY"]},
+    # --- SPACE & SCIENCE DISCOVERIES ---
+    {"id": "q94", "q": "Which space telescope discovered the oldest galaxy 'JADES-GS-z14-0' in 2024?", "a": "JAMES WEBB", "opts": ["HUBBLE", "JAMES WEBB", "KEPLER"]},
+    {"id": "q95", "q": "What is the name of NASA's mission to investigate Jupiter's moon Europa in 2024?", "a": "EUROPA CLIPPER", "opts": ["JUNO", "EUROPA CLIPPER", "ARTEMIS"]},
+    {"id": "q96", "q": "In 2025, scientists synthesized which new element on the 8th row of the periodic table?", "a": "UNUNENNIUM", "opts": ["OGANESSON", "UNUNENNIUM", "TENNESSINE"]},
+    {"id": "q97", "q": "Which mission successfully returned asteroid samples from Bennu to Earth?", "a": "OSIRIS-REx", "opts": ["HAYABUSA2", "OSIRIS-REx", "DART"]},
 
-    # --- IMPOSSIBLE (Streak Breakers) ---
-    {"q": "Coca-Cola ka original color kya tha?", "a": "GREEN", "opts": ["BLACK", "BROWN", "GREEN"]},
-    {"q": "Octopus ke kitne dil (hearts) hote hain?", "a": "3", "opts": ["1", "3", "9"]},
-    {"q": "Chess game ki shuruaat kis desh mein hui?", "a": "INDIA", "opts": ["CHINA", "RUSSIA", "INDIA"]},
-    {"q": "Giraffe ki jeebh (tongue) ka color kya hota hai?", "a": "BLUE/BLACK", "opts": ["RED", "PINK", "BLUE/BLACK"]},
-    {"q": "Mona Lisa painting kisne banayi thi?", "a": "LEONARDO DA VINCI", "opts": ["PICASSO", "VAN GOGH", "LEONARDO DA VINCI"]},
-    {"q": "Google ka purana naam kya tha?", "a": "BACKRUB", "opts": ["BACKRUB", "SEARCHER", "ALPHABET"]},
-    {"q": "Duniya ka sabse chhota desh (country)?", "a": "VATICAN CITY", "opts": ["MONACO", "VATICAN CITY", "NEPAL"]},
-    {"q": "Harry Potter ke ullu (owl) ka naam kya tha?", "a": "HEDWIG", "opts": ["DOBBY", "HEDWIG", "DRACO"]},
-    {"q": "Titanic ka captain kaun tha?", "a": "EDWARD SMITH", "opts": ["JACK DAWSON", "EDWARD SMITH", "JAMES CAMERON"]},
-    {"q": "PUBG kis saal launch hua tha?", "a": "2017", "opts": ["2017", "2018", "2016"]},
+    # --- THE KILLER STREAK (Mixed Extreme Hard) ---
+    {"id": "q98", "q": "Which global tech company was ordered to be broken up by the US Dept of Justice in 2025?", "a": "GOOGLE", "opts": ["APPLE", "GOOGLE", "META"]},
+    {"id": "q99", "q": "What is the first-ever 3D-printed rocket launched into orbit called?", "a": "TERRAN 1", "opts": ["STARSHIP", "TERRAN 1", "FALCON 9"]},
+    {"id": "q100", "q": "Which country became the first to approve a 'Gene-Editing' therapy (CRISPR) for sickle cell disease?", "a": "UK", "opts": ["USA", "UK", "CHINA"]},
 
-    # --- EASY / WARMUP ---
-    {"q": "India ki capital kya hai?", "a": "DELHI", "opts": ["MUMBAI", "DELHI", "KOLKATA"]},
-    {"q": "Rainbow mein kitne colors hote hain?", "a": "7", "opts": ["5", "7", "9"]},
-    {"q": "Cricket team mein kitne players hote hain?", "a": "11", "opts": ["10", "11", "12"]},
-    {"q": "H2O kiska formula hai?", "a": "WATER", "opts": ["AIR", "WATER", "FIRE"]},
-    {"q": "Computer ka dimag kise kehte hain?", "a": "CPU", "opts": ["MOUSE", "CPU", "KEYBOARD"]},
+    # --- ECONOMY & FINANCE ---
+    {"id": "q101", "q": "Which cryptocurrency hit a record $100,000 for the first time in late 2024/25?", "a": "BITCOIN", "opts": ["ETHEREUM", "BITCOIN", "SOLANA"]},
+    {"id": "q102", "q": "Who is the current Managing Director of the IMF (2025)?", "a": "KRISTALINA GEORGIEVA", "opts": ["KRISTALINA GEORGIEVA", "AJAY BANGA", "CHRISTINE LAGARDE"]},
+    {"id": "q103", "q": "Which company became the world's most valuable by market cap in 2024 due to AI?", "a": "NVIDIA", "opts": ["MICROSOFT", "NVIDIA", "APPLE"]},
+
+    # --- MORE HARD GK (Q104 - Q175) ---
+    {"id": "q104", "q": "Which city is hosting the 2028 Summer Olympics?", "a": "LOS ANGELES", "opts": ["PARIS", "LOS ANGELES", "BRISBANE"]},
+    {"id": "q105", "q": "What is the name of the largest volcano in the Solar System?", "a": "OLYMPUS MONS", "opts": ["MOUNT EVEREST", "OLYMPUS MONS", "MAUNA KEA"]},
+    {"id": "q106", "q": "Which blood component is responsible for clotting?", "a": "PLATELETS", "opts": ["PLASMA", "PLATELETS", "HEMOGLOBIN"]},
+    {"id": "q107", "q": "In computer science, what is the time complexity of a Binary Search?", "a": "O(log n)", "opts": ["O(n)", "O(log n)", "O(n^2)"]},
+    {"id": "q108", "q": "Who wrote the famous book 'A Brief History of Time'?", "a": "STEPHEN HAWKING", "opts": ["ALBERT EINSTEIN", "STEPHEN HAWKING", "ISAAC NEWTON"]},
+    {"id": "q109", "q": "Which country is the largest producer of Lithium?", "a": "AUSTRALIA", "opts": ["CHILE", "AUSTRALIA", "CHINA"]},
+    {"id": "q110", "q": "What is the only mammal that can truly fly?", "a": "BAT", "opts": ["FLYING SQUIRREL", "BAT", "OWL"]},
+    {"id": "q111", "q": "Which part of the cell is known as the 'Powerhouse'?", "a": "MITOCHONDRIA", "opts": ["NUCLEUS", "MITOCHONDRIA", "RIBOSOME"]},
+    {"id": "q112", "q": "What is the chemical formula for Ozone?", "a": "O3", "opts": ["O2", "O3", "CO2"]},
+    {"id": "q113", "q": "Which country invented the game of Chess?", "a": "INDIA", "opts": ["CHINA", "INDIA", "RUSSIA"]},
+    {"id": "q114", "q": "What is the maximum speed of a cheetah?", "a": "120 KM/H", "opts": ["80 KM/H", "120 KM/H", "150 KM/H"]},
+    {"id": "q115", "q": "How many bits make up an IPv6 address?", "a": "128", "opts": ["32", "64", "128"]},
+    {"id": "q116", "q": "Which continent has no active volcanoes?", "a": "AUSTRALIA", "opts": ["AFRICA", "AUSTRALIA", "EUROPE"]},
+    {"id": "q117", "q": "What is the name of the process by which plants lose water through leaves?", "a": "TRANSPIRATION", "opts": ["PHOTOSYNTHESIS", "TRANSPIRATION", "OSMOSIS"]},
+    {"id": "q118", "q": "Who discovered the Law of Gravity?", "a": "ISAAC NEWTON", "opts": ["GALILEO", "ISAAC NEWTON", "EINSTEIN"]},
+    {"id": "q119", "q": "Which country is called the 'Land of White Elephants'?", "a": "THAILAND", "opts": ["INDIA", "THAILAND", "MYANMAR"]},
+    {"id": "q120", "q": "What is the pH value of pure water?", "a": "7", "opts": ["5", "7", "9"]},
+    {"id": "q121", "q": "Which language has the most native speakers?", "a": "MANDARIN CHINESE", "opts": ["ENGLISH", "MANDARIN CHINESE", "SPANISH"]},
+    {"id": "q122", "q": "How many planets in our solar system have rings?", "a": "4", "opts": ["1", "2", "4"]},
+    {"id": "q123", "q": "What is the main component of natural gas?", "a": "METHANE", "opts": ["PROPANE", "METHANE", "BUTANE"]},
+    {"id": "q124", "q": "Which bone is the largest in the human body?", "a": "FEMUR", "opts": ["TIBIA", "FEMUR", "SKULL"]},
+    {"id": "q125", "q": "What is the SI unit of electric current?", "a": "AMPERE", "opts": ["VOLT", "WATT", "AMPERE"]},
+    {"id": "q126", "q": "Which country is the world's largest exporter of coffee?", "a": "BRAZIL", "opts": ["VIETNAM", "COLOMBIA", "BRAZIL"]},
+    {"id": "q127", "q": "How many players are on a water polo team?", "a": "7", "opts": ["6", "7", "11"]},
+    {"id": "q128", "q": "What is the capital of South Korea?", "a": "SEOUL", "opts": ["BUSAN", "SEOUL", "TOKYO"]},
+    {"id": "q129", "q": "Which is the only planet that rotates clockwise?", "a": "VENUS", "opts": ["MARS", "VENUS", "NEPTUNE"]},
+    {"id": "q130", "q": "What is the chemical name of common salt?", "a": "SODIUM CHLORIDE", "opts": ["SODIUM CHLORIDE", "POTASSIUM NITRATE", "CALCIUM CARBONATE"]},
+    {"id": "q131", "q": "Which is the longest river in Asia?", "a": "YANGTZE", "opts": ["GANGA", "MEKONG", "YANGTZE"]},
+    {"id": "q132", "q": "In which year did the French Revolution begin?", "a": "1789", "opts": ["1776", "1789", "1815"]},
+    {"id": "q133", "q": "What is the fear of heights called?", "a": "ACROPHOBIA", "opts": ["ACROPHOBIA", "AEROPHOBIA", "CLAUSTROPHOBIA"]},
+    {"id": "q134", "q": "How many teeth does an adult human have (including wisdom teeth)?", "a": "32", "opts": ["28", "30", "32"]},
+    {"id": "q135", "q": "Which instrument is used to measure earthquake intensity?", "a": "SEISMOGRAPH", "opts": ["BAROMETER", "SEISMOGRAPH", "HYGROMETER"]},
+    {"id": "q136", "q": "What is the value of the speed of sound in air (approx)?", "a": "343 M/S", "opts": ["343 M/S", "1000 M/S", "300,000 M/S"]},
+    {"id": "q137", "q": "Who was the first person to win two Nobel Prizes in different fields?", "a": "MARIE CURIE", "opts": ["ALBERT EINSTEIN", "MARIE CURIE", "LINUS PAULING"]},
+    {"id": "q138", "q": "Which element is used in pencils?", "a": "GRAPHITE", "opts": ["LEAD", "GRAPHITE", "CARBON"]},
+    {"id": "q139", "q": "What is the capital of Brazil?", "a": "BRASILIA", "opts": ["RIO DE JANEIRO", "SAO PAULO", "BRASILIA"]},
+    {"id": "q140", "q": "How many hearts does an earthworm have?", "a": "5", "opts": ["1", "5", "0"]},
+    {"id": "q141", "q": "Which is the smallest bone in the human body?", "a": "STAPES", "opts": ["STAPES", "NASAL BONE", "PHALANGE"]},
+    {"id": "q142", "q": "What is the most dense planet in our solar system?", "a": "EARTH", "opts": ["JUPITER", "EARTH", "SATURN"]},
+    {"id": "q143", "q": "Who invented the telephone?", "a": "ALEXANDER GRAHAM BELL", "opts": ["THOMAS EDISON", "ALEXANDER GRAHAM BELL", "NIKOLA TESLA"]},
+    {"id": "q144", "q": "What is the boiling point of water at sea level?", "a": "100°C", "opts": ["90°C", "100°C", "120°C"]},
+    {"id": "q145", "q": "Which gas is used in fire extinguishers?", "a": "CARBON DIOXIDE", "opts": ["NITROGEN", "OXYGEN", "CARBON DIOXIDE"]},
+    {"id": "q146", "q": "What is the currency of Russia?", "a": "RUBLE", "opts": ["YEN", "RUBLE", "DINAR"]},
+    {"id": "q147", "q": "How many players are on a basketball team on court?", "a": "5", "opts": ["5", "6", "11"]},
+    {"id": "q148", "q": "Which is the tallest grass in the world?", "a": "BAMBOO", "opts": ["WHEAT", "SUGARCANE", "BAMBOO"]},
+    {"id": "q149", "q": "Who painted the 'The Last Supper'?", "a": "LEONARDO DA VINCI", "opts": ["PICASSO", "LEONARDO DA VINCI", "MICHELANGELO"]},
+    {"id": "q150", "q": "Which is the largest organ in the human body?", "a": "SKIN", "opts": ["LIVER", "SKIN", "INTESTINE"]},
+    {"id": "q151", "q": "What is the most common element in the universe?", "a": "HYDROGEN", "opts": ["OXYGEN", "HYDROGEN", "HELIUM"]},
+    {"id": "q152", "q": "In which city is the Burj Khalifa located?", "a": "DUBAI", "opts": ["ABU DHABI", "DUBAI", "RIYADH"]},
+    {"id": "q153", "q": "How many oceans are there on Earth?", "a": "5", "opts": ["4", "5", "7"]},
+    {"id": "q154", "q": "What is the primary gas in the Sun?", "a": "HYDROGEN", "opts": ["HELIUM", "HYDROGEN", "OXYGEN"]},
+    {"id": "q155", "q": "Which animal is the symbol of the WWF?", "a": "GIANT PANDA", "opts": ["TIGER", "GIANT PANDA", "ELEPHANT"]},
+    {"id": "q156", "q": "What is the capital of Germany?", "a": "BERLIN", "opts": ["MUNICH", "BERLIN", "HAMBURG"]},
+    {"id": "q157", "q": "How many states does the USA have?", "a": "50", "opts": ["48", "50", "52"]},
+    {"id": "q158", "q": "Which planet is closest to the Sun?", "a": "MERCURY", "opts": ["VENUS", "MERCURY", "EARTH"]},
+    {"id": "q159", "q": "Who wrote 'Romeo and Juliet'?", "a": "SHAKESPEARE", "opts": ["CHARLES DICKENS", "SHAKESPEARE", "MARK TWAIN"]},
+    {"id": "q160", "q": "What is the chemical symbol for Silver?", "a": "Ag", "opts": ["Au", "Ag", "Si"]},
+    {"id": "q161", "q": "Which country is the smallest in the world?", "a": "VATICAN CITY", "opts": ["MONACO", "VATICAN CITY", "SAN MARINO"]},
+    {"id": "q162", "q": "What is the currency of the UK?", "a": "POUND", "opts": ["EURO", "POUND", "DOLLAR"]},
+    {"id": "q163", "q": "Which is the largest desert in the world?", "a": "ANTARCTIC DESERT", "opts": ["SAHARA", "GOBI", "ANTARCTIC DESERT"]},
+    {"id": "q164", "q": "How many bones are in a shark's body?", "a": "0", "opts": ["0", "200", "500"]},
+    {"id": "q165", "q": "What is the capital of France?", "a": "PARIS", "opts": ["LYON", "MARSEILLE", "PARIS"]},
+    {"id": "q166", "q": "Who was the first man to walk on the moon?", "a": "NEIL ARMSTRONG", "opts": ["BUZZ ALDRIN", "NEIL ARMSTRONG", "YURI GAGARIN"]},
+    {"id": "q167", "q": "What is the largest internal organ in humans?", "a": "LIVER", "opts": ["HEART", "LIVER", "KIDNEY"]},
+    {"id": "q168", "q": "Which is the largest planet in our solar system?", "a": "JUPITER", "opts": ["SATURN", "JUPITER", "EARTH"]},
+    {"id": "q169", "q": "How many days are in a leap year?", "a": "366", "opts": ["365", "366", "367"]},
+    {"id": "q170", "q": "What is the capital of Japan?", "a": "TOKYO", "opts": ["KYOTO", "OSAKA", "TOKYO"]},
+    {"id": "q171", "q": "Who invented the light bulb?", "a": "THOMAS EDISON", "opts": ["THOMAS EDISON", "NIKOLA TESLA", "GRAHAM BELL"]},
+    {"id": "q172", "q": "Which is the longest river in the world?", "a": "NILE", "opts": ["AMAZON", "NILE", "MISSISSIPPI"]},
+    {"id": "q173", "q": "What is the capital of India?", "a": "NEW DELHI", "opts": ["MUMBAI", "NEW DELHI", "KOLKATA"]},
+    {"id": "q174", "q": "How many colors are in a rainbow?", "a": "7", "opts": ["6", "7", "8"]},
+    {"id": "q175", "q": "Which planet is known as the Blue Planet?", "a": "EARTH", "opts": ["NEPTUNE", "URANUS", "EARTH"]},
     
-    # --- MEDIUM ---
-    {"q": "Human body mein kitni haddiyan (bones) hoti hain?", "a": "206", "opts": ["206", "208", "300"]},
-    {"q": "Duniya ka sabse bada janwar (animal) kaunsa hai?", "a": "BLUE WHALE", "opts": ["ELEPHANT", "BLUE WHALE", "GIRAFFE"]},
-    {"q": "Facebook ka malik kaun hai?", "a": "MARK ZUCKERBERG", "opts": ["ELON MUSK", "MARK ZUCKERBERG", "BILL GATES"]},
-    {"q": "Zero (0) kisne invent kiya tha?", "a": "ARYABHATTA", "opts": ["NEWTON", "ARYABHATTA", "EINSTEIN"]},
-    {"q": "Punjab mein kitni nadiya (rivers) hain?", "a": "5", "opts": ["5", "7", "3"]},
+    # --- TRICKY & LOGIC ---
+    {"id": "q16", "q": "How many months have 28 days?", "a": "ALL 12", "opts": ["1 (FEBRUARY)", "6", "ALL 12"]},
+    {"id": "q17", "q": "What has keys but can't open locks?", "a": "PIANO", "opts": ["DOOR", "PIANO", "TREASURE"]},
+    {"id": "q18", "q": "If you are running in a race and pass the person in 2nd place, what place are you in?", "a": "2ND PLACE", "opts": ["1ST PLACE", "2ND PLACE", "3RD PLACE"]},
+    {"id": "q19", "q": "I speak without a mouth and hear without ears. What am I?", "a": "ECHO", "opts": ["WIND", "ECHO", "GHOST"]},
+    {"id": "q20", "q": "Which is heavier: a ton of bricks or a ton of feathers?", "a": "BOTH EQUAL", "opts": ["BRICKS", "FEATHERS", "BOTH EQUAL"]},
+
+        # --- EXTREME HARD & TRIVIA (Brain Teasers) ---
+    {"id": "q26", "q": "What was the original name of Roblox when it was created in 2004?", "a": "DYNABLOCKS", "opts": ["ROBLOXIA", "DYNABLOCKS", "BLOCKLAND"]},
+    {"id": "q27", "q": "Which element has the highest melting point on the periodic table?", "a": "TUNGSTEN", "opts": ["TITANIUM", "TUNGSTEN", "OSMIUM"]},
+    {"id": "q28", "q": "What is the most abundant protein found in the human body?", "a": "COLLAGEN", "opts": ["KERATIN", "COLLAGEN", "HEMOGLOBIN"]},
+    {"id": "q29", "q": "In Python, which magic method is used to initialize a new object?", "a": "__init__", "opts": ["__start__", "__init__", "__main__"]},
+    {"id": "q30", "q": "What is the rarest naturally occurring element in the Earth's crust?", "a": "ASTATINE", "opts": ["FRANCIUM", "ASTATINE", "RHODIUM"]},
     
-    # --- TRICKY (Log Galti Karenge) ---
-    {"q": "Solar System ka sabse garam (hottest) planet?", "a": "VENUS", "opts": ["MERCURY", "VENUS", "MARS"]},
-    {"q": "Australia ki capital kya hai?", "a": "CANBERRA", "opts": ["SYDNEY", "MELBOURNE", "CANBERRA"]},
-    {"q": "Kitne months mein 28 din hote hain?", "a": "ALL 12", "opts": ["1 (FEB)", "ALL 12", "6"]},
-    {"q": "Tomato (Tamatar) kya hai?", "a": "FRUIT", "opts": ["VEGETABLE", "FRUIT", "ROOT"]},
-    {"q": "Mount Everest kis desh mein hai?", "a": "NEPAL", "opts": ["INDIA", "CHINA", "NEPAL"]},
+    # --- DEEP GENERAL KNOWLEDGE ---
+    {"id": "q31", "q": "What is the specific name for the dot over the lowercase letters 'i' and 'j'?", "a": "TITTLE", "opts": ["JOT", "TITTLE", "PUNCT"]},
+    {"id": "q32", "q": "Which country has the most time zones in the world (including overseas territories)?", "a": "FRANCE", "opts": ["RUSSIA", "FRANCE", "UNITED STATES"]},
+    {"id": "q33", "q": "What is the name of the supermassive black hole at the center of the Milky Way?", "a": "SAGITTARIUS A*", "opts": ["ANDROMEDA M31", "SAGITTARIUS A*", "CYGNUS X-1"]},
+    {"id": "q34", "q": "I have branches, but no fruit, trunk, or leaves. What am I?", "a": "A BANK", "opts": ["A RIVER", "A BANK", "A LIBRARY"]},
+    {"id": "q35", "q": "What is the hardest substance produced in the human body?", "a": "TOOTH ENAMEL", "opts": ["BONE", "TOOTH ENAMEL", "KERATIN"]},
     
-    # --- HARD (General Knowledge) ---
-    {"q": "Human Body ki sabse chhoti bone kahan hoti hai?", "a": "EAR", "opts": ["NOSE", "EAR", "FINGER"]},
-    {"q": "Bitcoin ka inventor kaun hai?", "a": "SATOSHI NAKAMOTO", "opts": ["ELON MUSK", "VITALIK", "SATOSHI NAKAMOTO"]},
-    {"q": "India ka Iron Man kise kehte hain?", "a": "SARDAR PATEL", "opts": ["GANDHI JI", "SARDAR PATEL", "BHAGAT SINGH"]},
-    {"q": "Light ki speed (approx) kitni hai?", "a": "3 LAKH KM/S", "opts": ["3 LAKH KM/S", "1 LAKH KM/S", "SOUND SPEED"]},
-    {"q": "Periodic Table ka pehla element kaunsa hai?", "a": "HYDROGEN", "opts": ["HELIUM", "HYDROGEN", "OXYGEN"]},
-    {"q": "Wifi ka full form kya hai?", "a": "WIRELESS FIDELITY", "opts": ["WIRELESS FIBER", "WIRELESS FIDELITY", "WIRELESS FIX"]},
-    {"q": "Titanic ship kab dooba tha?", "a": "1912", "opts": ["1905", "1912", "1920"]},
-    {"q": "GTA V game kab release hua tha?", "a": "2013", "opts": ["2013", "2015", "2011"]},
-    {"q": "Chess board mein total kitne squares hote hain?", "a": "64", "opts": ["64", "32", "100"]},
-    {"q": "Duniya mein sabse zyada islands kis desh mein hain?", "a": "SWEDEN", "opts": ["INDONESIA", "SWEDEN", "PHILIPPINES"]},
+    # --- ADVANCED LOGIC & HISTORY ---
+    {"id": "q36", "q": "Which is the only continent situated in all four hemispheres of the Earth?", "a": "AFRICA", "opts": ["AFRICA", "ASIA", "SOUTH AMERICA"]},
+    {"id": "q37", "q": "What was the name of the very first computer virus created in 1971?", "a": "CREEPER", "opts": ["ILOVEYOU", "CREEPER", "MORRIS"]},
+    {"id": "q38", "q": "What is the next number in this logic sequence: 2, 6, 12, 20, 30, ...?", "a": "42", "opts": ["40", "42", "44"]},
+    {"id": "q39", "q": "Who was the only US President to serve two non-consecutive terms?", "a": "GROVER CLEVELAND", "opts": ["THEODORE ROOSEVELT", "GROVER CLEVELAND", "WOODROW WILSON"]},
+    {"id": "q40", "q": "How many keys are there on a standard grand piano?", "a": "88", "opts": ["76", "88", "96"]},
 
-    # --- BASIC & WARMUP (Round 1-5) ---
-    {"q": "India ka National Bird kaunsa hai?", "a": "PEACOCK", "opts": ["EAGLE", "PEACOCK", "PARROT"]},
-    {"q": "H2O kiska formula hai?", "a": "WATER", "opts": ["AIR", "WATER", "OIL"]},
-    {"q": "Triangle mein kitni sides hoti hain?", "a": "3", "opts": ["3", "4", "5"]},
-    {"q": "Computer ka brain kise kehte hain?", "a": "CPU", "opts": ["RAM", "CPU", "GPU"]},
-    {"q": "1 saal mein kitne weeks hote hain?", "a": "52", "opts": ["48", "50", "52"]},
-    {"q": "Rainbow mein kitne colors hote hain?", "a": "7", "opts": ["5", "7", "9"]},
-    {"q": "Earth ke sabse paas ka Planet?", "a": "VENUS", "opts": ["MARS", "VENUS", "JUPITER"]},
-    {"q": "Light ki speed (approx) kitni hai?", "a": "3 LAKH KM/S", "opts": ["3 LAKH KM/S", "1 LAKH KM/S", "5 LAKH KM/S"]},
-    {"q": "Solar system ka sabse bada planet?", "a": "JUPITER", "opts": ["SATURN", "JUPITER", "EARTH"]},
-    {"q": "Duniya ki sabse unchi choti (peak)?", "a": "MT. EVEREST", "opts": ["K2", "MT. EVEREST", "KANCHENJUNGA"]},
+        # --- GEOGRAPHY & GLOBAL EXTREMES (Hard) ---
+    {"id": "q46", "q": "Which country officially has the most time zones in the world?", "a": "FRANCE", "opts": ["RUSSIA", "USA", "FRANCE"]},
+    {"id": "q47", "q": "Which is the only continent situated in all four hemispheres?", "a": "AFRICA", "opts": ["ASIA", "AFRICA", "EUROPE"]},
+    {"id": "q48", "q": "What is the smallest ocean in the world?", "a": "ARCTIC OCEAN", "opts": ["INDIAN", "ARCTIC OCEAN", "SOUTHERN"]},
+    {"id": "q49", "q": "What is the capital city of Canada?", "a": "OTTAWA", "opts": ["TORONTO", "OTTAWA", "VANCOUVER"]},
+    {"id": "q50", "q": "Which African river crosses the Equator twice?", "a": "CONGO RIVER", "opts": ["AMAZON", "NILE", "CONGO RIVER"]},
+    {"id": "q51", "q": "In which country can you find the world's largest salt flat, Salar de Uyuni?", "a": "BOLIVIA", "opts": ["CHILE", "BOLIVIA", "ARGENTINA"]},
+    {"id": "q52", "q": "Which country is known as the 'Land of a Thousand Lakes'?", "a": "FINLAND", "opts": ["CANADA", "FINLAND", "NORWAY"]},
 
-    # --- MEDIUM & TRICKY (Round 6-10) ---
-    {"q": "Australia ki Capital kya hai?", "a": "CANBERRA", "opts": ["SYDNEY", "MELBOURNE", "CANBERRA"]},
-    {"q": "Goku ki sabse powerful form?", "a": "ULTRA INSTINCT", "opts": ["SUPER SAIYAN 3", "ULTRA INSTINCT", "GEAR 5"]},
-    {"q": "PUBG kis saal launch hua?", "a": "2017", "opts": ["2016", "2017", "2018"]},
-    {"q": "Human heart mein kitne chambers hote hain?", "a": "4", "opts": ["2", "4", "6"]},
-    {"q": "Python language kab bani thi?", "a": "1991", "opts": ["1991", "1995", "2000"]},
-    {"q": "ISRO ka headquarter kahan hai?", "a": "BENGALURU", "opts": ["DELHI", "MUMBAI", "BENGALURU"]},
-    {"q": "Zero (0) kisne invent kiya?", "a": "ARYABHATTA", "opts": ["EINSTEIN", "ARYABHATTA", "NEWTON"]},
-    {"q": "Minecraft ka creator kaun hai?", "a": "NOTCH", "opts": ["NOTCH", "JEB", "ELON MUSK"]},
-    {"q": "Duniya ka sabse bada desert?", "a": "SAHARA", "opts": ["THAR", "SAHARA", "GOBI"]},
-    {"q": "1 GB mein kitne MB hote hain?", "a": "1024", "opts": ["1000", "1024", "1056"]},
+    # --- ADVANCED SCIENCE & BODY ---
+    {"id": "q53", "q": "What is the only human organ capable of natural regeneration of lost tissue?", "a": "LIVER", "opts": ["HEART", "LIVER", "KIDNEY"]},
+    {"id": "q54", "q": "Which subatomic particle has no electric charge?", "a": "NEUTRON", "opts": ["PROTON", "ELECTRON", "NEUTRON"]},
+    {"id": "q55", "q": "What is the most abundant gas in the Earth's atmosphere?", "a": "NITROGEN", "opts": ["OXYGEN", "NITROGEN", "ARGON"]},
+    {"id": "q56", "q": "Which part of the human brain is responsible for high-level cognitive skills?", "a": "PREFRONTAL CORTEX", "opts": ["CEREBELLUM", "PREFRONTAL CORTEX", "OCCIPITAL LOBE"]},
+    {"id": "q57", "q": "What is the velocity of light in a vacuum (approx)?", "a": "300,000 KM/S", "opts": ["150,000 KM/S", "300,000 KM/S", "1,000,000 KM/S"]},
+    {"id": "q58", "q": "Which metal has the symbol 'Sn' on the periodic table?", "a": "TIN", "opts": ["SILVER", "TIN", "ANTIMONY"]},
 
-    # --- HARD & GENIUS (Round 11-15) ---
-    {"q": "Titanic kis saal dooba tha?", "a": "1912", "opts": ["1905", "1912", "1920"]},
-    {"q": "Duniya ka sabse chhota country?", "a": "VATICAN CITY", "opts": ["MONACO", "VATICAN CITY", "SINGAPORE"]},
-    {"q": "Bitcoin ka inventor?", "a": "SATOSHI NAKAMOTO", "opts": ["ELON MUSK", "SATOSHI NAKAMOTO", "BILL GATES"]},
-    {"q": "Mona Lisa painting kisne banayi?", "a": "LEONARDO DA VINCI", "opts": ["PICASSO", "LEONARDO DA VINCI", "VAN GOGH"]},
-    {"q": "Human body ki sabse badi haddi (bone)?", "a": "FEMUR", "opts": ["SKULL", "FEMUR", "SPINE"]},
-    {"q": "Periodic table ka pehla element?", "a": "HYDROGEN", "opts": ["OXYGEN", "HYDROGEN", "HELIUM"]},
-    {"q": "Japan ki currency kya hai?", "a": "YEN", "opts": ["DOLLAR", "WON", "YEN"]},
-    {"q": "Facebook ka purana naam?", "a": "THEFACEBOOK", "opts": ["THEFACEBOOK", "META", "FACEMASH"]},
-    {"q": "Duniya ki sabse lambi nadi (river)?", "a": "NILE", "opts": ["AMAZON", "NILE", "GANGA"]},
-    {"q": "Blood pressure napne ka instrument?", "a": "SPHYGMOMANOMETER", "opts": ["THERMOMETER", "SPHYGMOMANOMETER", "BAROMETER"]},
+    # --- TECH, COMPUTING & HISTORY ---
+    {"id": "q59", "q": "What does 'HTTP' status code 418 represent as an April Fools' joke?", "a": "I'M A TEAPOT", "opts": ["GATEWAY TIMEOUT", "I'M A TEAPOT", "PAYMENT REQUIRED"]},
+    {"id": "q60", "q": "Who is credited with inventing the World Wide Web (WWW)?", "a": "TIM BERNERS-LEE", "opts": ["BILL GATES", "TIM BERNERS-LEE", "STEVE JOBS"]},
+    {"id": "q61", "q": "In which year was the first domain name ever registered?", "a": "1885", "opts": ["1983", "1985", "1991"]},
+    {"id": "q62", "q": "Which cryptographic hash function was designed by the NSA?", "a": "SHA-256", "opts": ["MD5", "SHA-256", "BCRYPT"]},
+    {"id": "q63", "q": "What was the name of the first artificial satellite launched into space?", "a": "SPUTNIK 1", "opts": ["APOLLO 11", "SPUTNIK 1", "VOYAGER 1"]},
 
-    # --- STREAK BREAKERS (Round 16-20) ---
-    {"q": "Octopus ke kitne dil (hearts) hote hain?", "a": "3", "opts": ["1", "3", "8"]},
-    {"q": "Eiffel Tower kahan hai?", "a": "PARIS", "opts": ["LONDON", "PARIS", "ROME"]},
-    {"q": "Instagram kis saal launch hua?", "a": "2010", "opts": ["2008", "2010", "2012"]},
-    {"q": "Spider-Man ka real name?", "a": "PETER PARKER", "opts": ["MILES MORALES", "PETER PARKER", "BRUCE WAYNE"]},
-    {"q": "India ka Iron Man kise kehte hain?", "a": "SARDAR PATEL", "opts": ["GANDHI JI", "SARDAR PATEL", "NEHRU JI"]},
-    {"q": "Duniya mein kitne continents hain?", "a": "7", "opts": ["5", "7", "8"]},
-    {"q": "Chess board mein kitne squares hote hain?", "a": "64", "opts": ["32", "64", "100"]},
-    {"q": "Kis desh ko 'Land of Rising Sun' kehte hain?", "a": "JAPAN", "opts": ["INDIA", "JAPAN", "CHINA"]},
-    {"q": "Tomato kya hai?", "a": "FRUIT", "opts": ["VEGETABLE", "FRUIT", "ROOT"]},
-    {"q": "Harry Potter mein kitni total movies hain?", "a": "8", "opts": ["7", "8", "9"]},
+    # --- ELITE LOGIC & MATHEMATICS ---
+    {"id": "q64", "q": "What is the value of 'Pi' (π) to the first 5 decimal places?", "a": "3.14159", "opts": ["3.14159", "3.14162", "3.14258"]},
+    {"id": "q65", "q": "How many bits are there in a single 'Kilobyte' (KB) in standard binary?", "a": "8192", "opts": ["1024", "8000", "8192"]},
+    {"id": "q66", "q": "What is the only even prime number?", "a": "2", "opts": ["0", "2", "4"]},
+    {"id": "q67", "q": "What is the sum of the first three prime numbers?", "a": "10", "opts": ["6", "10", "15"]},
 
-    # --- THE ELIMINATORS (Mixed Tough) ---
-    {"q": "India ka National Anthem kisne likha?", "a": "TAGORE", "opts": ["GANDHI", "TAGORE", "NEHRU"]},
-    {"q": "Duniya ka sabse chhota ocean?", "a": "ARCTIC", "opts": ["INDIAN", "PACIFIC", "ARCTIC"]},
-    {"q": "Elon Musk ki car company?", "a": "TESLA", "opts": ["TESLA", "SPACEX", "FORD"]},
-    {"q": "Kis planet ko 'Red Planet' kehte hain?", "a": "MARS", "opts": ["MARS", "VENUS", "SATURN"]},
-    {"q": "Human eye kitne megapixels ki hoti hai?", "a": "576 MP", "opts": ["100 MP", "576 MP", "1000 MP"]},
-    {"q": "Duniya ka sabse bada bird?", "a": "OSTRICH", "opts": ["EAGLE", "OSTRICH", "PEACOCK"]},
-    {"q": "Google ka purana naam?", "a": "BACKRUB", "opts": ["BACKRUB", "SEARCHER", "ALPHABET"]},
-    {"q": "1 ton mein kitne kg hote hain?", "a": "1000", "opts": ["100", "500", "1000"]},
-    {"q": "Naruto ka favorite food?", "a": "RAMEN", "opts": ["SUSHI", "RAMEN", "DUMPLINGS"]},
-    {"q": "Youtube ki pehli video kisne upload ki?", "a": "JAWED", "opts": ["PEWDIEPIE", "JAWED", "MRBEAST"]},
+        # --- GLOBAL AFFAIRS & GEOPOLITICS ---
+    {"id": "q176", "q": "Which country officially withdrew from the European Union (Brexit) in 2020?", "a": "UNITED KINGDOM", "opts": ["FRANCE", "UNITED KINGDOM", "GERMANY"]},
+    {"id": "q177", "q": "What is the capital city of Ukraine?", "a": "KYIV", "opts": ["MOSCOW", "KYIV", "WARSAW"]},
+    {"id": "q178", "q": "Which country shares the longest border with India?", "a": "BANGLADESH", "opts": ["CHINA", "PAKISTAN", "BANGLADESH"]},
+    {"id": "q179", "q": "Who is the current President of France (2026)?", "a": "EMMANUEL MACRON", "opts": ["NICOLAS SARKOZY", "EMMANUEL MACRON", "MARINE LE PEN"]},
+    {"id": "q180", "q": "Which ocean is known as the 'Sargasso Sea' located in?", "a": "ATLANTIC OCEAN", "opts": ["INDIAN OCEAN", "PACIFIC OCEAN", "ATLANTIC OCEAN"]},
+    {"id": "q181", "q": "What is the official language of Brazil?", "a": "PORTUGUESE", "opts": ["SPANISH", "PORTUGUESE", "BRAZILIAN"]},
 
-    # --- MORE BRAIN TEASERS ---
-    {"q": "India kab aazad hua?", "a": "1947", "opts": ["1947", "1950", "1942"]},
-    {"q": "Duniya ka sabse bada island?", "a": "GREENLAND", "opts": ["ICELAND", "GREENLAND", "SRI LANKA"]},
-    {"q": "Kis gas ko 'Laughing Gas' kehte hain?", "a": "NITROUS OXIDE", "opts": ["OXYGEN", "NITROUS OXIDE", "HELIUM"]},
-    {"q": "Coca-Cola ka original color?", "a": "GREEN", "opts": ["BLACK", "GREEN", "RED"]},
-    {"q": "Duniya ka sabse tezz bird?", "a": "PEREGRINE FALCON", "opts": ["EAGLE", "PEREGRINE FALCON", "SWIFT"]},
-    {"q": "NASA kahan ki space agency hai?", "a": "USA", "opts": ["USA", "RUSSIA", "INDIA"]},
-    {"q": "Penicillin kisne discover kiya?", "a": "ALEXANDER FLEMING", "opts": ["NEWTON", "ALEXANDER FLEMING", "EDISON"]},
-    {"q": "Cricket ka Bhagwan kise kehte hain?", "a": "SACHIN TENDULKAR", "opts": ["DHONI", "SACHIN TENDULKAR", "KOHLI"]},
-    {"q": "Chess mein kitne pieces (mohre) hote hain?", "a": "32", "opts": ["16", "32", "64"]},
-    {"q": "India ka sabse bada state (Area)?", "a": "RAJASTHAN", "opts": ["UP", "MP", "RAJASTHAN"]},
+    # --- ADVANCED BIOLOGY & HUMAN BODY ---
+    {"id": "q182", "q": "Which blood type is known as the 'Universal Donor'?", "a": "O NEGATIVE", "opts": ["AB POSITIVE", "O NEGATIVE", "A POSITIVE"]},
+    {"id": "q183", "q": "What is the scientific name for the collarbone?", "a": "CLAVICLE", "opts": ["SCAPULA", "CLAVICLE", "STERNUM"]},
+    {"id": "q184", "q": "Which organ in the human body produces insulin?", "a": "PANCREAS", "opts": ["LIVER", "PANCREAS", "STOMACH"]},
+    {"id": "q185", "q": "How many pairs of chromosomes do humans typically have?", "a": "23", "opts": ["23", "46", "22"]},
+    {"id": "q186", "q": "What is the main pigment responsible for skin color?", "a": "MELANIN", "opts": ["KERATIN", "MELANIN", "HEMOGLOBIN"]},
+    {"id": "q187", "q": "Which part of the eye is responsible for color vision?", "a": "CONES", "opts": ["RODS", "CONES", "RETINA"]},
 
-    # --- MIXED & TRICKY ---
-    {"q": "Kitne months mein 28 days hote hain?", "a": "ALL 12", "opts": ["1 (FEB)", "ALL 12", "6"]},
-    {"q": "GTA 5 kab release hua?", "a": "2013", "opts": ["2013", "2015", "2011"]},
-    {"q": "iPhone kis company ka hai?", "a": "APPLE", "opts": ["APPLE", "SAMSUNG", "GOOGLE"]},
-    {"q": "Duniya ka sabse meetha fruit?", "a": "STEVIA", "opts": ["MANGO", "STEVIA", "APPLE"]},
-    {"q": "Olympic rings mein kitne colors hote hain?", "a": "5", "opts": ["4", "5", "6"]},
-    {"q": "Duniya ka sabse purana dharam?", "a": "SANATAN DHARMA", "opts": ["SANATAN DHARMA", "ISLAM", "BUDDHISM"]},
-    {"q": "India ki sabse lambi train?", "a": "VIVEK EXPRESS", "opts": ["RAJDHANI", "SHATABDI", "VIVEK EXPRESS"]},
-    {"q": "Ek normal insan kitne din bina soye reh sakta hai?", "a": "11 DAYS", "opts": ["3 DAYS", "7 DAYS", "11 DAYS"]},
-    {"q": "Wifi ka full form?", "a": "WIRELESS FIDELITY", "opts": ["WIRELESS FIBER", "WIRELESS FIDELITY", "WIRELESS FIX"]},
-    {"q": "Duniya ka sabse bada stadium?", "a": "NARENDRA MODI STADIUM", "opts": ["MCG", "NARENDRA MODI STADIUM", "LORDS"]},
+    # --- SPACE & ASTROPHYSICS ---
+    {"id": "q188", "q": "What is the speed of light in kilometers per second (approx)?", "a": "300,000", "opts": ["150,000", "300,000", "500,000"]},
+    {"id": "q189", "q": "Which planet has a Great Red Spot?", "a": "JUPITER", "opts": ["MARS", "JUPITER", "SATURN"]},
+    {"id": "q190", "q": "What is the name of the first woman to go into space?", "a": "VALENTINA TERESHKOVA", "opts": ["SALLY RIDE", "VALENTINA TERESHKOVA", "KALPANA CHAWLA"]},
+    {"id": "q191", "q": "Which star is the closest to Earth after the Sun?", "a": "PROXIMA CENTAURI", "opts": ["SIRIUS", "ALPHA CENTAURI", "PROXIMA CENTAURI"]},
+    {"id": "q192", "q": "What is the study of the universe called?", "a": "COSMOLOGY", "opts": ["ASTRONOMY", "COSMOLOGY", "ASTROLOGY"]},
+    {"id": "q193", "q": "Which galaxy is the Milky Way set to collide with in billions of years?", "a": "ANDROMEDA", "opts": ["SOMBRERO", "ANDROMEDA", "TRIANGULUM"]},
 
-    # --- FINAL ROUND KILLERS ---
-    {"q": "Elon Musk ki company 'X' ka purana naam?", "a": "TWITTER", "opts": ["FACEBOOK", "TWITTER", "LINKEDIN"]},
-    {"q": "One Piece anime ka main character?", "a": "LUFFY", "opts": ["ZORO", "LUFFY", "SANJI"]},
-    {"q": "Duniya ka sabse pehla website?", "a": "CERN", "opts": ["GOOGLE", "CERN", "YAHOO"]},
-    {"q": "Duniya ka sabse bada flower?", "a": "RAFFLESIA", "opts": ["ROSE", "RAFFLESIA", "LOTUS"]},
-    {"q": "India ka sabse lamba bridge?", "a": "DHOLA-SADIYA", "opts": ["BANDRA-WORLI", "DHOLA-SADIYA", "HOWRAH"]},
-    {"q": "1 minute mein kitne seconds?", "a": "60", "opts": ["60", "100", "3600"]},
-    {"q": "Duniya ka sabse hard substance?", "a": "DIAMOND", "opts": ["GOLD", "IRON", "DIAMOND"]},
-    {"q": "Free Fire kis desh ka game hai?", "a": "SINGAPORE", "opts": ["CHINA", "INDIA", "SINGAPORE"]},
-    {"q": "Human eye ka resolution?", "a": "576 MP", "opts": ["100 MP", "576 MP", "800 MP"]},
-    {"q": "Duniya mein sabse zyada population?", "a": "INDIA", "opts": ["CHINA", "INDIA", "USA"]},
+    # --- TECHNOLOGY & DATA ---
+    {"id": "q194", "q": "What does 'RAM' stand for in computing?", "a": "RANDOM ACCESS MEMORY", "opts": ["READ ACCESS MEMORY", "RANDOM ACCESS MEMORY", "RAPID ACCESS MEMORY"]},
+    {"id": "q195", "q": "Which company created the iPhone?", "a": "APPLE", "opts": ["GOOGLE", "SAMSUNG", "APPLE"]},
+    {"id": "q196", "q": "In networking, what is the default port for HTTP?", "a": "80", "opts": ["21", "80", "443"]},
+    {"id": "q197", "q": "Who is the co-founder of Microsoft along with Bill Gates?", "a": "PAUL ALLEN", "opts": ["STEVE JOBS", "PAUL ALLEN", "MARK ZUCKERBERG"]},
+    {"id": "q198", "q": "What is the main language used for Android app development?", "a": "KOTLIN", "opts": ["SWIFT", "KOTLIN", "PHP"]},
+    {"id": "q199", "q": "Which social media platform was formerly known as 'Twitter'?", "a": "X", "opts": ["META", "X", "THREADS"]},
 
-    # --- THE LAST BATCH (100 TOTAL) ---
-    {"q": "Billi (Cat) kitne saal jeeti hai?", "a": "12-18 YEARS", "opts": ["5-10 YEARS", "12-18 YEARS", "20-30 YEARS"]},
-    {"q": "Shatranj (Chess) ki shuruaat kahan hui?", "a": "INDIA", "opts": ["CHINA", "RUSSIA", "INDIA"]},
-    {"q": "Duniya ka sabse poisonous sanp?", "a": "INLAND TAIPAN", "opts": ["COBRA", "INLAND TAIPAN", "PYTHON"]},
-    {"q": "India ka sabse rich person?", "a": "MUKESH AMBANI", "opts": ["ADANI", "MUKESH AMBANI", "TATA"]},
-    {"q": "Duniya ka sabse bada mammal?", "a": "BLUE WHALE", "opts": ["ELEPHANT", "BLUE WHALE", "SHARK"]},
-    {"q": "Earth kitne percent paani hai?", "a": "71%", "opts": ["50%", "71%", "90%"]},
-    {"q": "Sun kiska chakkar lagata hai?", "a": "MILKY WAY CENTER", "opts": ["EARTH", "MILKY WAY CENTER", "MOON"]},
-    {"q": "1 byte mein kitne bits?", "a": "8", "opts": ["4", "8", "16"]},
-    {"q": "Duniya ka sabse lamba rasta?", "a": "PAN-AMERICAN HIGHWAY", "opts": ["NH-44", "PAN-AMERICAN HIGHWAY", "ROUTE 66"]},
-    {"q": "Spider-man ka chacha ka naam?", "a": "BEN", "opts": ["BEN", "TONY", "BRUCE"]},
-    {"q": "Kis janwar ka doodh pink hota hai?", "a": "HIPPO", "opts": ["COW", "HIPPO", "GOAT"]},
-    {"q": "Sabse zyada islands kis desh mein hain?", "a": "SWEDEN", "opts": ["INDONESIA", "SWEDEN", "PHILIPPINES"]},
-    {"q": "India ka National River?", "a": "GANGA", "opts": ["YAMUNA", "GANGA", "NARMADA"]},
-    {"q": "Kaunsa janwar khade rehkar sota hai?", "a": "HORSE", "opts": ["DOG", "HORSE", "COW"]},
-    {"q": "Human brain kitne percent fat hai?", "a": "60%", "opts": ["20%", "60%", "90%"]},
-    {"q": "Ek hafte mein kitne minutes?", "a": "10080", "opts": ["1440", "10080", "5000"]},
-    {"q": "Duniya ka sabse bada jungle?", "a": "AMAZON", "opts": ["AMAZON", "SUNDARBANS", "CONGO"]},
-    {"q": "KGF hero ka naam?", "a": "YASH", "opts": ["PRABHAS", "YASH", "ALLU ARJUN"]},
-    {"q": "India mein total kitne states hain?", "a": "28", "opts": ["29", "28", "30"]},
-    {"q": "Duniya ka sabse mehnga item?", "a": "ANTIMATTER", "opts": ["DIAMOND", "ANTIMATTER", "GOLD"]},
+    # --- HISTORY & CULTURE ---
+    {"id": "q200", "q": "Who was the first President of the United States?", "a": "GEORGE WASHINGTON", "opts": ["ABRAHAM LINCOLN", "GEORGE WASHINGTON", "THOMAS JEFFERSON"]},
+    {"id": "q201", "q": "In which year did World War II end?", "a": "1945", "opts": ["1918", "1944", "1945"]},
+    {"id": "q202", "q": "Who was the 'Maid of Orleans'?", "a": "JOAN OF ARC", "opts": ["QUEEN VICTORIA", "JOAN OF ARC", "MARIE ANTOINETTE"]},
+    {"id": "q203", "q": "Which ancient civilization built the Great Wall?", "a": "CHINA", "opts": ["EGYPT", "CHINA", "ROME"]},
+    {"id": "q204", "q": "Who wrote 'The Communist Manifesto'?", "a": "KARL MARX", "opts": ["ADAM SMITH", "KARL MARX", "LENIN"]},
+    {"id": "q205", "q": "What was the currency of Germany before the Euro?", "a": "DEUTSCHE MARK", "opts": ["FRANC", "DEUTSCHE MARK", "LIRA"]},
+
+    # --- GENERAL KNOWLEDGE MIX (Q206 - Q275) ---
+    {"id": "q206", "q": "What is the chemical symbol for Iron?", "a": "Fe", "opts": ["Ir", "Fe", "In"]},
+    {"id": "q207", "q": "Which is the largest bird in the world?", "a": "OSTRICH", "opts": ["EMU", "OSTRICH", "EAGLE"]},
+    {"id": "q208", "q": "What is the capital of Italy?", "a": "ROME", "opts": ["VENICE", "ROME", "MILAN"]},
+    {"id": "q209", "q": "How many strings are on a standard violin?", "a": "4", "opts": ["4", "5", "6"]},
+    {"id": "q210", "q": "Which gas is known as the 'Silent Killer'?", "a": "CARBON MONOXIDE", "opts": ["CARBON DIOXIDE", "CARBON MONOXIDE", "NITROGEN"]},
+    {"id": "q211", "q": "What is the capital of Japan?", "a": "TOKYO", "opts": ["KYOTO", "TOKYO", "OSAKA"]},
+    {"id": "q212", "q": "Who discovered Penicillin?", "a": "ALEXANDER FLEMING", "opts": ["LOUIS PASTEUR", "ALEXANDER FLEMING", "JOSEPH LISTER"]},
+    {"id": "q213", "q": "Which planet is famous for its rings?", "a": "SATURN", "opts": ["JUPITER", "SATURN", "URANUS"]},
+    {"id": "q214", "q": "What is the largest country by area?", "a": "RUSSIA", "opts": ["CANADA", "USA", "RUSSIA"]},
+    {"id": "q215", "q": "Who painted 'The Starry Night'?", "a": "VINCENT VAN GOGH", "opts": ["CLAUDE MONET", "VINCENT VAN GOGH", "PABLO PICASSO"]},
+    {"id": "q216", "q": "What is the capital of Egypt?", "a": "CAIRO", "opts": ["ALEXANDRIA", "CAIRO", "GIZA"]},
+    {"id": "q217", "q": "Which is the smallest planet in our solar system?", "a": "MERCURY", "opts": ["MERCURY", "MARS", "VENUS"]},
+    {"id": "q218", "q": "Who invented the telephone?", "a": "ALEXANDER GRAHAM BELL", "opts": ["THOMAS EDISON", "ALEXANDER GRAHAM BELL", "NIKOLA TESLA"]},
+    {"id": "q219", "q": "What is the chemical formula for water?", "a": "H2O", "opts": ["CO2", "H2O", "O2"]},
+    {"id": "q220", "q": "How many continents are there?", "a": "7", "opts": ["5", "6", "7"]},
+    {"id": "q221", "q": "Which is the longest river in the world?", "a": "NILE", "opts": ["AMAZON", "NILE", "YANGTZE"]},
+    {"id": "q222", "q": "Who was the first man in space?", "a": "YURI GAGARIN", "opts": ["NEIL ARMSTRONG", "YURI GAGARIN", "BUZZ ALDRIN"]},
+    {"id": "q223", "q": "What is the capital of Spain?", "a": "MADRID", "opts": ["BARCELONA", "MADRID", "VALENCIA"]},
+    {"id": "q224", "q": "Which is the largest desert in the world?", "a": "ANTARCTIC DESERT", "opts": ["SAHARA", "GOBI", "ANTARCTIC DESERT"]},
+    {"id": "q225", "q": "What is the symbol for Gold?", "a": "Au", "opts": ["Ag", "Au", "Gd"]},
+    {"id": "q226", "q": "How many colors are in a rainbow?", "a": "7", "opts": ["6", "7", "8"]},
+    {"id": "q227", "q": "Who wrote 'Hamlet'?", "a": "WILLIAM SHAKESPEARE", "opts": ["CHARLES DICKENS", "WILLIAM SHAKESPEARE", "MARK TWAIN"]},
+    {"id": "q228", "q": "What is the capital of Australia?", "a": "CANBERRA", "opts": ["SYDNEY", "MELBOURNE", "CANBERRA"]},
+    {"id": "q229", "q": "Which planet is known as the Red Planet?", "a": "MARS", "opts": ["VENUS", "MARS", "JUPITER"]},
+    {"id": "q230", "q": "How many bones are in the human body?", "a": "206", "opts": ["200", "206", "210"]},
+    {"id": "q231", "q": "What is the capital of Germany?", "a": "BERLIN", "opts": ["MUNICH", "BERLIN", "HAMBURG"]},
+    {"id": "q232", "q": "Which is the largest ocean on Earth?", "a": "PACIFIC OCEAN", "opts": ["ATLANTIC OCEAN", "PACIFIC OCEAN", "INDIAN OCEAN"]},
+    {"id": "q233", "q": "Who discovered gravity?", "a": "ISAAC NEWTON", "opts": ["ALBERT EINSTEIN", "ISAAC NEWTON", "GALILEO GALILEI"]},
+    {"id": "q234", "q": "What is the capital of Canada?", "a": "OTTAWA", "opts": ["TORONTO", "OTTAWA", "VANCOUVER"]},
+    {"id": "q235", "q": "Which gas do plants absorb?", "a": "CARBON DIOXIDE", "opts": ["OXYGEN", "CARBON DIOXIDE", "NITROGEN"]},
+    {"id": "q236", "q": "What is the capital of Russia?", "a": "MOSCOW", "opts": ["ST. PETERSBURG", "MOSCOW", "KYIV"]},
+    {"id": "q237", "q": "How many strings are on a standard guitar?", "a": "6", "opts": ["4", "5", "6"]},
+    {"id": "q238", "q": "What is the currency of the USA?", "a": "DOLLAR", "opts": ["EURO", "POUND", "DOLLAR"]},
+    {"id": "q239", "q": "Who painted the 'Mona Lisa'?", "a": "LEONARDO DA VINCI", "opts": ["MICHELANGELO", "LEONARDO DA VINCI", "RAPHAEL"]},
+    {"id": "q240", "q": "What is the capital of France?", "a": "PARIS", "opts": ["MARSEILLE", "LYON", "PARIS"]},
+    {"id": "q241", "q": "Which is the tallest mountain in the world?", "a": "MOUNT EVEREST", "opts": ["K2", "MOUNT EVEREST", "LHOTSE"]},
+    {"id": "q242", "q": "How many days are in a leap year?", "a": "366", "opts": ["364", "365", "366"]},
+    {"id": "q243", "q": "What is the symbol for Silver?", "a": "Ag", "opts": ["Ag", "Au", "Si"]},
+    {"id": "q244", "q": "Who is the author of 'Harry Potter'?", "a": "J.K. ROWLING", "opts": ["J.R.R. TOLKIEN", "J.K. ROWLING", "GEORGE R.R. MARTIN"]},
+    {"id": "q245", "q": "What is the capital of India?", "a": "NEW DELHI", "opts": ["MUMBAI", "NEW DELHI", "KOLKATA"]},
+    {"id": "q246", "q": "Which planet is closest to the Sun?", "a": "MERCURY", "opts": ["MERCURY", "VENUS", "EARTH"]},
+    {"id": "q247", "q": "How many states are in the USA?", "a": "50", "opts": ["48", "49", "50"]},
+    {"id": "q248", "q": "What is the capital of China?", "a": "BEIJING", "opts": ["SHANGHAI", "BEIJING", "GUANGZHOU"]},
+    {"id": "q249", "q": "Which gas is most abundant in the atmosphere?", "a": "NITROGEN", "opts": ["OXYGEN", "NITROGEN", "ARGON"]},
+    {"id": "q250", "q": "What is the capital of the United Kingdom?", "a": "LONDON", "opts": ["MANCHESTER", "LONDON", "EDINBURGH"]},
+    {"id": "q251", "q": "Who invented the light bulb?", "a": "THOMAS EDISON", "opts": ["THOMAS EDISON", "NIKOLA TESLA", "ALEXANDER GRAHAM BELL"]},
+    {"id": "q252", "q": "What is the largest animal on Earth?", "a": "BLUE WHALE", "opts": ["ELEPHANT", "BLUE WHALE", "GIRAFFE"]},
+    {"id": "q253", "q": "What is the capital of Brazil?", "a": "BRASILIA", "opts": ["RIO DE JANEIRO", "BRASILIA", "SAO PAULO"]},
+    {"id": "q254", "q": "How many minutes are in an hour?", "a": "60", "opts": ["50", "60", "100"]},
+    {"id": "q255", "q": "What is the chemical symbol for Oxygen?", "a": "O", "opts": ["Ox", "O", "Oz"]},
+    {"id": "q256", "q": "Who was the first person to win a Nobel Prize?", "a": "WILHELM RONTGEN", "opts": ["WILHELM RONTGEN", "MARIE CURIE", "ALBERT EINSTEIN"]},
+    {"id": "q257", "q": "What is the capital of Mexico?", "a": "MEXICO CITY", "opts": ["MEXICO CITY", "CANCUN", "GUADALAJARA"]},
+    {"id": "q258", "q": "How many years are in a decade?", "a": "10", "opts": ["10", "50", "100"]},
+    {"id": "q259", "q": "What is the capital of Argentina?", "a": "BUENOS AIRES", "opts": ["SANTIAGO", "BUENOS AIRES", "LIMA"]},
+    {"id": "q260", "q": "Which planet is known as the Earth's twin?", "a": "VENUS", "opts": ["MARS", "VENUS", "JUPITER"]},
+    {"id": "q261", "q": "What is the capital of South Korea?", "a": "SEOUL", "opts": ["BUSAN", "SEOUL", "INCHEON"]},
+    {"id": "q262", "q": "How many hearts does an octopus have?", "a": "3", "opts": ["1", "2", "3"]},
+    {"id": "q263", "q": "What is the capital of Turkey?", "a": "ANKARA", "opts": ["ISTANBUL", "ANKARA", "IZMIR"]},
+    {"id": "q264", "q": "Which is the smallest country in the world?", "a": "VATICAN CITY", "opts": ["MONACO", "VATICAN CITY", "SAN MARINO"]},
+    {"id": "q265", "q": "What is the capital of Egypt?", "a": "CAIRO", "opts": ["ALEXANDRIA", "CAIRO", "LUXOR"]},
+    {"id": "q266", "q": "Who wrote 'The Great Gatsby'?", "a": "F. SCOTT FITZGERALD", "opts": ["ERNEST HEMINGWAY", "F. SCOTT FITZGERALD", "WILLIAM FAULKNER"]},
+    {"id": "q267", "q": "What is the capital of Thailand?", "a": "BANGKOK", "opts": ["PHUKET", "BANGKOK", "CHIANG MAI"]},
+    {"id": "q268", "q": "Which is the largest organ in the human body?", "a": "SKIN", "opts": ["LIVER", "SKIN", "HEART"]},
+    {"id": "q269", "q": "What is the capital of Switzerland?", "a": "BERN", "opts": ["ZURICH", "BERN", "GENEVA"]},
+    {"id": "q270", "q": "Who is the founder of Amazon?", "a": "JEFF BEZOS", "opts": ["ELON MUSK", "JEFF BEZOS", "BILL GATES"]},
+    {"id": "q271", "q": "What is the capital of Greece?", "a": "ATHENS", "opts": ["THESSALONIKI", "ATHENS", "PATRAS"]},
+    {"id": "q272", "q": "How many players are on a soccer team?", "a": "11", "opts": ["10", "11", "12"]},
+    {"id": "q273", "q": "What is the capital of Portugal?", "a": "LISBON", "opts": ["PORTO", "LISBON", "FARO"]},
+    {"id": "q274", "q": "Which planet is the furthest from the Sun?", "a": "NEPTUNE", "opts": ["URANUS", "NEPTUNE", "PLUTO"]},
+    {"id": "q275", "q": "What is the capital of New Zealand?", "a": "WELLINGTON", "opts": ["AUCKLAND", "WELLINGTON", "CHRISTCHURCH"]},
+
+        # ==========================================
+    # 🕉️ HINDU MYTHOLOGY: EXTREME HARD (RAMAYANA)
+    # ==========================================
+    {"id": "q276", "q": "What was the name of Ravana's primary sword in the Ramayana?", "a": "CHANDRAHAS", "opts": ["BHAVANI", "CHANDRAHAS", "KHARG"]},
+    {"id": "q277", "q": "Which deity gifted the invincible 'Chandrahas' sword to Ravana?", "a": "LORD SHIVA", "opts": ["LORD BRAHMA", "LORD SHIVA", "LORD VISHNU"]},
+    {"id": "q278", "q": "What was the name of Lord Rama's biological elder sister?", "a": "SHANTA", "opts": ["URMILA", "SHANTA", "MANDAVI"]},
+    {"id": "q279", "q": "Which sage did Lord Rama's sister, Shanta, marry?", "a": "RISHYASHRINGA", "opts": ["DURVASA", "RISHYASHRINGA", "VISHWAMITRA"]},
+    {"id": "q280", "q": "What was the name of Jatayu's elder brother who revealed Sita's location to the Vanara army?", "a": "SAMPATI", "opts": ["GARUDA", "SAMPATI", "ARUNA"]},
+    {"id": "q281", "q": "Who was the father of the demon king Ravana?", "a": "VISHRAVA", "opts": ["PULASTYA", "VISHRAVA", "SUMALI"]},
+    {"id": "q282", "q": "What was the name of Indrajit's (Meghnad's) wife?", "a": "SULOCHANA", "opts": ["MANDODARI", "SULOCHANA", "TARA"]},
+    {"id": "q283", "q": "Who was the mother of Shatrughna?", "a": "SUMITRA", "opts": ["KAIKEYI", "SUMITRA", "KAUSHALYA"]},
+    {"id": "q284", "q": "While Lakshmana's wife was Urmila, what was the name of Bharata's wife?", "a": "MANDAVI", "opts": ["SHRUTAKIRTI", "MANDAVI", "SITA"]},
+    {"id": "q285", "q": "What was the name of Shatrughna's wife?", "a": "SHRUTAKIRTI", "opts": ["MANDAVI", "SHRUTAKIRTI", "MALVIKA"]},
+    {"id": "q286", "q": "What was the actual birth name of King Janaka, the father of Sita?", "a": "SIRADHWAJA", "opts": ["KUSHADHWAJA", "SIRADHWAJA", "NIMI"]},
+    {"id": "q287", "q": "Which deity cursed Kumbhakarna to sleep for six months at a time?", "a": "LORD BRAHMA", "opts": ["LORD INDRA", "LORD BRAHMA", "SARASWATI"]},
+    {"id": "q288", "q": "What was the name of Lord Shiva's bow that Rama broke during Sita's Swayamvar?", "a": "PINAKA", "opts": ["KODANDA", "PINAKA", "SHARANGA"]},
+    {"id": "q289", "q": "What was the name of Lord Rama's personal bow?", "a": "KODANDA", "opts": ["PINAKA", "KODANDA", "VIJAYA"]},
+    {"id": "q290", "q": "Who was the original owner of the Pushpaka Vimana before Ravana stole it?", "a": "KUBERA", "opts": ["INDRA", "KUBERA", "VAYU"]},
+    {"id": "q291", "q": "Which demoness protected and comforted Sita in the Ashoka Vatika?", "a": "TRIJATA", "opts": ["SURASA", "TRIJATA", "SIMHIKA"]},
+    {"id": "q292", "q": "What was the name of the monkey king Vali's wife?", "a": "TARA", "opts": ["RUMA", "TARA", "ANJANA"]},
+    {"id": "q293", "q": "What was the name of Sugriva's wife?", "a": "RUMA", "opts": ["TARA", "RUMA", "SHABARI"]},
+    {"id": "q294", "q": "Who was the maternal grandfather of Ravana?", "a": "SUMALI", "opts": ["MARICHA", "SUMALI", "SUBAHU"]},
+    {"id": "q295", "q": "Who was the mother of Ravana?", "a": "KAIKESI", "opts": ["TATAKA", "KAIKESI", "MANDODARI"]},
+    {"id": "q296", "q": "What was the name of Shurpanakha's husband, who was accidentally killed by Ravana?", "a": "VIDYUTJIHVA", "opts": ["KHARA", "VIDYUTJIHVA", "DUSHANA"]},
+    {"id": "q297", "q": "Which sage taught Lord Rama the 'Aditya Hrudayam' hymn before his final battle with Ravana?", "a": "AGASTYA", "opts": ["VASISHTHA", "AGASTYA", "VISHWAMITRA"]},
+    {"id": "q298", "q": "Which divine weapon did Lakshmana use to finally kill Indrajit?", "a": "INDRASTRA", "opts": ["BRAHMASTRA", "INDRASTRA", "PASHUPATASTRA"]},
+    {"id": "q299", "q": "Which sage cursed Ahalya to turn into a stone?", "a": "GAUTAMA", "opts": ["DURVASA", "GAUTAMA", "BHRIGU"]},
+    {"id": "q300", "q": "From which kingdom did Kaikeyi's maid, Manthara, originally come?", "a": "KEKAYA", "opts": ["AYODHYA", "KEKAYA", "MITHILA"]},
+    {"id": "q301", "q": "Who was the divine architect that built the golden city of Lanka?", "a": "VISHWAKARMA", "opts": ["MAYA DANAVA", "VISHWAKARMA", "BRAHMA"]},
+    {"id": "q302", "q": "What was the name of the mountain Hanuman lifted to bring the Sanjeevani herb?", "a": "DRONAGIRI", "opts": ["KAILASH", "DRONAGIRI", "GANDHAMADAN"]},
+    {"id": "q303", "q": "Nala and Nila, the builders of the Ram Setu, were the sons/avatars of which deity?", "a": "VISHWAKARMA", "opts": ["AGNI", "VISHWAKARMA", "VARUNA"]},
+    {"id": "q304", "q": "Who was the father of King Dasharatha?", "a": "AJA", "opts": ["RAGHU", "AJA", "IKSHVAKU"]},
+    {"id": "q305", "q": "Which is the shortest Kanda (book/chapter) in the epic Ramayana?", "a": "KISHKINDHA KANDA", "opts": ["ARANYA KANDA", "KISHKINDHA KANDA", "SUNDARA KANDA"]},
+    {"id": "q306", "q": "Which is the longest Kanda in the epic Ramayana?", "a": "YUDDHA KANDA", "opts": ["BALA KANDA", "YUDDHA KANDA", "AYODHYA KANDA"]},
+    {"id": "q307", "q": "What was the original name of Sage Valmiki before he became an ascetic?", "a": "RATNAKAR", "opts": ["SUDAMA", "RATNAKAR", "ANGIRAS"]},
+    {"id": "q308", "q": "Who was the mother of the demons Maricha and Subahu?", "a": "TATAKA", "opts": ["SURASA", "TATAKA", "SIMHIKA"]},
+    {"id": "q309", "q": "Hanuman's foster father, Kesari, was the king of which Vanara kingdom?", "a": "SUMERU", "opts": ["KISHKINDHA", "SUMERU", "LANKA"]},
+    {"id": "q310", "q": "Which sage taught the secret mantras 'Bala' and 'Atibala' to Rama and Lakshmana?", "a": "VISHWAMITRA", "opts": ["VASISHTHA", "VISHWAMITRA", "PARASHURAMA"]},
+    {"id": "q311", "q": "What was the name of Mata Shabari's guru?", "a": "MATANGA", "opts": ["AGASTYA", "MATANGA", "BHARADWAJA"]},
+    {"id": "q312", "q": "From which village did Bharata rule Ayodhya during Rama's exile?", "a": "NANDIGRAMA", "opts": ["AYODHYA", "NANDIGRAMA", "CHITRAKOOT"]},
+    {"id": "q313", "q": "What was Indrajit's original name before he defeated Lord Indra?", "a": "MEGHNAD", "opts": ["VIBHISHAN", "MEGHNAD", "AKSHAYA KUMARA"]},
+    {"id": "q314", "q": "Who was the father of the giant divine birds Jatayu and Sampati?", "a": "ARUNA", "opts": ["GARUDA", "ARUNA", "KASHYAPA"]},
+    {"id": "q315", "q": "In which forest did the abduction of Sita take place?", "a": "DANDAKARANYA", "opts": ["NIMISHARANYA", "DANDAKARANYA", "KHANDAVA"]},
+    {"id": "q316", "q": "What was the name of the boatman king who washed Lord Rama's feet and helped him cross the river?", "a": "GUHA", "opts": ["SUGRIVA", "GUHA", "NISHADA"]},
+    {"id": "q317", "q": "Which brother of Ravana was righteous but chose to fight for Lanka instead of joining Rama?", "a": "KUMBHAKARNA", "opts": ["VIBHISHANA", "KUMBHAKARNA", "KHARA"]},
+    {"id": "q318", "q": "Which sage cursed Vali that his head would explode if he ever stepped on Mount Rishyamukha?", "a": "MATANGA", "opts": ["DURVASA", "MATANGA", "GAUTAMA"]},
+    {"id": "q319", "q": "Who crafted the divine bow of Lord Shiva that was broken by Rama at Sita's Swayamvar?", "a": "VISHWAKARMA", "opts": ["BRAHMA", "VISHWAKARMA", "MAYA DANAVA"]},
+    {"id": "q320", "q": "What was the name of King Janaka's brother, whose daughters married Bharata and Shatrughna?", "a": "KUSHADHWAJA", "opts": ["SIRADHWAJA", "KUSHADHWAJA", "NIMI"]},
+    {"id": "q321", "q": "Who was the paternal grandfather of Ravana?", "a": "PULASTYA", "opts": ["KASHYAPA", "PULASTYA", "BHRIGU"]},
+    {"id": "q322", "q": "Sugriva was the spiritual son of which Hindu deity?", "a": "SURYA", "opts": ["INDRA", "SURYA", "VAYU"]},
+    {"id": "q323", "q": "After burning down Lanka, where did Hanuman extinguish the fire on his tail?", "a": "OCEAN (SAMUDRA)", "opts": ["RIVER GANGA", "OCEAN (SAMUDRA)", "LAKE MANASAROVAR"]},
+    {"id": "q324", "q": "During his leap to Lanka, which sea-demoness did Hanuman encounter first?", "a": "SURASA", "opts": ["SIMHIKA", "SURASA", "LANKINI"]},
+    {"id": "q325", "q": "Which charioteer did Lord Indra send to assist Rama in his final battle against Ravana?", "a": "MATALI", "opts": ["ARUNA", "MATALI", "DARUKA"]},
+
+    # ==========================================
+    # 🕉️ HINDU MYTHOLOGY: EXTREME HARD (MAHABHARATA)
+    # ==========================================
+    {"id": "q326", "q": "What was the name of Yudhishthira's conch shell in the Mahabharata?", "a": "ANANTAVIJAYA", "opts": ["DEVADATTA", "ANANTAVIJAYA", "PAUNDRA"]},
+    {"id": "q327", "q": "What was the name of Arjuna's conch shell?", "a": "DEVADATTA", "opts": ["SUGHOSHA", "DEVADATTA", "PANCHAJANYA"]},
+    {"id": "q328", "q": "What was the name of Bhima's conch shell?", "a": "PAUNDRA", "opts": ["PAUNDRA", "MANIPUSHPAKA", "ANANTAVIJAYA"]},
+    {"id": "q329", "q": "What was the name of Nakula's conch shell?", "a": "SUGHOSHA", "opts": ["SUGHOSHA", "MANIPUSHPAKA", "DEVADATTA"]},
+    {"id": "q330", "q": "What was the name of Sahadeva's conch shell?", "a": "MANIPUSHPAKA", "opts": ["PAUNDRA", "MANIPUSHPAKA", "SUGHOSHA"]},
+    {"id": "q331", "q": "What was the name of Lord Krishna's conch shell?", "a": "PANCHAJANYA", "opts": ["SHARANGA", "PANCHAJANYA", "KAUMODAKI"]},
+    {"id": "q332", "q": "What was the name of Duryodhana's only biological sister?", "a": "DUHSALA", "opts": ["DUSHANA", "DUHSALA", "UTTARA"]},
+    {"id": "q333", "q": "What was the name of Duhsala's husband (Duryodhana's brother-in-law)?", "a": "JAYADRATHA", "opts": ["SHALYA", "JAYADRATHA", "KICHAKA"]},
+    {"id": "q334", "q": "Who killed Shakuni during the Kurukshetra war?", "a": "SAHADEVA", "opts": ["NAKULA", "SAHADEVA", "YUDHISHTHIRA"]},
+    {"id": "q335", "q": "Who killed Shalya, the commander of the Kaurava army after Karna's death?", "a": "YUDHISHTHIRA", "opts": ["ARJUNA", "YUDHISHTHIRA", "BHIMA"]},
+    {"id": "q336", "q": "Who fulfilled the terrifying vow of drinking blood from Dushasana's chest?", "a": "BHIMA", "opts": ["ARJUNA", "BHIMA", "GHATOTKACHA"]},
+    {"id": "q337", "q": "Who beheaded Dronacharya during the Mahabharata war?", "a": "DHRISHTADYUMNA", "opts": ["ARJUNA", "DHRISHTADYUMNA", "SHIKHANDI"]},
+    {"id": "q338", "q": "Who became the commander-in-chief of the Kaurava army immediately after Bhishma fell?", "a": "DRONACHARYA", "opts": ["KARNA", "DRONACHARYA", "ASHWATTHAMA"]},
+    {"id": "q339", "q": "What was the real birth name of Bhishma Pitamah?", "a": "DEVAVRATA", "opts": ["SHANTANU", "DEVAVRATA", "GANGADATTA"]},
+    {"id": "q340", "q": "Who was the mother of Sage Ved Vyasa, the author of the Mahabharata?", "a": "SATYAVATI", "opts": ["GANGA", "SATYAVATI", "KUNTI"]},
+    {"id": "q341", "q": "Who was the father of Sage Ved Vyasa?", "a": "PARASHARA", "opts": ["VASISHTHA", "PARASHARA", "BHRIGU"]},
+    {"id": "q342", "q": "What was the name of Karna's foster father, who was a charioteer?", "a": "ADIRATHA", "opts": ["SHALYA", "ADIRATHA", "SANJAYA"]},
+    {"id": "q343", "q": "What was the name of Karna's foster mother?", "a": "RADHA", "opts": ["KUNTI", "RADHA", "VRUSHALI"]},
+    {"id": "q344", "q": "What was the name of Karna's divine, unbeatable bow?", "a": "VIJAYA", "opts": ["GANDIVA", "VIJAYA", "SHARANGA"]},
+    {"id": "q345", "q": "What was the name of Arjuna's celestial bow?", "a": "GANDIVA", "opts": ["PINAKA", "GANDIVA", "KODANDA"]},
+    {"id": "q346", "q": "What was the name of Lord Krishna's divine bow?", "a": "SHARANGA", "opts": ["VIJAYA", "SHARANGA", "SUDARSHANA"]},
+    {"id": "q347", "q": "What was the name of the son born to Bhima and the demoness Hidimbi?", "a": "GHATOTKACHA", "opts": ["BARBARIK", "GHATOTKACHA", "IRAVAN"]},
+    {"id": "q348", "q": "What was the name of the son born to Arjuna and the Naga princess Ulupi?", "a": "IRAVAN", "opts": ["BABRUVAHANA", "IRAVAN", "ABHIMANYU"]},
+    {"id": "q349", "q": "What was the name of Arjuna's son with Princess Chitrangada of Manipur?", "a": "BABRUVAHANA", "opts": ["IRAVAN", "BABRUVAHANA", "SRUTAKARMA"]},
+    {"id": "q350", "q": "Who designed the deadly Chakravyuha formation on the 13th day of the war?", "a": "DRONACHARYA", "opts": ["SHAKUNI", "DRONACHARYA", "BHISHMA"]},
+    {"id": "q351", "q": "Which supreme weapon did Karna use to kill Ghatotkacha?", "a": "VASAVI SHAKTI", "opts": ["BRAHMASTRA", "VASAVI SHAKTI", "NAGAPASHA"]},
+    {"id": "q352", "q": "Which deity gifted the 'Vasavi Shakti' weapon to Karna?", "a": "INDRA", "opts": ["SURYA", "INDRA", "SHIVA"]},
+    {"id": "q353", "q": "Who was the father of Guru Dronacharya?", "a": "BHARADWAJA", "opts": ["GAUTAMA", "BHARADWAJA", "AGASTYA"]},
+    {"id": "q354", "q": "What was the name of Ekalavya's father, the king of the Nishadas?", "a": "HIRANYADHANUS", "opts": ["NISHADA", "HIRANYADHANUS", "KICHAKA"]},
+    {"id": "q355", "q": "What alias did Yudhishthira assume during their year of incognito exile (Agyatvas)?", "a": "KANKA", "opts": ["VALLABHA", "KANKA", "TANTIPALA"]},
+    {"id": "q356", "q": "Under what name did Bhima serve as a cook in King Virata's palace?", "a": "VALLABHA", "opts": ["GRANTHIKA", "VALLABHA", "KANKA"]},
+    {"id": "q357", "q": "What name did Arjuna adopt when he lived as a eunuch dancing teacher?", "a": "BRIHANNALA", "opts": ["SAIRANDHRI", "BRIHANNALA", "URVASHI"]},
+    {"id": "q358", "q": "What was Draupadi's assumed name while working as a maid for Queen Sudeshna?", "a": "SAIRANDHRI", "opts": ["MALINI", "SAIRANDHRI", "PANCHALI"]},
+    {"id": "q359", "q": "Who killed Kichaka, the arrogant brother-in-law of King Virata?", "a": "BHIMA", "opts": ["ARJUNA", "BHIMA", "YUDHISHTHIRA"]},
+    {"id": "q360", "q": "Who was the mother of the blind king Dhritarashtra?", "a": "AMBIKA", "opts": ["AMBALIKA", "AMBIKA", "AMBA"]},
+    {"id": "q361", "q": "Who was the mother of King Pandu?", "a": "AMBALIKA", "opts": ["AMBIKA", "AMBALIKA", "MADRI"]},
+    {"id": "q362", "q": "What was the name of Ashwatthama's mother (Dronacharya's wife)?", "a": "KRIPAI", "opts": ["DRUPI", "KRIPAI", "GANDHARI"]},
+    {"id": "q363", "q": "What was the name of Abhimanyu's wife, the daughter of King Virata?", "a": "UTTARA", "opts": ["SUDESHNA", "UTTARA", "DUSHARA"]},
+    {"id": "q364", "q": "Who saved the unborn Parikshit in Uttara's womb from Ashwatthama's Brahmashirsha astra?", "a": "LORD KRISHNA", "opts": ["ARJUNA", "LORD KRISHNA", "VYASA"]},
+    {"id": "q365", "q": "What was the name of Duryodhana's son, who was killed by Abhimanyu in the war?", "a": "LAKSHMANA KUMARA", "opts": ["DURJAYA", "LAKSHMANA KUMARA", "VRISHAKETU"]},
+    {"id": "q366", "q": "What was the name of Karna's primary wife?", "a": "VRUSHALI", "opts": ["BHANUMATI", "VRUSHALI", "DUSHARA"]},
+    {"id": "q367", "q": "Which devastating weapon did Arjuna obtain from Lord Shiva after intense penance?", "a": "PASHUPATASTRA", "opts": ["BRAHMASTRA", "PASHUPATASTRA", "NARAYANA ASTRA"]},
+    {"id": "q368", "q": "Who served as Karna's charioteer during his final battle against Arjuna?", "a": "SHALYA", "opts": ["KRIPA", "SHALYA", "ASHWATTHAMA"]},
+    {"id": "q369", "q": "What alternative name was given to Draupadi because she was born from the sacrificial fire?", "a": "YAJNASENI", "opts": ["PANCHALI", "YAJNASENI", "KRISHNAA"]},
+    {"id": "q370", "q": "Who was the divine scribe writing down the Mahabharata as Sage Vyasa dictated it?", "a": "LORD GANESHA", "opts": ["LORD BRAHMA", "LORD GANESHA", "SARASWATI"]},
+    {"id": "q371", "q": "In which king's kingdom did the Pandavas hide during their 13th year of exile?", "a": "VIRATA", "opts": ["DRUPADA", "VIRATA", "SHALYA"]},
+    {"id": "q372", "q": "Which sage cursed Karna that he would forget his divine mantras when he needed them the most?", "a": "PARASHURAMA", "opts": ["DURVASA", "PARASHURAMA", "BHRIGU"]},
+    {"id": "q373", "q": "Which mythical serpent king bit and killed King Parikshit?", "a": "TAKSHAKA", "opts": ["VASUKI", "TAKSHAKA", "KALIA"]},
+    {"id": "q374", "q": "What was the total combined number of 'Akshauhini' armies in the Kurukshetra war?", "a": "18", "opts": ["11", "18", "21"]},
+    {"id": "q375", "q": "The Kauravas had 11 Akshauhini armies; how many did the Pandavas have?", "a": "7", "opts": ["7", "9", "11"]},
+
+    # --- IMPOSSIBLE TRIVIA & STREAK BREAKERS ---
+    {"id": "q68", "q": "Which animal has three hearts and blue blood?", "a": "OCTOPUS", "opts": ["SHARK", "OCTOPUS", "SQUID"]},
+    {"id": "q69", "q": "What is the rarest naturally occurring element on the Earth's crust?", "a": "ASTATINE", "opts": ["FRANCIUM", "ASTATINE", "RADIUM"]},
+    {"id": "q70", "q": "How many keys are there on a standard grand piano?", "a": "88", "opts": ["76", "88", "102"]},
+    {"id": "q71", "q": "Which country has the most volcanoes in the world?", "a": "USA", "opts": ["INDONESIA", "USA", "ICELAND"]},
+    {"id": "q72", "q": "Which year was the Python programming language first released?", "a": "1991", "opts": ["1989", "1991", "1995"]},
+    {"id": "q73", "q": "What is the maximum number of moves a Rubik's Cube can always be solved in?", "a": "20", "opts": ["20", "26", "42"]},
+    {"id": "q74", "q": "Which planet rotates on its side, nearly 90 degrees from its orbit?", "a": "URANUS", "opts": ["VENUS", "URANUS", "NEPTUNE"]},
+    {"id": "q75", "q": "What is the specific scientific term for the fear of long words?", "a": "HIPPOPOTOMONSTROSESQUIPPEDALIOPHOBIA", "opts": ["PHOBOPHOBIA", "HIPPOPOTOMONSTROSESQUIPPEDALIOPHOBIA", "GLOSSOPHOBIA"]},
     
-    # --- IMPOSSIBLE (Luck or Genius) ---
-    {"q": "Elon Musk ki rocket company ka naam?", "a": "SPACEX", "opts": ["NASA", "SPACEX", "BLUE ORIGIN"]},
-    {"q": "Python language kab release hui thi?", "a": "1991", "opts": ["1991", "1995", "2000"]},
-    {"q": "Harry Potter mein total kitni books hain?", "a": "7", "opts": ["7", "8", "6"]},
-    {"q": "Spider-Man ka asli naam kya hai?", "a": "PETER PARKER", "opts": ["BRUCE WAYNE", "PETER PARKER", "TONY STARK"]},
-    {"q": "Youtube par sabse pehli video kisne dali?", "a": "JAWED", "opts": ["PEWDIEPIE", "JAWED", "GOOGLE"]},
-    {"q": "Triangle ki kitni sides hoti hain?", "a": "3", "opts": ["3", "4", "5"]},
-    {"q": "Cricket team mein kitne players hote hain?", "a": "11", "opts": ["10", "11", "12"]},
-    {"q": "Facebook ka malik kaun hai?", "a": "MARK ZUCKERBERG", "opts": ["ELON MUSK", "MARK ZUCKERBERG", "BILL GATES"]},
-    {"q": "Taj Mahal kahan hai?", "a": "AGRA", "opts": ["DELHI", "AGRA", "JAIPUR"]},
-    {"q": "Fastest land animal kaunsa hai?", "a": "CHEETAH", "opts": ["LION", "CHEETAH", "HORSE"]},
-    {"q": "Zero (0) kisne invent kiya tha?", "a": "ARYABHATTA", "opts": ["NEWTON", "ARYABHATTA", "EINSTEIN"]},
-    {"q": "Earth ke sabse paas kaunsa planet hai?", "a": "VENUS", "opts": ["MARS", "VENUS", "JUPITER"]},
-    {"q": "Youtube kis company ka hai?", "a": "GOOGLE", "opts": ["MICROSOFT", "GOOGLE", "AMAZON"]},
-    {"q": "500 ka note kis color ka hai (India)?", "a": "STONE GREY", "opts": ["PINK", "GREEN", "STONE GREY"]}
+    
+    # --- THE IMPOSSIBLE TIER ---
+    {"id": "q41", "q": "What is the fear of long words called?", "a": "HIPPOPOTOMONSTROSESQUIPPEDALIOPHOBIA", "opts": ["ARACHNOPHOBIA", "HIPPOPOTOMONSTROSESQUIPPEDALIOPHOBIA", "CLAUSTROPHOBIA"]},
+    {"id": "q42", "q": "In computer networking, what does the 'HTTP' status code 418 mean?", "a": "I'M A TEAPOT", "opts": ["BAD GATEWAY", "I'M A TEAPOT", "NOT FOUND"]},
+    {"id": "q43", "q": "Which animal has fingerprints that are almost indistinguishable from human fingerprints?", "a": "KOALA", "opts": ["CHIMPANZEE", "KOALA", "SLOTH"]},
+    {"id": "q44", "q": "What is the only even prime number?", "a": "2", "opts": ["0", "2", "4"]},
+    {"id": "q45", "q": "What is the name of the deepest known point in the Earth's oceans?", "a": "CHALLENGER DEEP", "opts": ["MARIANA TRENCH", "CHALLENGER DEEP", "TONGA TRENCH"]},
+    
+    # --- ENTERTAINMENT ---
+    {"id": "q21", "q": "Who plays Iron Man in the Marvel movies?", "a": "ROBERT DOWNEY JR", "opts": ["CHRIS EVANS", "TOM HOLLAND", "ROBERT DOWNEY JR"]},
+    {"id": "q22", "q": "What is the name of Harry Potter's pet owl?", "a": "HEDWIG", "opts": ["DOBBY", "CROOKSHANKS", "HEDWIG"]},
+    {"id": "q23", "q": "In 'The Matrix', what color is the pill Neo takes?", "a": "RED", "opts": ["BLUE", "RED", "GREEN"]},
+    {"id": "q24", "q": "Which anime features a notebook that kills people?", "a": "DEATH NOTE", "opts": ["BLEACH", "NARUTO", "DEATH NOTE"]},
+    {"id": "q25", "q": "What is the highest-grossing movie of all time?", "a": "AVATAR", "opts": ["AVENGERS: ENDGAME", "TITANIC", "AVATAR"]}
 ]
 
+# ==========================================
+# 🧠 IQ TEST GAME LOGIC
+# ==========================================
 class IQTestView(discord.ui.View):
-    def __init__(self, user):
-        super().__init__(timeout=30) # 30s per question
+    def __init__(self, user, game_questions, total_target):
+        super().__init__(timeout=30)
         self.user = user
         self.score = 0
-        self.max_score = 20
-        # Shuffle questions every time
-        self.game_questions = random.sample(iq_questions, self.max_score) 
+        self.game_questions = game_questions # Filtered unique questions
+        self.max_score = total_target
         self.current_q_index = 0
         self.setup_question()
+
+    # DB Helper: Mark question as seen
+    def save_progress(self, question_id):
+        try:
+            supabase.table("user_iq_progress").upsert({
+                "user_id": str(self.user.id),
+                "question_id": question_id
+            }).execute()
+        except Exception as e:
+            print(f"Failed to save IQ progress: {e}")
 
     def setup_question(self):
         self.clear_items()
         q_data = self.game_questions[self.current_q_index]
         
-        # Shuffle Options
         options = q_data["opts"][:]
         random.shuffle(options)
         
         for opt in options:
             btn = discord.ui.Button(label=opt, style=discord.ButtonStyle.secondary)
-            btn.callback = self.make_callback(opt)
+            btn.callback = self.make_callback(opt, q_data["id"])
             self.add_item(btn)
 
-    def make_callback(self, answer):
+    def make_callback(self, selected_answer, question_id):
         async def callback(interaction: discord.Interaction):
-            if interaction.user.id != self.user.id: return await interaction.response.send_message("Apna IQ Test khud start karo!", ephemeral=True)
+            if interaction.user.id != self.user.id: 
+                return await interaction.response.send_message("❌ Focus on your own test!", ephemeral=True)
+            
+            # Question seen, save to DB so it never repeats
+            self.save_progress(question_id)
             
             correct_ans = self.game_questions[self.current_q_index]["a"]
             
-            if answer == correct_ans:
-                # ✅ CORRECT ANSWER
+            if selected_answer == correct_ans:
+                # ✅ CORRECT
                 self.score += 1
                 self.current_q_index += 1
                 
                 if self.score >= self.max_score:
-                    # 🎉 WINNER (20/20)
+                    # 🎉 WINNER
                     await update_balance(self.user.id, 100000)
-                    embed = discord.Embed(title="🧠 EINSTEIN LEVEL GENIUS!", color=0x00FF00)
-                    embed.description = f"### 🏆 YOU WON!\nTumne saare **20 Sawal** sahi diye!\n💰 **Prize:** $100,000 (Added to Balance)"
+                    embed = discord.Embed(title="🧠 SUPREME GENIUS UNLOCKED!", color=0x00FF00)
+                    embed.description = f"### 🏆 FLAWLESS VICTORY!\nYou answered **{self.max_score}** unique questions correctly!\n💰 **Reward:** `$100,000` credited to your bank."
                     embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
+                    embed.set_footer(text="Titan Elite Intelligence Agency")
                     await interaction.response.edit_message(embed=embed, view=None)
                 else:
-                    # Next Question
+                    # Next Q
                     self.setup_question()
-                    embed = discord.Embed(title=f"🧠 IQ TEST: Round {self.current_q_index + 1}/20", color=0x3498DB)
-                    embed.description = f"**Question:** {self.game_questions[self.current_q_index]['q']}"
+                    embed = discord.Embed(title=f"🧠 TITAN IQ TEST • Round {self.current_q_index + 1}/{self.max_score}", color=0x3498DB)
+                    embed.description = f"**{self.game_questions[self.current_q_index]['q']}**"
                     await interaction.response.edit_message(embed=embed, view=self)
             
             else:
-                # ❌ WRONG ANSWER (GAME OVER)
+                # ❌ WRONG (GAME OVER)
                 await self.punish_user(interaction, correct_ans)
                 
         return callback
@@ -8588,59 +8781,82 @@ class IQTestView(discord.ui.View):
     async def punish_user(self, interaction, correct_ans):
         self.stop()
         
-        # 1. Generate Shame Name
-        bad_names = ["Anpadh 🤡", "Duffer 🤪", "Fail Fail Fail", "Dimag Se Paidal", "Gobar Balusai"]
+        # Premium Insults
+        bad_names = ["Clown 🤡", "0 IQ 🧠", "Brainless", "NPC", "Peanut Brain"]
         new_nick = f"{random.choice(bad_names)} {self.user.name[:10]}"
         
-        # 2. Rename User
         msg = ""
         try:
             if self.user.top_role < interaction.guild.me.top_role:
                 await self.user.edit(nick=new_nick)
-                msg = f"\n📛 **Nickname Changed to:** `{new_nick}`"
+                msg = f"\n📛 **System Override:** Renamed to `{new_nick}`"
                 
-                # Give Haggu Role if exists
                 role = discord.utils.get(interaction.guild.roles, name="💩 HAGGU")
                 if role: await self.user.add_roles(role)
             else:
-                msg = "\n*(Admin ho isliye bach gaye, warna naam badal deta)*"
+                msg = "\n*(Admin privileges protected your nickname)*"
         except:
-            msg = "\n*(Permission Issue: Rename nahi kar paya)*"
+            msg = "\n*(Missing Permissions to alter your identity)*"
 
-        # 3. Insult Embed
-        embed = discord.Embed(title="🤡 FAIL! IQ = 0", color=0xFF0000)
+        embed = discord.Embed(title="❌ MISSION FAILED", color=0xFF0000)
         embed.description = (
-            f"❌ **Galat Jawab!** Sahi tha: `{correct_ans}`\n"
-            f"Tum 20 sawal bhi nahi de paye? **Sharam karo!**\n"
+            f"**Incorrect!** The correct answer was: `{correct_ans}`\n"
+            f"Your intelligence level is disappointingly low.\n"
             f"{msg}\n\n"
-            f"💡 **Tip:** Naam hatana hai to `/dark_shop` se **Izzat Wapasi** kharido ($100k)."
+            f"💡 *Visit the Dark Shop to restore your honor.*"
         )
         embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
         
         await interaction.response.edit_message(embed=embed, view=None)
 
 
-@bot.tree.command(name="iq_test", description="🧠 Answer 20 Questions to win $100k (Risk: Bezzati)")
-@check_seized()
-async def iq_test(i: discord.Interaction):
-    if not i.guild.me.guild_permissions.manage_nicknames:
-        return await i.response.send_message("❌ Mere paas 'Manage Nicknames' permission nahi hai!", ephemeral=True)
+@games_group.command(name="iq_test", description="🧠 Ultimate IQ Challenge: Answer unique questions for $100k")
+async def iq_test(interaction: discord.Interaction):
+    # Defer so we have time to talk to Supabase
+    await interaction.response.defer()
+    
+    if not interaction.guild.me.guild_permissions.manage_nicknames:
+        return await interaction.followup.send("❌ Error: I need 'Manage Nicknames' permission to run this deadly game.", ephemeral=True)
         
-    embed = discord.Embed(title="🧠 ULTIMATE IQ CHALLENGE", color=0xFFA500)
+    user_id = str(interaction.user.id)
+    
+    # Fetch questions the user has already seen
+    try:
+        res = supabase.table("user_iq_progress").select("question_id").eq("user_id", user_id).execute()
+        answered_ids = [row['question_id'] for row in res.data] if res.data else []
+    except Exception as e:
+        print(f"Database Error: {e}")
+        answered_ids = []
+
+    # Filter out answered questions
+    available_qs = [q for q in iq_questions_en if q['id'] not in answered_ids]
+    
+    # Check if user has completed all questions
+    if len(available_qs) == 0:
+        win_embed = discord.Embed(title="🏆 OMNISCIENT BEING", color=0xFFD700)
+        win_embed.description = "You have successfully answered **EVERY** question in the Titan Database.\nYou are truly a genius. Wait for new questions to be added!"
+        return await interaction.followup.send(embed=win_embed)
+
+    # Pick up to 20 questions (or whatever is left if < 20)
+    target_score = min(20, len(available_qs))
+    game_questions = random.sample(available_qs, target_score)
+
+    embed = discord.Embed(title="🧠 TITAN IQ PROTOCOL", color=0xFFA500)
     embed.description = (
-        "**Rules:**\n"
-        "1. Lagatar **20 Sawal** sahi dene hain.\n"
-        "2. Prize: **$100,000** 💰\n"
-        "3. Ek bhi galti hui to... **Game Over + Ganda Nickname!** 🤡\n\n"
-        "**Kya tum taiyaar ho?**"
+        "**SECURITY RULES:**\n"
+        f"1. You must answer **{target_score} Unique Questions** consecutively.\n"
+        "2. Reward: **$100,000** 💰\n"
+        "3. Failure results in immediate public humiliation (Nickname change). 🤡\n\n"
+        "**Initializing connection...**"
     )
     
-    view = IQTestView(i.user)
-    # Manually setup first question embed
+    view = IQTestView(interaction.user, game_questions, target_score)
     q = view.game_questions[0]
-    embed.add_field(name="Round 1/20", value=f"**Q:** {q['q']}")
     
-    await i.response.send_message(embed=embed, view=view)
+    embed.add_field(name=f"Round 1/{target_score}", value=f"**{q['q']}**")
+    
+    await interaction.followup.send(embed=embed, view=view)
+
 
 # ================== 💸 MONEY TRANSFER SYSTEM (TAX LOGIC) ==================
 @bot.tree.command(name="pay", description="💸 Transfer Money (15 Min Cooldown | >200k = 50% Tax)")
