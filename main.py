@@ -18164,17 +18164,19 @@ async def mock(interaction: discord.Interaction, target: discord.Member, action:
             await interaction.response.send_message("⚠️ Ye mock list me nahi tha.", ephemeral=True)
 
 # ================= 🌊 GLOBAL VARIABLE (Add this at top) =================
+
 active_floods = {}  # Ye track karega kahan spam chal raha hai
 
-# ================= 🌊 COMMAND: GOD MODE FLOOD (PREMIUM EMBED) =================
-@titan_group.command(name="flood", description="☢️ GOD MODE: Unlimited & Super Fast Spam (With Embeds & Images)")
+# ================= 🌊 COMMAND: GOD MODE FLOOD (PREMIUM EMBED + FILE UPLOAD) =================
+@titan_group.command(name="flood", description="☢️ GOD MODE: Unlimited & Super Fast Spam (With Embeds & Image Upload)")
 @app_commands.describe(
     action="Start karna hai ya Rokna hai?",
     text="Kya message spam karna hai?", 
     amount="Kitni baar? (Unlimited ke liye bada number daalo)", 
     channel="[Optional] Target Channel",
     embed_color="[Optional] Embed ka color chuno",
-    image_url="[Optional] Embed me image lagane ke liye direct URL (Link) daalo"
+    image_url="[Optional] Image ka link daalo",
+    image_file="[Optional] Seedha apne phone/PC se image upload karo!" # Naya Option ✨
 )
 @app_commands.choices(action=[
     app_commands.Choice(name="🟢 START Fire", value="start"),
@@ -18194,7 +18196,8 @@ async def flood(
     amount: int = 1000, 
     channel: discord.TextChannel = None,
     embed_color: app_commands.Choice[str] = None,
-    image_url: str = None
+    image_url: str = None,
+    image_file: discord.Attachment = None # Naya Parameter ✨
 ):
     # 🔒 OWNER CHECK
     if not check_owner(interaction): 
@@ -18215,9 +18218,16 @@ async def flood(
     # --- 🟢 START LOGIC ---
     active_floods[cid] = True
     
+    # 🔥 Decide konsi image lagani hai (File ya URL)
+    final_image_link = None
+    if image_file:
+        final_image_link = image_file.url # Agar file upload ki hai to uska link le lo
+    elif image_url:
+        final_image_link = image_url # Warna URL use karo
+    
     # 🎨 PRE-BUILD EMBED (Taaki loop me speed kam na ho)
     spam_embed = None
-    if (embed_color and embed_color.value != "none") or image_url:
+    if (embed_color and embed_color.value != "none") or final_image_link:
         # Default color Black rakha hai agar sirf image di ho
         c_code = 0x000000 
         
@@ -18229,9 +18239,9 @@ async def flood(
             
         spam_embed = discord.Embed(description=text, color=c_code)
         
-        if image_url:
+        if final_image_link:
             try:
-                spam_embed.set_image(url=image_url)
+                spam_embed.set_image(url=final_image_link)
             except:
                 pass # Agar link galat ho to crash na ho
 
@@ -18277,7 +18287,6 @@ async def flood(
 
     # Start Task
     asyncio.create_task(run_spam())
-
 
 
 # ================= 🤡 COMMAND: CLOWN PROTOCOL (REACTION SPAM) =================
@@ -18816,19 +18825,19 @@ async def coin_flip(interaction: discord.Interaction, choice: app_commands.Choic
 
 
 # ==========================================
-# 📅 SYSTEM: DAILY (BANK RECEIPT STYLE)
-# ==========================================
-# ==========================================
-# 📅 SYSTEM: DAILY (BANK RECEIPT STYLE) - FIXED
+# 📅 SYSTEM: DAILY (BANK RECEIPT STYLE) - 100% FIXED
 # ==========================================
 @games_group.command(name="daily", description="💰 Daily Stipend (Resets 00:00 IST)")
 async def daily(interaction: discord.Interaction):
     await interaction.response.defer()
     
     try:
+        # 🔥 FIX: 'as dt' lagane se ye tumhare purane imports se clash nahi karega!
+        import datetime as dt 
+        
         # Timezone: India
-        IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
-        now = datetime.datetime.now(IST)
+        IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
+        now = dt.datetime.now(IST)
         user_id = str(interaction.user.id)
 
         # Check Logic
@@ -18837,7 +18846,8 @@ async def daily(interaction: discord.Interaction):
         
         if res.data and res.data[0].get('last_daily'):
             try:
-                last_dt = datetime.datetime.fromisoformat(res.data[0]['last_daily'].replace('Z', '+00:00')).astimezone(IST)
+                # String ko date me convert karna
+                last_dt = dt.datetime.fromisoformat(res.data[0]['last_daily'].replace('Z', '+00:00')).astimezone(IST)
                 if last_dt.date() >= now.date():
                     can_claim = False
             except Exception as e:
@@ -18845,6 +18855,7 @@ async def daily(interaction: discord.Interaction):
                 pass # Agar date me gadbadi hai, to claim karne do
 
         if can_claim:
+            import random
             reward = random.randint(1500, 6000)
             new_bal = await get_balance(user_id) + reward
             
@@ -18853,10 +18864,7 @@ async def daily(interaction: discord.Interaction):
             
             # RECEIPT EMBED
             embed = discord.Embed(title="🏦 TITAN BANK - TRANSFER RECEIPT", color=0x00FF00)
-            
-            # 🔥 FIX 1: display_avatar.url use kiya hai taaki jiska avatar na ho uska bhi chale
             embed.set_thumbnail(url=interaction.user.display_avatar.url)
-            
             embed.add_field(name="👤 Beneficiary", value=f"**{interaction.user.name}**", inline=True)
             embed.add_field(name="💰 Amount Credited", value=f"`${reward}`", inline=True)
             embed.add_field(name="💳 Current Balance", value=f"`${new_bal}`", inline=False)
@@ -18865,22 +18873,19 @@ async def daily(interaction: discord.Interaction):
             await interaction.followup.send(embed=embed)
         else:
             # Time Left Logic
-            tomorrow = now + datetime.timedelta(days=1)
-            midnight = datetime.datetime(tomorrow.year, tomorrow.month, tomorrow.day, 0, 0, 0, tzinfo=IST)
+            tomorrow = now + dt.timedelta(days=1)
+            midnight = dt.datetime(tomorrow.year, tomorrow.month, tomorrow.day, 0, 0, 0, tzinfo=IST)
             diff = midnight - now
             hours, mins = int(diff.seconds // 3600), int((diff.seconds % 3600) // 60)
             
             embed = discord.Embed(title="⏳ TRANSACTION PENDING", description=f"Daily Limit Reached.\n\n**Next Transfer In:**\n`{hours} Hours, {mins} Minutes`", color=0xFF0000)
-            
-            # Ye bhi safe kar diya
             embed.set_thumbnail(url=interaction.user.display_avatar.url)
             
             await interaction.followup.send(embed=embed)
 
     except Exception as e:
-        # 🔥 FIX 2: Agar kuch aur crash hota hai to bot indefinitely nahi rukega, error batayega.
         print(f"Daily Command Error: {e}")
-        await interaction.followup.send(f"❌ **System Error:** `{e}`\n*(Database me 'last_daily' column add kiya hai na?)*")
+        await interaction.followup.send(f"❌ **System Error:** `{e}`")
 
 
 # ================== OPTIMIZED FLASK BACKEND ==================
