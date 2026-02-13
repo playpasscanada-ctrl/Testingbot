@@ -18166,19 +18166,36 @@ async def mock(interaction: discord.Interaction, target: discord.Member, action:
 # ================= 🌊 GLOBAL VARIABLE (Add this at top) =================
 active_floods = {}  # Ye track karega kahan spam chal raha hai
 
-# ================= 🌊 COMMAND: GOD MODE FLOOD =================
-@titan_group.command(name="flood", description="☢️ GOD MODE: Unlimited & Super Fast Spam")
+# ================= 🌊 COMMAND: GOD MODE FLOOD (PREMIUM EMBED) =================
+@titan_group.command(name="flood", description="☢️ GOD MODE: Unlimited & Super Fast Spam (With Embeds & Images)")
 @app_commands.describe(
     action="Start karna hai ya Rokna hai?",
     text="Kya message spam karna hai?", 
     amount="Kitni baar? (Unlimited ke liye bada number daalo)", 
-    channel="[Optional] Target Channel"
+    channel="[Optional] Target Channel",
+    embed_color="[Optional] Embed ka color chuno",
+    image_url="[Optional] Embed me image lagane ke liye direct URL (Link) daalo"
 )
 @app_commands.choices(action=[
     app_commands.Choice(name="🟢 START Fire", value="start"),
     app_commands.Choice(name="🔴 STOP Fire", value="stop")
 ])
-async def flood(interaction: discord.Interaction, action: app_commands.Choice[str], text: str = "SPAM", amount: int = 1000, channel: discord.TextChannel = None):
+@app_commands.choices(embed_color=[
+    app_commands.Choice(name="📝 Normal Text (No Embed)", value="none"),
+    app_commands.Choice(name="🔴 Red", value="red"),
+    app_commands.Choice(name="🟢 Green", value="green"),
+    app_commands.Choice(name="🟣 Purple", value="purple"),
+    app_commands.Choice(name="🌸 Pink", value="pink")
+])
+async def flood(
+    interaction: discord.Interaction, 
+    action: app_commands.Choice[str], 
+    text: str = "SPAM", 
+    amount: int = 1000, 
+    channel: discord.TextChannel = None,
+    embed_color: app_commands.Choice[str] = None,
+    image_url: str = None
+):
     # 🔒 OWNER CHECK
     if not check_owner(interaction): 
         return await interaction.response.send_message("❌ **Access Denied!**", ephemeral=True)
@@ -18198,14 +18215,34 @@ async def flood(interaction: discord.Interaction, action: app_commands.Choice[st
     # --- 🟢 START LOGIC ---
     active_floods[cid] = True
     
+    # 🎨 PRE-BUILD EMBED (Taaki loop me speed kam na ho)
+    spam_embed = None
+    if (embed_color and embed_color.value != "none") or image_url:
+        # Default color Black rakha hai agar sirf image di ho
+        c_code = 0x000000 
+        
+        if embed_color:
+            if embed_color.value == "red": c_code = 0xFF0000
+            elif embed_color.value == "green": c_code = 0x00FF00
+            elif embed_color.value == "purple": c_code = 0x800080
+            elif embed_color.value == "pink": c_code = 0xFFC0CB
+            
+        spam_embed = discord.Embed(description=text, color=c_code)
+        
+        if image_url:
+            try:
+                spam_embed.set_image(url=image_url)
+            except:
+                pass # Agar link galat ho to crash na ho
+
     # Hidden Confirmation
-    embed = discord.Embed(
+    start_msg = discord.Embed(
         title="☢️ GOD MODE ACTIVATED",
-        description=f"**Target:** {target_channel.mention}\n**Speed:** `MAX (0.05s)`\n**Amount:** `{amount}`\n\n*Nuclear Launch Detected...* 🚀",
+        description=f"**Target:** {target_channel.mention}\n**Speed:** `MAX (0.05s)`\n**Amount:** `{amount}`\n**Mode:** `{'Embed' if spam_embed else 'Text'}`\n\n*Nuclear Launch Detected...* 🚀",
         color=0xFF0000 # Red
     )
-    embed.set_image(url="https://media.tenor.com/jM3s8n0Q2C4AAAAC/machine-gun-firing.gif")
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    start_msg.set_image(url="https://media.tenor.com/jM3s8n0Q2C4AAAAC/machine-gun-firing.gif")
+    await interaction.response.send_message(embed=start_msg, ephemeral=True)
 
     # 🔥 THE LOOP (NO MERCY)
     count = 0
@@ -18219,7 +18256,12 @@ async def flood(interaction: discord.Interaction, action: app_commands.Choice[st
                 break
             
             try:
-                await target_channel.send(text)
+                # 2. Check karna ki Embed bhejna hai ya Normal Text
+                if spam_embed:
+                    await target_channel.send(embed=spam_embed)
+                else:
+                    await target_channel.send(text)
+                    
                 count += 1
                 
                 # ⚡ INSANE SPEED (0.05s)
@@ -18235,6 +18277,7 @@ async def flood(interaction: discord.Interaction, action: app_commands.Choice[st
 
     # Start Task
     asyncio.create_task(run_spam())
+
 
 
 # ================= 🤡 COMMAND: CLOWN PROTOCOL (REACTION SPAM) =================
@@ -18775,50 +18818,70 @@ async def coin_flip(interaction: discord.Interaction, choice: app_commands.Choic
 # ==========================================
 # 📅 SYSTEM: DAILY (BANK RECEIPT STYLE)
 # ==========================================
+# ==========================================
+# 📅 SYSTEM: DAILY (BANK RECEIPT STYLE) - FIXED
+# ==========================================
 @games_group.command(name="daily", description="💰 Daily Stipend (Resets 00:00 IST)")
 async def daily(interaction: discord.Interaction):
     await interaction.response.defer()
     
-    # Timezone: India
-    IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
-    now = datetime.datetime.now(IST)
-    user_id = str(interaction.user.id)
+    try:
+        # Timezone: India
+        IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        now = datetime.datetime.now(IST)
+        user_id = str(interaction.user.id)
 
-    # Check Logic
-    res = supabase.table("economy").select("last_daily").eq("user_id", user_id).execute()
-    can_claim = True
-    
-    if res.data and res.data[0]['last_daily']:
-        try:
-            last_dt = datetime.datetime.fromisoformat(res.data[0]['last_daily'].replace('Z', '+00:00')).astimezone(IST)
-            if last_dt.date() >= now.date():
-                can_claim = False
-        except: pass
+        # Check Logic
+        res = supabase.table("economy").select("last_daily").eq("user_id", user_id).execute()
+        can_claim = True
+        
+        if res.data and res.data[0].get('last_daily'):
+            try:
+                last_dt = datetime.datetime.fromisoformat(res.data[0]['last_daily'].replace('Z', '+00:00')).astimezone(IST)
+                if last_dt.date() >= now.date():
+                    can_claim = False
+            except Exception as e:
+                print(f"Date parsing error: {e}") 
+                pass # Agar date me gadbadi hai, to claim karne do
 
-    if can_claim:
-        reward = random.randint(1500, 6000)
-        new_bal = await get_balance(user_id) + reward
-        
-        supabase.table("economy").update({"balance": new_bal, "last_daily": now.isoformat()}).eq("user_id", user_id).execute()
-        
-        # RECEIPT EMBED
-        embed = discord.Embed(title="🏦 TITAN BANK - TRANSFER RECEIPT", color=0x00FF00)
-        embed.set_thumbnail(url=interaction.user.avatar.url)
-        embed.add_field(name="👤 Beneficiary", value=f"**{interaction.user.name}**", inline=True)
-        embed.add_field(name="💰 Amount Credited", value=f"`${reward}`", inline=True)
-        embed.add_field(name="💳 Current Balance", value=f"`${new_bal}`", inline=False)
-        embed.set_footer(text=f"Processed at {now.strftime('%H:%M:%S IST')} • Next Claim: 00:00")
-        
-        await interaction.followup.send(embed=embed)
-    else:
-        # Time Left Logic
-        tomorrow = now + datetime.timedelta(days=1)
-        midnight = datetime.datetime(tomorrow.year, tomorrow.month, tomorrow.day, 0, 0, 0, tzinfo=IST)
-        diff = midnight - now
-        hours, mins = int(diff.seconds // 3600), int((diff.seconds % 3600) // 60)
-        
-        embed = discord.Embed(title="⏳ TRANSACTION PENDING", description=f"Daily Limit Reached.\n\n**Next Transfer In:**\n`{hours} Hours, {mins} Minutes`", color=0xFF0000)
-        await interaction.followup.send(embed=embed)
+        if can_claim:
+            reward = random.randint(1500, 6000)
+            new_bal = await get_balance(user_id) + reward
+            
+            # Update Database
+            supabase.table("economy").update({"balance": new_bal, "last_daily": now.isoformat()}).eq("user_id", user_id).execute()
+            
+            # RECEIPT EMBED
+            embed = discord.Embed(title="🏦 TITAN BANK - TRANSFER RECEIPT", color=0x00FF00)
+            
+            # 🔥 FIX 1: display_avatar.url use kiya hai taaki jiska avatar na ho uska bhi chale
+            embed.set_thumbnail(url=interaction.user.display_avatar.url)
+            
+            embed.add_field(name="👤 Beneficiary", value=f"**{interaction.user.name}**", inline=True)
+            embed.add_field(name="💰 Amount Credited", value=f"`${reward}`", inline=True)
+            embed.add_field(name="💳 Current Balance", value=f"`${new_bal}`", inline=False)
+            embed.set_footer(text=f"Processed at {now.strftime('%H:%M:%S IST')} • Next Claim: 00:00")
+            
+            await interaction.followup.send(embed=embed)
+        else:
+            # Time Left Logic
+            tomorrow = now + datetime.timedelta(days=1)
+            midnight = datetime.datetime(tomorrow.year, tomorrow.month, tomorrow.day, 0, 0, 0, tzinfo=IST)
+            diff = midnight - now
+            hours, mins = int(diff.seconds // 3600), int((diff.seconds % 3600) // 60)
+            
+            embed = discord.Embed(title="⏳ TRANSACTION PENDING", description=f"Daily Limit Reached.\n\n**Next Transfer In:**\n`{hours} Hours, {mins} Minutes`", color=0xFF0000)
+            
+            # Ye bhi safe kar diya
+            embed.set_thumbnail(url=interaction.user.display_avatar.url)
+            
+            await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        # 🔥 FIX 2: Agar kuch aur crash hota hai to bot indefinitely nahi rukega, error batayega.
+        print(f"Daily Command Error: {e}")
+        await interaction.followup.send(f"❌ **System Error:** `{e}`\n*(Database me 'last_daily' column add kiya hai na?)*")
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
