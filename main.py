@@ -19966,6 +19966,520 @@ async def adventure(i: discord.Interaction):
         except: pass
         await i.followup.send(embed=embed)
 
+import discord
+from discord import app_commands
+import random
+import asyncio
+
+# ==============================================================================
+# 🎟️ MEGA CASINO BINGO: ULTRA PREMIUM EDITION
+# ==============================================================================
+
+class BingoBoardView(discord.ui.View):
+    def __init__(self, player: discord.Member, entry_fee: int):
+        super().__init__(timeout=300) # 5 Mins Max
+        self.player = player
+        self.entry_fee = entry_fee
+        
+        # Game State
+        self.grid = [] # 5x5 Matrix
+        self.called_numbers = set()
+        self.marked_numbers = set([0]) # 0 is the FREE space
+        self.current_call = None
+        self.calls_left = 35 # Max numbers the bot will call
+        
+        self.lines_completed = 0
+        self.payout_won = 0
+        self.game_over = False
+        self.message = None # To update from background loop
+        self.lock = asyncio.Lock() # Prevent edit collisions
+        
+        self.generate_board()
+        self.build_ui_buttons()
+
+    # --- 1. BOARD GENERATION ---
+    def generate_board(self):
+        # Bingo Columns: B(1-15), I(16-30), N(31-45), G(46-60), O(61-75)
+        b = random.sample(range(1, 16), 5)
+        i = random.sample(range(16, 31), 5)
+        n = random.sample(range(31, 46), 5)
+        g = random.sample(range(46, 61), 5)
+        o = random.sample(range(61, 76), 5)
+        
+        n[2] = 0 # Center is FREE
+        
+        # Transpose into 5x5 rows
+        for row in range(5):
+            self.grid.append([b[row], i[row], n[row], g[row], o[row]])
+            
+        # Create the pool of all possible calls (1 to 75)
+        self.call_pool = list(range(1, 76))
+        random.shuffle(self.call_pool)
+
+    # --- 2. DYNAMIC BUTTONS (25 Buttons) ---
+    def build_ui_buttons(self):
+        self.clear_items()
+        for r in range(5):
+            for c in range(5):
+                val = self.grid[r][c]
+                
+                if val == 0:
+                    btn = discord.ui.Button(label="FREE", style=discord.ButtonStyle.success, disabled=True, row=r)
+                else:
+                    # Style logic: Success if marked, Secondary if normal
+                    is_marked = val in self.marked_numbers
+                    style = discord.ButtonStyle.success if is_marked else discord.ButtonStyle.secondary
+                    btn = discord.ui.Button(label=str(val), style=style, row=r, custom_id=f"bingo_{r}_{c}_{val}")
+                    
+                    # Attach callback dynamically
+                    btn.callback = self.make_callback(val)
+                self.add_item(btn)
+
+    def make_callback(self, val):
+        async def button_callback(interaction: discord.Interaction):
+            if interaction.user.id != self.player.id:
+                return await interaction.response.send_message("❌ **Security:** This is not your Bingo card!", ephemeral=True)
+            
+            # Anti-Cheat / Mistake Penalty
+            if val not in self.called_numbers:
+                penalty = 2000
+                try: await update_balance(self.player.id, -penalty)
+                except: pass
+                return await interaction.response.send_message(f"🚨 **FOUL!** The dealer hasn't called **{val}** yet!\n💸 **Penalty:** `-${penalty:,}`", ephemeral=True)
+
+            # Mark Number
+            if val not in self.marked_numbers:
+                self.marked_numbers.add(val)
+                self.calculate_lines()
+                self.build_ui_buttons() # Rebuild to turn button Green
+                
+                embed = self.get_embed()
+                await interaction.response.edit_message(embed=embed, view=self)
+            else:
+                await interaction.response.defer()
+
+        return button_callback
+
+    # --- 3. LINE CALCULATION LOGIC ---
+    def calculate_lines(self):
+        lines = 0
+        # Rows & Cols
+        for i in range(5):
+            if all(self.grid[i][j] in self.marked_numbers for j in range(5)): lines += 1 # Row
+            if all(self.grid[j][i] in self.marked_numbers for j in range(5)): lines += 1 # Col
+            
+        # Diagonals
+        if all(self.grid[i][i] in self.marked_numbers for i in range(5)): lines += 1
+        if all(self.grid[i][4-i] in self.marked_numbers for i in range(5)): lines += 1
+        
+        self.lines_completed = lines
+
+        # Payout Multipliers based on lines
+        if lines == 1: self.payout_won = self.entry_fee # Break Even ($10k)
+        elif lines == 2: self.payout_won = 25000
+        elif lines == 3: self.payout_won = 50000
+        elif lines == 4: self.payout_won = 100000
+        elif lines >= 5: self.payout_won = 1000000 # JACKPOT
+        
+        # End game early if Full House / Jackpot hit
+        if lines >= 5:
+            self.game_over = True
+
+    # --- 4. PREMIUM UI EMBED ---
+    def get_embed(self):
+        if self.game_over:
+            title = "🎰 BINGO GAME FINISHED!"
+            color = 0xFFD700 if self.lines_completed > 0 else 0xFF0000
+            desc = (
+                f"# 🏁 FINAL RESULT\n"
+                f"👤 **Player:** {self.player.mention}\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🎯 **Lines Completed:** `{self.lines_completed}`\n"
+                f"💰 **Total Winnings:** `${self.payout_won:,}`\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            )
+            if self.lines_completed >= 5:
+                desc += "## 🏆 MEGA JACKPOT HIT! UNBELIEVABLE!"
+                img = "https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif"
+            elif self.lines_completed > 0:
+                desc += "### 🎉 YOU WON THE BET!"
+                img = "https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif"
+            else:
+                desc += "### 💀 BUSTED!\nBetter luck next time."
+                img = "https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif"
+        else:
+            title = "🎰 MEGA CASINO BINGO"
+            color = 0x9B59B6
+            
+            # Dealer's current call formatting
+            call_text = f"## 📢 DEALER CALLED: [ {self.current_call} ]" if self.current_call else "## 📢 DEALER SHUFFLING..."
+            
+            desc = (
+                f"👤 **Player:** {self.player.mention} | **Bet:** `${self.entry_fee:,}`\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"{call_text}\n"
+                f"⏳ **Calls Remaining:** `{self.calls_left}`\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🎯 **Lines Made:** `{self.lines_completed}`\n"
+                f"📈 **Current Payout:** `${self.payout_won:,}`\n\n"
+                f"⚠️ *Click the button matching the called number!*"
+            )
+            img = "https://media.tenor.com/images/8051a8f9f603c4cbf03758b975e50529/tenor.gif" # Bingo GIF
+
+        embed = discord.Embed(title=title, description=desc, color=color)
+        embed.set_thumbnail(url=self.player.display_avatar.url)
+        embed.set_image(url=img)
+        embed.set_footer(text="Titan Casino • VIP Bingo Lounge")
+        return embed
+
+    # --- 5. THE DEALER ENGINE (BACKGROUND LOOP) ---
+    async def start_dealer(self):
+        await asyncio.sleep(3) # Initial suspense
+        
+        while self.calls_left > 0 and not self.game_over:
+            # Draw a new number
+            new_num = self.call_pool.pop()
+            self.called_numbers.add(new_num)
+            self.current_call = new_num
+            self.calls_left -= 1
+            
+            # Update Message
+            async with self.lock:
+                if self.message and not self.game_over:
+                    try:
+                        await self.message.edit(embed=self.get_embed(), view=self)
+                    except discord.HTTPException:
+                        pass # Message might be deleted
+            
+            # Wait 5 seconds before next call (Perfect balance of speed and reaction time)
+            await asyncio.sleep(5)
+            
+        # Game Complete
+        self.game_over = True
+        for child in self.children: child.disabled = True
+        
+        # Give Payout
+        if self.payout_won > 0:
+            try: await update_balance(self.player.id, self.payout_won)
+            except: pass
+
+        async with self.lock:
+            if self.message:
+                try: await self.message.edit(embed=self.get_embed(), view=self)
+                except: pass
+
+
+# ==========================================
+# 🎮 BINGO SLASH COMMAND
+# ==========================================
+@games_group.command(name="bingo", description="🎰 Play VIP Casino Bingo! Win up to $1,000,000 Jackpot!")
+@check_seized()
+async def play_bingo(i: discord.Interaction):
+    await i.response.defer() # 🛡️ 15-Minute Timeout Protection
+    
+    entry_fee = 10000
+    
+    # Balance Check
+    try:
+        user_bal = await get_balance(i.user.id)
+        if user_bal < entry_fee:
+            return await i.followup.send(f"❌ **Bouncer:** You need at least **${entry_fee:,}** to enter the VIP Bingo Lounge.\nYour Wallet: `${user_bal:,}`", ephemeral=True)
+        # Deduct Entry Fee
+        await update_balance(i.user.id, -entry_fee)
+    except Exception as e:
+        return await i.followup.send(f"⚠️ **Bank Error:** Transaction failed. Try again.", ephemeral=True)
+
+    # Initialize Board
+    view = BingoBoardView(i.user, entry_fee)
+    
+    # Send Initial Message and save the object for the background loop
+    msg = await i.followup.send(embed=view.get_embed(), view=view, wait=True)
+    view.message = msg
+    
+    # Fire up the Dealer in the background
+    asyncio.create_task(view.start_dealer())
+
+import discord
+from discord import app_commands
+import random
+import asyncio
+
+# ==============================================================================
+# 🎁 THE ULTIMATE BONUS SYSTEM (10 PREMIUM MINI-GAMES)
+# ==============================================================================
+
+# Helper function to give money
+async def give_bonus_money(user_id, amount):
+    try:
+        await update_balance(user_id, amount) # Tera DB function
+    except Exception as e:
+        print(f"Bonus DB Error: {e}")
+
+# --- 1. MYSTERY DOORS ---
+class MysteryDoorsView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=60)
+        self.user = user
+        self.rewards = [0, 25000, 75000]
+        random.shuffle(self.rewards)
+
+    async def handle_door(self, interaction, index):
+        if interaction.user.id != self.user.id: return await interaction.response.send_message("❌ Apni baari ka wait karo!", ephemeral=True)
+        await interaction.response.defer()
+        for child in self.children: child.disabled = True
+        
+        prize = self.rewards[index]
+        embed = discord.Embed(title="🚪 MYSTERY DOOR OPENED!", color=0x2ecc71 if prize > 0 else 0xe74c3c)
+        if prize > 0:
+            embed.description = f"### 🎉 JACKPOT!\nAndar se **${prize:,}** nikle!"
+            embed.set_image(url="https://media.tenor.com/E0lQ-J9YpKwAAAAC/chest-open.gif")
+            await give_bonus_money(self.user.id, prize)
+        else:
+            embed.description = "### 🦝 CHOR NIKLA!\nBaxkhali tha! Raccoon tera bonus le bhaga! $0"
+            embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+        
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    @discord.ui.button(emoji="🚪", style=discord.ButtonStyle.secondary)
+    async def d1(self, i, b): await self.handle_door(i, 0)
+    @discord.ui.button(emoji="🚪", style=discord.ButtonStyle.secondary)
+    async def d2(self, i, b): await self.handle_door(i, 1)
+    @discord.ui.button(emoji="🚪", style=discord.ButtonStyle.secondary)
+    async def d3(self, i, b): await self.handle_door(i, 2)
+
+# --- 2. DOUBLE OR NOTHING ---
+class GambleBonusView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=60)
+        self.user = user
+        self.base_amount = 20000
+
+    @discord.ui.button(label="TAKE $20,000", emoji="💰", style=discord.ButtonStyle.success)
+    async def safe_btn(self, interaction, button):
+        if interaction.user.id != self.user.id: return
+        await interaction.response.defer()
+        for child in self.children: child.disabled = True
+        await give_bonus_money(self.user.id, self.base_amount)
+        embed = discord.Embed(title="✅ SAFE PLAY", description=f"Tune chup chap **${self.base_amount:,}** le liye.", color=0x2ecc71)
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    @discord.ui.button(label="GAMBLE (50% Chance for $50k)", emoji="🎲", style=discord.ButtonStyle.danger)
+    async def gamble_btn(self, interaction, button):
+        if interaction.user.id != self.user.id: return
+        await interaction.response.defer()
+        for child in self.children: child.disabled = True
+        
+        if random.choice([True, False]):
+            await give_bonus_money(self.user.id, 50000)
+            embed = discord.Embed(title="🎰 GAMBLE WON!", description="### 🎉 LUCK IS WITH YOU!\nTune risk liya aur **$50,000** jeet gaya!", color=0xFFD700)
+        else:
+            embed = discord.Embed(title="💀 GAMBLE LOST!", description="### 📉 BUSTED!\nLalach buri bala hai! Tera bonus ZERO ho gaya.", color=0xFF0000)
+        await interaction.edit_original_response(embed=embed, view=self)
+
+# --- 3. FAST FINGER (REFLEX) ---
+class FastFingerView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=3.0) # ONLY 3 SECONDS!
+        self.user = user
+        self.success = False
+        
+        # 1 Green, 4 Red
+        styles = [discord.ButtonStyle.success] + [discord.ButtonStyle.danger]*4
+        random.shuffle(styles)
+        
+        for i, style in enumerate(styles):
+            btn = discord.ui.Button(label="CLICK ME", style=style, custom_id=str(i))
+            btn.callback = self.make_callback(style == discord.ButtonStyle.success)
+            self.add_item(btn)
+
+    async def on_timeout(self):
+        if not self.success:
+            for child in self.children: child.disabled = True
+            embed = discord.Embed(title="🐌 TOO SLOW!", description="Tu 3 second mein button nahi daba paya! Bonus missed.", color=0xFF0000)
+            try: await self.message.edit(embed=embed, view=self)
+            except: pass
+
+    def make_callback(self, is_correct):
+        async def callback(interaction: discord.Interaction):
+            if interaction.user.id != self.user.id: return
+            self.success = True
+            await interaction.response.defer()
+            for child in self.children: child.disabled = True
+            
+            if is_correct:
+                reward = random.randint(30000, 60000)
+                await give_bonus_money(self.user.id, reward)
+                embed = discord.Embed(title="⚡ LIGHTNING FAST!", description=f"Sahi button dabaya! Tune **${reward:,}** claim kar liye!", color=0x00FF00)
+            else:
+                embed = discord.Embed(title="💥 WRONG BUTTON!", description="Jaldbaazi mein galat button daba diya! $0 Bonus.", color=0xFF0000)
+            
+            await interaction.edit_original_response(embed=embed, view=self)
+        return callback
+
+# --- 4. BOMB DEFUSAL ---
+class BombDefusalView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=60)
+        self.user = user
+        self.wires = ["RED", "BLUE", "GREEN"]
+        self.bomb_wire = random.choice(self.wires)
+
+    async def cut_wire(self, interaction, color):
+        if interaction.user.id != self.user.id: return
+        await interaction.response.defer()
+        for child in self.children: child.disabled = True
+        
+        if color == self.bomb_wire:
+            embed = discord.Embed(title="💥 BOOM!", description="Tune galat taar kaat di! Bomb phat gaya. $0 Bonus!", color=0xFF0000)
+            embed.set_image(url="https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif")
+        else:
+            reward = random.randint(40000, 80000)
+            await give_bonus_money(self.user.id, reward)
+            embed = discord.Embed(title="✂️ BOMB DEFUSED!", description=f"Sahi taar kaati! Jaan bhi bachi aur **${reward:,}** bhi mile!", color=0x00FF00)
+        
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    @discord.ui.button(label="CUT RED", style=discord.ButtonStyle.danger)
+    async def btn_r(self, i, b): await self.cut_wire(i, "RED")
+    @discord.ui.button(label="CUT BLUE", style=discord.ButtonStyle.primary)
+    async def btn_b(self, i, b): await self.cut_wire(i, "BLUE")
+    @discord.ui.button(label="CUT GREEN", style=discord.ButtonStyle.success)
+    async def btn_g(self, i, b): await self.cut_wire(i, "GREEN")
+
+# --- MASTER DROPDOWN SELECT ---
+class BonusSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="1. Mystery Doors", description="3 Darwaze, ek mein Jackpot, ek mein Chor!", emoji="🚪"),
+            discord.SelectOption(label="2. Double Or Nothing", description="20k le lo, ya 50k ke liye risk lo.", emoji="🎲"),
+            discord.SelectOption(label="3. Fast Finger", description="3 second mein Green button dabao.", emoji="⚡"),
+            discord.SelectOption(label="4. Bomb Defusal", description="Sahi taar kaato warna BOOM!", emoji="💣"),
+            discord.SelectOption(label="5. Daily Streak Box", description="Loyalty Box smash karo.", emoji="📦"),
+            discord.SelectOption(label="6. Quick Slot Spin", description="Slot machine ghumao kismat aazmao.", emoji="🎰"),
+            discord.SelectOption(label="7. Rock Paper Scissor", description="Bot ko harao aur 50k le jao.", emoji="✌️"),
+            discord.SelectOption(label="8. Coin Toss", description="Heads ya Tails? Win upto 40k.", emoji="🪙"),
+            discord.SelectOption(label="9. Vault Hack", description="Sahi PIN code guess karo.", emoji="🔐"),
+            discord.SelectOption(label="10. Scratch Card", description="Scratch karo aur instant paisa lo.", emoji="🎟️")
+        ]
+        super().__init__(placeholder="🎁 Choose Your Bonus Mini-Game...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        # Prevent others from using
+        if interaction.user.id != self.view.user.id:
+            return await interaction.response.send_message("❌ Ye tera bonus nahi hai!", ephemeral=True)
+            
+        choice = self.values[0]
+        await interaction.response.defer()
+        
+        # Remove dropdown after choice
+        self.disabled = True
+        await interaction.edit_original_response(view=self.view)
+
+        # 🎮 GAME ROUTING LOGIC
+        if "1. Mystery Doors" in choice:
+            view = MysteryDoorsView(interaction.user)
+            embed = discord.Embed(title="🚪 MYSTERY DOORS", description="Kise ek darwaze ko kholo. Ek mein $75,000 hain!", color=0x9b59b6)
+            await interaction.followup.send(embed=embed, view=view)
+
+        elif "2. Double Or Nothing" in choice:
+            view = GambleBonusView(interaction.user)
+            embed = discord.Embed(title="🎲 DOUBLE OR NOTHING", description="Kya tu $20,000 se khush hai ya $50k ka risk lega?", color=0xf1c40f)
+            await interaction.followup.send(embed=embed, view=view)
+
+        elif "3. Fast Finger" in choice:
+            embed = discord.Embed(title="⚡ FAST FINGER", description="**GREEN BUTTON** ko 3 second ke andar dabao! JALDI!", color=0xe74c3c)
+            view = FastFingerView(interaction.user)
+            msg = await interaction.followup.send(embed=embed, view=view, wait=True)
+            view.message = msg
+
+        elif "4. Bomb Defusal" in choice:
+            view = BombDefusalView(interaction.user)
+            embed = discord.Embed(title="💣 BOMB DEFUSAL", description="Bomb phatne wala hai! Koi ek taar kaat do jaldi!", color=0x34495e)
+            await interaction.followup.send(embed=embed, view=view)
+
+        elif "5. Daily Streak Box" in choice:
+            reward = random.randint(15000, 60000)
+            await give_bonus_money(interaction.user.id, reward)
+            embed = discord.Embed(title="📦 STREAK BOX SMASHED!", description=f"Tune apna daily dabba toda aur **${reward:,}** nikle!", color=0x2ecc71)
+            embed.set_thumbnail(url="https://media.tenor.com/E0lQ-J9YpKwAAAAC/chest-open.gif")
+            await interaction.followup.send(embed=embed)
+
+        elif "6. Quick Slot Spin" in choice:
+            embed = discord.Embed(title="🎰 SLOT MACHINE", description="*Spinning the reels...*", color=0xe67e22)
+            msg = await interaction.followup.send(embed=embed, wait=True)
+            await asyncio.sleep(2)
+            fruits = ["🍒", "🍋", "🔔", "💎"]
+            res = [random.choice(fruits) for _ in range(3)]
+            
+            if res[0] == res[1] == res[2]:
+                reward = 100000
+                desc = f"### 🎉 MEGA JACKPOT!\n[ {' | '.join(res)} ]\nTune **${reward:,}** jeet liye!"
+            elif res[0] == res[1] or res[1] == res[2] or res[0] == res[2]:
+                reward = 25000
+                desc = f"### 💵 SMALL WIN!\n[ {' | '.join(res)} ]\nDo match huye! Tune **${reward:,}** jeete."
+            else:
+                reward = 0
+                desc = f"### ❌ NO LUCK!\n[ {' | '.join(res)} ]\nKuch match nahi hua. $0"
+                
+            if reward > 0: await give_bonus_money(interaction.user.id, reward)
+            embed.description = desc
+            await msg.edit(embed=embed)
+
+        elif "7. Rock Paper Scissor" in choice:
+            # Shortened logic for RPS
+            bot_choice = random.choice(["ROCK", "PAPER", "SCISSOR"])
+            reward = random.randint(30000, 50000)
+            await give_bonus_money(interaction.user.id, reward)
+            embed = discord.Embed(title="✌️ RPS BATTLE", description=f"Bot chose **{bot_choice}**.\nTeri kismat achi thi, tune game jeet liya aur **${reward:,}** claim kar liye!", color=0x3498db)
+            await interaction.followup.send(embed=embed)
+
+        elif "8. Coin Toss" in choice:
+            flip = random.choice(["HEADS", "TAILS"])
+            reward = random.randint(20000, 45000)
+            await give_bonus_money(interaction.user.id, reward)
+            embed = discord.Embed(title="🪙 COIN FLIPPED!", description=f"Sikka uchhla aur aaya **{flip}**!\nTune **${reward:,}** jeet liye!", color=0xf1c40f)
+            await interaction.followup.send(embed=embed)
+
+        elif "9. Vault Hack" in choice:
+            reward = random.randint(50000, 95000)
+            await give_bonus_money(interaction.user.id, reward)
+            embed = discord.Embed(title="🔐 VAULT HACKED", description=f"Tune bina PIN ke bypass script chala di!\nVault se **${reward:,}** chura liye!", color=0x000000)
+            embed.set_image(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif")
+            await interaction.followup.send(embed=embed)
+
+        elif "10. Scratch Card" in choice:
+            reward = random.randint(5000, 100000)
+            await give_bonus_money(interaction.user.id, reward)
+            embed = discord.Embed(title="🎟️ SCRATCH CARD REVEALED", description=f"Tune card scratch kiya aur chhupe huye **${reward:,}** nikle!", color=0xe91e63)
+            await interaction.followup.send(embed=embed)
+
+
+class BonusMenuView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=60)
+        self.user = user
+        self.add_item(BonusSelect())
+
+# --- THE MAIN COMMAND ---
+@games_group.command(name="bonus", description="🎁 Claim your Daily Bonus via 10 Ultra-Premium Mini-Games!")
+async def daily_bonus(i: discord.Interaction):
+    # Optional: Yahan tu cooldown check laga sakta hai ki din mein 1 baar hi use ho
+    
+    embed = discord.Embed(title="🎁 TITAN DAILY BONUS MENU", color=0x2b2d31)
+    embed.description = (
+        f"# 🎰 CHOOSE YOUR DESTINY\n"
+        f"Welcome {i.user.mention}! Apne daily bonus ko claim karne ka tareeqa select karo.\n\n"
+        f"**Rules:**\n"
+        f"🔹 Har game ka risk aur reward alag hai.\n"
+        f"🔹 Kuch games mein dimag chahiye, kuch mein speed, aur kuch mein sirf kismat!\n"
+        f"🔹 Max Reward Limit: **$100,000** 💸\n\n"
+        f"👇 *Neeche dropdown se apna game select karo:* "
+    )
+    embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2652/2652218.png")
+    
+    view = BonusMenuView(i.user)
+    await i.response.send_message(embed=embed, view=view)
+
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
