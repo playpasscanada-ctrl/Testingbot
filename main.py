@@ -5312,6 +5312,256 @@ async def say(i: discord.Interaction, message: str, mode: app_commands.Choice[st
     except Exception as e:
         await i.followup.send(f"❌ **System Error:** `{e}`")
 
+import discord
+from discord import app_commands
+import random
+import asyncio
+
+# ==============================================================================
+# 🏏 HAND CRICKET: ULTRA PREMIUM EDITION (WITH BETTING)
+# ==============================================================================
+
+class HandCricketGame(discord.ui.View):
+    def __init__(self, p1: discord.Member, p2: discord.Member, bet: int):
+        super().__init__(timeout=120) # 2 minutes timeout per ball
+        self.p1 = p1
+        self.p2 = p2
+        self.bet = bet
+        
+        # Toss & Roles
+        players = [p1, p2]
+        self.batter = random.choice(players)
+        self.bowler = p1 if self.batter == p2 else p2
+        
+        # Game State
+        self.innings = 1
+        self.batter_score = 0
+        self.target = None
+        
+        self.batter_choice = None
+        self.bowler_choice = None
+        
+        self.last_action = "🪙 **TOSS WON BY:** " + self.batter.mention + " (Elected to Bat)"
+        self.gif_url = "https://media.tenor.com/DihD0-LhFCAAAAAC/cricket-batting.gif" # Batting GIF
+        
+        self.build_buttons()
+        self.render_ui()
+
+    def build_buttons(self):
+        self.clear_items()
+        # Discord allows max 5 buttons per row. So 2 rows needed for 1 to 6.
+        nums = [1, 2, 3, 4, 5, 6]
+        for n in nums:
+            row = 0 if n <= 3 else 1
+            btn = discord.ui.Button(label=str(n), style=discord.ButtonStyle.secondary, custom_id=f"hc_{n}", row=row)
+            btn.callback = self.number_callback
+            self.add_item(btn)
+
+    def render_ui(self):
+        color = 0x00FF00 if self.innings == 1 else 0xFFA500
+        title = f"🏏 HAND CRICKET • INNINGS {self.innings}"
+        
+        # Scoreboard Logic
+        scoreboard = f"**Score:** `{self.batter_score}/0`"
+        if self.target:
+            need = self.target - self.batter_score
+            scoreboard += f"  |  **Target:** `{self.target}`  |  **Need:** `{need}` runs"
+
+        desc = (
+            f"**💰 Prize Pool:** `${self.bet * 2:,}`\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏏 **Batter:** {self.batter.mention}\n"
+            f"🥎 **Bowler:** {self.bowler.mention}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📊 {scoreboard}\n\n"
+            f"⚡ **Last Action:**\n> {self.last_action}"
+        )
+
+        self.embed = discord.Embed(title=title, description=desc, color=color)
+        self.embed.set_image(url=self.gif_url)
+        
+        # Status indicators
+        b_status = "🟢 LOCKED" if self.batter_choice else "⏳ WAITING"
+        bw_status = "🟢 LOCKED" if self.bowler_choice else "⏳ WAITING"
+        self.embed.set_footer(text=f"Batter Status: {b_status} | Bowler Status: {bw_status}")
+
+    async def number_callback(self, interaction: discord.Interaction):
+        if interaction.user.id not in [self.batter.id, self.bowler.id]:
+            return await interaction.response.send_message("❌ **Umpire:** Bahar walo ko khelne ki permission nahi hai!", ephemeral=True)
+        
+        choice = int(interaction.data["custom_id"].split("_")[1])
+        
+        if interaction.user.id == self.batter.id:
+            if self.batter_choice is not None:
+                return await interaction.response.send_message("⏳ Tumne pehle hi number chun liya hai. Bowler ka wait karo.", ephemeral=True)
+            self.batter_choice = choice
+        else:
+            if self.bowler_choice is not None:
+                return await interaction.response.send_message("⏳ Tumne pehle hi number chun liya hai. Batter ka wait karo.", ephemeral=True)
+            self.bowler_choice = choice
+            
+        # Secret confirmation to user
+        await interaction.response.send_message(f"🤫 Tumne **{choice}** chuna hai.", ephemeral=True)
+        
+        # Update UI to show someone has locked their choice
+        self.render_ui()
+        await interaction.message.edit(embed=self.embed, view=self)
+
+        # Check if both have chosen
+        if self.batter_choice is not None and self.bowler_choice is not None:
+            await self.process_ball(interaction)
+
+    async def process_ball(self, interaction: discord.Interaction):
+        bat_num = self.batter_choice
+        bowl_num = self.bowler_choice
+        
+        # 💥 WICKET LOGIC
+        if bat_num == bowl_num:
+            if self.innings == 1:
+                # Innings Change
+                self.target = self.batter_score + 1
+                self.last_action = f"💀 **OUT!** Both chose **{bat_num}**!\n🔄 **INNINGS CHANGE:** {self.bowler.mention} needs **{self.target}** runs to win."
+                self.gif_url = "https://media.tenor.com/bW_xL9Z2tLMAAAAC/clean-bowled-stumped.gif" # Wicket GIF
+                
+                # Swap Roles
+                self.batter, self.bowler = self.bowler, self.batter
+                self.batter_score = 0
+                self.innings = 2
+            else:
+                # Match Over - Bowler Wins
+                return await self.end_game(interaction.message, winner=self.bowler, reason=f"💀 **OUT!** Both chose **{bat_num}**.")
+        
+        # 🏏 RUN LOGIC
+        else:
+            self.batter_score += bat_num
+            self.last_action = f"💥 Batter hit **{bat_num}**! (Bowler threw {bowl_num})"
+            self.gif_url = "https://media.tenor.com/DihD0-LhFCAAAAAC/cricket-batting.gif"
+            
+            # Check Win in Innings 2
+            if self.innings == 2 and self.batter_score >= self.target:
+                return await self.end_game(interaction.message, winner=self.batter, reason=f"🏆 **TARGET CHASED!** Batter hit a **{bat_num}**.")
+
+        # Reset choices for next ball
+        self.batter_choice = None
+        self.bowler_choice = None
+        
+        self.render_ui()
+        await interaction.message.edit(embed=self.embed, view=self)
+
+    async def end_game(self, message, winner: discord.Member, reason: str):
+        self.stop()
+        self.clear_items()
+        
+        loser = self.p1 if winner.id == self.p2.id else self.p2
+        prize = self.bet * 2
+        
+        # Reward DB Update
+        try:
+            await update_balance(winner.id, prize)
+        except Exception as e:
+            print(f"DB Error HandCricket: {e}")
+
+        win_embed = discord.Embed(
+            title="🏆 MATCH FINISHED", 
+            description=f"{reason}\n\n👑 **WINNER:** {winner.mention}\n💸 **Prize Won:** `${prize:,}`", 
+            color=0xFFD700
+        )
+        win_embed.set_image(url="https://media.tenor.com/Y-q-U1N5R6UAAAAC/ms-dhoni-world-cup.gif") # Trophy/Win GIF
+        win_embed.set_footer(text="Titan Premium Games")
+        
+        await message.edit(embed=win_embed, view=None)
+
+    async def on_timeout(self):
+        # Refund if someone goes AFK
+        try:
+            await update_balance(self.p1.id, self.bet)
+            await update_balance(self.p2.id, self.bet)
+        except: pass
+
+
+# ==============================================================================
+# 📨 HAND CRICKET INVITE VIEW
+# ==============================================================================
+class CricketInviteView(discord.ui.View):
+    def __init__(self, *, host: discord.Member, target: discord.Member, bet: int):
+        super().__init__(timeout=60)
+        self.host = host
+        self.target = target
+        self.bet = bet
+
+    @discord.ui.button(label="ACCEPT CHALLENGE", style=discord.ButtonStyle.success, emoji="✅")
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.target.id:
+            return await interaction.response.send_message("❌ **Umpire:** Yeh challenge tumhare liye nahi hai!", ephemeral=True)
+        
+        await interaction.response.defer()
+        
+        # 💸 Deduct Balances (Entry Fee)
+        try:
+            p1_bal = await get_balance(self.host.id)
+            p2_bal = await get_balance(self.target.id)
+            
+            if p2_bal < self.bet:
+                return await interaction.followup.send(f"❌ Tumhare paas `${self.bet:,}` nahi hain! Kangaal log cricket nahi khelte.", ephemeral=True)
+            
+            # Deduct from both
+            await update_balance(self.host.id, -self.bet)
+            await update_balance(self.target.id, -self.bet)
+        except Exception as e:
+            return await interaction.followup.send("❌ Transaction Error. Try again.", ephemeral=True)
+        
+        # Start Game
+        game_board = HandCricketGame(p1=self.host, p2=self.target, bet=self.bet)
+        await interaction.edit_original_response(content=f"🚨 **MATCH STARTING!** {self.host.mention} vs {self.target.mention}", embed=game_board.embed, view=game_board)
+
+    @discord.ui.button(label="REJECT", style=discord.ButtonStyle.danger, emoji="🛑")
+    async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.target.id:
+            return await interaction.response.send_message("❌ **Umpire:** Bahar raho!", ephemeral=True)
+        
+        await interaction.response.defer()
+        embed = discord.Embed(title="🏃 PITCH CHHOD KE BHAG GAYA", description=f"🤡 {interaction.user.mention} darr gaya!", color=0xFF0000)
+        await interaction.edit_original_response(content=None, embed=embed, view=None)
+
+
+# ==============================================================================
+# 🎮 SLASH COMMAND
+# ==============================================================================
+@bot.tree.command(name="handcricket", description="🏏 Play Premium Hand Cricket with Betting")
+@app_commands.describe(opponent="Kisko harana hai?", bet="Kitne paise lagane hain?")
+async def handcricket(i: discord.Interaction, opponent: discord.Member, bet: int):
+    await i.response.defer()
+
+    try:
+        if opponent.id == i.user.id or opponent.bot:
+            return await i.followup.send("❌ Khud se ya bot se nahi khel sakte.", ephemeral=True)
+        if bet < 100:
+            return await i.followup.send("❌ Minimum bet is `$100`.", ephemeral=True)
+
+        # Balance check for Host
+        host_bal = await get_balance(i.user.id)
+        if host_bal < bet:
+            return await i.followup.send(f"❌ Tumhare paas utne paise nahi hain. Wallet: `${host_bal:,}`", ephemeral=True)
+
+        # Invite UI
+        embed = discord.Embed(
+            title="🏏 HAND CRICKET T20 MATCH", 
+            description=f"# 🏆 MEGA CLASH\n**{i.user.name}** ne **{opponent.name}** ko challenge kiya hai!\n\n> *\"Dekhte hain kiska bat bolta hai!\"*", 
+            color=0x2b2d31
+        )
+        embed.add_field(name="📜 **Rules**", value="`Same Number = OUT`\n`Different Number = RUNS`", inline=False)
+        embed.add_field(name="💰 **Bet Amount**", value=f"`${bet:,}`", inline=True)
+        embed.add_field(name="🏆 **Winning Prize**", value=f"`${bet * 2:,}`", inline=True)
+        
+        embed.set_thumbnail(url=opponent.display_avatar.url)
+        embed.set_image(url="https://media.tenor.com/s1K4n3qXzF4AAAAC/cricket-stadium.gif")
+        
+        invite_view = CricketInviteView(host=i.user, target=opponent, bet=bet)
+        await i.followup.send(content=f"🏟️ **{opponent.mention}**, Pitch pe aao!", embed=embed, view=invite_view)
+
+    except Exception as e:
+        await i.followup.send(f"❌ Error: {e}", ephemeral=True)
+
 # ================== 🥊 UNDERGROUND FIGHT CLUB (PREMIUM) ==================
 
 class FightArenaView(discord.ui.View):
@@ -18890,6 +19140,769 @@ async def daily(interaction: discord.Interaction):
     except Exception as e:
         print(f"Daily Command Error: {e}")
         await interaction.followup.send(f"❌ **System Error:** `{e}`")
+
+
+import discord
+from discord import app_commands
+import random
+import asyncio
+
+# ==============================================================================
+# 🎮 MASSIVE GAME DATA DICTIONARIES (LEVELS & DIFFICULTIES)
+# ==============================================================================
+
+SCRAMBLE_WORDS = {
+    1: [ # 🟢 EASY (4-5 Letters)
+        "APPLE", "WATER", "GHOST", "HOUSE", "TRAIN", "MOUSE", "CLOCK", "CHAIR", "TABLE", 
+        "SWORD", "MAGIC", "BRAIN", "HEART", "LIGHT", "MUSIC", "NIGHT", "RIVER", "SMILE", 
+        "TIGER", "WATCH", "BEACH", "BREAD", "BRUSH", "CANDY", "CLOUD", "DANCE", "DREAM", 
+        "EARTH", "FLAME", "GLASS", "HONEY", "JUICE", "KNIFE", "LEMON", "MONEY", "NURSE", 
+        "OCEAN", "PAPER", "PIZZA", "QUEEN", "ROBOT", "SHEEP", "SNAKE", "SPOON", "SUGAR",
+        "BLANK", "BRAVE", "CHESS", "CHILL", "CRASH", "DAISY", "EAGLE", "FLOCK", "FUNNY", "GIANT", 
+        "HAPPY", "HOTEL", "IGLOO", "MANGO", "NOBLE", "ONION", "PUPPY", "QUIET", "SHARK", "TOAST", 
+        "ULTRA", "VENOM", "VOICE", "YOUTH", "ZEBRA", "BLIND", "FAITH", "GLORY", "HABIT", "JELLY", 
+        "KNOCK", "LOGIC", "NERVE", "OASIS", "PEARL", "RUMOR", "SALAD", "THEME", "UNCLE", "VALUE",
+        "WHEEL", "YACHT", "BACON", "CABIN", "DELTA", "EIGHT", "FROST", "GHOST", "HEAVY", "IMAGE"
+        
+    ],
+    2: [ # 🟡 MEDIUM (6-7 Letters)
+        "PIRATE", "PLANET", "DRAGON", "GUITAR", "ROCKET", "CASTLE", "JUNGLE", "ANIMAL", 
+        "BOTTLE", "CAMERA", "CANYON", "DESERT", "DOCTOR", "ENGINE", "FOREST", "FRIEND", 
+        "GARDEN", "ISLAND", "LIZARD", "MARKET", "MIRROR", "MONKEY", "NUMBER", "ORANGE", 
+        "PALACE", "PENCIL", "POCKET", "POLICE", "PRISON", "PUZZLE", "RABBIT", "RECORD", 
+        "SCHOOL", "SCREEN", "SECRET", "SILVER", "SISTER", "SPIDER", "SPIRIT", "SPRING", 
+        "SQUARE", "STREET", "SUMMER", "SUNSET", "TARGET", "TEMPLE", "TICKET", "WINDOW",
+        "AIRPORT", "BALLOON", "BALANCE", "CABINET", "CAPTAIN", "DYNAMIC", "ECLIPSE", "FABRIC", 
+        "GARAGE", "HABITAT", "ICEBERG", "JOURNAL", "KETCHUP", "LAGOON", "MACHINE", "MAGNET", 
+        "NARROW", "OCTOPUS", "PACIFIC", "PANCAKE", "RADICAL", "REACTOR", "SALMON", "SAUSAGE", 
+        "TACTICS", "THUNDER", "VAMPIRE", "VETERAN", "VOLTAGE", "WARRIOR", "WEALTHY", "YOGHURT", 
+        "ZEALOUS", "ZOMBIE", "WEAPON", "VILLAGE", "TUNNEL", "SHADOW", "PUMPKIN", "OXYGEN"
+    ],
+    3: [ # 🔴 HARD (8+ Letters)
+        "ASTRONAUT", "TELESCOPE", "ADVENTURE", "MYSTERY", "PYRAMID", "UNIVERSE", "ABSOLUTE", 
+        "BEAUTIFUL", "BRILLIANT", "CAMPAIGN", "CHAMPION", "CHOCOLATE", "COMPUTER", "DAUGHTER", 
+        "DINOSAUR", "DIRECTOR", "DISCOVER", "ELEPHANT", "ENGINEER", "ENVELOPE", "EVIDENCE", 
+        "FESTIVAL", "GENERATE", "GORGEOUS", "HOSPITAL", "IDENTITY", "INDUSTRY", "LANGUAGE", 
+        "MACARONI", "MOUNTAIN", "MUSHROOM", "NECKLACE", "OPPOSITE", "PARADISE", "PHARMACY", 
+        "PINEAPPLE", "PORTRAIT", "QUESTION", "REMEMBER", "SANDWICH", "SCISSORS", "SKELETON", 
+        "SOFTWARE", "SYMPHONY", "SYNDROME", "TREASURE", "UMBRELLA", "VACATION", "WARDROBE",
+        "AMBULANCE", "ARCHITECT", "BILLIONAIRE", "BREAKFAST", "CALCULATOR", "CELEBRATION", 
+        "DETECTIVE", "DIMENSION", "EARTHQUAKE", "EMERGENCY", "FIREPLACE", "GENERATOR", 
+        "HELICOPTER", "INVISIBLE", "JOURNALIST", "KNOWLEDGE", "LANDSCAPE", "METABOLISM", 
+        "NAVIGATOR", "OBSERVATORY", "PASSENGER", "QUARANTINE", "RADIATION", "SUPERNOVA", 
+        "TELEPHONE", "UNIVERSITY", "VEGETARIAN", "WRESTLING", "XYLOPHONE", "YOUTUBER", 
+        "ZOOLOGIST", "AQUARIUM", "BOULEVARD", "CHAMELEON", "DIAGNOSIS", "EVOLUTION"
+    ]
+}
+
+EMOJI_PUZZLES = {
+    1: [ # 🟢 EASY (Famous Movies / Characters)
+        ("👦👓⚡", "HARRY POTTER"), 
+        ("🦇👨", "BATMAN"), 
+        ("🚢🥶💔", "TITANIC"), 
+        ("🕷️👨", "SPIDER-MAN"), 
+        ("🦁👑", "THE LION KING"), 
+        ("🐼👊🍜", "KUNG FU PANDA"), 
+        ("🐟🔎🐠", "FINDING NEMO"), 
+        ("🍫🏭", "CHARLIE AND THE CHOCOLATE FACTORY"), 
+        ("🦖🏃‍♂️🚙", "JURASSIC PARK"), 
+        ("🚗⚡🏆", "CARS"), 
+        ("🎈🏠👴", "UP"), 
+        ("🐀👨‍🍳🍲", "RATATOUILLE"), 
+        ("❄️👸⛄", "FROZEN"), 
+        ("🧸🤠🚀", "TOY STORY"), 
+        ("🦍🏢✈️", "KING KONG"),
+        ("🐱🐭🔨", "TOM AND JERRY"),
+        ("🧽👖🍍", "SPONGEBOB SQUAREPANTS"),
+        ("🦸‍♂️☄️👓", "SUPERMAN"),
+        ("👦🏻🐒🐻", "THE JUNGLE BOOK"),
+        ("🗡️🛡️👑", "GLADIATOR"),
+        ("🧚‍♀️✨🏴‍☠️", "PETER PAN"),
+        ("🦊🐰👮‍♂️", "ZOOTOPIA"),
+        ("👿👗👠", "THE DEVIL WEARS PRADA"),
+        ("👸💇‍♀️🗼", "TANGLED"),
+        ("🐶🐾🕵️‍♂️", "SCOOBY DOO"),
+        ("🐢🥷🍕", "TEENAGE MUTANT NINJA TURTLES"),
+        ("🥋👦🚗", "THE KARATE KID"),
+        ("🦍🏢👩", "KING KONG"),
+        ("🐼🥋🐉", "KUNG FU PANDA 2"),
+        ("🦄🌈💖", "MY LITTLE PONY")
+    ],
+    2: [ # 🟡 MEDIUM (Pop Culture / Needs thinking)
+        ("🌍🐒🗽", "PLANET OF THE APES"), 
+        ("👨🏻🔨⚡", "THOR"), 
+        ("🔴💊🔵💊🕶️", "THE MATRIX"), 
+        ("💍🌋👁️", "THE LORD OF THE RINGS"), 
+        ("🕵️‍♂️🔎🇬🇧", "SHERLOCK HOLMES"), 
+        ("👸👠🎃", "CINDERELLA"), 
+        ("🧜‍♀️🦀🎶", "THE LITTLE MERMAID"), 
+        ("🧞‍♂️🐅🕌", "ALADDIN"), 
+        ("👧🐰🕳️⏱️", "ALICE IN WONDERLAND"), 
+        ("👨‍🚀🌌⏳", "INTERSTELLAR"), 
+        ("🔪🚿😱", "PSYCHO"), 
+        ("🥊🏃‍♂️🥩", "ROCKY"), 
+        ("🚘🔙⏱️👨‍🔬", "BACK TO THE FUTURE"), 
+        ("👻🚫🔫", "GHOSTBUSTERS"), 
+        ("👨‍👩‍👧‍👦🦸‍♂️🦸‍♀️👶", "THE INCREDIBLES"), 
+        ("🗑️🤖🌱", "WALL-E"), 
+        ("🧛‍♂️🦇🩸", "DRACULA"), 
+        ("🏝️🏐🧔", "CAST AWAY"), 
+        ("🍫🏃‍♂️🍤", "FORREST GUMP"), 
+        ("🐱👢🗡️", "PUSS IN BOOTS"),
+        ("👮‍♂️💪🦁", "SINGHAM"),
+        ("👨‍🏫👽🛸", "KOI MIL GAYA"),
+        ("🔫👨‍🦲🕶️", "TERMINATOR"),
+        ("🏍️🕶️💣", "DHOOM"),
+        ("👨‍👩‍👧‍👦✈️🇫🇷", "HOME ALONE"),
+        ("🧔🏻⛏️🪙", "KGF"),
+        ("🏫👻👧", "STREE"),
+        ("👱‍♀️💖👱‍♂️🚂", "JAB WE MET"),
+        ("🧛‍♂️🐺🌙", "TWILIGHT"),
+        ("🥷🦊🍜", "NARUTO"),
+        ("☠️📓🖊️", "DEATH NOTE"),
+        ("🏴‍☠️👒🍖", "ONE PIECE"),
+        ("👊🥚👨‍🦲", "ONE PUNCH MAN"),
+        ("🏀⛹️‍♂️", "SLAM DUNK"),
+        ("🦸‍♂️🏫💥", "MY HERO ACADEMIA"),
+        ("👦🏻🏐👑", "HAIKYUU"),
+        ("👨‍🎓📚🏆", "12TH FAIL"),
+        ("👨‍🚀🌕🇺🇸", "APOLLO 13")
+    ],
+    3: [ # 🔴 HARD (Tricky / Long Names)
+        ("👨‍🏫🧪💎", "BREAKING BAD"), 
+        ("🤡🎈⛵", "IT"), 
+        ("🦹‍♂️🦇🃏", "THE DARK KNIGHT"), 
+        ("🐉🔥👸⚔️", "GAME OF THRONES"), 
+        ("👧🏹🔥🐦", "THE HUNGER GAMES"), 
+        ("🏰🧟‍♂️🌿", "THE LAST OF US"), 
+        ("👨‍💼👔🔪🩸", "AMERICAN PSYCHO"), 
+        ("🤫🐑👩‍💼", "THE SILENCE OF THE LAMBS"), 
+        ("👦🏻🐯🛶🌊", "LIFE OF PI"), 
+        ("🌌⚔️🤖⭐", "STAR WARS"), 
+        ("👨🏻✂️👐", "EDWARD SCISSORHANDS"), 
+        ("😴💭🏢🔄", "INCEPTION"), 
+        ("🐻🍯🎈", "WINNIE THE POOH"), 
+        ("👨‍🚀🥔🚀", "THE MARTIAN"), 
+        ("💃🕺🌧️🌂", "SINGIN IN THE RAIN"), 
+        ("👨‍🦯🎹🕶️", "RAY"), 
+        ("🎩🐰🤹‍♂️", "THE PRESTIGE"), 
+        ("🦍🥊🦎", "GODZILLA VS KONG"),
+        ("🏴‍☠️🚢⚔️🐙", "PIRATES OF THE CARIBBEAN"),
+        ("👨‍👦💼🏃‍♂️🚇", "THE PURSUIT OF HAPPYNESS"),
+        ("🤫📍🌎", "A QUIET PLACE"),
+        ("👨‍🔬⚛️💣", "OPPENHEIMER"),
+        ("🎀👠💖", "BARBIE"),
+        ("🦹‍♂️🧤💎", "AVENGERS INFINITY WAR"),
+        ("🕷️🌀🌍", "SPIDER-MAN INTO THE SPIDER-VERSE"),
+        ("👨‍👩‍👧‍👦🔪🏚️", "PARASITE"),
+        ("👨‍🌾🌽🛸", "SIGNS"),
+        ("🔪🧅🧅", "KNIVES OUT"),
+        ("🤡🔪🃏", "JOKER"),
+        ("🧊🪓🔪", "THE SHINING"),
+        ("🏰🐉🔥", "HOUSE OF THE DRAGON"),
+        ("🧔🏻🔫🐶", "JOHN WICK"),
+        ("💃🕺⭐🌆", "LA LA LAND"),
+        ("🧟‍♂️🏃‍♂️🚆", "TRAIN TO BUSAN"),
+        ("🪓🌲🩸", "EVIL DEAD"),
+        ("🧔🏻🪓🩸", "ANIMAL"),
+        ("🐙🦑🎮💰", "SQUID GAME"),
+        ("👨‍👧⏳📚", "INTERSTELLAR"),
+        ("🦇🃏🌆🔥", "THE DARK KNIGHT"),
+        ("🔪📞😱", "SCREAM")
+    ]
+}
+
+# ======================================================
+
+LOOTBOX_PRICE = 5000
+REWARD_AMOUNT = 10000
+
+# ==============================================================================
+# 1️⃣ GUESS THE NUMBER (Premium Edition)
+# ==============================================================================
+@games_group.command(name="guess_number", description="Guess the secret number to win $10,000!")
+async def guess_number(i: discord.Interaction):
+    await i.response.defer() # 🛡️ FIX: 15-Minute Timeout Window!
+    
+    secret_number = random.randint(1, 100)
+    attempts = 5
+    
+    embed = discord.Embed(
+        title="🔢 GUESS THE NUMBER", 
+        description=(
+            f"I have chosen a secret number between **1 and 100**.\n"
+            f"You have **{attempts} attempts** to guess it correctly.\n\n"
+            f"💰 **Reward:** `${REWARD_AMOUNT:,}`\n"
+            f"⏳ **Time Limit:** 60 seconds\n\n"
+            f"👉 *Type your guess in the chat now!*"
+        ),
+        color=0x3498db
+    )
+    embed.set_footer(text=f"Player: {i.user.name}", icon_url=i.user.display_avatar.url)
+    await i.followup.send(embed=embed)
+
+    def check(m):
+        return m.author == i.user and m.channel == i.channel and m.content.isdigit()
+
+    for attempt in range(attempts):
+        try:
+            msg = await i.client.wait_for('message', check=check, timeout=60.0)
+            guess = int(msg.content)
+            
+            if guess == secret_number:
+                win_embed = discord.Embed(title="🎉 JACKPOT!", description=f"Incredible! The number was **{secret_number}**.\n\n💸 You won **${REWARD_AMOUNT:,}**!", color=0x00FF00)
+                try: await update_balance(i.user.id, REWARD_AMOUNT) # Tumhara DB function
+                except: pass
+                return await i.channel.send(embed=win_embed)
+                
+            elif guess < secret_number:
+                hint = "⬆️ **Higher!**"
+            else:
+                hint = "⬇️ **Lower!**"
+                
+            tries_left = attempts - (attempt + 1)
+            if tries_left > 0:
+                await i.channel.send(f"{i.user.mention} {hint} You have **{tries_left}** attempts left.")
+            
+        except asyncio.TimeoutError:
+            return await i.channel.send(f"⏳ **Time's up, {i.user.mention}!** The number was **{secret_number}**.")
+
+    lose_embed = discord.Embed(title="💀 GAME OVER", description=f"You are out of attempts!\nThe secret number was **{secret_number}**.", color=0xFF0000)
+    await i.channel.send(embed=lose_embed)
+
+# ==============================================================================
+# 2️⃣ WORD SCRAMBLE (Level Based)
+# ==============================================================================
+@games_group.command(name="scramble", description="Unscramble the word to win $10,000!")
+@app_commands.describe(level="Select Difficulty Level")
+@app_commands.choices(level=[
+    app_commands.Choice(name="🟢 Easy (4-5 Letters)", value=1),
+    app_commands.Choice(name="🟡 Medium (6-7 Letters)", value=2),
+    app_commands.Choice(name="🔴 Hard (8+ Letters)", value=3)
+])
+async def scramble(i: discord.Interaction, level: app_commands.Choice[int]):
+    await i.response.defer() 
+    
+    word = random.choice(SCRAMBLE_WORDS[level.value])
+    scrambled = list(word)
+    random.shuffle(scrambled)
+    scrambled_word = "".join(scrambled)
+    
+    # Make sure it doesn't accidentally shuffle to the original word
+    while scrambled_word == word:
+        random.shuffle(scrambled)
+        scrambled_word = "".join(scrambled)
+
+    embed = discord.Embed(
+        title="🔠 WORD SCRAMBLE", 
+        description=(
+            f"**Difficulty:** {level.name}\n"
+            f"Unscramble this word to win **${REWARD_AMOUNT:,}**!\n\n"
+            f"🧩 **Word:** `{scrambled_word}`\n\n"
+            f"👉 *Type your answer in the chat (You have 30 seconds)!*"
+        ),
+        color=0x9b59b6
+    )
+    await i.followup.send(embed=embed)
+
+    def check(m):
+        return m.author == i.user and m.channel == i.channel
+
+    try:
+        msg = await i.client.wait_for('message', check=check, timeout=30.0)
+        
+        if msg.content.upper() == word:
+            win_embed = discord.Embed(title="✅ CORRECT!", description=f"Brilliant! The word was **{word}**.\n\n💸 You won **${REWARD_AMOUNT:,}**!", color=0x00FF00)
+            try: await update_balance(i.user.id, REWARD_AMOUNT)
+            except: pass
+            await i.channel.send(embed=win_embed)
+        else:
+            await i.channel.send(f"❌ **Wrong!** The correct word was **{word}**.")
+            
+    except asyncio.TimeoutError:
+        await i.channel.send(f"⏳ **Time's up!** The word was **{word}**.")
+
+# ==============================================================================
+# 3️⃣ EMOJI PUZZLE (Level Based)
+# ==============================================================================
+@games_group.command(name="emojipuzzle", description="Guess the movie/word from the emojis to win $10,000!")
+@app_commands.describe(level="Select Difficulty Level")
+@app_commands.choices(level=[
+    app_commands.Choice(name="🟢 Easy", value=1),
+    app_commands.Choice(name="🟡 Medium", value=2),
+    app_commands.Choice(name="🔴 Hard", value=3)
+])
+async def emojipuzzle(i: discord.Interaction, level: app_commands.Choice[int]):
+    await i.response.defer()
+    
+    puzzle, answer = random.choice(EMOJI_PUZZLES[level.value])
+
+    embed = discord.Embed(
+        title="🎭 EMOJI PUZZLE", 
+        description=(
+            f"**Difficulty:** {level.name}\n"
+            f"Can you guess the movie from these emojis?\n\n"
+            f"🧩 **Emojis:** {puzzle}\n\n"
+            f"👉 *Type the full name in the chat (30 seconds)!*"
+        ),
+        color=0xf1c40f
+    )
+    await i.followup.send(embed=embed)
+
+    def check(m):
+        return m.author == i.user and m.channel == i.channel
+
+    try:
+        msg = await i.client.wait_for('message', check=check, timeout=30.0)
+        
+        if msg.content.upper() == answer:
+            win_embed = discord.Embed(title="✅ YOU NAILED IT!", description=f"The answer is indeed **{answer}**.\n\n💸 You won **${REWARD_AMOUNT:,}**!", color=0x00FF00)
+            try: await update_balance(i.user.id, REWARD_AMOUNT)
+            except: pass
+            await i.channel.send(embed=win_embed)
+        else:
+            await i.channel.send(f"❌ **Wrong!** The correct answer was **{answer}**.")
+            
+    except asyncio.TimeoutError:
+        await i.channel.send(f"⏳ **Time's up!** The answer was **{answer}**.")
+
+# ==============================================================================
+# 4️⃣ SUPREME LOOTBOX (High Risk, RNG Based)
+# ==============================================================================
+@games_group.command(name="lootbox", description=f"Buy a mysterious lootbox for ${LOOTBOX_PRICE:,}")
+async def lootbox(i: discord.Interaction):
+    await i.response.defer()
+    
+    # Balance Check (Make sure you have your get_balance function ready)
+    try:
+        user_bal = await get_balance(i.user.id)
+        if user_bal < LOOTBOX_PRICE:
+            return await i.followup.send(f"❌ You need at least **${LOOTBOX_PRICE:,}** to buy a Lootbox.")
+        await update_balance(i.user.id, -LOOTBOX_PRICE)
+    except Exception as e:
+        return await i.followup.send("⚠️ Database error while processing transaction.")
+
+    # Suspense Animation
+    anim_embed = discord.Embed(title="📦 OPENING LOOTBOX...", description="*Unlocking the mysterious crate...*", color=0x2f3136)
+    anim_embed.set_image(url="https://media.tenor.com/E0lQ-J9YpKwAAAAC/chest-open.gif")
+    await i.followup.send(embed=anim_embed)
+    
+    await asyncio.sleep(3) # Wait for suspense
+
+    # RNG Logic
+    # 90% Poop | 5% Wood | 2.5% Gold | 1% Platinum | 0.5% Diamond | 1% Random Cash
+    outcomes = ["POOP", "WOOD", "GOLD", "PLATINUM", "DIAMOND", "CASH"]
+    weights = [90.0, 5.0, 2.5, 1.0, 0.5, 1.0] 
+    
+    result = random.choices(outcomes, weights=weights, k=1)[0]
+    
+    final_embed = discord.Embed(title="📦 LOOTBOX UNLOCKED", color=0x34495e)
+    
+    if result == "POOP":
+        final_embed.color = 0x8b4513
+        final_embed.description = "## 💩 YOU GOT POOP!\nWell, that was a waste of money. Better luck next time!"
+        final_embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2613/2613123.png")
+        
+    elif result == "WOOD":
+        final_embed.color = 0xa0522d
+        final_embed.description = "## 🪵 WOODEN LOG\nNot entirely useless, but pretty close."
+        
+    elif result == "GOLD":
+        final_embed.color = 0xFFD700
+        final_embed.description = "## 🪙 PURE GOLD!\nNice! You found a chunk of solid gold."
+        
+    elif result == "PLATINUM":
+        final_embed.color = 0xe5e4e2
+        final_embed.description = "## 💿 RARE PLATINUM!\nWow! You are extremely lucky. Keep this safe."
+        
+    elif result == "DIAMOND":
+        final_embed.color = 0x00ffff
+        final_embed.description = "## 💎 LEGENDARY DIAMOND!\nUNBELIEVABLE! Only 0.5% chance to get this masterpiece!"
+        final_embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2874/2874136.png")
+        
+    elif result == "CASH":
+        cash_won = random.randint(1, 100000)
+        final_embed.color = 0x2ecc71
+        final_embed.description = f"## 💵 JACKPOT CASH!\nYou found a hidden stash of money inside!\n\n**+ ${cash_won:,}** added to your balance."
+        try: await update_balance(i.user.id, cash_won)
+        except: pass
+
+    await i.edit_original_response(embed=final_embed)
+
+import discord
+from discord import app_commands
+import random
+import asyncio
+
+# ==============================================================================
+# 5️⃣ DODGE SURVIVAL GAME (Action & Reflexes)
+# ==============================================================================
+
+class DodgeSurvivalGame(discord.ui.View):
+    def __init__(self, player: discord.Member, level_name: str, max_rounds: int, reaction_time: float):
+        super().__init__(timeout=180) # 3 Min Max Game Time
+        self.player = player
+        self.level_name = level_name
+        self.max_rounds = max_rounds
+        self.reaction_time = reaction_time
+        
+        self.current_round = 1
+        self.danger_lane = None
+        self.game_over = False
+        self.won = False
+        self.message = None # Store message object to edit it later
+
+        self.lanes = ["LEFT", "CENTER", "RIGHT"]
+        
+    async def spawn_obstacle(self):
+        if self.game_over or self.won:
+            return
+
+        # Randomly choose where the obstacle will appear
+        self.danger_lane = random.choice(self.lanes)
+
+        # Build Visual Track
+        track_visual = ""
+        for lane in self.lanes:
+            if lane == self.danger_lane:
+                track_visual += "🟥 `[BOMB]`  " # Danger zone
+            else:
+                track_visual += "🟩 `[SAFE]`  " # Safe zone
+                
+        # Build Premium Embed
+        embed = discord.Embed(
+            title="🏃 DODGE SURVIVAL!", 
+            description=(
+                f"**Level:** `{self.level_name}` | **Time to React:** `{self.reaction_time}s`\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"### 🛑 OBSTACLE IN THE **{self.danger_lane}** LANE!\n"
+                f"Quick! Click a safe lane before the time runs out!\n\n"
+                f"🛣️ **THE TRACK:**\n{track_visual}\n\n"
+                f"🔄 **Round:** `{self.current_round} / {self.max_rounds}`"
+            ),
+            color=0xFF0000
+        )
+        embed.set_image(url="https://media.tenor.com/mO2Xp_Aet1sAAAAC/running-run.gif") # Running GIF
+        embed.set_footer(text=f"Player: {self.player.name} | Premium Arcade")
+
+        # Edit the message with new obstacle
+        if self.message:
+            try:
+                await self.message.edit(embed=embed, view=self)
+            except discord.NotFound:
+                return # Message deleted
+
+        # ⏳ SMART TIMER LOGIC
+        # Save current round. If user doesn't click, round won't change.
+        round_snapshot = self.current_round
+        await asyncio.sleep(self.reaction_time)
+
+        # If round is still the same after sleep, it means user was TOO SLOW!
+        if not self.game_over and not self.won and self.current_round == round_snapshot:
+            self.game_over = True
+            await self.end_game(reason=f"⏳ **TOO SLOW!**\nYou failed to react within {self.reaction_time} seconds and got crushed!", success=False)
+
+    @discord.ui.button(label="LEFT", emoji="⬅️", style=discord.ButtonStyle.primary, custom_id="LEFT")
+    async def btn_left(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.handle_dodge(interaction, "LEFT")
+
+    @discord.ui.button(label="CENTER", emoji="⬆️", style=discord.ButtonStyle.primary, custom_id="CENTER")
+    async def btn_center(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.handle_dodge(interaction, "CENTER")
+
+    @discord.ui.button(label="RIGHT", emoji="➡️", style=discord.ButtonStyle.primary, custom_id="RIGHT")
+    async def btn_right(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.handle_dodge(interaction, "RIGHT")
+
+    async def handle_dodge(self, interaction: discord.Interaction, chosen_lane: str):
+        # 1. Check if correct user
+        if interaction.user.id != self.player.id:
+            return await interaction.response.send_message("❌ **Guard:** Aap is game ka hissa nahi hain!", ephemeral=True)
+
+        if self.game_over or self.won:
+            return await interaction.response.defer() # Ignore clicks if game ended
+
+        # Defer immediately to prevent interaction failed error
+        await interaction.response.defer()
+
+        # 2. Check if jumped into danger
+        if chosen_lane == self.danger_lane:
+            self.game_over = True
+            await self.end_game(reason=f"💥 **CRASHED!**\nYou dodged directly into the **{chosen_lane}** obstacle!", success=False)
+        else:
+            # 3. Successful Dodge
+            self.current_round += 1
+            
+            if self.current_round > self.max_rounds:
+                self.won = True
+                await self.end_game(reason="🏆 **MISSION ACCOMPLISHED!**\nYou successfully dodged all obstacles like a Ninja!", success=True)
+            else:
+                # Flash success briefly, then spawn next
+                success_embed = discord.Embed(title="✅ DODGED!", description="*Speeding up for the next obstacle...*", color=0x00FF00)
+                await self.message.edit(embed=success_embed, view=None)
+                await asyncio.sleep(0.5) # Short pause before next obstacle
+                
+                # Call next obstacle
+                asyncio.create_task(self.spawn_obstacle())
+
+    async def end_game(self, reason: str, success: bool):
+        # Disable all buttons
+        for child in self.children:
+            child.disabled = True
+
+        embed = discord.Embed(title="🏁 GAME OVER", description=reason, color=0xFF0000)
+        
+        if success:
+            embed.title = "🎉 SURVIVOR!"
+            embed.color = 0x00FF00
+            embed.description += "\n\n💸 **Reward:** You won **$10,000**!"
+            embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif") # Win GIF
+            
+            # 💰 Add Money
+            try:
+                await update_balance(self.player.id, 10000) # Tumhara DB Function
+            except Exception as e:
+                print(f"Dodge DB Error: {e}")
+        else:
+            embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif") # Wasted GIF
+
+        if self.message:
+            await self.message.edit(embed=embed, view=self)
+
+
+# --- SLASH COMMAND ---
+@games_group.command(name="dodge", description="Dodge the obstacles! Text-based reaction game for $10,000")
+@app_commands.describe(level="Select Difficulty Level")
+@app_commands.choices(level=[
+    app_commands.Choice(name="🟢 Easy (5 Rounds | 3.0s Reaction)", value="easy"),
+    app_commands.Choice(name="🟡 Medium (8 Rounds | 2.0s Reaction)", value="medium"),
+    app_commands.Choice(name="🔴 Hard (12 Rounds | 1.2s Reaction)", value="hard"),
+    app_commands.Choice(name="💀 EXTREME (15 Rounds | 0.8s Reaction)", value="extreme")
+])
+async def dodge_game(i: discord.Interaction, level: app_commands.Choice[str]):
+    # 🛡️ 15-Minute Timeout Protection
+    await i.response.defer()
+
+    # Configure difficulty settings
+    settings = {
+        "easy": {"rounds": 5, "time": 3.0},
+        "medium": {"rounds": 8, "time": 2.0},
+        "hard": {"rounds": 12, "time": 1.2},
+        "extreme": {"rounds": 15, "time": 0.8} # Humanly very tough!
+    }
+    
+    cfg = settings[level.value]
+    
+    # Send intro message
+    intro = discord.Embed(
+        title="🏃 GET READY TO DODGE!", 
+        description=(
+            f"**Level:** `{level.name}`\n\n"
+            f"An obstacle will appear in one of the 3 lanes.\n"
+            f"You must click a **SAFE LANE** before the timer runs out!\n\n"
+            f"*Game starting in 3 seconds...*"
+        ),
+        color=0x3498db
+    )
+    
+    # We use `wait=True` to get the message object so we can edit it later
+    msg = await i.followup.send(embed=intro, wait=True)
+    await asyncio.sleep(3) # Intro delay
+    
+    # Initialize game
+    game_view = DodgeSurvivalGame(
+        player=i.user, 
+        level_name=level.name.split(" ")[1], # Gets 'Easy', 'Medium' etc.
+        max_rounds=cfg["rounds"], 
+        reaction_time=cfg["time"]
+    )
+    game_view.message = msg # Give view access to the message
+    
+    # Start the first round!
+    await game_view.spawn_obstacle()
+
+import discord
+from discord import app_commands
+import random
+import asyncio
+
+# ==============================================================================
+# 🎰 1. SPIN THE WHEEL (High Risk, High Reward Casino)
+# ==============================================================================
+
+@games_group.command(name="spin", description="Spin the wheel of fortune! Win millions or lose everything.")
+async def spin_wheel(i: discord.Interaction):
+    await i.response.defer() # 🛡️ 15-Min Timeout Protection
+    
+    # 1. Deduct Spin Cost (Let's say $5,000 per spin)
+    spin_cost = 5000
+    try:
+        user_bal = await get_balance(i.user.id) # Tumhara DB function
+        if user_bal < spin_cost:
+            return await i.followup.send(f"❌ You need at least **${spin_cost:,}** to spin the wheel!\nYour Balance: `${user_bal:,}`")
+        await update_balance(i.user.id, -spin_cost)
+    except Exception as e:
+        pass # Ignore in testing, but good for production
+
+    # 2. Suspense Animation
+    embed = discord.Embed(title="🎡 SPINNING THE WHEEL...", description="*The wheel of fortune is turning...*", color=0xf1c40f)
+    embed.set_image(url="https://media.tenor.com/7b58Hk1E5i0AAAAC/spin-the-wheel-wheel-of-fortune.gif")
+    await i.followup.send(embed=embed)
+    
+    await asyncio.sleep(4) # 4 Seconds of pure suspense
+
+    # 3. Wheel RNG Logic
+    # 40% Small Win, 30% Nothing, 15% Medium Win, 10% Bankrupt, 5% JACKPOT
+    outcomes = ["SMALL", "NOTHING", "MEDIUM", "BANKRUPT", "JACKPOT"]
+    weights = [40.0, 30.0, 15.0, 10.0, 5.0]
+    result = random.choices(outcomes, weights=weights, k=1)[0]
+    
+    result_embed = discord.Embed(title="🎡 WHEEL OF FORTUNE RESULT", color=0x2b2d31)
+    
+    try:
+        if result == "SMALL":
+            win_amount = random.randint(6000, 15000)
+            result_embed.color = 0x2ecc71
+            result_embed.description = f"## 💵 NOT BAD!\nYou landed on a green slot and won **${win_amount:,}**!"
+            await update_balance(i.user.id, win_amount)
+            
+        elif result == "MEDIUM":
+            win_amount = random.randint(25000, 75000)
+            result_embed.color = 0x3498db
+            result_embed.description = f"## 💰 GREAT SPIN!\nYou landed on a blue slot and won an amazing **${win_amount:,}**!"
+            await update_balance(i.user.id, win_amount)
+            
+        elif result == "JACKPOT":
+            win_amount = random.randint(500000, 1000000) # $500k to $1M
+            result_embed.color = 0xFFD700 # Gold
+            result_embed.description = f"## 🏆 MEGA JACKPOT!!!\nUNBELIEVABLE! You hit the golden slot and won **${win_amount:,}**!!!"
+            result_embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2874/2874136.png")
+            result_embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
+            await update_balance(i.user.id, win_amount)
+            
+        elif result == "NOTHING":
+            result_embed.color = 0x95a5a6
+            result_embed.description = "## 💨 TOUGH LUCK!\nThe wheel stopped on a blank space. You won nothing. Try again!"
+            
+        elif result == "BANKRUPT":
+            result_embed.color = 0xe74c3c # Red
+            result_embed.description = "## 💀 BANKRUPT!\nOh no! You landed on the red skull! You lost a huge chunk of money!"
+            result_embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+            # Bankrupt logic: Maybe deduct 50,000 or half balance
+            await update_balance(i.user.id, -50000)
+            
+    except Exception as e:
+        print(f"Spin Error: {e}")
+
+    result_embed.set_footer(text=f"Spun by {i.user.name}", icon_url=i.user.display_avatar.url)
+    await i.edit_original_response(embed=result_embed)
+
+
+# ==============================================================================
+# ⚔️ 2. RPG SOLO ADVENTURE (Interactive Text-Based RPG)
+# ==============================================================================
+
+class RPGAdventureView(discord.ui.View):
+    def __init__(self, player: discord.Member, encounter_type: str, enemy_name: str, enemy_power: int):
+        super().__init__(timeout=60)
+        self.player = player
+        self.encounter_type = encounter_type
+        self.enemy_name = enemy_name
+        self.enemy_power = enemy_power # Used to calculate risk/reward
+
+    async def disable_all(self, interaction):
+        for child in self.children:
+            child.disabled = True
+        await interaction.message.edit(view=self)
+
+    @discord.ui.button(label="FIGHT", emoji="⚔️", style=discord.ButtonStyle.danger)
+    async def btn_fight(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.player.id:
+            return await interaction.response.send_message("❌ This is not your adventure!", ephemeral=True)
+        
+        await interaction.response.defer()
+        await self.disable_all(interaction)
+        
+        # Win chance based on random roll
+        player_roll = random.randint(1, 100)
+        enemy_roll = random.randint(1, self.enemy_power)
+        
+        result_embed = discord.Embed(title="⚔️ BATTLE RESULT")
+        
+        if player_roll >= enemy_roll:
+            # Player Wins
+            reward = random.randint(self.enemy_power * 100, self.enemy_power * 500)
+            result_embed.color = 0x00FF00
+            result_embed.description = f"### 🎉 VICTORY!\nYou bravely defeated the **{self.enemy_name}**!\n\n🗡️ **Your Roll:** `{player_roll}`\n🛡️ **Enemy Roll:** `{enemy_roll}`\n\n💰 **Loot Collected:** `${reward:,}`"
+            result_embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2909/2909385.png")
+            try: await update_balance(self.player.id, reward)
+            except: pass
+        else:
+            # Player Loses
+            penalty = random.randint(1000, 5000)
+            result_embed.color = 0xFF0000
+            result_embed.description = f"### 💀 DEFEATED!\nThe **{self.enemy_name}** was too strong for you...\n\n🗡️ **Your Roll:** `{player_roll}`\n🛡️ **Enemy Roll:** `{enemy_roll}`\n\n🩸 **Hospital Bill:** `-${penalty:,}`"
+            try: await update_balance(self.player.id, -penalty)
+            except: pass
+
+        await interaction.edit_original_response(embed=result_embed, view=None)
+
+    @discord.ui.button(label="RUN AWAY", emoji="🏃", style=discord.ButtonStyle.secondary)
+    async def btn_run(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.player.id:
+            return await interaction.response.send_message("❌ This is not your adventure!", ephemeral=True)
+        
+        await interaction.response.defer()
+        await self.disable_all(interaction)
+        
+        run_chance = random.randint(1, 100)
+        embed = discord.Embed(title="🏃 ESCAPE ATTEMPT")
+        
+        if run_chance > 30: # 70% chance to escape
+            embed.color = 0x3498db
+            embed.description = f"💨 You successfully ran away from the **{self.enemy_name}** safely. Cowardly, but smart!"
+        else:
+            penalty = random.randint(500, 2000)
+            embed.color = 0xFF0000
+            embed.description = f"🩸 You tripped while running away! The **{self.enemy_name}** attacked you from behind.\n\n💸 **Lost:** `${penalty:,}`"
+            try: await update_balance(self.player.id, -penalty)
+            except: pass
+            
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+@games_group.command(name="adventure", description="Go on a solo RPG adventure! Fight monsters & find loot.")
+async def adventure(i: discord.Interaction):
+    await i.response.defer()
+    
+    # 1. Generate Encounter
+    encounters = [
+        {"type": "MONSTER", "name": "Goblin Thief", "power": 40, "img": "https://media.tenor.com/v8tTq9z8p60AAAAC/goblin-slayer.gif"},
+        {"type": "MONSTER", "name": "Cave Troll", "power": 70, "img": "https://media.tenor.com/E8R9bUcw8L0AAAAC/lotr-troll.gif"},
+        {"type": "MONSTER", "name": "Fierce Dragon", "power": 95, "img": "https://media.tenor.com/2s4-L7kE8LMAAAAC/dragon-fire.gif"},
+        {"type": "TREASURE", "name": "Abandoned Gold Chest", "power": 0, "img": "https://media.tenor.com/E0lQ-J9YpKwAAAAC/chest-open.gif"}
+    ]
+    
+    # 80% Monster, 20% Treasure
+    weights = [30, 30, 20, 20] 
+    encounter = random.choices(encounters, weights=weights, k=1)[0]
+    
+    embed = discord.Embed(title="🌲 INTO THE WILD...", color=0x2b2d31)
+    embed.set_image(url=encounter["img"])
+    
+    if encounter["type"] == "MONSTER":
+        embed.description = f"### ⚠️ ENEMY SPOTTED!\nA wild **{encounter['name']}** blocked your path!\n\n**Enemy Power Level:** `{encounter['power']}`\n\n👉 *What will you do?*"
+        embed.color = 0xe74c3c
+        view = RPGAdventureView(i.user, encounter["type"], encounter["name"], encounter["power"])
+        await i.followup.send(embed=embed, view=view)
+        
+    elif encounter["type"] == "TREASURE":
+        reward = random.randint(10000, 50000)
+        embed.description = f"### 💎 TREASURE FOUND!\nYou stumbled upon an **{encounter['name']}** deep in the forest.\n\n💸 You looted **${reward:,}** inside!"
+        embed.color = 0xf1c40f
+        try: await update_balance(i.user.id, reward)
+        except: pass
+        await i.followup.send(embed=embed)
 
 
 # ================== OPTIMIZED FLASK BACKEND ==================
