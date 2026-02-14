@@ -21623,6 +21623,12 @@ async def deal_game(i: discord.Interaction):
     view = DevilsBargainView(i.user, entry_fee)
     await i.followup.send(embed=view.get_embed(), view=view)
 
+
+# नया ग्रुप यहाँ ऐड करो
+game_group = app_commands.Group(name="game", description="Ultra Premium VIP  Games")
+bot.tree.add_command(game_group)
+
+
 import discord
 from discord import app_commands
 import random
@@ -21771,7 +21777,7 @@ class VaultCrackerView(discord.ui.View):
         embed.set_thumbnail(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif")
         return embed
 
-@games_group.command(name="vault", description="🔐 Hack the 3-digit PIN to crack the vault! Pure logic.")
+@game_group.command(name="vault", description="🔐 Hack the 3-digit PIN to crack the vault! Pure logic.")
 @check_seized() # Tera custom check
 async def vault_cmd(i: discord.Interaction):
     await i.response.defer()
@@ -21976,7 +21982,7 @@ class SmugglerView(discord.ui.View):
 # ==============================================================================
 # 💻 THE SLASH COMMAND
 # ==============================================================================
-@games_group.command(name="smuggler", description="🚓 Trade illegal goods in the black market! Don't get raided!")
+@game_group.command(name="smuggler", description="🚓 Trade illegal goods in the black market! Don't get raided!")
 @check_seized() # Tera check
 async def smuggler_game(i: discord.Interaction):
     await i.response.defer()
@@ -22195,7 +22201,7 @@ class ColosseumView(discord.ui.View):
 # ==============================================================================
 # 💻 THE SLASH COMMAND
 # ==============================================================================
-@games_group.command(name="colosseum", description="⚔️ Fight monsters in the endless arena! Survive or lose it all.")
+@game_group.command(name="colosseum", description="⚔️ Fight monsters in the endless arena! Survive or lose it all.")
 @check_seized()
 async def colosseum_cmd(i: discord.Interaction):
     await i.response.defer()
@@ -22247,7 +22253,7 @@ def generate_plinko_board(step: int, current_pos: float) -> str:
     multipliers = "`[10x] [4x] [1.5x] [.5x] [.2x] [.5x] [1.5x] [4x] [10x]`"
     return board_str + "\n" + multipliers.center(45)
 
-@games_group.command(name="plinko", description="🎰 Drop the ball on the Plinko wall and win up to 10x your bet!")
+@game_group.command(name="plinko", description="🎰 Drop the ball on the Plinko wall and win up to 10x your bet!")
 @app_commands.describe(bet="How much money do you want to drop?")
 @check_seized() # Tera custom permission check
 async def plinko_game(i: discord.Interaction, bet: int):
@@ -26512,6 +26518,12 @@ try:
     bot.tree.add_command(games_group) 
 except:
     pass
+
+try:
+    bot.tree.add_command(game_group) 
+except:
+    pass
+
 
 if __name__ == "__main__":
     # A. Website Start (Background Thread)
