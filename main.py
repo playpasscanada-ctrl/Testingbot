@@ -239,13 +239,14 @@ import asyncio
 import pytz
 from datetime import datetime, time
 from discord.ext import tasks
+import discord # Make sure discord is imported
 
 # --- CONFIG ---
 OWNER_ID = 804687084249284618   # Owner ID
 STAFF_ROLE_ID = 1459074209191039049  # Staff Role ID
 GUILD_ID = 1257403231127076915       # Server ID
 SALARY_LOG_CHANNEL_ID = 1457066104819028089 # Log Channel
-STAFF_SALARY = 50000000          # $50 Million
+STAFF_SALARY = 2000000           # Changed to $2 Million
 
 # --- 🧠 SMART STAFF SYSTEM MEMORY ---
 xp_cooldowns = {} 
@@ -322,7 +323,6 @@ async def update_staff_roles(guild):
             except: pass
 
 # --- 💰 3. PREMIUM SALARY SYSTEM (FIXED FOR RENDER) ---
-# 'time=' हटाकर 'minutes=1' कर दिया है (ताकि कभी मिस न हो)
 @tasks.loop(minutes=1)
 async def pay_staff_salary():
     # 1. टाइम चेक करो (IST Timezone)
@@ -332,7 +332,8 @@ async def pay_staff_salary():
     # 2. क्या रात के 12 बज रहे हैं? (Hour=0, Minute=0)
     if now.hour == 0 and now.minute == 0:
         print("⏰ 12:00 AM Hit! Processing Salary...")
-        
+
+        # FIX: Ye pura try block ab thik se indent kar diya hai taaki sirf 12 baje hi chale
         try:
             guild = bot.get_guild(GUILD_ID)
             channel = bot.get_channel(SALARY_LOG_CHANNEL_ID)
@@ -356,7 +357,8 @@ async def pay_staff_salary():
             # Payment Loop
             for idx, user in enumerate(data):
                 uid = int(user['user_id'])
-                old_bal = user['balance']
+                # FIX: Agar database me balance None hua to error nahi aayega
+                old_bal = user.get('balance', 0) or 0
                 
                 # Pay Salary
                 new_bal = old_bal + STAFF_SALARY
@@ -368,7 +370,7 @@ async def pay_staff_salary():
                 
                 embed.add_field(
                     name=f"Rank #{idx+1} — {user_mention}",
-                    value=f"💰 **Paid:** `$50,000,000`\n💳 **New Bal:** `${new_bal:,}`",
+                    value=f"💰 **Paid:** `${STAFF_SALARY:,}`\n💳 **New Bal:** `${new_bal:,}`",
                     inline=False
                 )
 
@@ -390,10 +392,6 @@ async def pay_staff_salary():
 @pay_staff_salary.error
 async def pay_staff_salary_error(error):
     print(f"🚨 Salary Loop Crashed: {error}")
-
-# --- ✅ START LOOP ---
-# Isko on_ready ke andar hi rehne dena jaisa aapke screenshot me hai
-
 
 # 🛡️ SYSTEM SAVER: Sirf 2 translation threads allow honge (Crash Fix)
 roast_executor = ThreadPoolExecutor(max_workers=2)
@@ -2683,22 +2681,48 @@ async def switch_voice(interaction: discord.Interaction, gender: app_commands.Ch
     await interaction.followup.send(embed=embed)
 
 
-# 2️⃣ VC ROAST (Premium Embed + Auto Voice + Hindi Brutal Mode)
-@bot.tree.command(name="vcroast", description="Brutal Gaali Mode 🔊💀 (Only you can see)")
-async def vcroast(interaction: discord.Interaction):
-    
-    # 1. Access Check
-    if not has_voice_access(interaction):
-        await interaction.response.send_message("🚫 **Access Denied:** सिर्फ VIP लोग चला सकते हैं!", ephemeral=True)
-        return
+import discord
+from discord import app_commands
+import random
 
-    # 2. Premium Embed (Ephemeral = True matlab sirf aapko dikhega)
-    embed = create_premium_embed("💀 Brutal Mode On", f"**{current_voice['name']}** is connecting to roast... 🔥")
+# ==========================================
+# 💀 COMMAND: VC ROAST (PREMIUM + AUTO TARGET)
+# ==========================================
+@app_commands.command(name="vcroast", description="Brutal Gaali Mode 🔊💀 (Only you can see)")
+@app_commands.describe(target_vc="[Optional] Kisi aur VC me bot bhejna hai? Ise select karo.")
+async def vcroast(interaction: discord.Interaction, target_vc: discord.VoiceChannel = None):
     
-    # ✅ Yahan 'ephemeral=True' joda hai
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    # 1. 🛡️ FIX: DEFER KARO (Timeout Error hatane ke liye)
+    await interaction.response.defer(ephemeral=True)
     
-    # ☢️ PURE HINDI GAALI LIST (For Swara)
+    # 2. Access Check (Tumhara purana function)
+    if not has_voice_access(interaction):
+        return await interaction.followup.send("🚫 **Access Denied:** सिर्फ VIP लोग चला सकते हैं!", ephemeral=True)
+
+    # 3. 🎯 TARGET VC LOGIC
+    # Agar target_vc select kiya hai, to wahan jayega. 
+    # Nahi kiya, to check karega ki user kis VC me hai.
+    vc_to_join = target_vc
+    
+    if not vc_to_join:
+        if interaction.user.voice and interaction.user.voice.channel:
+            vc_to_join = interaction.user.voice.channel
+        else:
+            return await interaction.followup.send("❌ **Error:** या तो खुद किसी VC में रहो, या `target_vc` ऑप्शन से VC सेलेक्ट करो!", ephemeral=True)
+
+    # 4. 💎 PREMIUM EMBED
+    embed = discord.Embed(
+        title="☢️ BRUTAL ROAST MODE ACTIVATED",
+        description=f"**Target:** {vc_to_join.mention}\n**Status:** ⏳ Connecting and loading audio... 🔥\n\n*Nobody else can see this message.*",
+        color=0xFF0000 # Blood Red Color
+    )
+    embed.set_thumbnail(url="https://media.tenor.com/jM3s8n0Q2C4AAAAC/machine-gun-firing.gif")
+    embed.set_footer(text="Highly Classified Operation 💀")
+    
+    # Defer ke baad humesha followup.send use hota hai
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+    # 5. ☢️ PURE HINDI GAALI LIST (Paste your exact list here)
     gaali_list = [
         "तेरी माँ की चूत में हाथी का लंड, साले नल्ले तू पैदा ही गलती से हुआ था।",
         "तेरी माँ की चूत में जेसीबी चला दूँगी, सारी अकड़ बाहर निकल जाएगी मादरचोद।",
@@ -2741,7 +2765,21 @@ async def vcroast(interaction: discord.Interaction):
     ]
     
     text = random.choice(gaali_list)
-    await play_audio(interaction, text)
+    
+    # 6. 🔊 PLAY AUDIO
+    # NOTE: Tumhare play_audio function me ab 'vc_to_join' bhi pass karna padega 
+    # taaki bot ko pata chale kis VC me jaana hai.
+    try:
+        await play_audio(interaction, text, vc_to_join)
+        
+        # Audio bajne ke baad success message
+        success_embed = discord.Embed(title="✅ Mission Accomplished", description=f"Roast delivered in {vc_to_join.mention} 💀", color=0x00FF00)
+        await interaction.edit_original_response(embed=success_embed)
+        
+    except Exception as e:
+        await interaction.followup.send(f"❌ **System Error:** Audio play nahi ho paya.\nError: `{e}`", ephemeral=True)
+
+
 
 
 # 3️⃣ BOL (Premium Embed + Auto Voice - EPHEMERAL)
@@ -2867,24 +2905,27 @@ async def trust_list(interaction: discord.Interaction):
 bot.tree.add_command(trust_group)
 
 
-# ================== MULTI-VERIFY MANAGEMENT ==================
+# ================== MULTI-VERIFY MANAGEMENT (PREMIUM UI) ==================
 @bot.tree.command(name="multiaccess", description="Manage users who can verify UNLIMITED accounts")
 @app_commands.choices(mode=[
     app_commands.Choice(name="Add Permission", value="add"),
     app_commands.Choice(name="Remove Permission", value="remove"),
     app_commands.Choice(name="List Users", value="list"),
 ])
-@app_commands.describe(discord_id="Discord User ID (Required for Add/Remove)")
-async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], discord_id: str = None):
+@app_commands.describe(target_user="Select the user from dropdown (Required for Add/Remove)")
+async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], target_user: discord.User = None):
     
     # 1. OWNER CHECK
     if not owner(i):
         return await safe_send(i, emb("❌ NO PERMISSION", "Only Owner can manage multi-access."))
 
+    # Agar user select kiya hai to uski ID nikal lo
+    discord_id = str(target_user.id) if target_user else None
+
     # ================= ADD USER =================
     if mode.value == "add":
-        if not discord_id:
-            return await safe_send(i, emb("❌ ERROR", "Discord ID dena zaroori hai!"))
+        if not target_user:
+            return await safe_send(i, emb("❌ ERROR", "Add karne ke liye User select karna zaroori hai!"))
 
         # Save to Supabase
         try:
@@ -2893,27 +2934,37 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
                 "approved": True
             }).execute()
 
-            await safe_send(i, emb(
-                "✅ ACCESS GRANTED",
-                f"User <@{discord_id}> (`{discord_id}`)\n\nAb ye user **Unlimited Roblox IDs** verify kar sakta hai.",
+            # Premium Embed 
+            success_emb = emb(
+                "✅ MULTI-ACCESS GRANTED",
+                f"**👤 User:** {target_user.mention}\n**🆔 ID:** `{discord_id}`\n\n👑 *Ab ye user **Unlimited Roblox IDs** verify kar sakta hai.*",
                 0x2ecc71
-            ))
+            )
+            # User ki profile pic embed me lagane ke liye
+            success_emb.set_thumbnail(url=target_user.display_avatar.url)
+            
+            await safe_send(i, success_emb)
         except Exception as e:
             await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
 
     # ================= REMOVE USER =================
     elif mode.value == "remove":
-        if not discord_id:
-            return await safe_send(i, emb("❌ ERROR", "Discord ID dena zaroori hai!"))
+        if not target_user:
+            return await safe_send(i, emb("❌ ERROR", "Remove karne ke liye User select karna zaroori hai!"))
 
         try:
             supabase.table("multi_access").delete().eq("discord_id", discord_id).execute()
 
-            await safe_send(i, emb(
+            # Premium Embed
+            revoked_emb = emb(
                 "🗑 ACCESS REVOKED",
-                f"User <@{discord_id}> (`{discord_id}`)\n\nAb ye user **sirf 1 ID** verify kar payega.",
+                f"**👤 User:** {target_user.mention}\n**🆔 ID:** `{discord_id}`\n\n🚫 *Ab ye user **sirf 1 ID** verify kar payega.*",
                 0xff0000
-            ))
+            )
+            # User ki profile pic embed me lagane ke liye
+            revoked_emb.set_thumbnail(url=target_user.display_avatar.url)
+
+            await safe_send(i, revoked_emb)
         except Exception as e:
             await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
 
@@ -2926,11 +2977,20 @@ async def multiaccess(i: discord.Interaction, mode: app_commands.Choice[str], di
                 return await safe_send(i, emb("📂 MULTI-ACCESS LIST", "No users found."))
 
             txt = ""
-            for x in data:
+            for index, x in enumerate(data, start=1):
                 did = x['discord_id']
-                txt += f"• <@{did}> (`{did}`)\n"
+                txt += f"**{index}.** <@{did}> (`{did}`)\n"
 
-            await safe_send(i, emb("📂 MULTI-ACCESS ALLOWED USERS", txt, 0x3498db))
+            # Premium Embed for List
+            list_emb = emb(f"📂 MULTI-ACCESS ALLOWED USERS ({len(data)})", txt, 0x3498db)
+            
+            # List me Server ka icon ya Bot ka icon dikhega
+            if i.guild and i.guild.icon:
+                list_emb.set_thumbnail(url=i.guild.icon.url)
+            else:
+                list_emb.set_thumbnail(url=i.client.user.display_avatar.url)
+
+            await safe_send(i, list_emb)
         
         except Exception as e:
             await safe_send(i, emb("❌ DB ERROR", f"```{e}```"))
@@ -3558,12 +3618,18 @@ async def userinfo(i: discord.Interaction, user: discord.Member):
     except Exception as e:
         await i.followup.send(embed=emb("❌ ERROR", f"Failed to fetch profile: `{e}`"))
     
+# ================== VERIFICATION HISTORY CHECK (PREMIUM UI) ==================
 @bot.tree.command(name="verifycheck", description="Check which Roblox IDs a Discord user verified")
-async def verifycheck(i: discord.Interaction, discord_id: str):
+@app_commands.describe(target_user="Select the Discord user from dropdown to check history")
+async def verifycheck(i: discord.Interaction, target_user: discord.User):
 
+    # 1. OWNER CHECK
     if not owner(i):
-        return await safe_send(i, emb("❌ NO PERMISSION", "Owners only"))
+        return await safe_send(i, emb("❌ NO PERMISSION", "Only Owners can use this command.", 0xff0000))
 
+    discord_id = str(target_user.id)
+
+    # 2. FETCH DATA FROM SUPABASE
     try:
         data = (
             supabase.table("verify_logs")
@@ -3573,33 +3639,57 @@ async def verifycheck(i: discord.Interaction, discord_id: str):
             .execute()
             .data
         )
-    except:
-        return await safe_send(i, emb("⚠️ ERROR", "Failed to fetch logs"))
+    except Exception as e:
+        return await safe_send(i, emb("⚠️ DATABASE ERROR", f"Failed to fetch logs.\n```{e}```", 0xffa500))
 
+    # 3. NO DATA FOUND
     if not data:
-        return await safe_send(
-            i,
-            emb("📭 NO DATA", f"No verification found for `{discord_id}`")
+        no_data_emb = emb(
+            "📭 NO VERIFICATION DATA", 
+            f"No linked Roblox accounts found for {target_user.mention} (`{discord_id}`).", 
+            0xe74c3c
         )
+        no_data_emb.set_thumbnail(url=target_user.display_avatar.url)
+        return await safe_send(i, no_data_emb)
 
-    txt = f"👤 Discord User: <@{discord_id}>\n\n"
+    # 4. FORMAT THE HISTORY
+    txt = ""
     seen = set()
+    count = 0
 
     for x in data:
         rid = x["roblox_id"]
+        # Duplicate check
         if rid in seen:
             continue
         seen.add(rid)
+        count += 1
+
+        username = x.get('username', 'Unknown')
+        display_name = x.get('display_name', 'Unknown')
+        timestamp = x.get('timestamp', 'Unknown Time')
 
         txt += (
-            f"🆔 Roblox ID: `{x['roblox_id']}`\n"
-            f"🧑 Username: **{x['username']}**\n"
-            f"✨ Display: {x['display_name']}\n"
-            f"🕒 `{x['timestamp']}`\n"
-            f"----------------------\n"
+            f"**{count}. Roblox ID:** `{rid}`\n"
+            f"🧑 **Username:** [{username}](https://www.roblox.com/users/{rid}/profile)\n"
+            f"✨ **Display:** {display_name}\n"
+            f"🕒 **Time:** `{timestamp}`\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
         )
 
-    await safe_send(i, emb("🔍 USER VERIFICATION HISTORY", txt[:4000], 0x9b59b6))
+    # 5. BUILD PREMIUM EMBED
+    result_emb = emb(
+        f"🔍 VERIFICATION HISTORY ({count} Accounts)", 
+        f"**👤 Discord User:** {target_user.mention}\n**🆔 ID:** `{discord_id}`\n\n{txt[:3800]}", 
+        0x9b59b6
+    )
+    
+    # Premium features: Avatar thumbnail & Footer
+    result_emb.set_thumbnail(url=target_user.display_avatar.url)
+    result_emb.set_footer(text=f"Requested by {i.user.name} • Titan Security System", icon_url=i.user.display_avatar.url)
+
+    await safe_send(i, result_emb)
+
 
 
 @bot.tree.command(name="whois", description="🕵️ Get detailed status of a Roblox User")
@@ -3937,106 +4027,7 @@ async def verifyhistory(i: discord.Interaction):
         embed=emb(f"📜 VERIFICATION HISTORY (1/{len(pages)})", pages[0], 0x3498db),
         view=view
     )
-
-# ================== HISTORY COMMAND (FIXED: Async & Fast) ==================
-@bot.tree.command(name="history", description="📜 Check Roblox User History & Safety Status (Fixed)")
-async def history(i: discord.Interaction, user_id: str):
     
-    # 1. OWNER/ADMIN CHECK
-    if not owner(i):
-        await i.response.send_message("❌ **Access Denied:** You are not an Admin.", ephemeral=True)
-        return
-
-    # 2. Defer Response
-    await i.response.defer(ephemeral=False)
-
-    try:
-        # A. Roblox Info Fetch
-        username, display = await roblox_info(user_id)
-        
-        if username == "Invalid ID":
-             return await i.followup.send(embed=discord.Embed(title="❌ Error", description="Invalid Roblox ID", color=0xff0000))
-
-        # B. DATABASE FETCH (Parallel Execution)
-        # ✅ FIX: db_call aur asyncio.gather use kiya
-        access_task = db_call(lambda: supabase.table("access_users").select("*").eq("user_id", user_id).execute())
-        ban_task = db_call(lambda: supabase.table("bans").select("*").eq("user_id", user_id).execute())
-        blk_task = db_call(lambda: supabase.table("blacklist_users").select("*").eq("user_id", user_id).execute())
-
-        # Wait for all 3
-        access_resp, ban_resp, blk_resp = await asyncio.gather(access_task, ban_task, blk_task)
-
-        # Data Extraction
-        access_data = access_resp.data if access_resp else []
-        ban_data = ban_resp.data if ban_resp else []
-        blk_data = blk_resp.data if blk_resp else []
-
-        # ================= LOGIC BUILDER =================
-        
-        # 1. Access Status
-        if access_data:
-            row = access_data[0]
-            disc_id = row.get("discord_id", "Unknown")
-            
-            try:
-                verified_at = row.get("created_at", "").split("T")[0]
-            except:
-                verified_at = "Unknown"
-
-            access_status = f"✅ **Whitelisted**\nLinked to: <@{disc_id}>\n📅 `{verified_at}`"
-            color = 0x2ecc71 # Green
-        else:
-            access_status = "⚠️ **Not Linked**\n(No active whitelist found)"
-            color = 0x3498db # Blue (Neutral)
-
-        # 2. Ban Status
-        if ban_data:
-            b = ban_data[0]
-            if b.get("perm"):
-                ban_status = f"🔴 **PERMANENT BAN**\nReason: `{b.get('reason')}`"
-                color = 0xff0000 # Red
-            else:
-                try:
-                    left = int(max((float(b["expire"]) - time.time())/60 , 0))
-                    ban_status = f"🟠 **TEMP BAN** ({left}m left)\nReason: `{b.get('reason')}`"
-                    color = 0xe67e22 # Orange
-                except:
-                    ban_status = "🟢 **Ban Expired**"
-        else:
-            ban_status = "🟢 **Clean** (No active bans)"
-
-        # 3. Blacklist Status
-        if blk_data:
-            blk_status = "🚫 **YES (Blacklisted)**"
-            color = 0x2c3e50 # Dark (Danger)
-        else:
-            blk_status = "🟢 **NO**"
-
-        # ================= PREMIUM EMBED =================
-        embed = discord.Embed(title=f"📜 User History: {display}", color=color)
-        
-        # Top Section: User Identity
-        embed.add_field(name="👤 Identity", value=f"**User:** @{username}\n**ID:** `{user_id}`", inline=False)
-        
-        # Mid Section: Status Grid
-        embed.add_field(name="🔐 Whitelist Status", value=access_status, inline=True)
-        embed.add_field(name="🛡️ Ban Status", value=ban_status, inline=True)
-        embed.add_field(name="⛔ Blacklist", value=blk_status, inline=True)
-
-        # Avatar Thumbnail
-        embed.set_thumbnail(url=f"https://www.roblox.com/headshot-thumbnail/image?userId={user_id}&width=420&height=420&format=png")
-        
-        # Footer
-        embed.set_footer(text=f"Requested by {i.user.display_name} • Secure Lookup", icon_url=i.user.display_avatar.url)
-        embed.timestamp = datetime.utcnow()
-
-        await i.followup.send(embed=embed)
-
-    except Exception as e:
-        print(f"HISTORY ERROR: {e}")
-        await i.followup.send(f"❌ **System Error:** `{e}`")
-        
-
 # ================== PROFILE COMMAND (FIXED: FAST & PARALLEL) ==================
 @bot.tree.command(name="profile", description="📂 View full Verification, Safety & Moderation Profile (Fixed)")
 async def profile(i: discord.Interaction, user_id: str):
@@ -4905,11 +4896,11 @@ import asyncio
 import datetime as dt
 
 # ==============================================================================
-# 🔥 SQUID GAME: RED LIGHT GREEN LIGHT EDITION (ULTRA PREMIUM)
+# 🔥 SQUID GAME: RUSSIAN ROULETTE EDITION (ULTRA PREMIUM)
 # ==============================================================================
 
 class SquidGameMaster(discord.ui.View):
-    def __init__(self, p1, p2, bullets, punishment_level, cylinder=None, slot_index=0):
+    def __init__(self, p1: discord.Member, p2: discord.Member, bullets: int, punishment_level: int, cylinder=None, slot_index=0):
         super().__init__(timeout=300)
         self.p1 = p1
         self.p2 = p2
@@ -4937,16 +4928,16 @@ class SquidGameMaster(discord.ui.View):
     # --- 🛠️ BUTTONS ---
     def setup_rps_buttons(self):
         self.clear_items()
-        b1 = discord.ui.Button(emoji="🪨", style=discord.ButtonStyle.secondary, custom_id="rock")
-        b2 = discord.ui.Button(emoji="📄", style=discord.ButtonStyle.secondary, custom_id="paper")
-        b3 = discord.ui.Button(emoji="✂️", style=discord.ButtonStyle.secondary, custom_id="scissor")
+        b1 = discord.ui.Button(label="Rock", emoji="✊", style=discord.ButtonStyle.primary, custom_id="rock")
+        b2 = discord.ui.Button(label="Paper", emoji="✋", style=discord.ButtonStyle.primary, custom_id="paper")
+        b3 = discord.ui.Button(label="Scissors", emoji="✌️", style=discord.ButtonStyle.primary, custom_id="scissor")
         for b in [b1, b2, b3]:
             b.callback = self.rps_callback
             self.add_item(b)
 
     def setup_trigger_button(self):
         self.clear_items()
-        btn = discord.ui.Button(label="💀 PULL THE TRIGGER", style=discord.ButtonStyle.danger, emoji="🔫")
+        btn = discord.ui.Button(label="PULL THE TRIGGER", style=discord.ButtonStyle.danger, emoji="🔫")
         btn.callback = self.trigger_callback
         self.add_item(btn)
 
@@ -4955,52 +4946,52 @@ class SquidGameMaster(discord.ui.View):
         
         # Status Bar Generator
         def get_status(p, choice):
-            status = "✅ READY" if choice else "💭 THINKING..."
-            return f"**{p.name}**\n`[{status}]`"
+            status = "🟢 READY" if choice else "⏳ THINKING..."
+            return f"> **{p.name}**\n> `{status}`"
 
         if mode == "RPS":
-            title = "🔴 SQUID GAME: ELIMINATION ROUND"
-            color = 0xFF00E6 # Hot Pink (Squid Game Theme)
+            title = "🔺 SQUID GAME: ELIMINATION ROUND 🟥"
+            color = 0xFF0055 # Squid Game Pink
             gif = "https://media.tenor.com/BfRK3aY2Nn4AAAAC/squid-game.gif"
             
             desc = (
-                f"## 👊 **ROUND {self.slot_index + 1} / 6**\n"
-                f"*\"Player {self.p1.name} and Player {self.p2.name}, make your choice.\"*\n\n"
+                f"# 👊 ROUND {self.slot_index + 1} / 6\n"
+                f"*\"Make your choice. The loser faces the barrel.\"*\n\n"
+                f"**CHALLENGERS:**\n"
                 f"{get_status(self.p1, self.p1_choice)}\n"
                 f"{get_status(self.p2, self.p2_choice)}\n\n"
-                f"⚠️ **WARNING:** The loser must test their luck with the gun."
+                f"⚠️ **WARNING:** Loser will pull the trigger."
             )
 
         elif mode == "TRIGGER":
-            title = "😨 DEATH AWAITS..."
-            color = 0xFF0000 # Blood Red
+            title = "💀 DEATH AWAITS..."
+            color = 0x2b2d31 # Dark Theme
             gif = "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"
             
             desc = (
-                f"# 🩸 **{self.round_loser.name.upper()} LOST!**\n\n"
-                f"The guards have handed you the revolver.\n"
-                f"**Statistics:**\n"
-                f"🔫 **Cylinder:** `{self.slot_index + 1}/6`\n"
-                f"💣 **Live Rounds:** `{self.bullets}`\n\n"
-                f"👉 **{self.round_loser.mention}**, PULL THE TRIGGER NOW!"
+                f"# 🩸 {self.round_loser.name.upper()} LOST!\n\n"
+                f"The guards have handed you the revolver. There is no escape.\n\n"
+                f"📊 **STATISTICS:**\n"
+                f"┣ 🔫 **Chamber:** `{self.slot_index + 1}/6`\n"
+                f"┗ 💣 **Live Rounds:** `{self.bullets}`\n\n"
+                f"👉 {self.round_loser.mention}, **PULL THE TRIGGER NOW!**"
             )
 
         elif mode == "SAFE":
-            title = "😅 SURVIVED!"
-            color = 0x00FF00 # Green
+            title = "😅 YOU SURVIVED... FOR NOW."
+            color = 0x00FF00 # Safe Green
             gif = "https://media.tenor.com/5yXk8QoZzBkAAAAC/sweating-nervous.gif"
             
             desc = (
-                f"## 💨 **CLICK...**\n"
-                f"The chamber was empty.\n"
-                f"You live to see another round.\n\n"
+                f"## 💨 *CLICK...*\n"
+                f"The chamber was empty. You live to see another round.\n\n"
                 f"🔄 *Reloading RPS Module...*"
             )
 
         self.embed = discord.Embed(title=title, description=desc, color=color)
         self.embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2822/2822506.png")
         self.embed.set_image(url=gif)
-        self.embed.set_footer(text=f"Squid Game ID: #SG-{random.randint(1000,9999)} | Punishment Lvl: {self.punishment_level}", icon_url="https://cdn-icons-png.flaticon.com/512/9249/9249309.png")
+        self.embed.set_footer(text=f"Squid Game ID: #SG-{random.randint(1000,9999)} | Penalty Lvl: {self.punishment_level}")
 
     # --- 🎮 GAME LOGIC ---
     async def rps_callback(self, interaction: discord.Interaction):
@@ -5046,7 +5037,6 @@ class SquidGameMaster(discord.ui.View):
         self.setup_trigger_button()
         self.update_embed(mode="TRIGGER")
         
-        # 🔥 TAG THE LOSER
         await interaction.edit_original_response(
             content=f"🚨 **{self.round_loser.mention}**, PICK UP THE GUN!", 
             embed=self.embed, 
@@ -5062,7 +5052,7 @@ class SquidGameMaster(discord.ui.View):
             
             # --- DRAMATIC SUSPENSE ---
             self.clear_items()
-            suspense_embed = discord.Embed(title="😰 MOMENT OF TRUTH", description="*The cylinder spins... Click... Click...*", color=0x2f3136)
+            suspense_embed = discord.Embed(title="😰 MOMENT OF TRUTH", description="*The cylinder spins... Click... Click...*", color=0x2b2d31)
             suspense_embed.set_image(url="https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif")
             await interaction.edit_original_response(embed=suspense_embed, view=None)
             
@@ -5079,17 +5069,16 @@ class SquidGameMaster(discord.ui.View):
                 try:
                     await update_balance(winner.id, prize)
                 except:
-                    pass # Ignore DB errors to prevent crash
+                    pass 
                 
                 punishment_msg = await self.apply_punishment_with_vip(interaction, self.round_loser)
                 
                 # 💀 WASTED SCENE
-                dead_embed = discord.Embed(title="💀 **PLAYER ELIMINATED**", color=0x000000)
+                dead_embed = discord.Embed(title="💀 PLAYER ELIMINATED", color=0x000000)
                 dead_embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
-                dead_embed.add_field(name="💥 **CAUSE OF DEATH**", value=f"Gunshot Wound (Round {self.slot_index + 1})", inline=False)
-                dead_embed.add_field(name="⚖️ **PENALTY**", value=punishment_msg, inline=False)
-                dead_embed.add_field(name="🏆 **SURVIVOR**", value=f"{winner.mention}\n*Won ${prize:,}*", inline=False)
-                dead_embed.set_footer(text="Game Over.", icon_url="https://cdn-icons-png.flaticon.com/512/9249/9249309.png")
+                dead_embed.add_field(name="💥 CAUSE OF DEATH", value=f"`Gunshot Wound (Round {self.slot_index + 1})`", inline=False)
+                dead_embed.add_field(name="⚖️ PENALTY APPLIED", value=f"> {punishment_msg}", inline=False)
+                dead_embed.add_field(name="🏆 SURVIVOR", value=f"{winner.mention}\n*Won **${prize:,}*** 💰", inline=False)
                 
                 await interaction.edit_original_response(content=f"💀 **{self.round_loser.mention}** has been eliminated.", embed=dead_embed, view=None)
                 
@@ -5106,7 +5095,7 @@ class SquidGameMaster(discord.ui.View):
                 self.update_embed(mode="SAFE")
                 await interaction.edit_original_response(embed=self.embed, view=None)
                 
-                await asyncio.sleep(2)
+                await asyncio.sleep(3)
                 
                 self.setup_rps_buttons()
                 self.update_embed(mode="RPS")
@@ -5129,7 +5118,6 @@ class SquidGameMaster(discord.ui.View):
             elif level == 2:
                 return "📉 **XP Reduced**"
             elif level == 3:
-                # Ban logic
                 if 'supabase' in globals():
                      ban_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=3)
                      await db_call(lambda: supabase.table("script_bans").upsert({"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}).execute())
@@ -5143,18 +5131,18 @@ class SquidGameMaster(discord.ui.View):
             return "Punishment Failed (Bot Error)"
 
 # ==============================================================================
-# 📨 INVITE VIEW (FIXED ARGUMENTS HERE)
+# 📨 INVITE VIEW (FIXED)
 # ==============================================================================
 class DuelInviteView(discord.ui.View):
-    # 👇 YAHAN THA ERROR - Ab Maine 4 Arguments Fixed Kar Diye Hain
-    def __init__(self, challenger, opponent, bullets, punishment_level):
+    # ✅ FIX: Yahan exactly 4 arguments (plus self) diye hain. Error khatam!
+    def __init__(self, challenger: discord.Member, opponent: discord.Member, bullets: int, punishment_level: int):
         super().__init__(timeout=60)
         self.challenger = challenger
         self.opponent = opponent
         self.bullets = bullets
         self.punishment_level = punishment_level
 
-    @discord.ui.button(label="✅ ACCEPT CHALLENGE", style=discord.ButtonStyle.success)
+    @discord.ui.button(label="ACCEPT CHALLENGE", style=discord.ButtonStyle.success, emoji="✅")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
         try:
             if interaction.user.id != self.opponent.id:
@@ -5173,13 +5161,15 @@ class DuelInviteView(discord.ui.View):
         except Exception as e:
             await interaction.followup.send(f"Error starting game: {e}", ephemeral=True)
 
-    @discord.ui.button(label="🛑 REJECT", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="REJECT", style=discord.ButtonStyle.danger, emoji="🛑")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.opponent.id:
             return await interaction.response.send_message("❌ **Guard:** Be quiet!", ephemeral=True)
         
         await interaction.response.defer()
-        await interaction.edit_original_response(content=f"🤡 **{interaction.user.mention}** chose to live another day (Rejected).", view=None, embed=None)
+        
+        reject_embed = discord.Embed(title="🏃 COWARD DETECTED", description=f"🤡 {interaction.user.mention} chose to live another day and rejected the duel.", color=0xFF0000)
+        await interaction.edit_original_response(content=None, embed=reject_embed, view=None)
 
 
 # ==============================================================================
@@ -5194,7 +5184,6 @@ class DuelInviteView(discord.ui.View):
     app_commands.Choice(name="Lvl 4: 3h Timeout + Ban", value=4),
     app_commands.Choice(name="Lvl 5: 1 DAY EXILE", value=5),
 ])
-@check_seized()
 async def squid_duel(i: discord.Interaction, opponent: discord.Member, bullets: int, punishment: int):
     # ✅ Anti-Lag Defer
     await i.response.defer()
@@ -5205,29 +5194,28 @@ async def squid_duel(i: discord.Interaction, opponent: discord.Member, bullets: 
         if bullets < 1 or bullets > 5:
             return await i.followup.send("❌ Bullets must be between 1 and 5.", ephemeral=True)
 
-        # Invite Embed
+        # 💎 PREMIUM INVITE EMBED
         embed = discord.Embed(
-            title="🔺 **SQUID GAME INVITATION** 🟥", 
-            description=f"### 💀 **{i.user.name}** challenges **{opponent.name}**!\n\n"
-                        f"> *\"Do you have the courage to risk it all?\"*", 
-            color=0x2f3136
+            title="🔺 SQUID GAME INVITATION 🟥", 
+            description=f"# 💀 DEATH MATCH\n{i.user.mention} has challenged {opponent.mention}!\n\n> *\"Do you have the courage to risk it all?\"*", 
+            color=0x2b2d31
         )
-        embed.add_field(name="📜 **Protocol**", value="`RPS` ➔ `Loser` ➔ `Gun` ➔ `Death/Money`", inline=False)
-        embed.add_field(name="💣 **Risk Factor**", value=f"**Ammo:** `{bullets}/6`\n**Penalty:** `Lvl {punishment}`", inline=True)
-        embed.add_field(name="💰 **Prize Pool**", value="`$50,000` Cash", inline=True)
+        embed.add_field(name="📜 **Protocol**", value="`Rock Paper Scissors` ➔ `Loser` ➔ `Gun`", inline=False)
+        embed.add_field(name="💣 **Risk Factor**", value=f"┣ **Ammo:** `{bullets}/6`\n┗ **Penalty:** `Level {punishment}`", inline=True)
+        embed.add_field(name="💰 **Prize Pool**", value="┣ **Cash:** `$50,000`\n┗ **Glory:** `Unlimited`", inline=True)
         
         embed.set_thumbnail(url=opponent.display_avatar.url)
         embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
         
         await i.followup.send(
-            content=f"🚨 **{opponent.mention}**, You have been summoned!", 
+            content=f"🚨 **{opponent.mention}**, You have been summoned by the Front Man!", 
             embed=embed, 
             view=DuelInviteView(i.user, opponent, bullets, punishment)
         )
 
     except Exception as e:
         await i.followup.send(f"❌ Critical Error: {e}", ephemeral=True)
-          
+                        
 # ================== SAY COMMAND (WITH IMAGE & LOGS) ==================
 
 # 👇 Apki di hui Log Channel ID set kar di hai
@@ -16753,215 +16741,15 @@ async def sell_items(i: discord.Interaction):
     view = SellCartView(user_inv, i.user.id)
     
     embed = discord.Embed(title="🏪 SELL CART", description="Select an item from dropdown to add to cart.", color=0x2b2d31)
-    await i.response.send_message(embed=embed, view=view)
-        
-        
-import discord
-from discord import app_commands
-from datetime import datetime
-
-# --- 👑 SLASH COMMAND: AUTHORIZE (PREMIUM VERSION) ---
-@bot.tree.command(name="authorize", description="🛡️ Official Authority: Grant access to a server")
-@app_commands.describe(server_id="Enter Server ID (Leave empty for this server)")
-async def authorize(interaction: discord.Interaction, server_id: str = None):
-    # 1. Security Check
-    if interaction.user.id != OWNER_ID:
-        embed = discord.Embed(title="🚫 ACCESS DENIED", description="Only the **Supreme Bot Owner** can grant authority.", color=0xff0000)
-        return await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    # 2. Target Server Logic
-    target_guild = None
-    if server_id:
-        try:
-            target_guild = bot.get_guild(int(server_id))
-            target_id = int(server_id)
-        except:
-            return await interaction.response.send_message("❌ **Invalid ID:** Please provide a numeric Server ID.", ephemeral=True)
-    else:
-        target_guild = interaction.guild
-        target_id = interaction.guild_id
-
-    # Defer (Visible to all because ephemeral=False)
-    await interaction.response.defer(ephemeral=False)
-
-    try:
-        # 3. Database Entry
-        supabase.table("authorized_servers").insert({
-            "server_id": str(target_id),
-            "added_by": str(interaction.user.id)
-        }).execute()
-        
-        # 4. Cache Update
-        authorized_guilds_cache.add(target_id)
-        
-        # --- 🏆 PREMIUM EMBED BUILDER ---
-        embed = discord.Embed(
-            title="🛡️ OFFICIAL SERVER AUTHORIZATION",
-            description=f"This server has been granted **Official Access** to use all premium systems of **{bot.user.name}**.",
-            color=0x00ff00, # Green for Success
-            timestamp=datetime.now()
-        )
-        
-        # Server Name and Icon
-        guild_name = target_guild.name if target_guild else f"Server ID: {target_id}"
-        embed.add_field(name="🏛️ Authorized Server", value=f"**{guild_name}**", inline=True)
-        embed.add_field(name="🆔 Server ID", value=f"`{target_id}`", inline=True)
-        
-        # Authorized By (Name + Avatar)
-        embed.add_field(name="👑 Authorized By", value=f"{interaction.user.mention}", inline=False)
-        
-        if target_guild and target_guild.icon:
-            embed.set_thumbnail(url=target_guild.icon.url)
-        
-        embed.set_author(name="Central Security Command", icon_url=bot.user.display_avatar.url)
-        embed.set_footer(text="Verified Authority Access • No Expiry", icon_url=interaction.user.display_avatar.url)
-        
-        await interaction.followup.send(embed=embed)
-        
-    except Exception as e:
-        await interaction.followup.send(f"⚠️ **Notice:** This server is already within the Authorized Database.\n`System Log: {e}`", ephemeral=True)
-
-# --- 👑 SLASH COMMAND: UNAUTHORIZE (OFFICIAL VERSION) ---
-@bot.tree.command(name="unauthorize", description="🚫 Official Authority: Revoke server access")
-@app_commands.describe(server_id="The Server ID to be blocked")
-async def unauthorize(interaction: discord.Interaction, server_id: str):
-    if interaction.user.id != OWNER_ID:
-        return await interaction.response.send_message("❌ **Authority Failure.**", ephemeral=True)
-
-    try:
-        target_id = int(server_id)
-        target_guild = bot.get_guild(target_id)
-        
-        # DB & Cache Delete
-        supabase.table("authorized_servers").delete().eq("server_id", str(target_id)).execute()
-        if target_id in authorized_guilds_cache:
-            authorized_guilds_cache.remove(target_id)
-            
-        # --- 🚫 PREMIUM REMOVAL EMBED ---
-        embed = discord.Embed(
-            title="⚠️ ACCESS REVOKED",
-            description="The security clearance for this server has been terminated by the Central Command.",
-            color=0xff0000, # Red for Removal
-            timestamp=datetime.now()
-        )
-        
-        guild_name = target_guild.name if target_guild else f"Server ID: {target_id}"
-        embed.add_field(name="🏛️ Blocked Server", value=f"**{guild_name}**", inline=True)
-        embed.add_field(name="🚨 Status", value="`UNAUTHORIZED`", inline=True)
-        
-        if target_guild and target_guild.icon:
-            embed.set_thumbnail(url=target_guild.icon.url)
-
-        embed.set_footer(text=f"Revoked by {interaction.user.name}", icon_url=interaction.user.display_avatar.url)
-        
-        await interaction.response.send_message(embed=embed, ephemeral=False)
-
-    except Exception as e:
-        await interaction.response.send_message(f"❌ **System Error:** {e}", ephemeral=True)
-
-import uuid # Agar file ke upar nahi hai, to yaha rahne dein
-
-# ⚠️ Make sure ye line file ke upar global area me ho
-# active_web_matches = {} 
-
-# --- 1. VIEW CLASS (Ye Command se PEHLE aayegi) ---
-class WebFightView(discord.ui.View):
-    def __init__(self, p1, p2, amount):
-        super().__init__(timeout=60)
-        self.p1 = p1
-        self.p2 = p2
-        self.amount = amount
-
-    @discord.ui.button(label="🔥 ACCEPT FIGHT", style=discord.ButtonStyle.success)
-    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Check: Sirf jisko challenge kiya hai wahi daba paye
-        if interaction.user.id != self.p2.id:
-            return await interaction.response.send_message("❌ This challenge is not for you!", ephemeral=True)
-
-        # 1. Money Deduction (Dobara check aur katoti)
-        try:
-            # Note: Yahan aapka 'update_balance' function sahi hona chahiye
-            db.update_balance(str(self.p1.id), -self.amount)
-            db.update_balance(str(self.p2.id), -self.amount)
-        except Exception as e:
-            return await interaction.response.send_message(f"❌ Transaction Failed! Check balances. ({e})", ephemeral=True)
-
-        # 2. Generate Match ID
-        match_id = str(uuid.uuid4())[:8]
-        
-        # 3. Save Match Data (Global Dict me)
-        active_web_matches[match_id] = {
-            "p1": str(self.p1.id), "p1_name": self.p1.display_name,
-            "p2": str(self.p2.id), "p2_name": self.p2.display_name,
-            "amount": self.amount
-        }
-
-        # 4. Generate Game Link
-        link = f"{WEBSITE_URL}/tekken_web/{match_id}"
-        
-        # 5. PUBLIC MESSAGE (Taaki dono link dekh sakein)
-        await interaction.response.send_message(
-            f"✅ **MATCH STARTED!**\n\nClick to Play: **[👊 OPEN TEKKEN ARENA]({link})**\n\n*(Both players join > Netplay > Fight > Winner clicks 'I WON')*",
-            ephemeral=False # 👈 Ye False hai, isliye sabko dikhega
-        )
-        
-        # Button disable karke view hata do
-        self.stop()
-        try:
-            await interaction.message.edit(view=None)
-        except:
-            pass
+    await i.response.send_message(embed=embed, view=view)   
 
 
-# --- 2. COMMAND (Ye View ke BAAD aayegi) ---
-@bot.tree.command(name="play_tekken", description="🎮 Play Tekken 3 (Web Version)")
-async def play_tekken(interaction: discord.Interaction, opponent: discord.Member, amount: int):
-    # 🔴 IMPORTANT FIX: ephemeral=False (Taaki challenge sabko dikhe)
-    await interaction.response.defer(ephemeral=False)
-
-    try:
-        user = interaction.user
-        
-        # 1. Self Check
-        if user.id == opponent.id:
-            return await interaction.followup.send("❌ You cannot fight yourself!")
-
-        # 2. Database Fetch (Direct Table Access - No Shortcut)
-        # Player 1 Check
-        data1 = db.supabase.table("economy").select("balance").eq("user_id", str(user.id)).execute().data
-        p1_bal = data1[0]['balance'] if data1 else 0
-
-        # Player 2 Check
-        data2 = db.supabase.table("economy").select("balance").eq("user_id", str(opponent.id)).execute().data
-        p2_bal = data2[0]['balance'] if data2 else 0
-
-        # 3. Balance Validation
-        if p1_bal < amount:
-            return await interaction.followup.send(f"❌ You need **${amount:,}** to fight!", ephemeral=True)
-        if p2_bal < amount:
-            return await interaction.followup.send(f"❌ {opponent.display_name} is broke! They have ${p2_bal:,}", ephemeral=True)
-
-        # 4. Send Challenge Embed
-        embed = discord.Embed(
-            title="🎮 TEKKEN 3 CHALLENGE", 
-            description=f"{user.mention} ⚔️ {opponent.mention}\n💰 **Bet:** ${amount:,}", 
-            color=0xFF0000
-        )
-        embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/en/f/f0/Tekken_3_cover.jpg")
-        
-        # View ko attach karo
-        view = WebFightView(user, opponent, amount)
-        await interaction.followup.send(f"🥊 {opponent.mention}, do you accept?", embed=embed, view=view)
-
-    except Exception as e:
-        print(f"ERROR: {e}")
-        await interaction.followup.send(f"⚠️ Error: `{e}`")
 
 OWNER_ID = 804687084249284618   # Owner ID
 STAFF_ROLE_ID = 1459074209191039049  # Staff Role ID
 GUILD_ID = 1257403231127076915       # Server ID
 SALARY_LOG_CHANNEL_ID = 1457066104819028089 # Log Channel
-STAFF_SALARY = 50000000
+STAFF_SALARY = 2000000
 
 # --- 🔴 MANUAL FORCE SALARY (Smart & Error Proof) ---
 @bot.tree.command(name="force_pay_salary", description="👑 Owner Only: Force pay staff salary immediately")
