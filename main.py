@@ -6991,7 +6991,7 @@ class PremiumDalgonaView(discord.ui.View):
         self.game_over = True
         for child in self.children: child.disabled = True
         
-        try: punish_msg = await smart_timeout(interaction, self.user, 3600, f"Dalgona Failed: {self.difficulty}")
+        try: punish_msg = await smart_timeout(interaction, self.user, 60, f"Dalgona Failed: {self.difficulty}")
         except: punish_msg = "(Mute failed)"
 
         embed = self.get_embed("DIED", reason)
