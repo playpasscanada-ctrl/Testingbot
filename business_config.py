@@ -207,12 +207,12 @@ BUSINESSES = {
     },
     "timeline_editor": {
         "name": "Timeline Editor Authority ⏱️", "price": 500000000000000000, 
-        "income_per_hr": 50000000000, "max_stock": 500000000000, "supply_cost": 5000000000,
+        "income_per_hr": 5000000000000000, "max_stock": 50000000000000000, "supply_cost": 500000000000000000000,
         "supply_duration": 24
     },
     "void_bank": {
         "name": "The Void Central Bank ♾️", "price": 10000000000000000000, 
-        "income_per_hr": 100000000000, "max_stock": 1000000000000, "supply_cost": 10000000000,
+        "income_per_hr": 100000000000000000, "max_stock": 1000000000000000000, "supply_cost": 10000000000000000,
         "supply_duration": 24
     }
 }
