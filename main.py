@@ -8246,6 +8246,8 @@ async def slap(i: discord.Interaction, target: discord.User):
     
     await i.response.send_message(embed=embed)
 
+games_group = app_commands.Group(name="games", description="🎰 Earn Money: Slots, Flip, Work & Daily")
+
 # ================== 🧠 ULTIMATE IQ TEST CHALLENGE ==================
 import random
 import discord
@@ -18608,8 +18610,6 @@ from discord import app_commands, ButtonStyle
 # ==========================================
 # 🎮 TITAN ELITE GAMES & ECONOMY
 # ==========================================
-
-games_group = app_commands.Group(name="games", description="🎰 Earn Money: Slots, Flip, Work & Daily")
 
 # --- 🛠️ HELPER FUNCTIONS (Database) ---
 async def get_balance(user_id):
