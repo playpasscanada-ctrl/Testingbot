@@ -6780,174 +6780,223 @@ async def devil_slots(i: discord.Interaction):
 
 
 # ================== 🍪 SQUID GAME: DALGONA COOKIE (ECONOMY + VIP) ==================
-# --- 🍪 PREMIUM DALGONA GAME VIEW ---
+import discord
+from discord import app_commands
+import random
+import asyncio
+import datetime as dt
+
+# --- 🍪 GOD MODE DALGONA GAME VIEW ---
 class PremiumDalgonaView(discord.ui.View):
     def __init__(self, user, difficulty):
-        super().__init__(timeout=60) # 60 Seconds Timer
+        super().__init__(timeout=60) 
         self.user = user
         self.difficulty = difficulty
-        self.progress = 0   # 0 to 100%
-        self.durability = 100 # Cookie Health (Starts at 100)
-        self.game_over = False
         
-        # ⚙️ DIFFICULTY SETTINGS (Risk vs Reward)
+        # Game State
+        self.progress = 0
+        self.durability = 100 
+        self.game_over = False
+        self.is_shaking = False
+        self.heated_buff = 0  # Number of carves left with 0% break chance
+        
+        # Time Management
+        self.start_time = dt.datetime.now()
+        self.time_limit = 60 # 60 Seconds total
+        
+        # ⚙️ SHAPE CONFIG (Multiplier affects Break Chance)
         self.settings = {
-            "TRIANGLE": {
-                "break_chance": 10, "lick_gain": 8, "crack_gain": 25, 
-                "reward": 10000, "color": 0x00FF00,
-                "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"
-            },
-            "CIRCLE": {
-                "break_chance": 25, "lick_gain": 6, "crack_gain": 20, 
-                "reward": 25000, "color": 0xF1C40F,
-                "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"
-            },
-            "STAR": { # 🌟 NEW SHAPE
-                "break_chance": 45, "lick_gain": 5, "crack_gain": 18, 
-                "reward": 40000, "color": 0x9B59B6,
-                "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"
-            },
-            "UMBRELLA": {
-                "break_chance": 65, "lick_gain": 4, "crack_gain": 15, 
-                "reward": 75000, "color": 0xE74C3C,
-                "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"
-            }
+            "TRIANGLE":  {"mult": 0.5, "reward": 10000, "color": 0x2ECC71, "emoji": "🔺"},
+            "CIRCLE":    {"mult": 1.0, "reward": 25000, "color": 0x3498DB, "emoji": "⭕"},
+            "STAR":      {"mult": 1.5, "reward": 40000, "color": 0xF1C40F, "emoji": "⭐"},
+            "UMBRELLA":  {"mult": 2.0, "reward": 75000, "color": 0xE67E22, "emoji": "☂️"},
+            "LIGHTNING": {"mult": 2.5, "reward": 100000, "color": 0xF39C12, "emoji": "⚡"},
+            "SNOWFLAKE": {"mult": 3.0, "reward": 100000, "color": 0x9B59B6, "emoji": "❄️"},
+            "CROWN":     {"mult": 3.5, "reward": 100000, "color": 0xFFD700, "emoji": "👑"},
+            "DRAGON":    {"mult": 4.0, "reward": 100000, "color": 0xE74C3C, "emoji": "🐉"},
+            "SKULL":     {"mult": 5.0, "reward": 100000, "color": 0x000000, "emoji": "💀"}
         }
         self.config = self.settings[difficulty]
+        self.base_img = "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"
+        
+        self.setup_buttons()
 
-    # --- 📊 PROGRESS BAR GENERATOR ---
+    # --- 🛠️ DYNAMIC BUTTON SETUP ---
+    def setup_buttons(self):
+        self.clear_items()
+        
+        # Disable carve buttons if progress is 95% (Need to POP)
+        carve_disabled = self.progress >= 95
+        
+        # ROW 1: Pressure Controls
+        self.add_item(discord.ui.Button(label="Light", emoji="🪡", style=discord.ButtonStyle.success, custom_id="CARVE_LIGHT", disabled=carve_disabled))
+        self.add_item(discord.ui.Button(label="Medium", emoji="🪡", style=discord.ButtonStyle.primary, custom_id="CARVE_MED", disabled=carve_disabled))
+        self.add_item(discord.ui.Button(label="Heavy", emoji="🪡", style=discord.ButtonStyle.danger, custom_id="CARVE_HEAVY", disabled=carve_disabled))
+        
+        # ROW 2: Special Actions
+        self.add_item(discord.ui.Button(label="Heat Needle (-8s)", emoji="🔥", style=discord.ButtonStyle.secondary, custom_id="HEAT", disabled=self.heated_buff > 0 or carve_disabled))
+        self.add_item(discord.ui.Button(label="Deep Breath", emoji="🧘‍♂️", style=discord.ButtonStyle.secondary, custom_id="BREATHE"))
+        
+        # ROW 3: Final POP
+        pop_btn = discord.ui.Button(label="POP OUT!", emoji="💥", style=discord.ButtonStyle.danger, custom_id="POP", disabled=not carve_disabled, row=2)
+        self.add_item(pop_btn)
+
+        # Attach single callback to all
+        for item in self.children:
+            item.callback = self.handle_action
+
+    # --- 📊 PROGRESS BAR ---
     def get_progress_bar(self):
         bar_len = 10
         filled = int((self.progress / 100) * bar_len)
-        empty = bar_len - filled
-        
-        # Color Logic based on durability
-        if self.durability > 70: fill_char = "🟩"
-        elif self.durability > 30: fill_char = "🟨"
-        else: fill_char = "🟥"
-        
-        return f"[{fill_char * filled}{'⬛' * empty}]"
+        return f"`[{'🟧' * filled}{'⬛' * (bar_len - filled)}]`"
 
     # --- 🎨 DYNAMIC EMBED ---
-    async def get_embed(self, status="PLAYING", reason=None):
-        if status == "WON":
-            title = f"🏆 PASSED: {self.difficulty}"
-            desc = (
-                f"### 🎉 CONGRATULATIONS!\n"
-                f"**{self.user.mention}** ne **{self.difficulty}** shape safalta se nikal liya!\n"
-                f"🍪 **Cookie:** Perfect!\n"
-                f"💰 **Won:** `${self.config['reward']:,}`"
-            )
-            color = 0x2ECC71
-            img = "https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif"
+    def get_embed(self, status="PLAYING", reason=None):
+        time_elapsed = (dt.datetime.now() - self.start_time).total_seconds()
+        time_left = max(0, int(self.time_limit - time_elapsed))
         
+        shape_icon = self.config['emoji']
+        
+        if status == "WON":
+            title = f"🏆 PASSED: {shape_icon} {self.difficulty}"
+            desc = f"# 🎉 SURVIVOR!\nYou perfectly extracted the shape!\n\n💰 **Won:** `${self.config['reward']:,}`\n⏱️ **Time Left:** `{time_left}s`"
+            color = 0x00FF00
+            img = "https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif"
+            
         elif status == "DIED":
-            title = f"💀 ELIMINATED: {self.difficulty}"
-            desc = (
-                f"### 💔 CRACKED!\n"
-                f"**{self.user.mention}** ki cookie toot gayi!\n\n"
-                f"📉 **Reason:** {reason}\n"
-                f"🔇 **Penalty:** 1 Hour Mute"
-            )
+            title = f"💀 ELIMINATED: {shape_icon} {self.difficulty}"
+            desc = f"# 💥 SNAP!\n**Cause of Death:** {reason}\n\n🔇 **Penalty:** 1 Hour Mute"
             color = 0xFF0000
             img = "https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif"
-        
-        else: # PLAYING
-            title = f"🍪 DALGONA: {self.difficulty}"
+            
+        else:
+            title = f"🍪 DALGONA: {shape_icon} {self.difficulty}"
+            
+            # Warn if shaking or heated
+            status_fx = ""
+            if self.is_shaking: status_fx += "\n🚨 **YOUR HANDS ARE SHAKING! BREATHE NOW!** 🚨"
+            if self.heated_buff > 0: status_fx += f"\n🔥 **Needle Heated!** (Safe Carves: `{self.heated_buff}`)"
+            
+            if self.progress >= 95:
+                status_fx += "\n\n⚠️ **PROGRESS AT 95%!** You must use **[💥 POP OUT]** for the final piece!"
+            
             desc = (
-                f"**Player:** {self.user.mention}\n"
-                f"**Reward:** `${self.config['reward']:,}`\n"
-                f"━━━━━━━━━━━━━━━━━━\n"
-                f"🛡️ **Integrity:** `{self.durability}%`\n"
-                f"📊 **Progress:** `{self.progress}%`\n"
-                f"{self.get_progress_bar()}\n"
-                f"━━━━━━━━━━━━━━━━━━\n"
-                f"👇 **Choose Strategy:**\n"
-                f"👅 **Lick:** Slow but Safe.\n"
-                f"🔨 **Crack:** Fast but High Risk!"
+                f"**Player:** {self.user.mention} | **Bounty:** `${self.config['reward']:,}`\n"
+                f"⏱️ **Time Left:** `{time_left}s`\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🛡️ **Durability:** `{self.durability}%`\n"
+                f"📊 **Progress:** `{self.progress}%`\n{self.get_progress_bar()}"
+                f"{status_fx}\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━"
             )
-            color = self.config["color"]
-            img = self.config["img"]
+            color = 0xFF0000 if self.is_shaking else self.config["color"]
+            img = self.base_img
 
         embed = discord.Embed(title=title, description=desc, color=color)
-        embed.set_thumbnail(url=self.user.display_avatar.url) # Player Profile Pic
+        embed.set_thumbnail(url=self.user.display_avatar.url)
         embed.set_image(url=img)
-        
-        if status == "PLAYING":
-            embed.set_footer(text="Squid Game • 60 Seconds Timer", icon_url="https://cdn-icons-png.flaticon.com/512/805/805273.png")
-            
         return embed
 
-    # --- 🎮 GAME STATE LOGIC ---
-    async def update_game(self, interaction):
-        # 1. Check Win
-        if self.progress >= 100:
-            self.game_over = True
+    # --- 🎮 MASTER ACTION HANDLER ---
+    async def handle_action(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user.id: 
+            return await interaction.response.send_message("❌ This is not your cookie!", ephemeral=True)
+            
+        await interaction.response.defer()
+        action = interaction.data["custom_id"]
+        
+        # 1. TIME CHECK
+        time_elapsed = (dt.datetime.now() - self.start_time).total_seconds()
+        if time_elapsed > self.time_limit:
+            return await self.trigger_death(interaction, "⏳ Time's up! The guard shot you.")
+
+        # 2. DEEP BREATH LOGIC
+        if action == "BREATHE":
+            if self.is_shaking:
+                self.is_shaking = False
+                self.time_limit -= 2 # Takes 2 seconds to breathe
+                self.setup_buttons()
+                return await interaction.edit_original_response(embed=self.get_embed("PLAYING"), view=self)
+            else:
+                self.time_limit -= 2 # Wasted time
+                return await interaction.edit_original_response(embed=self.get_embed("PLAYING"), view=self)
+
+        # 3. PANIC CHECK (If carving while shaking)
+        if self.is_shaking and action.startswith("CARVE"):
+            return await self.trigger_death(interaction, "😰 Your hands were shaking too much! The needle slipped and shattered the cookie!")
+
+        # 4. HEAT NEEDLE LOGIC
+        if action == "HEAT":
+            self.time_limit -= 8 # Massive time penalty
+            self.heated_buff = 2
+            self.setup_buttons()
+            return await interaction.edit_original_response(embed=self.get_embed("PLAYING"), view=self)
+
+        # 5. CARVE LOGIC (Light, Med, Heavy)
+        if action.startswith("CARVE"):
+            base_prog, base_break = 0, 0
+            
+            if action == "CARVE_LIGHT": base_prog, base_break = 5, 0
+            elif action == "CARVE_MED": base_prog, base_break = 12, 15
+            elif action == "CARVE_HEAVY": base_prog, base_break = 25, 40
+            
+            # Apply Heat Buff
+            if self.heated_buff > 0:
+                base_break = 0
+                base_prog = int(base_prog * 1.5) # 1.5x Progress when heated
+                self.heated_buff -= 1
+            else:
+                # Apply Shape Multiplier to break chance
+                base_break = int(base_break * self.config["mult"])
+                
+            # Roll for break
+            if base_break > 0 and random.randint(1, 100) <= base_break:
+                return await self.trigger_death(interaction, "💥 You applied too much pressure and cracked the shape!")
+                
+            # Add Progress
+            self.progress += base_prog
+            if self.progress >= 95: 
+                self.progress = 95 # Cap at 95%
+                self.is_shaking = False # Clear shake if at final step
+            
+            # 25% chance to start shaking (if not maxed)
+            if self.progress < 95 and random.randint(1, 100) <= 25:
+                self.is_shaking = True
+
+            self.setup_buttons()
+            return await interaction.edit_original_response(embed=self.get_embed("PLAYING"), view=self)
+
+        # 6. FINAL POP LOGIC
+        if action == "POP":
+            pop_risk = int(10 * self.config["mult"]) # e.g., Skull = 50% chance to break on POP
+            
+            # Dramatic Pause
             for child in self.children: child.disabled = True
+            suspense_embed = discord.Embed(title="💥 THE FINAL POP...", description="*You press your thumbs against the cookie...*", color=0x2b2d31)
+            suspense_embed.set_image(url="https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif")
+            await interaction.edit_original_response(embed=suspense_embed, view=None)
+            await asyncio.sleep(3)
             
-            # Payout
-            await update_balance(self.user.id, self.config['reward'])
-            
-            embed = await self.get_embed("WON")
-            await interaction.edit_original_response(embed=embed, view=self)
-            return
+            if random.randint(1, 100) <= pop_risk:
+                return await self.trigger_death(interaction, "💔 The final piece didn't pop out clean! It snapped in half!")
+            else:
+                # WIN!
+                try: await update_balance(self.user.id, self.config['reward'])
+                except: pass
+                return await interaction.edit_original_response(embed=self.get_embed("WON"), view=None)
 
-        # 2. Check Death (Durability 0)
-        if self.durability <= 0:
-            await self.trigger_death(interaction, "Cookie choora ho gayi!")
-            return
-
-        # 3. Continue Game
-        embed = await self.get_embed("PLAYING")
-        await interaction.edit_original_response(embed=embed, view=self)
-
+    # --- DEATH HANDLER ---
     async def trigger_death(self, interaction, reason):
         self.game_over = True
         for child in self.children: child.disabled = True
         
-        # Punishment: 1 Hour Mute
-        try:
-            punish_msg = await smart_timeout(interaction, self.user, 3600, "Dalgona Failed")
-        except:
-            punish_msg = "(Mute Failed)"
+        try: punish_msg = await smart_timeout(interaction, self.user, 3600, f"Dalgona Failed: {self.difficulty}")
+        except: punish_msg = "(Mute failed)"
 
-        embed = await self.get_embed("DIED", reason)
-        embed.description += f"\n{punish_msg}"
-        
-        await interaction.edit_original_response(embed=embed, view=self)
-
-    # --- 🔘 BUTTONS ---
-    @discord.ui.button(label="👅 LICK", style=discord.ButtonStyle.success)
-    async def lick(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.user.id: 
-            return await interaction.response.send_message("❌ Apna game khelo!", ephemeral=True)
-        
-        await interaction.response.defer() # Fix Interaction Failed
-        
-        # Lick Logic: Low gain, low damage
-        self.progress += self.config["lick_gain"] + random.randint(0, 3)
-        self.durability -= random.randint(1, 4)
-        await self.update_game(interaction)
-
-    @discord.ui.button(label="🔨 CRACK", style=discord.ButtonStyle.danger)
-    async def crack(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.user.id: 
-            return await interaction.response.send_message("❌ Apna game khelo!", ephemeral=True)
-        
-        await interaction.response.defer() # Fix Interaction Failed
-        
-        # Risk Calculation
-        fail_chance = self.config["break_chance"]
-        roll = random.randint(1, 100)
-        
-        if roll <= fail_chance:
-            await self.trigger_death(interaction, "Hathoda zor se lag gaya!")
-            return
-
-        # Crack Logic: High gain, high damage
-        self.progress += self.config["crack_gain"] + random.randint(0, 5)
-        self.durability -= random.randint(8, 15)
-        await self.update_game(interaction)
+        embed = self.get_embed("DIED", reason)
+        embed.description += f"\n\n{punish_msg}"
+        await interaction.edit_original_response(embed=embed, view=None)
 
 
 # --- 🏢 LOBBY VIEW (Shape Selection) ---
@@ -6957,56 +7006,62 @@ class DalgonaLobbyView(discord.ui.View):
         self.user = user
 
     async def start(self, interaction, shape):
-        if interaction.user.id != self.user.id:
-            return await interaction.response.send_message("❌ Ye tumhara game nahi hai!", ephemeral=True)
-        
-        # Defer to prevent crash
+        if interaction.user.id != self.user.id: return await interaction.response.send_message("❌ Only the challenged player can select.", ephemeral=True)
         await interaction.response.defer()
         
         view = PremiumDalgonaView(self.user, shape)
-        embed = await view.get_embed()
-        
-        await interaction.edit_original_response(embed=embed, view=view)
+        await interaction.edit_original_response(embed=view.get_embed(), view=view)
 
-    @discord.ui.button(label="🔺 Triangle", style=discord.ButtonStyle.success, row=0)
-    async def tri(self, interaction, button): await self.start(interaction, "TRIANGLE")
+    # ROW 0: The Originals
+    @discord.ui.button(label="Triangle", emoji="🔺", style=discord.ButtonStyle.success, row=0)
+    async def btn_tri(self, i, b): await self.start(i, "TRIANGLE")
+    @discord.ui.button(label="Circle", emoji="⭕", style=discord.ButtonStyle.primary, row=0)
+    async def btn_cir(self, i, b): await self.start(i, "CIRCLE")
+    @discord.ui.button(label="Star", emoji="⭐", style=discord.ButtonStyle.secondary, row=0)
+    async def btn_star(self, i, b): await self.start(i, "STAR")
 
-    @discord.ui.button(label="⭕ Circle", style=discord.ButtonStyle.primary, row=0)
-    async def cir(self, interaction, button): await self.start(interaction, "CIRCLE")
+    # ROW 1: Hard Mode
+    @discord.ui.button(label="Umbrella", emoji="☂️", style=discord.ButtonStyle.danger, row=1)
+    async def btn_umb(self, i, b): await self.start(i, "UMBRELLA")
+    @discord.ui.button(label="Lightning", emoji="⚡", style=discord.ButtonStyle.danger, row=1)
+    async def btn_light(self, i, b): await self.start(i, "LIGHTNING")
+    @discord.ui.button(label="Snowflake", emoji="❄️", style=discord.ButtonStyle.danger, row=1)
+    async def btn_snow(self, i, b): await self.start(i, "SNOWFLAKE")
 
-    @discord.ui.button(label="⭐ Star", style=discord.ButtonStyle.secondary, row=1)
-    async def star(self, interaction, button): await self.start(interaction, "STAR")
-
-    @discord.ui.button(label="☂️ Umbrella", style=discord.ButtonStyle.danger, row=1)
-    async def umb(self, interaction, button): await self.start(interaction, "UMBRELLA")
+    # ROW 2: GOD MODE
+    @discord.ui.button(label="Crown", emoji="👑", style=discord.ButtonStyle.danger, row=2)
+    async def btn_crown(self, i, b): await self.start(i, "CROWN")
+    @discord.ui.button(label="Dragon", emoji="🐉", style=discord.ButtonStyle.danger, row=2)
+    async def btn_dragon(self, i, b): await self.start(i, "DRAGON")
+    @discord.ui.button(label="Skull", emoji="💀", style=discord.ButtonStyle.danger, row=2)
+    async def btn_skull(self, i, b): await self.start(i, "SKULL")
 
 
 # --- 💻 MAIN COMMAND ---
-@bot.tree.command(name="dalgona", description="🍪 Squid Game: Honeycomb Challenge (Premium)")
-@check_seized()
+@bot.tree.command(name="dalgona", description="🍪 Play the DEADLY Dalgona Challenge (God Mode)")
+@check_seized() 
 async def dalgona(i: discord.Interaction):
-    # Permission Check
     if not i.guild.me.guild_permissions.moderate_members:
-        return await i.response.send_message("❌ **Error:** Mere paas 'Timeout' permission nahi hai!", ephemeral=True)
+        return await i.response.send_message("❌ **System Error:** Bot needs 'Timeout Members' permission.", ephemeral=True)
         
-    embed = discord.Embed(title="🍪 SQUID GAME: DALGONA", color=0xE91E63)
-    embed.set_author(name=f"Player: {i.user.name}", icon_url=i.user.display_avatar.url)
+    embed = discord.Embed(title="🍪 SQUID GAME: DALGONA (NIGHTMARE)", color=0x2b2d31)
+    embed.set_author(name=f"Contestant: {i.user.name}", icon_url=i.user.display_avatar.url)
     embed.set_thumbnail(url="https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif")
     
     embed.description = (
-        "**Choose your Difficulty:**\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "🔺 **Triangle** • `$10,000` • Easy\n"
-        "⭕ **Circle** • `$25,000` • Medium\n"
-        "⭐ **Star** • `$40,000` • Hard\n"
-        "☂️ **Umbrella** • `$75,000` • Extreme\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "⚠️ **Warning:** Failing results in **1 Hour Mute!**"
+        "# 🔪 CHOOSE YOUR SHAPE\n"
+        "**New Rules Active:** Heat your needle, control your breathing, and survive the final POP.\n\n"
+        "### 🟢 STANDARD TIER\n"
+        "> 🔺 **Triangle** • `$10,000`  |  ⭕ **Circle** • `$25,000`  |  ⭐ **Star** • `$40,000`\n\n"
+        "### 🔴 NIGHTMARE TIER\n"
+        "> ☂️ **Umbrella** • `$75,000`  |  ⚡ **Lightning** • `$100,000`  |  ❄️ **Snowflake** • `$100,000`\n\n"
+        "### 💀 GOD TIER (Near Impossible)\n"
+        "> 👑 **Crown** • `$100,000`  |  🐉 **Dragon** • `$100,000`  |  💀 **Skull** • `$100,000`\n\n"
+        "⚠️ **WARNING:** Breaking the cookie results in a **1 HOUR MUTE!**"
     )
     
     view = DalgonaLobbyView(i.user)
     await i.response.send_message(embed=embed, view=view)
-
 
 # ================== 🪢 PREMIUM TUG OF WAR (FIXED) ==================
 
