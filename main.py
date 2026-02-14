@@ -20767,47 +20767,68 @@ import datetime as dt
 # ==============================================================================
 # 🚨 ANTI-SPAM / FARMING DETECTOR
 # ==============================================================================
-# Tracks command usage: { user_id: {"strikes": [time1, time2], "banned_until": datetime} }
 tnd_cooldowns = {}
 
 def check_spam(user_id: int) -> str:
     now = dt.datetime.now()
     user_data = tnd_cooldowns.get(user_id, {"strikes": [], "banned_until": None})
     
-    # Check if currently banned
     if user_data["banned_until"]:
         if now < user_data["banned_until"]:
             time_left = str(user_data["banned_until"] - now).split('.')[0]
-            return f"🚫 **SYSTEM BLOCK:** Suspicious activity detected! You are blocked from this command for **{time_left}**."
+            return f"🚫 **SYSTEM BLOCK:** Suspicious activity! You are blocked for **{time_left}**."
         else:
-            user_data["banned_until"] = None # Ban expired
+            user_data["banned_until"] = None
             
-    # Clean up strikes older than 5 minutes
     user_data["strikes"] = [t for t in user_data["strikes"] if now - t < dt.timedelta(minutes=5)]
-    
-    # Add new strike
     user_data["strikes"].append(now)
     
-    # If this is the 3rd strike within 5 minutes -> 24 Hour Ban
     if len(user_data["strikes"]) >= 3:
         user_data["banned_until"] = now + dt.timedelta(hours=24)
         tnd_cooldowns[user_id] = user_data
-        return "🚨 **ANTI-FARMING TRIGGERED!**\nYou used this command too fast to farm money. You are now **BLOCKED FOR 24 HOURS**!"
+        return "🚨 **ANTI-FARMING TRIGGERED!**\nYou used this command too fast. **BLOCKED FOR 24 HOURS**!"
         
     tnd_cooldowns[user_id] = user_data
-    return None # Safe to proceed
+    return None
+
+# ==============================================================================
+# 📚 PRE-PLANNED PREMIUM VAULT
+# ==============================================================================
+PREMIUM_TRUTHS = [
+    "What is the biggest lie you've ever told on Discord?",
+    "Who is your secret crush in this server?",
+    "Have you ever scammed or betrayed a friend in a game?",
+    "What is the most embarrassing thing in your browser history?",
+    "Which server member do you secretly dislike the most?",
+    "Have you ever faked being AFK to avoid someone?",
+    "What is your biggest real-life regret?",
+    "Have you ever snooped through someone else's phone/DMs?",
+    "What is the most illegal thing you've ever done?",
+    "If you had to kick one admin from the server, who would it be?"
+]
+
+PREMIUM_DARES = [
+    "Send a voice message barking like a dog for 10 seconds.",
+    "Change your nickname to 'I am a clown' for the next hour.",
+    "Ping the server owner and tell them their server is boring.",
+    "Send the 5th picture from your phone's gallery in the chat.",
+    "Confess your fake love to a random online member right now.",
+    "Type your next 10 messages completely blindfolded.",
+    "Beg a moderator for a VIP role in general chat.",
+    "Sing a romantic song in a Voice Channel for 30 seconds.",
+    "Post an embarrassing real-life selfie.",
+    "Roast yourself brutally in 5 sentences."
+]
 
 # ==============================================================================
 # ✍️ MODALS (POP-UP FORMS FOR TYPING)
 # ==============================================================================
-
 class QuestionModal(discord.ui.Modal):
-    def __init__(self, mode: str, challenger: discord.Member, target: discord.Member, original_view):
+    def __init__(self, mode: str, challenger: discord.Member, target: discord.Member):
         super().__init__(title=f"Custom {mode} for {target.name}")
         self.mode = mode
         self.challenger = challenger
         self.target = target
-        self.original_view = original_view
         
         self.custom_text = discord.ui.TextInput(
             label=f"Type your {mode} here:",
@@ -20820,22 +20841,7 @@ class QuestionModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        
-        question = self.custom_text.value
-        
-        if self.mode == "Truth":
-            embed = discord.Embed(title="⚖️ TRUTH REVEAL", color=0x3498DB)
-            embed.description = f"### 🗣️ Question from {self.challenger.mention}:\n> *\"{question}\"*\n\n**{self.target.mention}, click the button below to answer honestly!**"
-            view = TnD_AnswerButtonView(self.challenger, self.target, question)
-            
-        else: # Dare
-            embed = discord.Embed(title="😈 DARE ACCEPTED", color=0xE74C3C)
-            embed.description = f"### 🔥 Dare from {self.challenger.mention}:\n> *\"{question}\"*\n\n**{self.target.mention}, perform this dare and upload proof in chat!**\nOnce done, click 'Proof Submitted'."
-            view = TnD_DareProofView(self.challenger, self.target)
-            
-        embed.set_thumbnail(url=self.target.display_avatar.url)
-        await interaction.edit_original_response(embed=embed, view=view)
-
+        await launch_task(interaction, self.mode, self.challenger, self.target, self.custom_text.value)
 
 class AnswerModal(discord.ui.Modal, title="Your Honest Answer"):
     def __init__(self, challenger: discord.Member, target: discord.Member, question: str):
@@ -20854,22 +20860,66 @@ class AnswerModal(discord.ui.Modal, title="Your Honest Answer"):
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        
         answer = self.answer_text.value
+        
         embed = discord.Embed(title="🏛️ THE JURY HAS BEEN SUMMONED", color=0x9B59B6)
         embed.description = (
-            f"**Challenger:** {self.challenger.mention}\n"
-            f"**Target:** {self.target.mention}\n"
+            f"**Challenger:** {self.challenger.mention} | **Target:** {self.target.mention}\n"
             f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
             f"🗣️ **The Question:** {self.question}\n\n"
             f"💬 **The Answer:** *\"{answer}\"*\n"
             f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-            f"### 🧑‍⚖️ JURY VOTING:\n"
+            f"### 🧑‍⚖️ JURY VOTING (60 SECONDS):\n"
             f"Is {self.target.name} telling the truth? Vote below!"
         )
         
         view = TnD_JuryView(self.target)
-        await interaction.edit_original_response(embed=embed, view=view)
+        msg = await interaction.followup.send(embed=embed, view=view, wait=True)
+        
+        # ⏳ 60 SECONDS TIMER LOGIC FOR TRUTH
+        await asyncio.sleep(60)
+        
+        upvotes = len(view.upvotes)
+        downvotes = len(view.downvotes)
+        
+        result_embed = discord.Embed(title="🏛️ JURY VERDICT IS IN!", color=0x2b2d31)
+        if upvotes > downvotes:
+            try: await update_balance(self.target.id, 10000)
+            except: pass
+            result_embed.color = 0x2ECC71
+            result_embed.description = f"### ✅ TRUTH VERIFIED!\nThe jury believed {self.target.mention}.\n**Reward:** `+$10,000` added to bank!"
+        elif downvotes > upvotes:
+            try: await update_balance(self.target.id, -10000) # Negative deduction
+            except: pass
+            result_embed.color = 0xE74C3C
+            result_embed.description = f"### ❌ LIES DETECTED!\nThe jury thinks {self.target.mention} is lying!\n**Penalty:** `-$10,000` deducted from bank!"
+        else:
+            result_embed.color = 0xF1C40F
+            result_embed.description = f"### ⚖️ HUNG JURY (TIE)\nThe votes were perfectly split. No money won or lost."
+            
+        result_embed.description += f"\n\n**Final Votes:** 👍 {upvotes} | 👎 {downvotes}"
+        
+        # Disable buttons
+        for child in view.children: child.disabled = True
+        try: await msg.edit(embed=result_embed, view=view)
+        except: pass
+
+# ==============================================================================
+# 🎮 CORE GAME LOGIC HELPER
+# ==============================================================================
+async def launch_task(interaction, mode, challenger, target, question):
+    if mode == "Truth":
+        embed = discord.Embed(title="⚖️ TRUTH REVEAL", color=0x3498DB)
+        embed.description = f"### 🗣️ Question from {challenger.mention}:\n> *\"{question}\"*\n\n**{target.mention}, click the button below to answer honestly!**"
+        view = TnD_AnswerButtonView(challenger, target, question)
+    else:
+        embed = discord.Embed(title="😈 DARE ACCEPTED", color=0xE74C3C)
+        embed.description = f"### 🔥 Dare from {challenger.mention}:\n> *\"{question}\"*\n\n**{target.mention}, perform this dare and upload proof in chat!**\nOnce done, click 'Proof Submitted'."
+        view = TnD_DareProofView(challenger, target)
+        
+    embed.set_thumbnail(url=target.display_avatar.url)
+    try: await interaction.edit_original_response(embed=embed, view=view)
+    except: await interaction.followup.send(embed=embed, view=view)
 
 
 # ==============================================================================
@@ -20889,12 +20939,10 @@ class TnD_ChoiceView(discord.ui.View):
             
         await interaction.response.defer()
         
-        # Now ask Challenger to type the question
         embed = discord.Embed(title=f"🎭 {mode.upper()} SELECTED!", color=0x2b2d31)
-        embed.description = f"{self.target.mention} chose **{mode}**!\n\n{self.challenger.mention}, click the button below to type your custom {mode}!"
-        embed.set_image(url="https://media.tenor.com/images/13019d5e32047ed6f345c26bdf3b56a3/tenor.gif")
+        embed.description = f"{self.target.mention} chose **{mode}**!\n\n{self.challenger.mention}, how do you want to assign the task?"
         
-        view = TnD_WriteView(self.challenger, self.target, mode)
+        view = TnD_SourceView(self.challenger, self.target, mode)
         await interaction.edit_original_response(embed=embed, view=view)
 
     @discord.ui.button(label="Truth", emoji="🗣️", style=discord.ButtonStyle.primary)
@@ -20903,22 +20951,50 @@ class TnD_ChoiceView(discord.ui.View):
     @discord.ui.button(label="Dare", emoji="😈", style=discord.ButtonStyle.danger)
     async def btn_dare(self, i, b): await self.handle_choice(i, "Dare")
 
-
-# 2. Challenger clicks to open Modal
-class TnD_WriteView(discord.ui.View):
+# 2. Challenger chooses Custom vs Premium
+class TnD_SourceView(discord.ui.View):
     def __init__(self, challenger, target, mode):
         super().__init__(timeout=120)
         self.challenger = challenger
         self.target = target
         self.mode = mode
 
-    @discord.ui.button(label="✍️ Write Custom Task", style=discord.ButtonStyle.success)
-    async def btn_write(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.challenger.id:
-            return await interaction.response.send_message("❌ You are not the challenger!", ephemeral=True)
+    @discord.ui.button(label="✍️ Write Custom", style=discord.ButtonStyle.success)
+    async def btn_custom(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.challenger.id: return await interaction.response.send_message("❌ Only the challenger can choose!", ephemeral=True)
+        await interaction.response.send_modal(QuestionModal(self.mode, self.challenger, self.target))
+
+    @discord.ui.button(label="📚 Premium Vault", style=discord.ButtonStyle.primary)
+    async def btn_vault(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.challenger.id: return await interaction.response.send_message("❌ Only the challenger can choose!", ephemeral=True)
+        await interaction.response.defer()
         
-        # Open the pop-up modal!
-        await interaction.response.send_modal(QuestionModal(self.mode, self.challenger, self.target, self))
+        embed = discord.Embed(title=f"📚 PREMIUM {self.mode.upper()} VAULT", description="Select a hardcore prompt from the dropdown below:", color=0xF1C40F)
+        view = discord.ui.View(timeout=120)
+        view.add_item(TnD_PrePlannedSelect(self.mode, self.challenger, self.target))
+        await interaction.edit_original_response(embed=embed, view=view)
+
+# 2.5 The Dropdown for Premium Vault
+class TnD_PrePlannedSelect(discord.ui.Select):
+    def __init__(self, mode, challenger, target):
+        self.mode = mode
+        self.challenger = challenger
+        self.target = target
+        
+        prompts = PREMIUM_TRUTHS if mode == "Truth" else PREMIUM_DARES
+        options = [discord.SelectOption(label=f"{mode} {i+1}", description=p[:90]+"...") for i, p in enumerate(prompts)]
+        super().__init__(placeholder="Select a Premium Prompt...", options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.challenger.id: return await interaction.response.send_message("❌ Not for you!", ephemeral=True)
+        await interaction.response.defer()
+        
+        # Get full text based on selection index
+        idx = int(self.values[0].split(" ")[1]) - 1
+        prompts = PREMIUM_TRUTHS if self.mode == "Truth" else PREMIUM_DARES
+        selected_question = prompts[idx]
+        
+        await launch_task(interaction, self.mode, self.challenger, self.target, selected_question)
 
 
 # 3. Target clicks to answer Truth
@@ -20931,16 +21007,14 @@ class TnD_AnswerButtonView(discord.ui.View):
 
     @discord.ui.button(label="💬 Answer Now", style=discord.ButtonStyle.primary)
     async def btn_ans(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.target.id:
-            return await interaction.response.send_message("❌ It's not your turn to speak!", ephemeral=True)
-            
+        if interaction.user.id != self.target.id: return await interaction.response.send_message("❌ It's not your turn to speak!", ephemeral=True)
         await interaction.response.send_modal(AnswerModal(self.challenger, self.target, self.question))
 
 
 # 4. Jury Polling (For Truth)
 class TnD_JuryView(discord.ui.View):
     def __init__(self, target):
-        super().__init__(timeout=60) # 60 seconds voting
+        super().__init__(timeout=None) # Timeout handled by asyncio in AnswerModal
         self.target = target
         self.upvotes = set()
         self.downvotes = set()
@@ -20949,7 +21023,6 @@ class TnD_JuryView(discord.ui.View):
     async def btn_real(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.upvotes.add(interaction.user.id)
         if interaction.user.id in self.downvotes: self.downvotes.remove(interaction.user.id)
-        
         button.label = f"Real {len(self.upvotes)}"
         self.children[1].label = f"Fake {len(self.downvotes)}"
         await interaction.response.edit_message(view=self)
@@ -20958,7 +21031,6 @@ class TnD_JuryView(discord.ui.View):
     async def btn_fake(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.downvotes.add(interaction.user.id)
         if interaction.user.id in self.upvotes: self.upvotes.remove(interaction.user.id)
-        
         button.label = f"Fake {len(self.downvotes)}"
         self.children[0].label = f"Real {len(self.upvotes)}"
         await interaction.response.edit_message(view=self)
@@ -20973,14 +21045,11 @@ class TnD_DareProofView(discord.ui.View):
 
     @discord.ui.button(label="📸 Proof Submitted in Chat", style=discord.ButtonStyle.success)
     async def btn_proof(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.target.id:
-            return await interaction.response.send_message("❌ Wait for the target!", ephemeral=True)
-            
+        if interaction.user.id != self.target.id: return await interaction.response.send_message("❌ Wait for the target!", ephemeral=True)
         await interaction.response.defer()
         
         embed = discord.Embed(title="🔍 VERIFICATION PENDING", color=0xF1C40F)
         embed.description = f"{self.target.mention} claims they did it!\n\n{self.challenger.mention}, check the chat. Did they really do it? **Approve** or **Reject** below."
-        
         view = TnD_VerifyDareView(self.challenger, self.target)
         await interaction.edit_original_response(embed=embed, view=view)
 
@@ -20994,68 +21063,56 @@ class TnD_VerifyDareView(discord.ui.View):
 
     @discord.ui.button(label="APPROVE (Give $1M)", emoji="✅", style=discord.ButtonStyle.success)
     async def btn_approve(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.challenger.id:
-            return await interaction.response.send_message("❌ ONLY the Challenger can verify this!", ephemeral=True)
-            
+        if interaction.user.id != self.challenger.id: return await interaction.response.send_message("❌ ONLY the Challenger can verify this!", ephemeral=True)
         await interaction.response.defer()
         for child in self.children: child.disabled = True
         
-        # 💰 1 MILLION PAYOUT 
         try: await update_balance(self.target.id, 1000000)
         except: pass
         
         embed = discord.Embed(title="🏆 DARE CONQUERED!", color=0x00FF00)
         embed.description = f"### UNBELIEVABLE!\n{self.challenger.mention} approved the dare!\n\n{self.target.mention} just won **$1,000,000** for having guts of steel!"
         embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
-        
         await interaction.edit_original_response(embed=embed, view=self)
 
     @discord.ui.button(label="REJECT (Fake/Failed)", emoji="❌", style=discord.ButtonStyle.danger)
     async def btn_reject(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.challenger.id:
-            return await interaction.response.send_message("❌ ONLY the Challenger can verify this!", ephemeral=True)
-            
+        if interaction.user.id != self.challenger.id: return await interaction.response.send_message("❌ ONLY the Challenger can verify this!", ephemeral=True)
         await interaction.response.defer()
         for child in self.children: child.disabled = True
         
         embed = discord.Embed(title="💀 DARE FAILED!", color=0xFF0000)
-        embed.description = f"{self.challenger.mention} rejected the proof.\n\n{self.target.mention} failed the dare and gets absolutely NOTHING. What a shame!"
+        embed.description = f"{self.challenger.mention} rejected the proof.\n\n{self.target.mention} failed the dare and gets absolutely NOTHING."
         embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
-        
         await interaction.edit_original_response(embed=embed, view=self)
 
 
 # ==============================================================================
 # 💻 THE SLASH COMMAND
 # ==============================================================================
-
 @games_group.command(name="tnd", description="🎭 Play Custom Truth or Dare! Win $1,000,000!")
 @app_commands.describe(target="Select the player you want to challenge")
 async def tnd_cmd(i: discord.Interaction, target: discord.Member):
-    # 1. Anti-Spam Check
     spam_warning = check_spam(i.user.id)
-    if spam_warning:
-        return await i.response.send_message(spam_warning, ephemeral=True)
+    if spam_warning: return await i.response.send_message(spam_warning, ephemeral=True)
         
-    # 2. Prevent targeting bots or self
     if target.bot or target.id == i.user.id:
         return await i.response.send_message("❌ You can't challenge bots or yourself!", ephemeral=True)
 
-    # 3. Start Game
     embed = discord.Embed(title="🎭 TRUTH OR DARE", color=0x2b2d31)
     embed.description = (
         f"**Challenger:** {i.user.mention}\n"
         f"**Target:** {target.mention}\n"
         f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
         f"### {target.name}, MAKE YOUR CHOICE!\n"
-        f"Will you reveal your darkest secrets, or perform an insane task for **$1,000,000**?\n\n"
+        f"Will you reveal your darkest secrets for **$10,000**, or perform an insane task for **$1,000,000**?\n\n"
         f"*(Waiting for target to choose...)*"
     )
     embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/3855/3855833.png")
     
     view = TnD_ChoiceView(i.user, target)
     await i.response.send_message(target.mention, embed=embed, view=view)
-
+     
 import discord
 from discord import app_commands
 import random
@@ -21342,6 +21399,934 @@ async def cyberhack_game(i: discord.Interaction):
     except asyncio.TimeoutError:
         timeout_embed = discord.Embed(title="⏳ CONNECTION LOST", description="You were too slow! The firewall blocked your IP.", color=0xFF0000)
         await i.channel.send(embed=timeout_embed)
+
+import discord
+from discord import app_commands
+import random
+import asyncio
+
+# ==============================================================================
+# 💼 1. THE DEVIL'S BARGAIN (ULTRA PREMIUM DEAL OR NO DEAL)
+# ==============================================================================
+
+class DevilsBargainView(discord.ui.View):
+    def __init__(self, user, entry_fee):
+        super().__init__(timeout=180) # 3 Mins timeout
+        self.user = user
+        self.entry_fee = entry_fee
+        
+        # Game State
+        self.prizes = [1, 10000, 50000, 250000, 1000000]
+        random.shuffle(self.prizes)
+        
+        # Cases: 0 to 4 (representing Suitcase 1 to 5)
+        self.cases = {i: self.prizes[i] for i in range(5)}
+        self.player_case = None
+        self.opened_cases = []
+        
+        # Flow Control
+        self.state = "CHOOSE_OWN" # CHOOSE_OWN -> OPEN_TWO -> BANKER_OFFER_1 -> OPEN_ONE -> FINAL_OFFER -> OPEN_OWN
+        self.cases_to_open = 0
+        self.banker_offer = 0
+        
+        self.build_case_buttons()
+
+    def build_case_buttons(self):
+        self.clear_items()
+        
+        # Build 5 Suitcase Buttons
+        for i in range(5):
+            btn = discord.ui.Button(
+                label=f"Case {i+1}", 
+                emoji="💼", 
+                style=discord.ButtonStyle.secondary, 
+                row=0 if i < 3 else 1,
+                custom_id=f"case_{i}"
+            )
+            
+            # Apply states
+            if i == self.player_case:
+                btn.style = discord.ButtonStyle.primary
+                btn.label = f"Your Case ({i+1})"
+                btn.disabled = True
+            elif i in self.opened_cases:
+                val = self.cases[i]
+                btn.label = f"${val:,}"
+                btn.emoji = "❌"
+                btn.style = discord.ButtonStyle.danger if val > 50000 else discord.ButtonStyle.success
+                btn.disabled = True
+                
+            btn.callback = self.make_case_callback(i)
+            self.add_item(btn)
+
+        # Build Action Buttons (Deal / No Deal)
+        if "BANKER_OFFER" in self.state:
+            deal_btn = discord.ui.Button(label="🤝 DEAL (Take Offer)", style=discord.ButtonStyle.success, row=2)
+            deal_btn.callback = self.accept_deal
+            self.add_item(deal_btn)
+            
+            no_deal_btn = discord.ui.Button(label="❌ NO DEAL", style=discord.ButtonStyle.danger, row=2)
+            no_deal_btn.callback = self.reject_deal
+            self.add_item(no_deal_btn)
+            
+        # Final Action (Open Own Case)
+        if self.state == "OPEN_OWN":
+            open_btn = discord.ui.Button(label="🔐 OPEN YOUR CASE", style=discord.ButtonStyle.success, row=2)
+            open_btn.callback = self.open_final_case
+            self.add_item(open_btn)
+
+    def make_case_callback(self, case_index):
+        async def callback(interaction: discord.Interaction):
+            if interaction.user.id != self.user.id:
+                return await interaction.response.send_message("❌ This is not your game!", ephemeral=True)
+            
+            await interaction.response.defer()
+            
+            if self.state == "CHOOSE_OWN":
+                self.player_case = case_index
+                self.state = "OPEN_TWO"
+                self.cases_to_open = 2
+                
+            elif self.state in ["OPEN_TWO", "OPEN_ONE"]:
+                self.opened_cases.append(case_index)
+                self.cases_to_open -= 1
+                
+                if self.cases_to_open == 0:
+                    if self.state == "OPEN_TWO":
+                        self.state = "BANKER_OFFER_1"
+                    elif self.state == "OPEN_ONE":
+                        self.state = "FINAL_OFFER"
+                    self.calculate_banker_offer()
+
+            self.build_case_buttons()
+            await interaction.edit_original_response(embed=self.get_embed(), view=self)
+            
+        return callback
+
+    def calculate_banker_offer(self):
+        remaining_values = [v for k, v in self.cases.items() if k not in self.opened_cases and k != self.player_case]
+        remaining_values.append(self.cases[self.player_case]) # Include player's case
+        
+        # Banker gives an offer slightly lower than the average to tempt the player
+        avg_value = sum(remaining_values) / len(remaining_values)
+        greed_factor = random.uniform(0.75, 0.90) 
+        self.banker_offer = int(avg_value * greed_factor)
+
+    async def accept_deal(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user.id: return
+        await interaction.response.defer()
+        
+        for child in self.children: child.disabled = True
+        self.state = "GAME_OVER"
+        
+        # Payout
+        try: await update_balance(self.user.id, self.banker_offer)
+        except: pass
+        
+        embed = discord.Embed(title="🤝 DEAL ACCEPTED!", color=0x2ECC71)
+        embed.description = (
+            f"### 🎉 YOU BEAT THE BANKER!\n"
+            f"You walked away with **${self.banker_offer:,}**!\n\n"
+            f"*By the way, your case had **${self.cases[self.player_case]:,}** inside...*"
+        )
+        embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    async def reject_deal(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user.id: return
+        await interaction.response.defer()
+        
+        if self.state == "BANKER_OFFER_1":
+            self.state = "OPEN_ONE"
+            self.cases_to_open = 1
+        elif self.state == "FINAL_OFFER":
+            self.state = "OPEN_OWN"
+            
+        self.build_case_buttons()
+        await interaction.edit_original_response(embed=self.get_embed(), view=self)
+
+    async def open_final_case(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user.id: return
+        
+        # Suspense
+        for child in self.children: child.disabled = True
+        suspense_embed = discord.Embed(title="🔐 OPENING YOUR CASE...", color=0x2b2d31)
+        suspense_embed.set_image(url="https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif")
+        await interaction.response.edit_message(embed=suspense_embed, view=None)
+        
+        await asyncio.sleep(3)
+        
+        win_amount = self.cases[self.player_case]
+        try: await update_balance(self.user.id, win_amount)
+        except: pass
+        
+        embed = discord.Embed()
+        if win_amount >= 50000:
+            embed.title = "🏆 INCREDIBLE LUCK!"
+            embed.color = 0xFFD700
+            embed.description = f"### 🎉 JACKPOT!\nYour case had **${win_amount:,}**!\nYou made the right choice!"
+            embed.set_image(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
+        else:
+            embed.title = "💀 FATAL MISTAKE!"
+            embed.color = 0xFF0000
+            embed.description = f"### 📉 BANKRUPT!\nYour case only had **${win_amount:,}**!\nYou should have taken the Banker's offer!"
+            embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+            
+        await interaction.edit_original_response(embed=embed, view=None)
+
+    def get_embed(self):
+        embed = discord.Embed(title="💼 THE DEVIL'S BARGAIN", color=0x2b2d31)
+        
+        # Remaining Values formatting
+        all_vals = sorted(self.prizes)
+        board_str = ""
+        for v in all_vals:
+            if v in [self.cases[k] for k in self.opened_cases]:
+                board_str += f"~~${v:,}~~ ❌\n"
+            else:
+                board_str += f"**${v:,}** 💼\n"
+
+        if self.state == "CHOOSE_OWN":
+            desc = "### 1️⃣ CHOOSE YOUR CASE\nSelect 1 briefcase to keep as your own. You will open it at the very end!"
+            embed.color = 0x3498DB
+            
+        elif self.state in ["OPEN_TWO", "OPEN_ONE"]:
+            desc = f"### 2️⃣ ELIMINATE CASES\nOpen **{self.cases_to_open}** more case(s) to remove them from the board. Pray you don't hit the Jackpot!"
+            embed.color = 0xE67E22
+            
+        elif "BANKER_OFFER" in self.state:
+            desc = f"### 📞 THE BANKER IS CALLING...\n\nThe Banker wants to buy your case. He is offering you:\n# 💰 ${self.banker_offer:,}\n\nDo you want to take the **DEAL** and walk away, or say **NO DEAL**?"
+            embed.color = 0xF1C40F
+            embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2855/2855630.png")
+            
+        elif self.state == "OPEN_OWN":
+            desc = "### 🔐 THE FINAL MOMENT\nYou rejected all offers. It's time to open your own case and face your destiny!"
+            embed.color = 0x9B59B6
+
+        embed.description = desc + "\n\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n**REMAINING BOARD:**\n" + board_str
+        return embed
+
+@games_group.command(name="deal", description="💼 Play The Devil's Bargain! Will you beat the Banker?")
+@check_seized() # Tera permission check
+async def deal_game(i: discord.Interaction):
+    await i.response.defer()
+    
+    entry_fee = 10000
+    try:
+        user_bal = await get_balance(i.user.id)
+        if user_bal < entry_fee:
+            return await i.followup.send(f"❌ **Bouncer:** Entry fee is **${entry_fee:,}**. You are broke!", ephemeral=True)
+        await update_balance(i.user.id, -entry_fee)
+    except Exception:
+        return await i.followup.send(f"⚠️ **Bank Error:** Transaction failed.", ephemeral=True)
+
+    view = DevilsBargainView(i.user, entry_fee)
+    await i.followup.send(embed=view.get_embed(), view=view)
+
+import discord
+from discord import app_commands
+import random
+import asyncio
+
+# ==============================================================================
+# 🔐 2. THE VAULT CRACKER (MASTERMIND PUZZLE)
+# ==============================================================================
+
+class VaultDigitSelect(discord.ui.Select):
+    def __init__(self, position):
+        self.position = position
+        options = [discord.SelectOption(label=str(i), value=str(i)) for i in range(10)]
+        super().__init__(placeholder=f"Select Digit {position+1}...", min_values=1, max_values=1, options=options, row=position)
+
+    async def callback(self, interaction: discord.Interaction):
+        # Update the specific digit in the view's current guess
+        self.view.current_guess[self.position] = int(self.values[0])
+        await interaction.response.defer()
+
+
+class VaultCrackerView(discord.ui.View):
+    def __init__(self, user, entry_fee):
+        super().__init__(timeout=300) # 5 Mins to crack
+        self.user = user
+        self.entry_fee = entry_fee
+        
+        # Game State
+        self.secret_code = [random.randint(0, 9) for _ in range(3)]
+        self.current_guess = [None, None, None]
+        self.attempts = 0
+        self.max_attempts = 5
+        self.history = [] # Stores strings like "1-2-3 ➔ 🔴 🟡 🟢"
+        
+        self.build_ui()
+
+    def build_ui(self):
+        self.clear_items()
+        
+        # 3 Dropdowns for 3 Digits
+        for i in range(3):
+            self.add_item(VaultDigitSelect(position=i))
+            
+        # Submit Button
+        submit_btn = discord.ui.Button(label="💻 INJECT CODE", emoji="⚡", style=discord.ButtonStyle.success, row=3)
+        submit_btn.callback = self.submit_guess
+        self.add_item(submit_btn)
+
+    async def submit_guess(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user.id:
+            return await interaction.response.send_message("❌ Hands off the keyboard! This is not your hack.", ephemeral=True)
+            
+        if None in self.current_guess:
+            return await interaction.response.send_message("⚠️ You must select all 3 digits before injecting the code!", ephemeral=True)
+            
+        await interaction.response.defer()
+        self.attempts += 1
+        
+        # 🧠 MASTERMIND LOGIC (Calculate Feedback)
+        guess = self.current_guess.copy()
+        secret = self.secret_code.copy()
+        feedback = [""] * 3
+        
+        # First Pass: Check for exact matches (Green)
+        for i in range(3):
+            if guess[i] == secret[i]:
+                feedback[i] = "🟢"
+                secret[i] = None # Mark as used
+                guess[i] = -1    # Mark as used
+                
+        # Second Pass: Check for wrong position (Yellow) and misses (Red)
+        for i in range(3):
+            if feedback[i] == "": # If not already Green
+                if guess[i] in secret:
+                    feedback[i] = "🟡"
+                    secret[secret.index(guess[i])] = None # Mark as used
+                else:
+                    feedback[i] = "🔴"
+                    
+        # Format history
+        guess_str = f"**{self.current_guess[0]} - {self.current_guess[1]} - {self.current_guess[2]}**"
+        feedback_str = " ".join(feedback)
+        self.history.append(f"`Attempt {self.attempts}/{self.max_attempts}` | {guess_str}  ➔  {feedback_str}")
+        
+        # Check Win Condition
+        if feedback == ["🟢", "🟢", "🟢"]:
+            await self.end_game(interaction, won=True)
+        elif self.attempts >= self.max_attempts:
+            await self.end_game(interaction, won=False)
+        else:
+            # Continue Hacking
+            await interaction.edit_original_response(embed=self.get_embed(), view=self)
+
+    async def end_game(self, interaction, won):
+        for child in self.children: child.disabled = True
+        
+        embed = discord.Embed()
+        secret_str = f"{self.secret_code[0]} - {self.secret_code[1]} - {self.secret_code[2]}"
+        
+        if won:
+            # Reward scaling based on attempts
+            rewards = {1: 100000, 2: 50000, 3: 25000, 4: 10000, 5: 5000}
+            win_amount = rewards[self.attempts]
+            
+            try: await update_balance(self.user.id, win_amount)
+            except: pass
+            
+            embed.title = "🔓 VAULT CRACKED!"
+            embed.color = 0x2ECC71
+            embed.description = (
+                f"### 🎉 HACK SUCCESSFUL!\n"
+                f"You bypassed the mainframe in `{self.attempts}` attempts!\n\n"
+                f"**The Secret PIN was:** `{secret_str}`\n"
+                f"💰 **Loot Secured:** `${win_amount:,}`\n\n"
+                f"**Hack Log:**\n" + "\n".join(self.history)
+            )
+            embed.set_thumbnail(url="https://media.tenor.com/E0lQ-J9YpKwAAAAC/chest-open.gif")
+        else:
+            embed.title = "🚨 SECURITY BREACH DETECTED"
+            embed.color = 0xFF0000
+            embed.description = (
+                f"### 💥 HACK FAILED!\n"
+                f"The vault locked down and the police are on their way.\n\n"
+                f"**The Secret PIN was:** `{secret_str}`\n"
+                f"💸 **Loss:** `${self.entry_fee:,}`\n\n"
+                f"**Hack Log:**\n" + "\n".join(self.history)
+            )
+            embed.set_thumbnail(url="https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif")
+            
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    def get_embed(self):
+        embed = discord.Embed(title="🔐 THE VAULT CRACKER", color=0x2b2d31)
+        
+        instructions = (
+            "**Can you hack the 3-digit PIN?**\n"
+            "🟢 = Right Number, Right Place\n"
+            "🟡 = Right Number, Wrong Place\n"
+            "🔴 = Wrong Number\n"
+            "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        )
+        
+        history_text = "\n".join(self.history) if self.history else "*No attempts yet. Select digits below to start hacking!*"
+        
+        embed.description = f"{instructions}### 💻 SYSTEM TERMINAL:\n{history_text}\n\n⚠️ **Alarms trigger after 5 failed attempts!**"
+        embed.set_thumbnail(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif")
+        return embed
+
+@games_group.command(name="vault", description="🔐 Hack the 3-digit PIN to crack the vault! Pure logic.")
+@check_seized() # Tera custom check
+async def vault_cmd(i: discord.Interaction):
+    await i.response.defer()
+    
+    entry_fee = 5000
+    try:
+        user_bal = await get_balance(i.user.id)
+        if user_bal < entry_fee:
+            return await i.followup.send(f"❌ **Error:** You need `${entry_fee:,}` to buy the hacking software.", ephemeral=True)
+        await update_balance(i.user.id, -entry_fee)
+    except Exception:
+        return await i.followup.send(f"⚠️ **Database Error.** Transaction aborted.", ephemeral=True)
+
+    view = VaultCrackerView(i.user, entry_fee)
+    await i.followup.send(embed=view.get_embed(), view=view)
+
+import discord
+from discord import app_commands
+import random
+import asyncio
+import math
+
+# ==============================================================================
+# 🚓 3. UNDERWORLD SMUGGLER (DYNAMIC MARKET TRADING)
+# ==============================================================================
+
+class SmugglerView(discord.ui.View):
+    def __init__(self, user, entry_fee):
+        super().__init__(timeout=90) # 90 Seconds max survival
+        self.user = user
+        self.entry_fee = entry_fee
+        
+        # Player State
+        self.cash = entry_fee # Starts with Entry Fee as "Street Cash"
+        self.inventory = {
+            "magic": {"name": "💊 Blue Magic", "qty": 0, "price": 500, "trend": "➖", "volatility": 0.25},
+            "diamonds": {"name": "💎 Diamonds", "qty": 0, "price": 2500, "trend": "➖", "volatility": 0.35},
+            "weapons": {"name": "🔫 Weapons", "qty": 0, "price": 8000, "trend": "➖", "volatility": 0.50}
+        }
+        
+        # Game State
+        self.time_left = 60
+        self.fbi_threat = 5 # Starts at 5% chance of raid
+        self.escaped = False
+        self.busted = False
+        self.message = None
+        self.lock = asyncio.Lock()
+        
+        self.build_ui()
+
+    def build_ui(self):
+        self.clear_items()
+        
+        # Row 0: BUY BUTTONS (Buy Max)
+        self.add_item(discord.ui.Button(label="BUY MAGIC", style=discord.ButtonStyle.secondary, row=0, custom_id="buy_magic"))
+        self.add_item(discord.ui.Button(label="BUY DIAMONDS", style=discord.ButtonStyle.secondary, row=0, custom_id="buy_diamonds"))
+        self.add_item(discord.ui.Button(label="BUY WEAPONS", style=discord.ButtonStyle.secondary, row=0, custom_id="buy_weapons"))
+        
+        # Row 1: SELL BUTTONS (Sell All)
+        self.add_item(discord.ui.Button(label="SELL MAGIC", style=discord.ButtonStyle.success, row=1, custom_id="sell_magic"))
+        self.add_item(discord.ui.Button(label="SELL DIAMONDS", style=discord.ButtonStyle.success, row=1, custom_id="sell_diamonds"))
+        self.add_item(discord.ui.Button(label="SELL WEAPONS", style=discord.ButtonStyle.success, row=1, custom_id="sell_weapons"))
+        
+        # Row 2: ESCAPE BUTTON
+        escape_btn = discord.ui.Button(label="🏃 ESCAPE & CASH OUT", emoji="💰", style=discord.ButtonStyle.danger, row=2)
+        escape_btn.callback = self.escape_market
+        self.add_item(escape_btn)
+
+        # Attach single callback to Buy/Sell buttons
+        for item in self.children:
+            if item.custom_id and item.custom_id.startswith(("buy_", "sell_")):
+                item.callback = self.handle_trade
+
+    def get_embed(self):
+        if self.busted:
+            embed = discord.Embed(title="🚨 FBI RAID! YOU GOT BUSTED!", color=0xFF0000)
+            embed.description = f"### 💥 WASTED!\nThe FBI kicked down the door!\nAll your cash and illegal goods were seized.\n\n💸 **Total Loss:** `${self.entry_fee:,}`"
+            embed.set_thumbnail(url="https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif")
+            return embed
+            
+        if self.escaped:
+            profit = self.cash - self.entry_fee
+            color = 0x2ECC71 if profit >= 0 else 0xE74C3C
+            title = "🏃 SUCCESSFUL ESCAPE!" if profit >= 0 else "🏃 BARELY ESCAPED!"
+            embed = discord.Embed(title=title, color=color)
+            embed.description = f"### 💰 CASHED OUT!\nYou escaped the black market before the raid.\n\n💵 **Final Bank:** `${self.cash:,}`\n📈 **Net Profit:** `${profit:,}`"
+            embed.set_thumbnail(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
+            return embed
+
+        # Active Game Embed
+        embed = discord.Embed(title="🚓 UNDERWORLD SMUGGLER", color=0x2b2d31)
+        
+        # Market Board
+        market_str = "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        for key, data in self.inventory.items():
+            market_str += f"**{data['name']}**\n"
+            market_str += f"💵 Price: `${data['price']:,}` {data['trend']} | 📦 Owned: `{data['qty']}`\n\n"
+        market_str += "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+        
+        # Threat Level Formatting
+        threat_emoji = "🟢" if self.fbi_threat < 20 else "🟡" if self.fbi_threat < 40 else "🔴"
+        
+        embed.description = (
+            f"**Smuggler:** {self.user.mention} | ⏱️ **Time:** `{self.time_left}s`\n"
+            f"💰 **Street Cash:** `${self.cash:,}`\n"
+            f"🚨 **FBI Threat Level:** {threat_emoji} `{self.fbi_threat}%`\n"
+            f"{market_str}\n"
+            f"⚠️ *Buy low, sell high. Click ESCAPE before the FBI raids!*"
+        )
+        return embed
+
+    async def handle_trade(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user.id:
+            return await interaction.response.send_message("❌ This is not your market session!", ephemeral=True)
+            
+        action, item_key = interaction.data["custom_id"].split("_")
+        item = self.inventory[item_key]
+        
+        async with self.lock:
+            if action == "buy":
+                # Buy Max possible
+                max_qty = self.cash // item["price"]
+                if max_qty <= 0:
+                    return await interaction.response.send_message(f"⚠️ Not enough cash to buy {item['name']}!", ephemeral=True)
+                
+                self.cash -= max_qty * item["price"]
+                item["qty"] += max_qty
+                
+            elif action == "sell":
+                # Sell All
+                if item["qty"] <= 0:
+                    return await interaction.response.send_message(f"⚠️ You don't have any {item['name']} to sell!", ephemeral=True)
+                    
+                revenue = item["qty"] * item["price"]
+                self.cash += revenue
+                item["qty"] = 0
+
+            # Update UI immediately for responsive feel
+            try: await interaction.response.edit_message(embed=self.get_embed(), view=self)
+            except discord.InteractionResponded: pass # Fallback if already responded
+
+    async def escape_market(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user.id: return
+        await interaction.response.defer()
+        
+        async with self.lock:
+            self.escaped = True
+            for child in self.children: child.disabled = True
+            
+            # Transfer Street Cash to Real Bank
+            try: await update_balance(self.user.id, self.cash)
+            except: pass
+            
+            await interaction.edit_original_response(embed=self.get_embed(), view=self)
+
+    # --- THE MARKET ENGINE (BACKGROUND LOOP) ---
+    async def start_market(self):
+        await asyncio.sleep(2) # Initial read time
+        
+        while self.time_left > 0 and not self.escaped and not self.busted:
+            async with self.lock:
+                # 1. FBI Raid Check
+                if random.randint(1, 100) <= self.fbi_threat:
+                    self.busted = True
+                    for child in self.children: child.disabled = True
+                    break # Exit loop, you got busted!
+                
+                # 2. Update Prices
+                for key, data in self.inventory.items():
+                    old_price = data["price"]
+                    # Random price swing based on item volatility
+                    swing = random.uniform(-data["volatility"], data["volatility"])
+                    new_price = int(old_price * (1 + swing))
+                    
+                    # Prevent prices from going to zero or infinity
+                    new_price = max(50, min(new_price, 50000)) 
+                    
+                    data["price"] = new_price
+                    data["trend"] = "📈" if new_price > old_price else "📉" if new_price < old_price else "➖"
+                
+                # 3. Increase Tension
+                self.time_left -= 4
+                self.fbi_threat += random.randint(3, 8) # Threat increases by 3-8% every 4 seconds
+                
+                # 4. Update Discord Message
+                if self.message and not self.escaped:
+                    try: await self.message.edit(embed=self.get_embed(), view=self)
+                    except Exception: pass
+            
+            await asyncio.sleep(4) # Market ticks every 4 seconds
+            
+        # If time ran out and player didn't escape or get busted (Auto-busted)
+        if self.time_left <= 0 and not self.escaped and not self.busted:
+            async with self.lock:
+                self.busted = True
+                for child in self.children: child.disabled = True
+                if self.message:
+                    try: await self.message.edit(embed=self.get_embed(), view=self)
+                    except: pass
+
+
+# ==============================================================================
+# 💻 THE SLASH COMMAND
+# ==============================================================================
+@games_group.command(name="smuggler", description="🚓 Trade illegal goods in the black market! Don't get raided!")
+@check_seized() # Tera check
+async def smuggler_game(i: discord.Interaction):
+    await i.response.defer()
+    
+    entry_fee = 25000
+    try:
+        user_bal = await get_balance(i.user.id)
+        if user_bal < entry_fee:
+            return await i.followup.send(f"❌ **Bouncer:** You need `${entry_fee:,}` in your bank to enter the black market.", ephemeral=True)
+        # Deduct entry fee upfront. It becomes "Street Cash".
+        await update_balance(i.user.id, -entry_fee)
+    except Exception:
+        return await i.followup.send(f"⚠️ **Bank Error:** Transaction failed.", ephemeral=True)
+
+    view = SmugglerView(i.user, entry_fee)
+    
+    # Suspense Intro
+    embed = discord.Embed(title="🚓 ENTERING THE BLACK MARKET...", color=0x2b2d31)
+    embed.description = f"Converting your `${entry_fee:,}` into Street Cash...\n*Keep an eye on the FBI Threat Level!*"
+    msg = await i.followup.send(embed=embed, view=view, wait=True)
+    
+    view.message = msg
+    # Start the dynamic market loop!
+    asyncio.create_task(view.start_market())
+
+
+import discord
+from discord import app_commands
+import random
+import asyncio
+
+# ==============================================================================
+# ⚔️ 4. THE ENDLESS COLOSSEUM (RPG SURVIVAL)
+# ==============================================================================
+
+class ColosseumView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=180) # 3 Min inactivity timeout
+        self.user = user
+        
+        # Player Stats
+        self.player_max_hp = 100
+        self.player_hp = 100
+        self.potions = 3
+        self.total_loot = 0
+        
+        # Game State
+        self.level = 1
+        self.combat_log = ["*Welcome to the Colosseum. The gates open...*"]
+        self.game_over = False
+        self.escaped = False
+        
+        self.spawn_enemy()
+        self.build_ui()
+
+    def spawn_enemy(self):
+        # Enemy Database
+        enemies = ["🟢 Sickly Goblin", "💀 Skeleton Warrior", "👹 Brutal Orc", "🦇 Vampire Lord", "🌑 Dark Knight", "🔥 Hell Demon", "🐉 Ancient Dragon", "👑 TITAN OF DEATH"]
+        
+        # Scale difficulty based on level
+        idx = min(self.level - 1, len(enemies) - 1)
+        name = enemies[idx]
+        
+        if self.level > len(enemies):
+            name = f"🌌 Awakened God LVL {self.level}"
+            
+        self.enemy_name = name
+        self.enemy_max_hp = int(30 + (self.level * 20 * random.uniform(0.8, 1.2)))
+        self.enemy_hp = self.enemy_max_hp
+        
+        # Enemy Damage (Min, Max)
+        self.enemy_dmg = (int(self.level * 3), int(self.level * 8 + 5))
+        
+        # Reward for beating this level
+        self.level_loot = int(self.level * random.randint(5000, 10000))
+
+    def make_hp_bar(self, hp, max_hp, length=10):
+        hp = max(0, hp)
+        filled = int((hp / max_hp) * length)
+        empty = length - filled
+        
+        ratio = hp / max_hp
+        color = "🟩" if ratio > 0.5 else "🟨" if ratio > 0.2 else "🟥"
+        return f"`[{color * filled}{'⬛' * empty}]` **{hp}/{max_hp}**"
+
+    def build_ui(self):
+        self.clear_items()
+        
+        # Row 0: Combat Actions
+        self.add_item(discord.ui.Button(label="ATTACK", emoji="⚔️", style=discord.ButtonStyle.danger, row=0, custom_id="action_attack"))
+        self.add_item(discord.ui.Button(label="DEFEND", emoji="🛡️", style=discord.ButtonStyle.primary, row=0, custom_id="action_defend"))
+        self.add_item(discord.ui.Button(label=f"HEAL ({self.potions})", emoji="🧪", style=discord.ButtonStyle.success, row=0, custom_id="action_heal", disabled=(self.potions <= 0)))
+        
+        # Row 1: Flee / Escape
+        escape_btn = discord.ui.Button(label=f"FLEE WITH ${self.total_loot:,}", emoji="🏃", style=discord.ButtonStyle.secondary, row=1)
+        escape_btn.callback = self.flee_colosseum
+        if self.total_loot == 0: escape_btn.disabled = True # Can't flee with 0
+        self.add_item(escape_btn)
+
+        # Attach single callback to Combat buttons
+        for item in self.children:
+            if item.custom_id and item.custom_id.startswith("action_"):
+                item.callback = self.handle_combat
+
+    async def handle_combat(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user.id:
+            return await interaction.response.send_message("❌ You are not the gladiator in the arena!", ephemeral=True)
+            
+        await interaction.response.defer()
+        action = interaction.data["custom_id"].split("_")[1]
+        
+        self.combat_log = [] # Clear old log
+        
+        # Player Turn
+        if action == "attack":
+            dmg = random.randint(15, 30)
+            # 10% chance for Critical Hit
+            if random.randint(1, 100) <= 10:
+                dmg = int(dmg * 1.5)
+                self.combat_log.append(f"💥 **CRITICAL HIT!** You dealt `{dmg}` DMG to {self.enemy_name}!")
+            else:
+                self.combat_log.append(f"⚔️ You slashed the {self.enemy_name} for `{dmg}` DMG.")
+            self.enemy_hp -= dmg
+            
+        elif action == "defend":
+            self.combat_log.append(f"🛡️ You raised your shield! Incoming damage reduced by 50%.")
+            
+        elif action == "heal":
+            if self.potions > 0:
+                self.potions -= 1
+                heal_amt = random.randint(35, 50)
+                self.player_hp = min(self.player_max_hp, self.player_hp + heal_amt)
+                self.combat_log.append(f"🧪 You drank a potion and restored `{heal_amt}` HP!")
+
+        # Check Enemy Death
+        if self.enemy_hp <= 0:
+            self.enemy_hp = 0
+            self.total_loot += self.level_loot
+            self.combat_log.append(f"💀 **{self.enemy_name} SLAIN!** You looted `${self.level_loot:,}`.")
+            self.level += 1
+            self.spawn_enemy()
+            self.combat_log.append(f"⚠️ **A NEW CHALLENGER APPEARS:** {self.enemy_name} steps into the arena!")
+            
+        else:
+            # Enemy Turn (if alive)
+            e_dmg = random.randint(self.enemy_dmg[0], self.enemy_dmg[1])
+            if action == "defend":
+                e_dmg = int(e_dmg * 0.5) # 50% damage reduction
+                counter = random.randint(5, 10)
+                self.enemy_hp -= counter
+                self.combat_log.append(f"🗡️ You countered from behind your shield for `{counter}` DMG!")
+                
+            self.player_hp -= e_dmg
+            self.combat_log.append(f"🩸 {self.enemy_name} hit you for `{e_dmg}` DMG!")
+            
+            # Check Player Death
+            if self.player_hp <= 0:
+                self.player_hp = 0
+                self.game_over = True
+                await self.end_game(interaction, status="DIED")
+                return
+
+        # Rebuild UI and update
+        self.build_ui()
+        await interaction.edit_original_response(embed=self.get_embed(), view=self)
+
+    async def flee_colosseum(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user.id: return
+        await interaction.response.defer()
+        
+        self.escaped = True
+        self.game_over = True
+        
+        try: await update_balance(self.user.id, self.total_loot)
+        except: pass
+        
+        await self.end_game(interaction, status="ESCAPED")
+
+    async def end_game(self, interaction, status):
+        for child in self.children: child.disabled = True
+        
+        embed = discord.Embed()
+        if status == "DIED":
+            embed.title = "💀 WASTED IN THE ARENA"
+            embed.color = 0xFF0000
+            embed.description = f"### 🩸 YOU DIED ON LEVEL {self.level}!\nThe {self.enemy_name} crushed you.\n\n💸 **Lost Loot:** `${self.total_loot:,}`"
+            embed.set_thumbnail(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+        else:
+            embed.title = "🏃 COWARD's VICTORY"
+            embed.color = 0x2ECC71
+            embed.description = f"### 💰 ESCAPED AT LEVEL {self.level}!\nYou fled the arena before things got too bloody.\n\n💵 **Winnings Secured:** `${self.total_loot:,}`"
+            embed.set_thumbnail(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
+            
+        await interaction.edit_original_response(embed=embed, view=self)
+
+    def get_embed(self):
+        embed = discord.Embed(title=f"⚔️ THE ENDLESS COLOSSEUM - WAVE {self.level}", color=0xE74C3C)
+        
+        # Combat Log Formatting
+        log_str = "\n".join([f"> {line}" for line in self.combat_log])
+        
+        embed.description = (
+            f"**Gladiator:** {self.user.mention}  |  💰 **Loot Pool:** `${self.total_loot:,}`\n"
+            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            f"👤 **YOUR STATUS:**\n"
+            f"❤️ HP: {self.make_hp_bar(self.player_hp, self.player_max_hp)}\n"
+            f"🧪 Potions: `{self.potions}/3`\n\n"
+            f"👹 **ENEMY STATUS:** [{self.enemy_name}]\n"
+            f"🖤 HP: {self.make_hp_bar(self.enemy_hp, self.enemy_max_hp)}\n"
+            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            f"📜 **COMBAT LOG:**\n{log_str}"
+        )
+        embed.set_thumbnail(url=self.user.display_avatar.url)
+        return embed
+
+# ==============================================================================
+# 💻 THE SLASH COMMAND
+# ==============================================================================
+@games_group.command(name="colosseum", description="⚔️ Fight monsters in the endless arena! Survive or lose it all.")
+@check_seized()
+async def colosseum_cmd(i: discord.Interaction):
+    await i.response.defer()
+    
+    view = ColosseumView(i.user)
+    
+    embed = discord.Embed(title="⚔️ ENTERING THE COLOSSEUM...", color=0x2b2d31)
+    embed.description = "*The gates lock behind you. There is no turning back until you bleed or flee!*"
+    
+    await i.followup.send(embed=view.get_embed(), view=view)
+
+
+import discord
+from discord import app_commands
+import random
+import asyncio
+
+# ==============================================================================
+# 🎰 5. THE PLINKO WALL (ANIMATED CASINO DROP)
+# ==============================================================================
+
+def generate_plinko_board(step: int, current_pos: float) -> str:
+    """Generates the ASCII pyramid animation for the Plinko drop."""
+    lines = []
+    
+    # Generate 9 rows (0 to 8)
+    for r in range(9):
+        if r == step:
+            # Place the ball 'O' at the current position
+            row_items = ["."] * (r + 1)
+            # Calculate the index based on position (-r/2 to r/2)
+            idx = int(current_pos + (r / 2))
+            row_items[idx] = "O"
+            # Add spaces and center it to form a perfect pyramid
+            lines.append(" ".join(row_items).center(25))
+        elif r > step:
+            # Future rows (just pegs)
+            dots = ["."] * (r + 1)
+            lines.append(" ".join(dots).center(25))
+        else:
+            # Past rows (faded pegs)
+            dots = ["."] * (r + 1)
+            lines.append(" ".join(dots).center(25))
+            
+    # Wrap in code block for monospaced perfect alignment
+    board_str = "```text\n" + "\n".join(lines) + "\n```"
+    
+    # Add the multiplier visual below the board
+    multipliers = "`[10x] [4x] [1.5x] [.5x] [.2x] [.5x] [1.5x] [4x] [10x]`"
+    return board_str + "\n" + multipliers.center(45)
+
+@games_group.command(name="plinko", description="🎰 Drop the ball on the Plinko wall and win up to 10x your bet!")
+@app_commands.describe(bet="How much money do you want to drop?")
+@check_seized() # Tera custom permission check
+async def plinko_game(i: discord.Interaction, bet: int):
+    # 1. Validation
+    if bet < 1000:
+        return await i.response.send_message("❌ **Bouncer:** Minimum bet for the VIP Plinko Wall is `$1,000`!", ephemeral=True)
+
+    await i.response.defer()
+
+    # 2. Balance Check & Deduction
+    try:
+        user_bal = await get_balance(i.user.id)
+        if user_bal < bet:
+            return await i.followup.send(f"❌ **Error:** You don't have enough cash. Your balance: `${user_bal:,}`", ephemeral=True)
+        await update_balance(i.user.id, -bet)
+    except Exception:
+        return await i.followup.send("⚠️ **Database Error.** Transaction failed.", ephemeral=True)
+
+    # 3. Mathematical Path Generation (Binomial Distribution)
+    path = [0.0] # Starts at top center (pos 0)
+    pos = 0.0
+    for _ in range(8):
+        # 50/50 chance to bounce left (-0.5) or right (+0.5)
+        direction = random.choice([-0.5, 0.5])
+        pos += direction
+        path.append(pos)
+
+    # Multipliers mapped by final position (pos ranges from -4 to +4)
+    multiplier_map = {
+        -4.0: 10.0, 4.0: 10.0,
+        -3.0: 4.0,  3.0: 4.0,
+        -2.0: 1.5,  2.0: 1.5,
+        -1.0: 0.5,  1.0: 0.5,
+         0.0: 0.2
+    }
+
+    final_mult = multiplier_map[path[-1]]
+    win_amount = int(bet * final_mult)
+
+    # 4. Initial UI Setup
+    embed = discord.Embed(title="🎰 TITAN PLINKO WALL", color=0xF1C40F)
+    embed.description = f"**Player:** {i.user.mention} | **Bet:** `${bet:,}`\n\n*Dropping the ball...*\n" + generate_plinko_board(0, path[0])
+    
+    msg = await i.followup.send(embed=embed, wait=True)
+
+    # 5. The Animation Loop (Suspense Building!)
+    for step in range(1, 9):
+        await asyncio.sleep(1.2) # Discord safe delay (prevents rate limiting)
+        
+        embed.description = f"**Player:** {i.user.mention} | **Bet:** `${bet:,}`\n\n*Dropping the ball...*\n" + generate_plinko_board(step, path[step])
+        try:
+            await msg.edit(embed=embed)
+        except discord.HTTPException:
+            pass # Ignore if Discord glitches during rapid edits
+
+    # 6. Final Result Display
+    await asyncio.sleep(1.0)
+    
+    # Give Winnings
+    if win_amount > 0:
+        try: await update_balance(i.user.id, win_amount)
+        except: pass
+
+    # Format final result text based on win/loss
+    if final_mult >= 1.5:
+        embed.color = 0x2ECC71
+        result_text = f"### 🎉 BIG WIN!\nThe ball landed on the **{final_mult}x** multiplier!\n💰 **Winnings:** `${win_amount:,}`"
+        embed.set_thumbnail(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
+    else:
+        embed.color = 0xE74C3C
+        result_text = f"### 📉 BAD BOUNCE!\nThe ball landed on the **{final_mult}x** multiplier.\n💸 **Return:** `${win_amount:,}` *(Loss: `${bet - win_amount:,}`)*"
+        embed.set_thumbnail(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+
+    embed.description = f"**Player:** {i.user.mention} | **Bet:** `${bet:,}`\n\n{result_text}\n" + generate_plinko_board(8, path[8])
+    
+    try:
+        await msg.edit(embed=embed)
+    except:
+        pass
 
 
 # ================== OPTIMIZED FLASK BACKEND ==================
