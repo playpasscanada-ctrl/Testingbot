@@ -6786,6 +6786,8 @@ import random
 import asyncio
 import datetime as dt
 
+dalgona_cooldowns = {}
+
 # ==============================================================================
 # 🍪 THE ULTIMATE DALGONA: IMPOSSIBLE EDITION
 # ==============================================================================
@@ -7067,12 +7069,24 @@ class DalgonaLobbyView(discord.ui.View):
         self.add_item(DalgonaSelect())
 
 # --- 💻 MAIN COMMAND ---
-@bot.tree.command(name="dalgona", description="🍪 Play the Ultimate Dalgona Challenge (19 Shapes!)")
-@check_seized() 
+# --- 💻 MAIN COMMAND ---
+@bot.tree.command(name="dalgona", description="🍪 Play the Ultimate Dalgona Challenge...")
+@check_seized()
 async def dalgona(i: discord.Interaction):
+    
+    # 👇 यहाँ से कूलडाउन कोड शुरू 👇
+    now = dt.datetime.now()
+    if i.user.id in dalgona_cooldowns:
+        time_passed = (now - dalgona_cooldowns[i.user.id]).total_seconds()
+        if time_passed < 30: # 30 Seconds limit
+            wait_time = int(30 - time_passed)
+            return await i.response.send_message(f"⏳ **Cooldown:** Bhai thoda sabar karo! Agli cookie **{wait_time} seconds** baad milegi.", ephemeral=True)
+            
+    dalgona_cooldowns[i.user.id] = now
+    # 👆 यहाँ कूलडाउन कोड खत्म 👆
+
     if not i.guild.me.guild_permissions.moderate_members:
-        return await i.response.send_message("❌ **System Error:** Bot needs 'Timeout Members' permission.", ephemeral=True)
-        
+        return await i.response.send_message("❌ **System Error:** Bot needs 'Timeout...", ephemeral=True)
     embed = discord.Embed(title="🍪 SQUID GAME: THE ULTIMATE DALGONA", color=0x2b2d31)
     embed.set_author(name=f"Contestant: {i.user.name}", icon_url=i.user.display_avatar.url)
     embed.set_thumbnail(url="https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif")
