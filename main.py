@@ -6822,11 +6822,11 @@ class PremiumDalgonaView(discord.ui.View):
             "SNOWFLAKE": {"reward": 60000, "color": 0x9B59B6, "emoji": "❄️", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
             
             # 💀 GOD TIER (Shake Active | 20% Safe Pop | 80% Fail)
-            "CROWN":     {"reward": 650000, "color": 0xFFD700, "emoji": "👑", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
-            "DRAGON":    {"reward": 700000, "color": 0xE74C3C, "emoji": "🐉", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
-            "SKULL":     {"reward": 750000, "color": 0x000000, "emoji": "💀", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
-            "DEMON":     {"reward": 800000, "color": 0x8B0000, "emoji": "👹", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
-            "ALIEN":     {"reward": 850000, "color": 0x2ECC71, "emoji": "👽", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "CROWN":     {"reward": 65000, "color": 0xFFD700, "emoji": "👑", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "DRAGON":    {"reward": 70000, "color": 0xE74C3C, "emoji": "🐉", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "SKULL":     {"reward": 75000, "color": 0x000000, "emoji": "💀", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "DEMON":     {"reward": 80000, "color": 0x8B0000, "emoji": "👹", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "ALIEN":     {"reward": 85000, "color": 0x2ECC71, "emoji": "👽", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
             
             # 🌌 IMPOSSIBLE TIER (Shake Active | 1% Safe Pop | 99% Fail)
             "BLACKHOLE": {"reward": 1000000, "color": 0x2C3E50, "emoji": "🕳️", "tier": "IMPOSSIBLE", "pop_risk": 99, "shake": True, "img": "https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif"},
