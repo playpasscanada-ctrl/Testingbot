@@ -6810,23 +6810,23 @@ class PremiumDalgonaView(discord.ui.View):
         self.settings = {
             # 🟢 STANDARD TIER (No Shake | 80% Safe Pop | 20% Fail)
             "TRIANGLE":  {"reward": 10000,  "color": 0x2ECC71, "emoji": "🔺", "tier": "STANDARD", "pop_risk": 10, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
-            "CIRCLE":    {"reward": 25000,  "color": 0x3498DB, "emoji": "⭕", "tier": "STANDARD", "pop_risk": 10, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
-            "SQUARE":    {"reward": 30000,  "color": 0x1ABC9C, "emoji": "🟦", "tier": "STANDARD", "pop_risk": 10, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
-            "STAR":      {"reward": 40000,  "color": 0xF1C40F, "emoji": "⭐", "tier": "STANDARD", "pop_risk": 10, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
+            "CIRCLE":    {"reward": 20000,  "color": 0x3498DB, "emoji": "⭕", "tier": "STANDARD", "pop_risk": 10, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
+            "SQUARE":    {"reward": 25000,  "color": 0x1ABC9C, "emoji": "🟦", "tier": "STANDARD", "pop_risk": 10, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
+            "STAR":      {"reward": 30000,  "color": 0xF1C40F, "emoji": "⭐", "tier": "STANDARD", "pop_risk": 10, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
             
             # 🔴 NIGHTMARE TIER (Shake Active | 50% Safe Pop | 50% Fail)
-            "UMBRELLA":  {"reward": 75000,  "color": 0xE67E22, "emoji": "☂️", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
-            "CLOUD":     {"reward": 85000,  "color": 0xBDC3C7, "emoji": "☁️", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
-            "HEART":     {"reward": 90000,  "color": 0xFF69B4, "emoji": "❤️", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
-            "LIGHTNING": {"reward": 100000, "color": 0xF39C12, "emoji": "⚡", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
-            "SNOWFLAKE": {"reward": 110000, "color": 0x9B59B6, "emoji": "❄️", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            "UMBRELLA":  {"reward": 40000,  "color": 0xE67E22, "emoji": "☂️", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            "CLOUD":     {"reward": 45000,  "color": 0xBDC3C7, "emoji": "☁️", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            "HEART":     {"reward": 50000,  "color": 0xFF69B4, "emoji": "❤️", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            "LIGHTNING": {"reward": 55000, "color": 0xF39C12, "emoji": "⚡", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            "SNOWFLAKE": {"reward": 60000, "color": 0x9B59B6, "emoji": "❄️", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
             
             # 💀 GOD TIER (Shake Active | 20% Safe Pop | 80% Fail)
-            "CROWN":     {"reward": 200000, "color": 0xFFD700, "emoji": "👑", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
-            "DRAGON":    {"reward": 250000, "color": 0xE74C3C, "emoji": "🐉", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
-            "SKULL":     {"reward": 300000, "color": 0x000000, "emoji": "💀", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
-            "DEMON":     {"reward": 350000, "color": 0x8B0000, "emoji": "👹", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
-            "ALIEN":     {"reward": 400000, "color": 0x2ECC71, "emoji": "👽", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "CROWN":     {"reward": 650000, "color": 0xFFD700, "emoji": "👑", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "DRAGON":    {"reward": 700000, "color": 0xE74C3C, "emoji": "🐉", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "SKULL":     {"reward": 750000, "color": 0x000000, "emoji": "💀", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "DEMON":     {"reward": 800000, "color": 0x8B0000, "emoji": "👹", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "ALIEN":     {"reward": 850000, "color": 0x2ECC71, "emoji": "👽", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
             
             # 🌌 IMPOSSIBLE TIER (Shake Active | 1% Safe Pop | 99% Fail)
             "BLACKHOLE": {"reward": 1000000, "color": 0x2C3E50, "emoji": "🕳️", "tier": "IMPOSSIBLE", "pop_risk": 99, "shake": True, "img": "https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif"},
