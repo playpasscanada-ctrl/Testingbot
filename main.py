@@ -6780,135 +6780,139 @@ async def devil_slots(i: discord.Interaction):
 
 
 # ================== 🍪 SQUID GAME: DALGONA COOKIE (ECONOMY + VIP) ==================
-            
 import discord
 from discord import app_commands
 import random
 import asyncio
 import datetime as dt
 
-# --- 🍪 BALANCED PREMIUM DALGONA GAME VIEW ---
+# ==============================================================================
+# 🍪 THE ULTIMATE DALGONA: IMPOSSIBLE EDITION
+# ==============================================================================
+
 class PremiumDalgonaView(discord.ui.View):
     def __init__(self, user, difficulty):
-        super().__init__(timeout=90) # ⏳ TIME INCREASED TO 90 SECONDS
+        super().__init__(timeout=90) 
         self.user = user
         self.difficulty = difficulty
         
-        # Game State
         self.progress = 0
         self.durability = 100 
         self.game_over = False
         self.is_shaking = False
-        self.heated_buff = 0  # Number of carves left with 0% break chance
-        
-        # Time Management
+        self.heated_buff = 0  
         self.start_time = dt.datetime.now()
-        self.time_limit = 90 # 90 Seconds total
+        self.time_limit = 90 
         
-        # ⚙️ SHAPE CONFIG (NERFED MULTIPLIERS TO MAKE IT EASIER)
+        # ⚙️ 19 SHAPES CONFIGURATION (WITH TIERS & CUSTOM POP RISKS)
         self.settings = {
-            "TRIANGLE":  {"mult": 0.2, "reward": 10000, "color": 0x2ECC71, "emoji": "🔺"},
-            "CIRCLE":    {"mult": 0.4, "reward": 25000, "color": 0x3498DB, "emoji": "⭕"},
-            "STAR":      {"mult": 0.6, "reward": 40000, "color": 0xF1C40F, "emoji": "⭐"},
-            "UMBRELLA":  {"mult": 0.8, "reward": 75000, "color": 0xE67E22, "emoji": "☂️"},
-            "LIGHTNING": {"mult": 1.0, "reward": 100000, "color": 0xF39C12, "emoji": "⚡"},
-            "SNOWFLAKE": {"mult": 1.2, "reward": 100000, "color": 0x9B59B6, "emoji": "❄️"},
-            "CROWN":     {"mult": 1.4, "reward": 100000, "color": 0xFFD700, "emoji": "👑"},
-            "DRAGON":    {"mult": 1.6, "reward": 100000, "color": 0xE74C3C, "emoji": "🐉"},
-            "SKULL":     {"mult": 1.8, "reward": 100000, "color": 0x000000, "emoji": "💀"}
+            # 🟢 STANDARD TIER (No Shake | 80% Safe Pop | 20% Fail)
+            "TRIANGLE":  {"reward": 10000,  "color": 0x2ECC71, "emoji": "🔺", "tier": "STANDARD", "pop_risk": 20, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
+            "CIRCLE":    {"reward": 25000,  "color": 0x3498DB, "emoji": "⭕", "tier": "STANDARD", "pop_risk": 20, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
+            "SQUARE":    {"reward": 30000,  "color": 0x1ABC9C, "emoji": "🟦", "tier": "STANDARD", "pop_risk": 20, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
+            "STAR":      {"reward": 40000,  "color": 0xF1C40F, "emoji": "⭐", "tier": "STANDARD", "pop_risk": 20, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
+            
+            # 🔴 NIGHTMARE TIER (Shake Active | 50% Safe Pop | 50% Fail)
+            "UMBRELLA":  {"reward": 75000,  "color": 0xE67E22, "emoji": "☂️", "tier": "NIGHTMARE", "pop_risk": 50, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            "CLOUD":     {"reward": 85000,  "color": 0xBDC3C7, "emoji": "☁️", "tier": "NIGHTMARE", "pop_risk": 50, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            "HEART":     {"reward": 90000,  "color": 0xFF69B4, "emoji": "❤️", "tier": "NIGHTMARE", "pop_risk": 50, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            "LIGHTNING": {"reward": 100000, "color": 0xF39C12, "emoji": "⚡", "tier": "NIGHTMARE", "pop_risk": 50, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            "SNOWFLAKE": {"reward": 110000, "color": 0x9B59B6, "emoji": "❄️", "tier": "NIGHTMARE", "pop_risk": 50, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            
+            # 💀 GOD TIER (Shake Active | 20% Safe Pop | 80% Fail)
+            "CROWN":     {"reward": 200000, "color": 0xFFD700, "emoji": "👑", "tier": "GOD", "pop_risk": 80, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "DRAGON":    {"reward": 250000, "color": 0xE74C3C, "emoji": "🐉", "tier": "GOD", "pop_risk": 80, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "SKULL":     {"reward": 300000, "color": 0x000000, "emoji": "💀", "tier": "GOD", "pop_risk": 80, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "DEMON":     {"reward": 350000, "color": 0x8B0000, "emoji": "👹", "tier": "GOD", "pop_risk": 80, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "ALIEN":     {"reward": 400000, "color": 0x2ECC71, "emoji": "👽", "tier": "GOD", "pop_risk": 80, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            
+            # 🌌 IMPOSSIBLE TIER (Shake Active | 1% Safe Pop | 99% Fail)
+            "BLACKHOLE": {"reward": 1000000, "color": 0x2C3E50, "emoji": "🕳️", "tier": "IMPOSSIBLE", "pop_risk": 99, "shake": True, "img": "https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif"},
+            "UNIVERSE":  {"reward": 1500000, "color": 0x8E44AD, "emoji": "🌌", "tier": "IMPOSSIBLE", "pop_risk": 99, "shake": True, "img": "https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif"},
+            "ILLUMINATI":{"reward": 2000000, "color": 0x16A085, "emoji": "👁️", "tier": "IMPOSSIBLE", "pop_risk": 99, "shake": True, "img": "https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif"},
+            "LABYRINTH": {"reward": 2500000, "color": 0x7F8C8D, "emoji": "🌀", "tier": "IMPOSSIBLE", "pop_risk": 99, "shake": True, "img": "https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif"},
+            "MANDALA":   {"reward": 3000000, "color": 0xD35400, "emoji": "🏵️", "tier": "IMPOSSIBLE", "pop_risk": 99, "shake": True, "img": "https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif"}
         }
         self.config = self.settings[difficulty]
-        self.base_img = "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"
-        
         self.setup_buttons()
 
-    # --- 🛠️ DYNAMIC & CLEAN BUTTON SETUP ---
     def setup_buttons(self):
         self.clear_items()
-        
-        # Disable carve buttons if progress is 95% (Need to POP)
         carve_disabled = self.progress >= 95
         
-        # ROW 0: Pressure Controls (Green to Red)
+        # ROW 0: Carving (Easier crop progress)
         self.add_item(discord.ui.Button(label="Light", emoji="🪡", style=discord.ButtonStyle.success, custom_id="CARVE_LIGHT", disabled=carve_disabled, row=0))
         self.add_item(discord.ui.Button(label="Medium", emoji="🪡", style=discord.ButtonStyle.primary, custom_id="CARVE_MED", disabled=carve_disabled, row=0))
         self.add_item(discord.ui.Button(label="Heavy", emoji="🪡", style=discord.ButtonStyle.danger, custom_id="CARVE_HEAVY", disabled=carve_disabled, row=0))
         
-        # ROW 1: Special Actions
-        self.add_item(discord.ui.Button(label="Heat Needle (-5s)", emoji="🔥", style=discord.ButtonStyle.secondary, custom_id="HEAT", disabled=self.heated_buff > 0 or carve_disabled, row=1))
-        self.add_item(discord.ui.Button(label="Deep Breath", emoji="🧘‍♂️", style=discord.ButtonStyle.secondary, custom_id="BREATHE", row=1))
+        # ROW 1: Tactics & REPAIR
+        self.add_item(discord.ui.Button(label="Heat (-5s)", emoji="🔥", style=discord.ButtonStyle.secondary, custom_id="HEAT", disabled=self.heated_buff > 0 or carve_disabled, row=1))
+        self.add_item(discord.ui.Button(label="Breathe", emoji="🧘‍♂️", style=discord.ButtonStyle.secondary, custom_id="BREATHE", row=1))
         
-        # ROW 2: Final POP (Isolated)
+        # 🛠️ THE NEW REPAIR BUTTON ($10,000)
+        repair_disabled = carve_disabled or self.durability == 100
+        self.add_item(discord.ui.Button(label="Repair ($10k)", emoji="🛠️", style=discord.ButtonStyle.success, custom_id="REPAIR", disabled=repair_disabled, row=1))
+        
+        # ROW 2: Final POP
         pop_btn = discord.ui.Button(label="POP OUT!", emoji="💥", style=discord.ButtonStyle.danger, custom_id="POP", disabled=not carve_disabled, row=2)
         self.add_item(pop_btn)
 
-        # Attach single callback to all
         for item in self.children:
             item.callback = self.handle_action
 
-    # --- 📊 PREMIUM PROGRESS BAR ---
     def get_progress_bar(self):
         bar_len = 10
         filled = int((self.progress / 100) * bar_len)
         return f"`[{'🟧' * filled}{'⬛' * (bar_len - filled)}]`"
 
-    # --- 🎨 LUXURY EMBED ---
     def get_embed(self, status="PLAYING", reason=None):
         time_elapsed = (dt.datetime.now() - self.start_time).total_seconds()
         time_left = max(0, int(self.time_limit - time_elapsed))
         
         shape_icon = self.config['emoji']
+        tier_name = self.config['tier']
         
         if status == "WON":
             title = f"🏆 FLAWLESS: {shape_icon} {self.difficulty}"
-            desc = (
-                f"# 🎉 SURVIVAL SUCCESS!\n"
-                f"You perfectly extracted the shape!\n\n"
-                f"💰 **Bounty Collected:** `${self.config['reward']:,}`\n"
-                f"⏱️ **Time Remaining:** `{time_left}s`"
-            )
+            desc = f"# 🎉 SURVIVAL SUCCESS!\nYou perfectly extracted the shape!\n\n💰 **Bounty Collected:** `${self.config['reward']:,}`\n⏱️ **Time Remaining:** `{time_left}s`"
             color = 0x00FF00
             img = "https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif"
             
         elif status == "DIED":
             title = f"💀 ELIMINATED: {shape_icon} {self.difficulty}"
-            desc = (
-                f"# 💥 SNAP!\n"
-                f"**Cause of Death:** {reason}\n\n"
-                f"🔇 **Penalty Applied:** 1 Minute Mute"
-            )
+            desc = f"# 💥 SNAP!\n**Cause of Death:** {reason}\n\n🔇 **Penalty Applied:** 1 Minute Mute"
             color = 0xFF0000
             img = "https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif"
             
         else:
-            title = f"🍪 DALGONA: {shape_icon} {self.difficulty}"
+            title = f"🍪 DALGONA: {shape_icon} {self.difficulty} [{tier_name}]"
             
-            # Warn if shaking or heated
             status_fx = ""
             if self.is_shaking: status_fx += "\n🚨 **HANDS SHAKING! BREATHE IMMEDIATELY!** 🚨"
             if self.heated_buff > 0: status_fx += f"\n🔥 **Needle is Hot!** (Safe Carves: `{self.heated_buff}`)"
             
             if self.progress >= 95:
                 status_fx += "\n\n⚠️ **95% REACHED!** Use **[💥 POP OUT]** to extract the final piece!"
+            else:
+                status_fx += f"\n*Pop-Out Risk for this shape: **{self.config['pop_risk']}%***"
             
             desc = (
                 f"👤 **Player:** {self.user.mention}\n"
                 f"💰 **Prize:** `${self.config['reward']:,}`  |  ⏱️ **Time:** `{time_left}s`\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"🛡️ **Cookie Integrity:** `{self.durability}%`\n"
+                f"🛡️ **Cookie Integrity:** `{self.durability}%` *(Use Repair if low!)*\n"
                 f"📊 **Carving Progress:** `{self.progress}%`\n{self.get_progress_bar()}"
                 f"{status_fx}\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━"
             )
             color = 0xFF0000 if self.is_shaking else self.config["color"]
-            img = self.base_img
+            img = self.config["img"] # Shape Specific Profile Picture!
 
         embed = discord.Embed(title=title, description=desc, color=color)
         embed.set_thumbnail(url=self.user.display_avatar.url)
         embed.set_image(url=img)
         return embed
 
-    # --- 🎮 MASTER ACTION HANDLER ---
     async def handle_action(self, interaction: discord.Interaction):
         if interaction.user.id != self.user.id: 
             return await interaction.response.send_message("❌ Step back. This is not your cookie.", ephemeral=True)
@@ -6916,92 +6920,99 @@ class PremiumDalgonaView(discord.ui.View):
         await interaction.response.defer()
         action = interaction.data["custom_id"]
         
-        # 1. TIME CHECK
         time_elapsed = (dt.datetime.now() - self.start_time).total_seconds()
         if time_elapsed > self.time_limit:
             return await self.trigger_death(interaction, "⏳ Time expired! The guard eliminated you.")
 
-        # 2. DEEP BREATH LOGIC
+        # 🛠️ REPAIR LOGIC
+        if action == "REPAIR":
+            try:
+                user_bal = await get_balance(self.user.id)
+                if user_bal < 10000:
+                    return await interaction.followup.send("❌ **Bank:** You need $10,000 to repair the cookie!", ephemeral=True)
+                await update_balance(self.user.id, -10000)
+                
+                self.durability = 100 # Fully Repaired
+                self.setup_buttons()
+                return await interaction.edit_original_response(embed=self.get_embed("PLAYING"), view=self)
+            except Exception:
+                return await interaction.followup.send("⚠️ Database error during repair.", ephemeral=True)
+
         if action == "BREATHE":
             if self.is_shaking:
                 self.is_shaking = False
                 self.time_limit -= 2 
-                self.setup_buttons()
-                return await interaction.edit_original_response(embed=self.get_embed("PLAYING"), view=self)
             else:
                 self.time_limit -= 2 
-                return await interaction.edit_original_response(embed=self.get_embed("PLAYING"), view=self)
-
-        # 3. PANIC CHECK
-        if self.is_shaking and action.startswith("CARVE"):
-            return await self.trigger_death(interaction, "😰 Your hands were shaking! The needle slipped and shattered the cookie!")
-
-        # 4. HEAT NEEDLE LOGIC (BUFFED)
-        if action == "HEAT":
-            self.time_limit -= 5 # Reduced time penalty
-            self.heated_buff = 3 # Increased safe carves to 3
             self.setup_buttons()
             return await interaction.edit_original_response(embed=self.get_embed("PLAYING"), view=self)
 
-        # 5. CARVE LOGIC (EASIER & SAFER)
+        if self.is_shaking and action.startswith("CARVE"):
+            return await self.trigger_death(interaction, "😰 Your hands were shaking! The needle slipped and shattered the cookie!")
+
+        if action == "HEAT":
+            self.time_limit -= 5 
+            self.heated_buff = 3 
+            self.setup_buttons()
+            return await interaction.edit_original_response(embed=self.get_embed("PLAYING"), view=self)
+
+        # ✂️ CARVE LOGIC (Easier Crop, minor break risk)
         if action.startswith("CARVE"):
-            base_prog, base_break = 0, 0
+            base_prog, base_break, dmg = 0, 0, 0
             
-            if action == "CARVE_LIGHT": base_prog, base_break = 8, 0     # 8% prog, 0% break
-            elif action == "CARVE_MED": base_prog, base_break = 15, 5    # 15% prog, 5% break
-            elif action == "CARVE_HEAVY": base_prog, base_break = 30, 15 # 30% prog, 15% break
+            if action == "CARVE_LIGHT": 
+                base_prog, base_break, dmg = 12, 0, random.randint(1, 3)
+            elif action == "CARVE_MED": 
+                base_prog, base_break, dmg = 20, 3, random.randint(5, 10)
+            elif action == "CARVE_HEAVY": 
+                base_prog, base_break, dmg = 35, 10, random.randint(15, 25)
             
-            # Apply Heat Buff
             if self.heated_buff > 0:
                 base_break = 0
                 base_prog = int(base_prog * 1.5) 
                 self.heated_buff -= 1
-            else:
-                # Apply Shape Multiplier
-                base_break = int(base_break * self.config["mult"])
+            
+            # Apply Durability Damage
+            self.durability -= dmg
+            if self.durability <= 0:
+                return await self.trigger_death(interaction, "💥 The cookie's integrity failed! It crumbled to dust. You should have repaired it!")
                 
-            # Roll for break
             if base_break > 0 and random.randint(1, 100) <= base_break:
                 return await self.trigger_death(interaction, "💥 You applied too much pressure and cracked the shape!")
                 
-            # Add Progress
             self.progress += base_prog
             if self.progress >= 95: 
                 self.progress = 95 
                 self.is_shaking = False 
             
-            # Reduced Shake Chance (10%)
-            if self.progress < 95 and random.randint(1, 100) <= 10:
+            # Tier-based Shake Logic
+            if self.progress < 95 and self.config["shake"] and random.randint(1, 100) <= 15:
                 self.is_shaking = True
 
             self.setup_buttons()
             return await interaction.edit_original_response(embed=self.get_embed("PLAYING"), view=self)
 
-        # 6. FINAL POP LOGIC (NERFED RISK)
+        # 💥 FINAL POP LOGIC (Tier Based Risk)
         if action == "POP":
-            pop_risk = int(5 * self.config["mult"]) # Reduced pop risk by half
+            pop_risk = self.config["pop_risk"]
             
-            # Dramatic Pause
             for child in self.children: child.disabled = True
-            suspense_embed = discord.Embed(title="💥 THE FINAL POP...", description="*Applying thumb pressure...*", color=0x2b2d31)
+            suspense_embed = discord.Embed(title="💥 THE FINAL POP...", description=f"*Applying thumb pressure... (Risk: {pop_risk}% Fail)*", color=0x2b2d31)
             suspense_embed.set_image(url="https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif")
             await interaction.edit_original_response(embed=suspense_embed, view=None)
-            await asyncio.sleep(2)
+            await asyncio.sleep(3)
             
             if random.randint(1, 100) <= pop_risk:
                 return await self.trigger_death(interaction, "💔 The final piece snapped in half! So close!")
             else:
-                # WIN!
                 try: await update_balance(self.user.id, self.config['reward'])
                 except: pass
                 return await interaction.edit_original_response(embed=self.get_embed("WON"), view=None)
 
-    # --- DEATH HANDLER (1 MINUTE TIMEOUT) ---
     async def trigger_death(self, interaction, reason):
         self.game_over = True
         for child in self.children: child.disabled = True
         
-        # ⏳ 60 SECONDS = 1 MINUTE TIMEOUT
         try: punish_msg = await smart_timeout(interaction, self.user, 60, f"Dalgona Failed: {self.difficulty}")
         except: punish_msg = "(Guard failed to mute you. Lucky.)"
 
@@ -7010,65 +7021,74 @@ class PremiumDalgonaView(discord.ui.View):
         await interaction.edit_original_response(embed=embed, view=None)
 
 
-# --- 🏢 LOBBY VIEW (Shape Selection) ---
+# --- 🏢 ULTRA PREMIUM LOBBY (Dropdown Menu) ---
+class DalgonaSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="Triangle", description="Standard | 80% Safe Pop | $10k", emoji="🔺", value="TRIANGLE"),
+            discord.SelectOption(label="Circle", description="Standard | 80% Safe Pop | $25k", emoji="⭕", value="CIRCLE"),
+            discord.SelectOption(label="Square", description="Standard | 80% Safe Pop | $30k", emoji="🟦", value="SQUARE"),
+            discord.SelectOption(label="Star", description="Standard | 80% Safe Pop | $40k", emoji="⭐", value="STAR"),
+            
+            discord.SelectOption(label="Umbrella", description="Nightmare | 50% Safe Pop | $75k", emoji="☂️", value="UMBRELLA"),
+            discord.SelectOption(label="Cloud", description="Nightmare | 50% Safe Pop | $85k", emoji="☁️", value="CLOUD"),
+            discord.SelectOption(label="Heart", description="Nightmare | 50% Safe Pop | $90k", emoji="❤️", value="HEART"),
+            discord.SelectOption(label="Lightning", description="Nightmare | 50% Safe Pop | $100k", emoji="⚡", value="LIGHTNING"),
+            discord.SelectOption(label="Snowflake", description="Nightmare | 50% Safe Pop | $110k", emoji="❄️", value="SNOWFLAKE"),
+            
+            discord.SelectOption(label="Crown", description="God Tier | 20% Safe Pop | $200k", emoji="👑", value="CROWN"),
+            discord.SelectOption(label="Dragon", description="God Tier | 20% Safe Pop | $250k", emoji="🐉", value="DRAGON"),
+            discord.SelectOption(label="Skull", description="God Tier | 20% Safe Pop | $300k", emoji="💀", value="SKULL"),
+            discord.SelectOption(label="Demon", description="God Tier | 20% Safe Pop | $350k", emoji="👹", value="DEMON"),
+            discord.SelectOption(label="Alien", description="God Tier | 20% Safe Pop | $400k", emoji="👽", value="ALIEN"),
+            
+            discord.SelectOption(label="Blackhole", description="IMPOSSIBLE | 1% Safe Pop | $1M", emoji="🕳️", value="BLACKHOLE"),
+            discord.SelectOption(label="Universe", description="IMPOSSIBLE | 1% Safe Pop | $1.5M", emoji="🌌", value="UNIVERSE"),
+            discord.SelectOption(label="Illuminati", description="IMPOSSIBLE | 1% Safe Pop | $2M", emoji="👁️", value="ILLUMINATI"),
+            discord.SelectOption(label="Labyrinth", description="IMPOSSIBLE | 1% Safe Pop | $2.5M", emoji="🌀", value="LABYRINTH"),
+            discord.SelectOption(label="Mandala", description="IMPOSSIBLE | 1% Safe Pop | $3M", emoji="🏵️", value="MANDALA")
+        ]
+        super().__init__(placeholder="🔪 Select Your Shape Tier...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.view.user.id:
+            return await interaction.response.send_message("❌ This is not your game!", ephemeral=True)
+            
+        shape = self.values[0]
+        await interaction.response.defer()
+        
+        view = PremiumDalgonaView(self.view.user, shape)
+        await interaction.edit_original_response(embed=view.get_embed(), view=view)
+
 class DalgonaLobbyView(discord.ui.View):
     def __init__(self, user):
         super().__init__(timeout=60)
         self.user = user
-
-    async def start(self, interaction, shape):
-        if interaction.user.id != self.user.id: return await interaction.response.send_message("❌ Choose your own fate.", ephemeral=True)
-        await interaction.response.defer()
-        
-        view = PremiumDalgonaView(self.user, shape)
-        await interaction.edit_original_response(embed=view.get_embed(), view=view)
-
-    # ROW 0: The Originals
-    @discord.ui.button(label="Triangle", emoji="🔺", style=discord.ButtonStyle.success, row=0)
-    async def btn_tri(self, i, b): await self.start(i, "TRIANGLE")
-    @discord.ui.button(label="Circle", emoji="⭕", style=discord.ButtonStyle.primary, row=0)
-    async def btn_cir(self, i, b): await self.start(i, "CIRCLE")
-    @discord.ui.button(label="Star", emoji="⭐", style=discord.ButtonStyle.secondary, row=0)
-    async def btn_star(self, i, b): await self.start(i, "STAR")
-
-    # ROW 1: Hard Mode
-    @discord.ui.button(label="Umbrella", emoji="☂️", style=discord.ButtonStyle.danger, row=1)
-    async def btn_umb(self, i, b): await self.start(i, "UMBRELLA")
-    @discord.ui.button(label="Lightning", emoji="⚡", style=discord.ButtonStyle.danger, row=1)
-    async def btn_light(self, i, b): await self.start(i, "LIGHTNING")
-    @discord.ui.button(label="Snowflake", emoji="❄️", style=discord.ButtonStyle.danger, row=1)
-    async def btn_snow(self, i, b): await self.start(i, "SNOWFLAKE")
-
-    # ROW 2: GOD MODE
-    @discord.ui.button(label="Crown", emoji="👑", style=discord.ButtonStyle.danger, row=2)
-    async def btn_crown(self, i, b): await self.start(i, "CROWN")
-    @discord.ui.button(label="Dragon", emoji="🐉", style=discord.ButtonStyle.danger, row=2)
-    async def btn_dragon(self, i, b): await self.start(i, "DRAGON")
-    @discord.ui.button(label="Skull", emoji="💀", style=discord.ButtonStyle.danger, row=2)
-    async def btn_skull(self, i, b): await self.start(i, "SKULL")
-
+        self.add_item(DalgonaSelect())
 
 # --- 💻 MAIN COMMAND ---
-@bot.tree.command(name="dalgona", description="🍪 Play the Dalgona Challenge (Updated & Balanced)")
+@bot.tree.command(name="dalgona", description="🍪 Play the Ultimate Dalgona Challenge (19 Shapes!)")
 @check_seized() 
 async def dalgona(i: discord.Interaction):
     if not i.guild.me.guild_permissions.moderate_members:
         return await i.response.send_message("❌ **System Error:** Bot needs 'Timeout Members' permission.", ephemeral=True)
         
-    embed = discord.Embed(title="🍪 SQUID GAME: DALGONA", color=0x2b2d31)
+    embed = discord.Embed(title="🍪 SQUID GAME: THE ULTIMATE DALGONA", color=0x2b2d31)
     embed.set_author(name=f"Contestant: {i.user.name}", icon_url=i.user.display_avatar.url)
     embed.set_thumbnail(url="https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif")
     
     embed.description = (
-        "# 🔪 CHOOSE YOUR SHAPE\n"
-        "Carve the shape perfectly. Heat your needle and control your breathing.\n\n"
-        "### 🟢 STANDARD TIER\n"
-        "> 🔺 **Triangle** • `$10,000`  |  ⭕ **Circle** • `$25,000`  |  ⭐ **Star** • `$40,000`\n\n"
-        "### 🔴 NIGHTMARE TIER\n"
-        "> ☂️ **Umbrella** • `$75,000`  |  ⚡ **Lightning** • `$100,000`  |  ❄️ **Snowflake** • `$100,000`\n\n"
-        "### 💀 GOD TIER (High Risk)\n"
-        "> 👑 **Crown** • `$100,000`  |  🐉 **Dragon** • `$100,000`  |  💀 **Skull** • `$100,000`\n\n"
-        "⚠️ **WARNING:** Breaking the cookie results in a **1 MINUTE MUTE!**"
+        "# 🔪 CHOOSE YOUR FATE\n"
+        "**New Rules:** Carving is easier, but breaking lowers Durability. **Repair your cookie for $10k** before it shatters! Watch out for the final POP risk!\n\n"
+        "### 🟢 STANDARD (80% Safe Pop, No Shake)\n"
+        "🔺 Triangle | ⭕ Circle | 🟦 Square | ⭐ Star\n\n"
+        "### 🔴 NIGHTMARE (50% Safe Pop, Hand Shakes)\n"
+        "☂️ Umbrella | ☁️ Cloud | ❤️ Heart | ⚡ Lightning | ❄️ Snowflake\n\n"
+        "### 💀 GOD TIER (20% Safe Pop)\n"
+        "👑 Crown | 🐉 Dragon | 💀 Skull | 👹 Demon | 👽 Alien\n\n"
+        "### 🌌 IMPOSSIBLE TIER (1% Safe Pop - 99% Death)\n"
+        "🕳️ Blackhole | 🌌 Universe | 👁️ Illuminati | 🌀 Labyrinth | 🏵️ Mandala\n\n"
+        "⚠️ **WARNING:** Failing results in a **1 MINUTE MUTE!**"
     )
     
     view = DalgonaLobbyView(i.user)
@@ -22334,6 +22354,830 @@ async def plinko_game(i: discord.Interaction, bet: int):
     except:
         pass
 
+import discord
+from discord import app_commands
+import random
+import asyncio
+
+# ==============================================================================
+# 🎰 1. THE DEVIL'S SLOTS (HIGH RISK, LOW REWARD)
+# ==============================================================================
+
+class DevilsSlotsView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=120)
+        self.user = user
+        self.emojis = ["🍎", "🍒", "🍇", "🔔", "💎", "🍋", "🍉", "💀"]
+        self.is_spinning = False
+
+    def generate_slots(self, is_win):
+        """Generates the 3 slot emojis based on a strict win/loss condition."""
+        if is_win:
+            # 100% Matching if win triggered
+            sym = random.choice(self.emojis[:-1]) # Don't match skulls for normal wins
+            return [sym, sym, sym]
+        else:
+            # Guarantee a mismatch (to strictly enforce loss)
+            slots = [random.choice(self.emojis) for _ in range(3)]
+            while slots[0] == slots[1] == slots[2]:
+                slots[2] = random.choice(self.emojis)
+            return slots
+
+    def get_spin_embed(self, slots, status="SPINNING", mode="NORMAL", amount=0):
+        embed = discord.Embed()
+        
+        # Format the slots to look like a real machine
+        slot_str = f"## 🎰 [ {slots[0]} | {slots[1]} | {slots[2]} ] 🎰"
+        
+        if status == "SPINNING":
+            embed.title = "🎰 THE DEVIL'S SLOTS... SPINNING..."
+            embed.color = 0xF1C40F
+            embed.description = f"{slot_str}\n\n*The reels are turning...*"
+            
+        elif status == "WON":
+            embed.title = "🏆 JACKPOT HIT!"
+            embed.color = 0x2ECC71
+            embed.description = f"{slot_str}\n\n### 🎉 YOU BEAT THE ODDS!\n💰 **Winnings:** `${amount:,}` added to your bank!"
+            embed.set_thumbnail(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
+            
+        elif status == "LOST":
+            embed.title = "💀 HOUSE WINS!"
+            embed.color = 0xFF0000
+            if mode == "NORMAL":
+                embed.description = f"{slot_str}\n\n### 📉 MISMATCH!\nYou lost your bet. The house thanks you for your money."
+            else:
+                embed.description = f"{slot_str}\n\n### 🔥 SOUL CONSUMED!\nYou lost the Soul Spin! The devil took **50% of your bank** (`-${amount:,}`)!"
+            embed.set_thumbnail(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+
+        embed.set_footer(text=f"Player: {self.user.name} | Win Rate < 10%")
+        return embed
+
+    async def run_spin_animation(self, interaction, mode, is_win, win_amount=0, loss_amount=0):
+        # Disable buttons during spin
+        for child in self.children: child.disabled = True
+        
+        # Animation Loop (3 frames)
+        for _ in range(3):
+            random_slots = [random.choice(self.emojis) for _ in range(3)]
+            temp_embed = self.get_spin_embed(random_slots, "SPINNING")
+            try: await interaction.edit_original_response(embed=temp_embed, view=None)
+            except discord.HTTPException: pass
+            await asyncio.sleep(0.8)
+
+        # Final Result
+        final_slots = self.generate_slots(is_win)
+        
+        if is_win:
+            try: await update_balance(self.user.id, win_amount)
+            except: pass
+            final_embed = self.get_spin_embed(final_slots, "WON", mode, win_amount)
+        else:
+            if mode == "SOUL":
+                try: await update_balance(self.user.id, -loss_amount)
+                except: pass
+            final_embed = self.get_spin_embed(final_slots, "LOST", mode, loss_amount)
+            
+        # Re-enable buttons for next spin
+        for child in self.children: child.disabled = False
+        self.is_spinning = False
+        await interaction.edit_original_response(embed=final_embed, view=self)
+
+
+    @discord.ui.button(label="Normal Spin ($10k)", emoji="🎰", style=discord.ButtonStyle.primary, custom_id="spin_normal")
+    async def btn_normal(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user.id: return await interaction.response.send_message("❌ This is not your machine!", ephemeral=True)
+        if self.is_spinning: return await interaction.response.defer()
+        
+        await interaction.response.defer()
+        
+        # Deduct $10k
+        cost = 10000
+        try:
+            user_bal = await get_balance(self.user.id)
+            if user_bal < cost:
+                return await interaction.followup.send(f"❌ You need `${cost:,}` to spin this machine.", ephemeral=True)
+            await update_balance(self.user.id, -cost)
+        except Exception:
+            return await interaction.followup.send("⚠️ Bank error.", ephemeral=True)
+
+        self.is_spinning = True
+        
+        # 🧠 STRICT 10% WIN RATE LOGIC
+        is_win = random.randint(1, 100) <= 10 # 1 to 10 = Win, 11 to 100 = Lose
+        
+        await self.run_spin_animation(interaction, mode="NORMAL", is_win=is_win, win_amount=50000)
+
+    @discord.ui.button(label="SOUL SPIN (Risk 50% Bank)", emoji="🔥", style=discord.ButtonStyle.danger, custom_id="spin_soul")
+    async def btn_soul(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user.id: return await interaction.response.send_message("❌ Step away from the cursed machine.", ephemeral=True)
+        if self.is_spinning: return await interaction.response.defer()
+        
+        await interaction.response.defer()
+        
+        try:
+            user_bal = await get_balance(self.user.id)
+            if user_bal < 10000:
+                return await interaction.followup.send(f"❌ The Devil doesn't deal with broke people. Come back when you have at least $10,000.", ephemeral=True)
+        except Exception:
+            return await interaction.followup.send("⚠️ Bank error.", ephemeral=True)
+
+        self.is_spinning = True
+        
+        # 🧠 STRICT 5% WIN RATE FOR SOUL SPIN (Extremely rare!)
+        is_win = random.randint(1, 100) <= 5
+        loss_amount = int(user_bal * 0.50) # Lose half the bank!
+        
+        await self.run_spin_animation(interaction, mode="SOUL", is_win=is_win, win_amount=1000000, loss_amount=loss_amount)
+
+
+# --- 💻 THE SLASH COMMAND ---
+@game_group.command(name="slots", description="🎰 Spin the Devil's Slots! (High Risk, Low Win Rate)")
+async def slots_cmd(i: discord.Interaction):
+    embed = discord.Embed(title="🎰 THE DEVIL'S SLOTS", color=0x2b2d31)
+    embed.description = (
+        f"Welcome {i.user.mention} to the most brutal slot machine in the underworld.\n\n"
+        f"**🔵 NORMAL SPIN:** Costs `$10,000`. Win `$50,000`. (Low Chance)\n"
+        f"**🔴 SOUL SPIN:** Free to spin! Win `$1,000,000`. BUT if you lose, the devil takes **50% of your total bank balance**! (EXTREMELY LOW CHANCE)\n\n"
+        f"*(The house always wins. Play at your own risk.)*"
+    )
+    embed.set_thumbnail(url="https://media.tenor.com/images/13019d5e32047ed6f345c26bdf3b56a3/tenor.gif")
+    
+    view = DevilsSlotsView(i.user)
+    await i.response.send_message(embed=embed, view=view)
+
+
+import discord
+from discord import app_commands
+import random
+import asyncio
+import datetime as dt
+
+# ==============================================================================
+# 🔨 2. THE BLACK MARKET AUCTION (PvP BIDDING WAR)
+# ==============================================================================
+
+class AuctionView(discord.ui.View):
+    def __init__(self, host):
+        super().__init__(timeout=300) # 5 minutes hard timeout for the whole view
+        self.host = host
+        self.current_bid = 0
+        self.highest_bidder = None
+        self.end_time = dt.datetime.now() + dt.timedelta(seconds=20) # Initial 20s timer
+        self.auction_active = True
+        self.message = None
+        self.lock = asyncio.Lock()
+
+        # Mystery Items Flavour Text
+        self.mystery_items = [
+            "📦 Seized Shipping Container #402",
+            "👜 An Ex-Billionaire's 'Lost' Luggage",
+            "🏺 Ancient Artifact smuggled from Egypt",
+            "💻 A Hacker's Encrypted Hard Drive",
+            "🎨 stolen Renaissance Painting"
+        ]
+        self.item_name = random.choice(self.mystery_items)
+
+    def get_auction_embed(self):
+        now = dt.datetime.now()
+        time_left = max(0, int((self.end_time - now).total_seconds()))
+        
+        if not self.auction_active:
+            # Auction Ended State
+            embed = discord.Embed(title="🔨 AUCTION SOLD!", color=0xFFD700)
+            winner_text = self.highest_bidder.mention if self.highest_bidder else "No Bids"
+            embed.description = f"### ITEM SOLD FOR: `${self.current_bid:,}`\n**Winner:** {winner_text}\n\n*Opening the crate...*"
+            embed.set_thumbnail(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif") # Opening GIF
+            return embed
+
+        # Active Bidding State
+        embed = discord.Embed(title=f"🔨 LIVE AUCTION: {self.item_name}", color=0xF1C40F)
+        leader_text = self.highest_bidder.mention if self.highest_bidder else "*Waiting for first bid...*"
+        
+        embed.description = (
+            f"⏱️ **Time Remaining:** `{time_left}s` (Resets on new bid!)\n\n"
+            f"💰 **CURRENT BID:** `${self.current_bid:,}`\n"
+            f"👑 **Highest Bidder:** {leader_text}\n\n"
+            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            f"*Place a bid to become the new leader. Don't let them outbid you!*"
+        )
+        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/7379/7379278.png")
+        embed.set_footer(text="Warning: The contents are unknown. Bid at your own risk.")
+        return embed
+
+    async def place_bid(self, interaction: discord.Interaction, amount: int):
+        # 1. Balance Check
+        try:
+            user_bal = await get_balance(interaction.user.id)
+            if user_bal < self.current_bid + amount:
+                return await interaction.response.send_message(f"❌ **Broke!** You need at least `${self.current_bid + amount:,}` to place this bid.", ephemeral=True)
+        except:
+            return await interaction.response.send_message("⚠️ Bank Error.", ephemeral=True)
+
+        # 2. Place Bid with Lock (to prevent race conditions)
+        async with self.lock:
+            if not self.auction_active:
+                 return await interaction.response.send_message("❌ Auction just ended!", ephemeral=True)
+                 
+            if interaction.user == self.highest_bidder:
+                 return await interaction.response.send_message("❌ You are already the highest bidder!", ephemeral=True)
+
+            await interaction.response.defer()
+            
+            self.current_bid += amount
+            self.highest_bidder = interaction.user
+            # Reset Timer to 20s from NOW
+            self.end_time = dt.datetime.now() + dt.timedelta(seconds=20)
+            
+            try: await self.message.edit(embed=self.get_auction_embed(), view=self)
+            except: pass
+
+    @discord.ui.button(label="Bid +$5k", style=discord.ButtonStyle.primary, row=0)
+    async def bid_small(self, i, b): await self.place_bid(i, 5000)
+
+    @discord.ui.button(label="Bid +$25k", style=discord.ButtonStyle.secondary, row=0)
+    async def bid_medium(self, i, b): await self.place_bid(i, 25000)
+
+    @discord.ui.button(label="Bid +$100k 🚨", style=discord.ButtonStyle.danger, row=1)
+    async def bid_large(self, i, b): await self.place_bid(i, 100000)
+
+    async def end_auction(self):
+        self.auction_active = False
+        for child in self.children: child.disabled = True
+        
+        # Update embed to "SOLD" state
+        try: await self.message.edit(embed=self.get_auction_embed(), view=self)
+        except: pass
+        
+        if self.highest_bidder:
+            # 1. Deduct Winning Bid Amount
+            try: await update_balance(self.highest_bidder.id, -self.current_bid)
+            except: pass
+            
+            # Suspense pause for reveal
+            await asyncio.sleep(3)
+            
+            # 2. DETERMINE ACTUAL VALUE (THE 90% LOSS RULE)
+            # 90% chance: Value is 10% to 80% of what they paid (Loss)
+            # 10% chance: Value is 120% to 300% of what they paid (Profit)
+            luck = random.randint(1, 100)
+            if luck <= 90:
+                # LOSS Scenario
+                multiplier = random.uniform(0.1, 0.8)
+                actual_value = int(self.current_bid * multiplier)
+                color = 0xE74C3C # Red
+                status = "📉 SCAMMED!"
+                profit_loss = actual_value - self.current_bid
+                desc_text = f"The crate contained junk worth only **${actual_value:,}**.\nYou overpaid and lost **${abs(profit_loss):,}**!"
+                thumb = "https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif"
+            else:
+                # PROFIT Scenario (Jackpot)
+                multiplier = random.uniform(1.2, 3.0)
+                actual_value = int(self.current_bid * multiplier)
+                color = 0x2ECC71 # Green
+                status = "🎉 JACKPOT FIND!"
+                profit_loss = actual_value - self.current_bid
+                desc_text = f"Incredible! The crate held rare items worth **${actual_value:,}**.\nYou made a pure profit of **${profit_loss:,}**!"
+                thumb = "https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif"
+
+            # 3. Final Reveal Embed
+            final_embed = discord.Embed(title=f"🔨 AUCTION RESULT: {status}", color=color)
+            final_embed.description = (
+                f"**Winner:** {self.highest_bidder.mention}\n"
+                f"💸 **Paid Price:** `${self.current_bid:,}`\n"
+                f"📦 **Actual Value:** `${actual_value:,}`\n"
+                f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+                f"### {desc_text}"
+            )
+            final_embed.set_thumbnail(url=thumb)
+            try: await self.message.edit(embed=final_embed, view=None)
+            except: pass
+            
+            # Add actual value to winner's balance
+            try: await update_balance(self.highest_bidder.id, actual_value)
+            except: pass
+
+
+    async def timer_loop(self):
+        await asyncio.sleep(1) # Initial buffer
+        while self.auction_active:
+            now = dt.datetime.now()
+            if now >= self.end_time:
+                await self.end_auction()
+                break
+            
+            # Refresh embed every 2 seconds to show timer counting down
+            if (self.end_time - now).total_seconds() % 2 < 1:
+                 try: await self.message.edit(embed=self.get_auction_embed(), view=self)
+                 except: pass
+                 
+            await asyncio.sleep(1)
+
+
+# --- 💻 THE SLASH COMMAND ---
+@game_group.command(name="auction", description="🔨 Start a Black Market Auction! Outbid others for mystery crates.")
+async def auction_cmd(i: discord.Interaction):
+    # Optional: Check if user is an admin/mod to start auctions
+    # if not i.user.guild_permissions.administrator:
+    #    return await i.response.send_message("❌ Only admins can start auctions.", ephemeral=True)
+        
+    await i.response.defer()
+    
+    view = AuctionView(i.user)
+    msg = await i.followup.send(embed=view.get_auction_embed(), view=view)
+    view.message = msg
+    
+    # Start the timer background task
+    asyncio.create_task(view.timer_loop())
+
+import discord
+from discord import app_commands
+import random
+import asyncio
+
+# ==============================================================================
+# 🏦 3. THE SYNDICATE HEIST (CO-OP MULTIPLAYER)
+# ==============================================================================
+
+class HeistLobbyView(discord.ui.View):
+    def __init__(self, host, entry_fee):
+        super().__init__(timeout=120) # 2 Minutes to gather crew
+        self.host = host
+        self.entry_fee = entry_fee
+        self.crew = [host] # List of Member objects
+        self.max_crew = 4
+        self.heist_started = False
+
+    def get_lobby_embed(self):
+        embed = discord.Embed(title="🏦 THE SYNDICATE HEIST: LOBBY", color=0x2b2d31)
+        
+        crew_list = "\n".join([f"👤 {member.mention}" for member in self.crew])
+        
+        embed.description = (
+            f"**Mastermind:** {self.host.mention}\n"
+            f"💰 **Entry Fee (Buy-in):** `${self.entry_fee:,}` per person\n"
+            f"🏆 **Potential Payout:** `$500,000` per person!\n\n"
+            f"### 👥 THE CREW ({len(self.crew)}/{self.max_crew}):\n"
+            f"{crew_list}\n\n"
+            f"*(Waiting for the Mastermind to start the heist...)*"
+        )
+        embed.set_thumbnail(url="https://media.tenor.com/images/13019d5e32047ed6f345c26bdf3b56a3/tenor.gif")
+        return embed
+
+    @discord.ui.button(label="Join Crew ($50k)", emoji="🔫", style=discord.ButtonStyle.primary, custom_id="join_crew")
+    async def btn_join(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.heist_started: return await interaction.response.defer()
+        
+        if interaction.user in self.crew:
+            return await interaction.response.send_message("❌ You are already in the crew!", ephemeral=True)
+            
+        if len(self.crew) >= self.max_crew:
+            return await interaction.response.send_message("❌ The getaway van is full! (Max 4 players)", ephemeral=True)
+
+        await interaction.response.defer()
+        
+        # Balance Check & Deduct upfront
+        try:
+            user_bal = await get_balance(interaction.user.id)
+            if user_bal < self.entry_fee:
+                return await interaction.followup.send(f"❌ You need `${self.entry_fee:,}` to buy your gear.", ephemeral=True)
+            await update_balance(interaction.user.id, -self.entry_fee)
+        except:
+            return await interaction.followup.send("⚠️ Bank error.", ephemeral=True)
+
+        self.crew.append(interaction.user)
+        
+        # Update Lobby
+        await interaction.edit_original_response(embed=self.get_lobby_embed(), view=self)
+
+    @discord.ui.button(label="START HEIST", emoji="🚀", style=discord.ButtonStyle.danger, custom_id="start_heist")
+    async def btn_start(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.host.id:
+            return await interaction.response.send_message("❌ Only the Mastermind can start the heist!", ephemeral=True)
+            
+        self.heist_started = True
+        for child in self.children: child.disabled = True
+        
+        await interaction.response.defer()
+        await self.execute_heist(interaction)
+
+    async def execute_heist(self, interaction):
+        # 1. Suspense Phase (Breaking in)
+        suspense_embed = discord.Embed(title="🥷 INFILTRATING THE BANK...", color=0x3498DB)
+        suspense_embed.description = "The crew cuts the power. Entering through the roof vents...\n*Assigning roles...*"
+        suspense_embed.set_image(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif")
+        
+        await interaction.edit_original_response(embed=suspense_embed, view=None)
+        await asyncio.sleep(4)
+
+        # 2. Assign Roles
+        roles = ["💻 Hacker", "🔫 Muscle", "🏎️ Driver", "🥷 Ghost"]
+        random.shuffle(roles)
+        role_assignments = {member: roles[i] for i, member in enumerate(self.crew)}
+        
+        crew_roles_str = "\n".join([f"{role} : {member.mention}" for member, role in role_assignments.items()])
+
+        # 3. 🧠 STRICT 10% WIN RATE CALCULATION
+        is_success = random.randint(1, 100) <= 10
+        
+        if is_success:
+            # 🏆 SUCCESS SCENARIO (10%)
+            reward = 500000
+            for member in self.crew:
+                try: await update_balance(member.id, reward)
+                except: pass
+                
+            final_embed = discord.Embed(title="💰 HEIST SUCCESSFUL!", color=0x2ECC71)
+            final_embed.description = (
+                f"### 🎉 FLAWLESS EXECUTION!\n"
+                f"The crew bypassed the vault, grabbed the gold, and vanished like ghosts.\n\n"
+                f"**THE CREW:**\n{crew_roles_str}\n\n"
+                f"💸 **PAYOUT:** `${reward:,}` added to everyone's bank!"
+            )
+            final_embed.set_thumbnail(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
+            
+        else:
+            # 💀 BUSTED SCENARIO (90%)
+            # Pick a random member to blame for the failure
+            blamed_member = random.choice(self.crew)
+            blamed_role = role_assignments[blamed_member]
+            
+            fail_reasons = {
+                "💻 Hacker": "forgot to loop the cameras. The FBI saw everything!",
+                "🔫 Muscle": "sneezed loudly and woke up the guard dogs!",
+                "🏎️ Driver": "fell asleep at the wheel. The getaway van was towed!",
+                "🥷 Ghost": "tripped the laser alarm while trying to take a selfie!"
+            }
+            reason = fail_reasons.get(blamed_role, "messed up the plan.")
+
+            final_embed = discord.Embed(title="🚨 BUSTED! HEIST FAILED!", color=0xFF0000)
+            final_embed.description = (
+                f"### 💥 DISASTER STRUCK!\n"
+                f"The heist was going perfectly until {blamed_member.mention} ({blamed_role}) {reason}\n\n"
+                f"**THE CREW:**\n{crew_roles_str}\n\n"
+                f"💸 **LOSS:** Everyone lost their `${self.entry_fee:,}` entry fee. Run before the cops arrive!"
+            )
+            final_embed.set_thumbnail(url="https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif")
+
+        await interaction.edit_original_response(embed=final_embed, view=None)
+
+
+# --- 💻 THE SLASH COMMAND ---
+@game_group.command(name="heist", description="🏦 Gather a crew and rob the Syndicate Bank! (Multiplayer)")
+async def heist_cmd(i: discord.Interaction):
+    await i.response.defer()
+    
+    entry_fee = 50000
+    
+    # Deduct Host's Entry Fee
+    try:
+        user_bal = await get_balance(i.user.id)
+        if user_bal < entry_fee:
+            return await i.followup.send(f"❌ **Mastermind is broke!** You need `${entry_fee:,}` to start the heist.", ephemeral=True)
+        await update_balance(i.user.id, -entry_fee)
+    except:
+        return await i.followup.send("⚠️ Bank error.", ephemeral=True)
+
+    view = HeistLobbyView(i.user, entry_fee)
+    await i.followup.send(embed=view.get_lobby_embed(), view=view)
+
+
+import discord
+from discord import app_commands
+import random
+import asyncio
+
+# ==============================================================================
+# 🔫 4. THE MEXICAN STANDOFF (PvP MULTIPLAYER)
+# ==============================================================================
+
+class StandoffLobbyView(discord.ui.View):
+    def __init__(self, host, entry_fee):
+        super().__init__(timeout=120) # 2 Minutes to gather players
+        self.host = host
+        self.entry_fee = entry_fee
+        self.players = [host]
+        self.max_players = 6
+        self.started = False
+
+    def get_lobby_embed(self):
+        embed = discord.Embed(title="🤠 THE MEXICAN STANDOFF", color=0xE67E22)
+        
+        player_list = "\n".join([f"🔫 {p.mention}" for p in self.players])
+        current_pot = len(self.players) * self.entry_fee
+        
+        embed.description = (
+            f"**Host:** {self.host.mention}\n"
+            f"💰 **Buy-in:** `${self.entry_fee:,}` per player\n"
+            f"🏆 **Current Pot:** `${current_pot:,}`\n\n"
+            f"### 🎯 GUNSLINGERS ({len(self.players)}/{self.max_players}):\n"
+            f"{player_list}\n\n"
+            f"*(Host, click START when you are ready to draw your weapons!)*"
+        )
+        embed.set_thumbnail(url="https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif")
+        return embed
+
+    @discord.ui.button(label="Join Standoff ($50k)", emoji="🤠", style=discord.ButtonStyle.success, custom_id="join_standoff")
+    async def btn_join(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.started: return await interaction.response.defer()
+        
+        if interaction.user in self.players:
+            return await interaction.response.send_message("❌ You are already aiming your gun!", ephemeral=True)
+            
+        if len(self.players) >= self.max_players:
+            return await interaction.response.send_message("❌ The circle is full! (Max 6 players)", ephemeral=True)
+
+        await interaction.response.defer()
+        
+        # Balance Check & Deduct Upfront
+        try:
+            user_bal = await get_balance(interaction.user.id)
+            if user_bal < self.entry_fee:
+                return await interaction.followup.send(f"❌ You need `${self.entry_fee:,}` to enter the standoff.", ephemeral=True)
+            await update_balance(interaction.user.id, -self.entry_fee)
+        except:
+            return await interaction.followup.send("⚠️ Bank error.", ephemeral=True)
+
+        self.players.append(interaction.user)
+        await interaction.edit_original_response(embed=self.get_lobby_embed(), view=self)
+
+    @discord.ui.button(label="START SHOOTOUT", emoji="🔥", style=discord.ButtonStyle.danger, custom_id="start_shootout")
+    async def btn_start(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.host.id:
+            return await interaction.response.send_message("❌ Only the Host can fire the first shot!", ephemeral=True)
+            
+        if len(self.players) < 2:
+            return await interaction.response.send_message("❌ You need at least 2 players for a standoff!", ephemeral=True)
+            
+        self.started = True
+        for child in self.children: child.disabled = True
+        
+        await interaction.response.defer()
+        await self.execute_shootout(interaction)
+
+    async def execute_shootout(self, interaction):
+        pot_amount = len(self.players) * self.entry_fee
+        survivors = self.players.copy()
+        dead = []
+        
+        # 1. Suspense Phase
+        embed = discord.Embed(title="🕛 HIGH NOON...", color=0x2b2d31)
+        embed.description = "The wind blows. Fingers are on the triggers.\n*Nobody move...*"
+        embed.set_image(url="https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif") # Intense staring GIF replacement idea
+        await interaction.edit_original_response(embed=embed, view=None)
+        await asyncio.sleep(4)
+
+        # 2. Elimination Loop (Shootout!)
+        while len(survivors) > 1:
+            # Pick a random person to get shot
+            victim = random.choice(survivors)
+            survivors.remove(victim)
+            dead.append(victim)
+            
+            embed.color = 0xFF0000
+            embed.title = "💥 BANG!"
+            embed.description = f"**{victim.mention}** was shot down!\n\n**Remaining:** {len(survivors)} players..."
+            
+            try: await interaction.edit_original_response(embed=embed)
+            except: pass
+            
+            await asyncio.sleep(2.5) # Wait between shots
+
+        # 3. The Sole Survivor
+        winner = survivors[0]
+        
+        # 4. 🧠 ANTI-LOOT TWIST (10% WIN RATE)
+        is_safe = random.randint(1, 100) <= 10
+        
+        final_embed = discord.Embed()
+        
+        if is_safe:
+            # 10% Chance: Pure Profit
+            try: await update_balance(winner.id, pot_amount)
+            except: pass
+            
+            final_embed.title = "🏆 LONE SURVIVOR!"
+            final_embed.color = 0x2ECC71
+            final_embed.description = (
+                f"### 🎉 {winner.mention} SURVIVED!\n"
+                f"The smoke clears. Everyone else is down. You grab the bag and escape the desert!\n\n"
+                f"💰 **JACKPOT WON:** `${pot_amount:,}`"
+            )
+            final_embed.set_thumbnail(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
+        else:
+            # 90% Chance: Police/Cartel Raid
+            final_embed.title = "🚨 CARTEL AMBUSH!"
+            final_embed.color = 0x000000
+            final_embed.description = (
+                f"### 💥 {winner.mention} SURVIVED, BUT...\n"
+                f"Just as you reach for the `${pot_amount:,}` bag, the Cartel surrounds you!\n"
+                f"They took all the money. You barely escaped with your life.\n\n"
+                f"💸 **POT LOST TO THE CARTEL:** Everyone loses their money!"
+            )
+            final_embed.set_thumbnail(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+
+        dead_str = ", ".join([p.name for p in dead])
+        final_embed.set_footer(text=f"Fallen Gunslingers: {dead_str}")
+        
+        await interaction.edit_original_response(embed=final_embed)
+
+
+# --- 💻 THE SLASH COMMAND ---
+@game_group.command(name="standoff", description="🤠 Start a Mexican Standoff PvP! Winner takes all (maybe).")
+async def standoff_cmd(i: discord.Interaction):
+    await i.response.defer()
+    
+    entry_fee = 50000
+    
+    # Deduct Host's Entry Fee
+    try:
+        user_bal = await get_balance(i.user.id)
+        if user_bal < entry_fee:
+            return await i.followup.send(f"❌ You need `${entry_fee:,}` to buy bullets for the standoff.", ephemeral=True)
+        await update_balance(i.user.id, -entry_fee)
+    except:
+        return await i.followup.send("⚠️ Bank error.", ephemeral=True)
+
+    view = StandoffLobbyView(i.user, entry_fee)
+    await i.followup.send(embed=view.get_lobby_embed(), view=view)
+
+import discord
+from discord import app_commands
+import random
+import asyncio
+
+# ==============================================================================
+# 🕵️ 5. BOUNTY HUNTER'S TRAIL (SOLO RPG & ANTI-LOOT)
+# ==============================================================================
+
+class BountyApproachView(discord.ui.View):
+    def __init__(self, user, target_name, reward, win_rate):
+        super().__init__(timeout=120)
+        self.user = user
+        self.target_name = target_name
+        self.reward = reward
+        self.win_rate = win_rate
+
+    def get_approach_embed(self):
+        embed = discord.Embed(title="🕵️ BOUNTY TRACKED: CHOOSE YOUR APPROACH", color=0x3498DB)
+        embed.description = (
+            f"**Target:** `{self.target_name}`\n"
+            f"💰 **Bounty:** `${self.reward:,}`\n"
+            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            f"You tracked the target to an abandoned warehouse. The guards are patrolling.\n"
+            f"### How do you want to execute the hit?\n"
+            f"> 🗡️ **Stealth:** Sneak in quietly through the vents.\n"
+            f"> 🎯 **Sniper:** Take the shot from a rooftop 500m away.\n"
+            f"> 💥 **Guns Blazing:** Kick the front door and start shooting!"
+        )
+        embed.set_thumbnail(url="https://media.tenor.com/images/13019d5e32047ed6f345c26bdf3b56a3/tenor.gif")
+        return embed
+
+    async def execute_hit(self, interaction: discord.Interaction, approach: str):
+        if interaction.user.id != self.user.id:
+            return await interaction.response.send_message("❌ This is not your contract!", ephemeral=True)
+            
+        await interaction.response.defer()
+        for child in self.children: child.disabled = True
+        
+        # 1. Suspense Animation
+        suspense_embed = discord.Embed(title="⚔️ EXECUTING THE HIT...", color=0x2b2d31)
+        if approach == "Stealth":
+            suspense_embed.description = "*Crawling through the dark vents... approaching the target...*"
+        elif approach == "Sniper":
+            suspense_embed.description = "*Adjusting the scope... accounting for wind speed... taking a deep breath...*"
+        else:
+            suspense_embed.description = "*Kicking the door open! Brrtttt! Bullets flying everywhere!*"
+            
+        suspense_embed.set_image(url="https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif")
+        await interaction.edit_original_response(embed=suspense_embed, view=None)
+        await asyncio.sleep(4)
+
+        # 2. 🧠 STRICT ANTI-LOOT MATH (< 10%)
+        is_success = random.randint(1, 100) <= self.win_rate
+        
+        final_embed = discord.Embed()
+        
+        if is_success:
+            # 🏆 WIN SCENARIO (Rare)
+            try: await update_balance(self.user.id, self.reward)
+            except: pass
+            
+            final_embed.title = "🏆 TARGET ELIMINATED!"
+            final_embed.color = 0x2ECC71
+            final_embed.description = (
+                f"### 🎉 FLAWLESS HIT!\n"
+                f"Your {approach} approach worked perfectly. The `{self.target_name}` didn't even see it coming.\n\n"
+                f"💰 **BOUNTY COLLECTED:** `${self.reward:,}`"
+            )
+            final_embed.set_thumbnail(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
+        else:
+            # 💀 LOSS SCENARIO (90%+ Chance)
+            fine = int(self.reward * 0.1) # Fine is 10% of the bounty reward
+            try: await update_balance(self.user.id, -fine)
+            except: pass
+            
+            # Generate funny fail stories based on approach
+            fail_stories = {
+                "Stealth": [
+                    "You stepped on a squeaky toy. The guards heard you and beat you up.",
+                    "You got stuck in the air vent because you ate too much pizza.",
+                    "You sneaked up perfectly, but forgot to bring your knife."
+                ],
+                "Sniper": [
+                    "You took the shot, but hit a flying pigeon instead. The target escaped.",
+                    "You forgot to take the lens cover off your scope. You are an idiot.",
+                    "The wind blew your bullet right into a police car. They traced it back to you."
+                ],
+                "Guns Blazing": [
+                    "You kicked the door, but it was a pull door. You broke your leg.",
+                    "You ran in screaming, but tripped over a wire and shot the ceiling.",
+                    "The target had a minigun. You brought a pistol. Bad idea."
+                ]
+            }
+            story = random.choice(fail_stories[approach])
+            
+            final_embed.title = "🚨 BUSTED! MISSION FAILED!"
+            final_embed.color = 0xFF0000
+            final_embed.description = (
+                f"### 💥 TOTAL DISASTER!\n"
+                f"{story}\n\n"
+                f"🚓 The police arrived and arrested you. You had to pay a **Hospital/Bail Fine** of `${fine:,}`!"
+            )
+            final_embed.set_thumbnail(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+
+        await interaction.edit_original_response(embed=final_embed)
+
+
+    @discord.ui.button(label="Stealth", emoji="🗡️", style=discord.ButtonStyle.secondary, row=0)
+    async def btn_stealth(self, i, b): await self.execute_hit(i, "Stealth")
+
+    @discord.ui.button(label="Sniper", emoji="🎯", style=discord.ButtonStyle.success, row=0)
+    async def btn_sniper(self, i, b): await self.execute_hit(i, "Sniper")
+
+    @discord.ui.button(label="Guns Blazing", emoji="💥", style=discord.ButtonStyle.danger, row=0)
+    async def btn_loud(self, i, b): await self.execute_hit(i, "Guns Blazing")
+
+
+class BountySelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="Street Thug", description="Reward: $50k | Difficulty: Normal", emoji="🟢", value="THUG"),
+            discord.SelectOption(label="Mafia Boss", description="Reward: $200k | Difficulty: Hard", emoji="🔴", value="BOSS"),
+            discord.SelectOption(label="Ghost Assassin", description="Reward: $1M | Difficulty: IMPOSSIBLE", emoji="💀", value="GHOST")
+        ]
+        super().__init__(placeholder="📂 Select a Bounty Contract...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.view.user.id:
+            return await interaction.response.send_message("❌ Get your own contract!", ephemeral=True)
+            
+        choice = self.values[0]
+        await interaction.response.defer()
+        
+        # Determine strict win rates based on choice
+        # 🟢 Thug: 8% Win Rate
+        # 🔴 Boss: 5% Win Rate
+        # 💀 Ghost: 2% Win Rate
+        if choice == "THUG":
+            target_name, reward, win_rate = "Local Street Thug", 50000, 8
+        elif choice == "BOSS":
+            target_name, reward, win_rate = "Don Salieri (Mafia Boss)", 200000, 5
+        else:
+            target_name, reward, win_rate = "The Phantom (Ghost Assassin)", 1000000, 2
+            
+        # Move to approach view
+        view = BountyApproachView(self.view.user, target_name, reward, win_rate)
+        await interaction.edit_original_response(embed=view.get_approach_embed(), view=view)
+
+class BountyLobbyView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=60)
+        self.user = user
+        self.add_item(BountySelect())
+
+# --- 💻 THE SLASH COMMAND ---
+@game_group.command(name="bounty", description="🕵️ Accept a hitman contract! High risk, strict low win rate.")
+async def bounty_cmd(i: discord.Interaction):
+    # Charge an intel fee upfront
+    intel_fee = 5000
+    try:
+        user_bal = await get_balance(i.user.id)
+        if user_bal < intel_fee:
+            return await i.response.send_message(f"❌ You need `${intel_fee:,}` for the intel broker.", ephemeral=True)
+        await update_balance(i.user.id, -intel_fee)
+    except:
+        return await i.response.send_message("⚠️ Bank error.", ephemeral=True)
+
+    embed = discord.Embed(title="🕵️ THE UNDERGROUND BROKER", color=0x2b2d31)
+    embed.description = (
+        f"Welcome to the shadows, {i.user.mention}. I have three contracts available today.\n\n"
+        f"Choose your target wisely. If you fail, the police will catch you, and you will pay a heavy fine!\n\n"
+        f"*(Select a target from the dropdown below to plan your approach)*"
+    )
+    embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2855/2855630.png")
+    
+    view = BountyLobbyView(i.user)
+    await i.response.send_message(embed=embed, view=view)
 
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
