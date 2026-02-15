@@ -485,6 +485,9 @@ async def get_data(user_id):
 
 # ================== 🛡️ UNIVERSAL PUNISHMENT SYSTEM (ALL GAMES) ==================
 
+import datetime as dt # Ensure this is imported for timedelta
+import asyncio # Ensure this is imported for background tasks
+
 async def smart_timeout(interaction, member, seconds, reason):
     """
     Ye function har game (Roulette, Memory, Fight, Slots) me punishment handle karega.
@@ -525,20 +528,51 @@ async def smart_timeout(interaction, member, seconds, reason):
             return f"💖 **Extra Life Used:** Maut ko chhukar wapis aa gaye! (Lives Left: {remaining})"
 
         # ---------------------------------------------------------
-        # 🔇 STEP C: ASLI SAZA (TIMEOUT)
+        # 🔇 STEP C: ASLI SAZA (TIMEOUT & AUTO-RESTORE ROLES)
         # ---------------------------------------------------------
-        
-        # Admin ko mute nahi kar sakte
-        if member.guild_permissions.administrator:
-            return "⚠️ **Admin Safe:** I cannot mute admins."
-            
-        # Timeout laga do
         duration = dt.timedelta(seconds=seconds)
-        await member.timeout(duration, reason=reason)
+        roles_restored_msg = False
+
+        # Agar user admin hai, toh pehle roles hatao, saza do, fir wapas do
+        if member.guild_permissions.administrator:
+            # Bouncer Check: Bot ka role target se upar hona chahiye
+            if interaction.guild.me.top_role > member.top_role:
+                # Roles ikkattha karo (Everyone aur Managed roles chhod kar)
+                roles_to_restore = [r for r in member.roles if r.name != "@everyone" and not r.managed]
+
+                if roles_to_restore:
+                    # 1. Roles remove karo
+                    await member.remove_roles(*roles_to_restore, reason=f"Temp strip for game timeout: {reason}")
+
+                    # 2. Timeout lagao
+                    await member.timeout(duration, reason=reason)
+
+                    # 3. Background task banalo jo 3 second baad roles wapas de de
+                    async def give_back_roles():
+                        await asyncio.sleep(3) # 3 seconds ka wait
+                        try:
+                            await member.add_roles(*roles_to_restore, reason="Restoring roles after applying game timeout")
+                        except Exception as e:
+                            print(f"Role restore error: {e}")
+
+                    # Background me start kar do bina code ko roke
+                    asyncio.create_task(give_back_roles())
+                    roles_restored_msg = True
+            else:
+                return "⚠️ **Admin Safe:** I cannot mute this admin (My role is lower or equal)."
+        else:
+            # Normal user ke liye direct timeout
+            await member.timeout(duration, reason=reason)
         
+        # Return Message Formatting
         minutes = int(seconds / 60)
         if minutes < 1:
+            if roles_restored_msg:
+                return f"🔇 **Muted:** {seconds} Seconds (Admin Smited & Roles Restoring...)"
             return f"🔇 **Muted:** {seconds} Seconds (No VIP, No Life)"
+        
+        if roles_restored_msg:
+            return f"🔇 **Muted:** {minutes} Minutes (Admin Smited & Roles Restoring...)"
         return f"🔇 **Muted:** {minutes} Minutes (Hospitalized)"
         
     except Exception as e:
@@ -562,7 +596,6 @@ async def update_inventory(user_id, item_id, qty):
         await db_call(lambda: supabase.table("economy").update({"inventory": inv}).eq("user_id", str(user_id)).execute())
     except Exception as e:
         print(f"Inventory Update Error: {e}")
-
 
 from flask import Flask, jsonify
 from supabase import create_client, Client
