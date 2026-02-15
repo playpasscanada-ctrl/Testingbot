@@ -484,9 +484,8 @@ async def get_data(user_id):
         return {"balance": 0, "bank": 0, "inventory": {}, "vip_expiry": None}
 
 # ================== 🛡️ UNIVERSAL PUNISHMENT SYSTEM (ALL GAMES) ==================
-
-import datetime as dt # Ensure this is imported for timedelta
-import asyncio # Ensure this is imported for background tasks
+import datetime as dt 
+import asyncio 
 
 async def smart_timeout(interaction, member, seconds, reason):
     """
@@ -528,12 +527,12 @@ async def smart_timeout(interaction, member, seconds, reason):
             return f"💖 **Extra Life Used:** Maut ko chhukar wapis aa gaye! (Lives Left: {remaining})"
 
         # ---------------------------------------------------------
-        # 🔇 STEP C: ASLI SAZA (TIMEOUT & AUTO-RESTORE ROLES)
+        # 🔇 STEP C: ASLI SAZA (TIMEOUT & SMART AUTO-RESTORE)
         # ---------------------------------------------------------
         duration = dt.timedelta(seconds=seconds)
         roles_restored_msg = False
 
-        # Agar user admin hai, toh pehle roles hatao, saza do, fir wapas do
+        # Agar user admin hai, toh pehle roles hatao, saza do, fir saza khatam hone par wapas do
         if member.guild_permissions.administrator:
             # Bouncer Check: Bot ka role target se upar hona chahiye
             if interaction.guild.me.top_role > member.top_role:
@@ -547,11 +546,11 @@ async def smart_timeout(interaction, member, seconds, reason):
                     # 2. Timeout lagao
                     await member.timeout(duration, reason=reason)
 
-                    # 3. Background task banalo jo 3 second baad roles wapas de de
+                    # 3. Background task banalo jo EXACTLY timeout khatam hone tak wait karega
                     async def give_back_roles():
-                        await asyncio.sleep(3) # 3 seconds ka wait
+                        await asyncio.sleep(seconds) # ⏳ WAIT FOR THE FULL TIMEOUT DURATION
                         try:
-                            await member.add_roles(*roles_to_restore, reason="Restoring roles after applying game timeout")
+                            await member.add_roles(*roles_to_restore, reason="Restoring roles after game timeout expired")
                         except Exception as e:
                             print(f"Role restore error: {e}")
 
@@ -568,11 +567,11 @@ async def smart_timeout(interaction, member, seconds, reason):
         minutes = int(seconds / 60)
         if minutes < 1:
             if roles_restored_msg:
-                return f"🔇 **Muted:** {seconds} Seconds (Admin Smited & Roles Restoring...)"
+                return f"🔇 **Muted:** {seconds} Seconds (Power stripped! Will return after {seconds}s)"
             return f"🔇 **Muted:** {seconds} Seconds (No VIP, No Life)"
         
         if roles_restored_msg:
-            return f"🔇 **Muted:** {minutes} Minutes (Admin Smited & Roles Restoring...)"
+            return f"🔇 **Muted:** {minutes} Minutes (Power stripped! Will return after {minutes}m)"
         return f"🔇 **Muted:** {minutes} Minutes (Hospitalized)"
         
     except Exception as e:
