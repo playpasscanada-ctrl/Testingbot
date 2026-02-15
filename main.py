@@ -23193,17 +23193,18 @@ async def bounty_cmd(i: discord.Interaction):
     view = BountyLobbyView(i.user)
     await i.response.send_message(embed=embed, view=view)
 
+
 import discord
 from discord import app_commands
 import random
 import asyncio
 
 # ==============================================================================
-# 🎱 BINGO: THE ULTIMATE MIND GAME (PvP)
+# 🎱 BINGO V4: THE GOD-TIER EDITION (ULTRA PREMIUM)
 # ==============================================================================
 
-# Helper to check how many lines are completed in a 5x5 boolean grid
 def check_bingo_lines(marked_grid):
+    """Checks all Rows, Columns, and Diagonals for 5 consecutive marks."""
     lines = 0
     # Check Rows
     for i in range(5):
@@ -23216,10 +23217,50 @@ def check_bingo_lines(marked_grid):
     if all(marked_grid[i][4-i] for i in range(5)): lines += 1
     return lines
 
-# --- 3. THE RPS PHASE (Decide who goes first) ---
+# --- 5. LIVE BOARD VIEWER (Turns Green Automatically) ---
+class LiveBoardView(discord.ui.View):
+    def __init__(self, game, user_id):
+        super().__init__(timeout=None) # Ephemeral, no timeout needed
+        self.game = game
+        grid = game.grids[user_id]
+        marked = game.marked[user_id]
+        
+        # Build the 5x5 board dynamically
+        for r in range(5):
+            for c in range(5):
+                num = grid[r][c]
+                is_marked = marked[r][c]
+                
+                # 🟩 GREEN if called, ⬛ GREY if not called
+                style = discord.ButtonStyle.success if is_marked else discord.ButtonStyle.secondary
+                btn = discord.ui.Button(label=str(num), style=style, row=r, disabled=True)
+                self.add_item(btn)
+
+class MainGameView(discord.ui.View):
+    def __init__(self, game):
+        super().__init__(timeout=None)
+        self.game = game
+
+    @discord.ui.button(label="👁️ View My Secret Board", style=discord.ButtonStyle.primary, emoji="🔐")
+    async def btn_view_board(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Security Check
+        if interaction.user.id not in [self.game.p1.id, self.game.p2.id]:
+            return await interaction.response.send_message("❌ Bouncer: You are not playing at this table!", ephemeral=True)
+            
+        board_view = LiveBoardView(self.game, interaction.user.id)
+        
+        # Premium Ephemeral Embed
+        embed = discord.Embed(title="🔐 YOUR SECRET BINGO BOARD", color=0x3498DB)
+        embed.description = (
+            f"**Your Completed Lines:** `{self.game.lines[interaction.user.id]}/5`\n"
+            f"*(Numbers in 🟩 GREEN have already been called. You need 5 lines to win!)*"
+        )
+        await interaction.response.send_message(embed=embed, view=board_view, ephemeral=True)
+
+# --- 4. THE RPS PHASE (Rock, Paper, Scissors) ---
 class RPSView(discord.ui.View):
     def __init__(self, p1, p2, game_session):
-        super().__init__(timeout=60)
+        super().__init__(timeout=None) # Take your time to pick
         self.p1 = p1
         self.p2 = p2
         self.game = game_session
@@ -23227,11 +23268,12 @@ class RPSView(discord.ui.View):
 
     async def handle_choice(self, interaction, choice):
         if interaction.user.id not in [self.p1.id, self.p2.id]:
-            return await interaction.response.send_message("❌ You are not in this match!", ephemeral=True)
+            return await interaction.response.send_message("❌ This RPS match is not yours!", ephemeral=True)
             
         self.choices[interaction.user.id] = choice
-        await interaction.response.send_message(f"✅ You chose {choice}! Waiting for opponent...", ephemeral=True)
+        await interaction.response.send_message(f"✅ You locked in: **{choice}**! Waiting for opponent...", ephemeral=True)
         
+        # If both players have chosen, stop the view
         if self.choices[self.p1.id] and self.choices[self.p2.id]:
             for child in self.children: child.disabled = True
             await interaction.message.edit(view=self)
@@ -23244,59 +23286,75 @@ class RPSView(discord.ui.View):
     @discord.ui.button(emoji="✂️", style=discord.ButtonStyle.secondary)
     async def btn_scissors(self, i, b): await self.handle_choice(i, "Scissors")
 
-# --- 2. GRID SETUP PHASE (Secret Modal) ---
-class GridSetupModal(discord.ui.Modal, title="Setup Your Secret Bingo Grid"):
-    grid_input = discord.ui.TextInput(
-        label="Enter numbers 1 to 25 separated by space:",
-        style=discord.TextStyle.paragraph,
-        placeholder="e.g. 14 2 25 7 9 1 12 5 ... (must be exactly 25 unique numbers)",
-        required=True,
-        max_length=150
-    )
+# --- 3. THE 25-BUTTON SECRET GRID BUILDER (NO TIME LIMIT) ---
+class GridButton(discord.ui.Button):
+    def __init__(self, row, col):
+        super().__init__(style=discord.ButtonStyle.secondary, label="❓", row=row)
+        self.grid_row = row
+        self.grid_col = col
 
-    def __init__(self, game_session, player):
-        super().__init__()
-        self.game = game_session
-        self.player = player
+    async def callback(self, interaction: discord.Interaction):
+        view: BingoGridBuilderView = self.view
+        
+        # Assign number and change color to blue
+        self.label = str(view.current_num)
+        self.style = discord.ButtonStyle.primary
+        self.disabled = True
+        
+        view.grid_data[self.grid_row][self.grid_col] = view.current_num
+        view.current_num += 1
 
-    async def on_submit(self, interaction: discord.Interaction):
-        try:
-            # Parse input
-            nums = [int(x) for x in self.grid_input.value.split() if x.isdigit()]
-            if len(nums) != 25:
-                return await interaction.response.send_message("❌ Error: You must enter exactly 25 numbers!", ephemeral=True)
-            if len(set(nums)) != 25 or min(nums) < 1 or max(nums) > 25:
-                return await interaction.response.send_message("❌ Error: Numbers must be unique and between 1 and 25!", ephemeral=True)
-                
-            # Convert 1D list to 5x5 grid
-            grid_5x5 = [nums[i:i+5] for i in range(0, 25, 5)]
-            self.game.set_grid(self.player.id, grid_5x5)
+        if view.current_num > 25:
+            view.game.set_grid(interaction.user.id, view.grid_data)
             
-            await interaction.response.send_message("✅ **Grid Locked Securely!** Waiting for opponent...", ephemeral=True)
+            # Premium Success Message
+            final_embed = discord.Embed(title="✅ GRID SUCCESSFULLY LOCKED!", color=0x2ECC71)
+            final_embed.description = "Your secret 5x5 board is ready. Return to the main chat and wait for the RPS phase!"
+            await interaction.response.edit_message(embed=final_embed, view=view)
             
-            # Check if both are ready
-            if self.game.grids[self.game.p1.id] and self.game.grids[self.game.p2.id]:
-                self.game.setup_complete.set() # Trigger next phase
-                
-        except Exception as e:
-            await interaction.response.send_message("❌ Invalid format. Please use numbers separated by spaces.", ephemeral=True)
+            # Wake up the main thread if both are done
+            if view.game.grids[view.game.p1.id] and view.game.grids[view.game.p2.id]:
+                view.game.setup_complete.set()
+        else:
+            # Update the prompt
+            embed = discord.Embed(title="🔐 SECRET GRID BUILDER", color=0x3498DB)
+            embed.description = f"Click any `❓` box to place number: **{view.current_num}**"
+            await interaction.response.edit_message(embed=embed, view=view)
 
-class GridSetupView(discord.ui.View):
+class BingoGridBuilderView(discord.ui.View):
     def __init__(self, game_session):
-        super().__init__(timeout=120)
+        super().__init__(timeout=None) # ⏳ UNLIMITED TIME TO BUILD
+        self.game = game_session
+        self.current_num = 1
+        self.grid_data = [[0]*5 for _ in range(5)]
+        
+        # Create 25 Buttons
+        for r in range(5):
+            for c in range(5):
+                self.add_item(GridButton(r, c))
+
+class GridSetupPromptView(discord.ui.View):
+    def __init__(self, game_session):
+        super().__init__(timeout=None)
         self.game = game_session
 
-    @discord.ui.button(label="📝 Setup Secret Grid", style=discord.ButtonStyle.primary, emoji="🔐")
+    @discord.ui.button(label="📝 Build My Secret Grid", style=discord.ButtonStyle.success, emoji="🔐")
     async def btn_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id not in [self.game.p1.id, self.game.p2.id]:
-            return await interaction.response.send_message("❌ Not your game!", ephemeral=True)
-        if self.game.grids[interaction.user.id] is not None:
-            return await interaction.response.send_message("✅ You already set your grid!", ephemeral=True)
+            return await interaction.response.send_message("❌ This is not your match!", ephemeral=True)
             
-        await interaction.response.send_modal(GridSetupModal(self.game, interaction.user))
+        if self.game.grids[interaction.user.id] is not None:
+            return await interaction.response.send_message("✅ You have already locked your grid!", ephemeral=True)
+            
+        builder_view = BingoGridBuilderView(self.game)
+        embed = discord.Embed(title="🔐 SECRET GRID BUILDER", color=0x3498DB)
+        embed.description = (
+            f"Click any `❓` box to place number: **{builder_view.current_num}**\n\n"
+            f"*(Take your time. There is no time limit to build this.)*"
+        )
+        await interaction.response.send_message(embed=embed, view=builder_view, ephemeral=True)
 
-
-# --- 1. CHALLENGE ACCEPTANCE PHASE ---
+# --- 2. CHALLENGE ACCEPTANCE LOBBY ---
 class BingoLobbyView(discord.ui.View):
     def __init__(self, host, opponent, bet):
         super().__init__(timeout=60)
@@ -23312,13 +23370,12 @@ class BingoLobbyView(discord.ui.View):
             
         await interaction.response.defer()
         
-        # Check Opponent Balance
         try:
             opp_bal = await get_balance(self.opponent.id)
             if opp_bal < self.bet:
-                return await interaction.followup.send(f"❌ You don't have `${self.bet:,}` to match the bet!", ephemeral=True)
+                return await interaction.followup.send(f"❌ You need `${self.bet:,}` to match the bet!", ephemeral=True)
             
-            # Deduct from both
+            # Deduct Bets
             await update_balance(self.host.id, -self.bet)
             await update_balance(self.opponent.id, -self.bet)
         except Exception:
@@ -23329,7 +23386,7 @@ class BingoLobbyView(discord.ui.View):
         await interaction.message.edit(view=self)
         self.stop()
 
-# --- 🎮 THE MAIN BINGO GAME ENGINE ---
+# --- 1. THE MAIN BINGO ENGINE ---
 class BingoGame:
     def __init__(self, p1, p2, bet, channel):
         self.p1 = p1
@@ -23337,15 +23394,10 @@ class BingoGame:
         self.bet = bet
         self.channel = channel
         
-        # Game Data
         self.grids = {p1.id: None, p2.id: None}
-        self.marked = {
-            p1.id: [[False]*5 for _ in range(5)], 
-            p2.id: [[False]*5 for _ in range(5)]
-        }
+        self.marked = {p1.id: [[False]*5 for _ in range(5)], p2.id: [[False]*5 for _ in range(5)]}
         self.lines = {p1.id: 0, p2.id: 0}
         self.called_numbers = []
-        
         self.setup_complete = asyncio.Event()
 
     def set_grid(self, user_id, grid):
@@ -23353,174 +23405,169 @@ class BingoGame:
 
     def mark_number(self, num):
         self.called_numbers.append(num)
-        # Mark on both grids
         for uid in [self.p1.id, self.p2.id]:
             for r in range(5):
                 for c in range(5):
                     if self.grids[uid][r][c] == num:
                         self.marked[uid][r][c] = True
-            # Update lines
             self.lines[uid] = check_bingo_lines(self.marked[uid])
 
     def get_game_embed(self, current_turn_player, message=None):
-        embed = discord.Embed(title="🎱 BINGO: DEATHMATCH", color=0x2b2d31)
+        embed = discord.Embed(title="🎱 BINGO: HIGH STAKES DEATHMATCH", color=0x2b2d31)
         
-        desc = f"**Pot:** `${self.bet * 2:,}`\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-        desc += f"👤 **{self.p1.name}** Lines: `{self.lines[self.p1.id]}/5`\n"
-        desc += f"👤 **{self.p2.name}** Lines: `{self.lines[self.p2.id]}/5`\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        desc = (
+            f"💰 **Total Pot:** `${self.bet * 2:,}`\n"
+            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            f"👤 **{self.p1.name}** Lines: `{self.lines[self.p1.id]}/5`\n"
+            f"👤 **{self.p2.name}** Lines: `{self.lines[self.p2.id]}/5`\n"
+            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        )
         
         if message: desc += f"### {message}\n"
         
         desc += f"\n🗣️ **{current_turn_player.mention}'s Turn!**\n*Type a number (1-25) in the chat...*"
+        embed.description = desc
         
         called_str = ", ".join(map(str, self.called_numbers[-5:])) if self.called_numbers else "None"
         embed.set_footer(text=f"Last 5 numbers called: {called_str}")
         return embed
 
-# --- 💻 THE COMMAND & FLOW CONTROL ---
-@game_group.command(name="bingo", description="🎱 Challenge someone to a High-Stakes Custom Bingo match!")
+# --- 💻 THE SLASH COMMAND ---
+@game_group.command(name="bingo", description="🎱 Play the Ultimate Custom Grid Bingo Match! (Live Tracking)")
 async def bingo_cmd(i: discord.Interaction, opponent: discord.Member, bet: int):
     if opponent.bot or opponent.id == i.user.id:
-        return await i.response.send_message("❌ You can't play against a bot or yourself.", ephemeral=True)
+        return await i.response.send_message("❌ Invalid opponent. You can't play a bot or yourself.", ephemeral=True)
     if bet < 1000:
-        return await i.response.send_message("❌ Minimum bet is `$1,000`.", ephemeral=True)
+        return await i.response.send_message("❌ **Bouncer:** Minimum bet is `$1,000`.", ephemeral=True)
 
-    # Balance check for Host
     try:
         host_bal = await get_balance(i.user.id)
-        if host_bal < bet: return await i.response.send_message("❌ You are broke!", ephemeral=True)
+        if host_bal < bet: return await i.response.send_message("❌ You are broke! Come back when you have money.", ephemeral=True)
     except: return await i.response.send_message("⚠️ Bank error.", ephemeral=True)
 
-    # 1. LOBBY PHASE
+    # ==========================================
+    # PHASE 1: LOBBY
+    # ==========================================
     lobby_view = BingoLobbyView(i.user, opponent, bet)
     embed = discord.Embed(title="🎱 BINGO CHALLENGE!", color=0xE67E22)
-    embed.description = f"{i.user.mention} challenged {opponent.mention} to Bingo!\n💰 **Bet:** `${bet:,}` (Winner takes `${bet*2:,}`)\n\n*Opponent must accept within 60s.*"
+    embed.description = f"{i.user.mention} challenged {opponent.mention} to a high-stakes match!\n\n💰 **Bet:** `${bet:,}` (Pot: `${bet*2:,}`)\n*Opponent has 60 seconds to accept.*"
+    embed.set_thumbnail(url="https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif") # Intense vibe
     await i.response.send_message(opponent.mention, embed=embed, view=lobby_view)
     
     await lobby_view.wait()
     if not lobby_view.accepted:
-        return await i.channel.send(f"❌ {opponent.name} chickened out or timed out.")
+        return await i.channel.send(f"❌ The match was cancelled. {opponent.name} didn't accept.")
 
     game = BingoGame(i.user, opponent, bet, i.channel)
 
-    # 2. GRID SETUP PHASE
-    setup_view = GridSetupView(game)
+    # ==========================================
+    # PHASE 2: GRID SETUP (NO TIMEOUT)
+    # ==========================================
+    setup_view = GridSetupPromptView(game)
     setup_embed = discord.Embed(title="📝 GRID SETUP PHASE", color=0x3498DB)
-    setup_embed.description = "Both players, click the button below to secretly build your 5x5 grid!\n*Enter 25 numbers separated by spaces.*"
-    setup_msg = await i.channel.send(embed=setup_embed, view=setup_view)
+    setup_embed.description = (
+        "Both players, click the button below to build your **100% Secret** 5x5 Grid!\n\n"
+        "*(Take your time, there is no timer. The game will resume once both grids are locked!)*"
+    )
+    await i.channel.send(embed=setup_embed, view=setup_view)
 
-    try:
-        await asyncio.wait_for(game.setup_complete.wait(), timeout=120)
-    except asyncio.TimeoutError:
-        # Refund on timeout
-        try:
-            await update_balance(i.user.id, bet)
-            await update_balance(opponent.id, bet)
-        except: pass
-        return await i.channel.send("⏳ Time is up! Someone didn't set their grid. Bets refunded.")
+    # ⏳ WAITS FOREVER UNTIL BOTH PLAYERS LOCK THEIR GRIDS
+    await game.setup_complete.wait() 
 
-    # 3. RPS PHASE
-    rps_embed = discord.Embed(title="✌️ ROCK PAPER SCISSORS", description="Grids are locked! Play RPS to decide who calls the first number!", color=0x9B59B6)
+    # ==========================================
+    # PHASE 3: RPS TOSS (NO TIMEOUT)
+    # ==========================================
+    rps_embed = discord.Embed(title="✌️ ROCK PAPER SCISSORS", color=0x9B59B6)
+    rps_embed.description = "Grids are locked securely! Let's play RPS to decide who calls the first number!"
     rps_view = RPSView(i.user, opponent, game)
-    rps_msg = await i.channel.send(embed=rps_embed, view=rps_view)
+    await i.channel.send(embed=rps_embed, view=rps_view)
+    
     await rps_view.wait()
 
-    # Determine RPS Winner
     c1, c2 = rps_view.choices[i.user.id], rps_view.choices[opponent.id]
-    if not c1 or not c2:
-        turn_player = random.choice([i.user, opponent]) # Random if someone didn't click
-    else:
-        beats = {"Rock": "Scissors", "Paper": "Rock", "Scissors": "Paper"}
-        if c1 == c2: turn_player = random.choice([i.user, opponent]) # Tie = Random
-        elif beats[c1] == c2: turn_player = i.user
-        else: turn_player = opponent
+    beats = {"Rock": "Scissors", "Paper": "Rock", "Scissors": "Paper"}
+    
+    if not c1 or not c2 or c1 == c2: 
+        turn_player = random.choice([i.user, opponent])
+    elif beats[c1] == c2: 
+        turn_player = i.user
+    else: 
+        turn_player = opponent
 
-    await i.channel.send(f"🎲 **{turn_player.name}** won the RPS and will go first!")
+    await i.channel.send(f"🎲 **{turn_player.name}** won the RPS Toss and gets to go first!")
 
-    # 4. MAIN GAME LOOP (Chat Detection)
+    # ==========================================
+    # PHASE 4: MAIN GAME LOOP (CHAT DETECTION)
+    # ==========================================
     game_active = True
     current_turn = turn_player
+    main_game_view = MainGameView(game) 
     
-    game_msg = await i.channel.send(embed=game.get_game_embed(current_turn, "Game Started!"))
+    game_msg = await i.channel.send(embed=game.get_game_embed(current_turn, "Game Started!"), view=main_game_view)
 
-    def check_msg(m):
-        # Must be in same channel, by the current turn player, and be a valid number
+    def check_msg(m): 
+        # Detects messages only from the current turn player containing a number
         return m.channel == i.channel and m.author.id == current_turn.id and m.content.isdigit()
 
     while game_active:
-        try:
-            # Wait for player to type a number in chat
-            msg = await i.client.wait_for('message', check=check_msg, timeout=60.0)
-            num = int(msg.content)
-            
-            # Delete their message to keep chat clean (Optional but premium!)
-            try: await msg.delete()
-            except: pass
+        # ⏳ NO TIMEOUT FOR CALLING NUMBERS
+        msg = await i.client.wait_for('message', check=check_msg)
+        num = int(msg.content)
+        
+        # Auto-Delete player's chat message to keep the channel clean
+        try: await msg.delete()
+        except: pass
 
-            # Validate number
-            if num < 1 or num > 25:
-                warning = await i.channel.send(f"⚠️ {current_turn.mention}, number must be between 1 and 25!")
-                await asyncio.sleep(3)
-                await warning.delete()
-                continue
-            if num in game.called_numbers:
-                warning = await i.channel.send(f"⚠️ {current_turn.mention}, `{num}` has already been called!")
-                await asyncio.sleep(3)
-                await warning.delete()
-                continue
+        # Validation checks
+        if num < 1 or num > 25:
+            warning = await i.channel.send(f"⚠️ {current_turn.mention}, the number must be exactly between 1 and 25!")
+            await asyncio.sleep(3)
+            await warning.delete()
+            continue
+        if num in game.called_numbers:
+            warning = await i.channel.send(f"⚠️ {current_turn.mention}, `{num}` has already been called! Pick another.")
+            await asyncio.sleep(3)
+            await warning.delete()
+            continue
 
-            # Valid Move!
-            game.mark_number(num)
-            
-            # Check for Win
-            win_p1 = game.lines[game.p1.id] >= 5
-            win_p2 = game.lines[game.p2.id] >= 5
-            
-            if win_p1 or win_p2:
-                game_active = False
-                winner = None
-                if win_p1 and win_p2: # Rare Tie
-                    winner = "TIE"
-                else:
-                    winner = game.p1 if win_p1 else game.p2
-                
-                # Payout
-                pot = bet * 2
-                final_embed = discord.Embed(title="🏆 BINGO! WE HAVE A WINNER!", color=0x2ECC71)
-                
-                if winner == "TIE":
-                    try:
-                        await update_balance(game.p1.id, bet)
-                        await update_balance(game.p2.id, bet)
-                    except: pass
-                    final_embed.description = "### 😱 IT'S A TIE!\nBoth players hit 5 lines at the exact same time! Bets refunded."
-                    final_embed.color = 0xF1C40F
-                else:
-                    try: await update_balance(winner.id, pot)
-                    except: pass
-                    final_embed.description = f"### 🎉 {winner.mention} YELLED BINGO!\nThey completed 5 lines and won the `${pot:,}` pot!"
-                    final_embed.set_thumbnail(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
-                
-                await game_msg.edit(embed=final_embed)
-                break
-
-            # Switch Turn
-            current_turn = game.p2 if current_turn.id == game.p1.id else game.p1
-            
-            # Update Game UI
-            await game_msg.edit(embed=game.get_game_embed(current_turn, f"🎯 Number Called: **{num}**"))
-
-        except asyncio.TimeoutError:
-            # Player took too long, auto-lose
+        # ✅ Mark the number! (This makes it turn GREEN in the secret board view)
+        game.mark_number(num) 
+        
+        win_p1 = game.lines[game.p1.id] >= 5
+        win_p2 = game.lines[game.p2.id] >= 5
+        
+        if win_p1 or win_p2:
             game_active = False
-            winner = game.p2 if current_turn.id == game.p1.id else game.p1
-            try: await update_balance(winner.id, bet * 2)
-            except: pass
+            pot = bet * 2
+            final_embed = discord.Embed(title="🏆 BINGO! WE HAVE A WINNER!", color=0x2ECC71)
             
-            timeout_embed = discord.Embed(title="⏳ TIME'S UP!", color=0xFF0000)
-            timeout_embed.description = f"{current_turn.mention} took too long to call a number and forfeited!\n\n🎉 {winner.mention} takes the `${bet * 2:,}` pot by default!"
-            await game_msg.edit(embed=timeout_embed)
+            if win_p1 and win_p2:
+                # Refund logic for rare ties
+                try:
+                    await update_balance(game.p1.id, bet)
+                    await update_balance(game.p2.id, bet)
+                except: pass
+                final_embed.description = "### 😱 IT'S A TIE!\nBoth players hit 5 lines at the exact same time! Bets have been refunded."
+                final_embed.color = 0xF1C40F
+            else:
+                # Standard Win Logic
+                winner = game.p1 if win_p1 else game.p2
+                try: await update_balance(winner.id, pot)
+                except: pass
+                final_embed.description = f"### 🎉 {winner.mention} YELLED BINGO!\nThey completed 5 lines and secured the `${pot:,}` pot!"
+                final_embed.set_thumbnail(url="https://media.tenor.com/bXjOidvDvoQAAAAC/confetti-celebrate.gif")
+            
+            # End Game: Edit the final message and remove the "View Board" button
+            await game_msg.edit(embed=final_embed, view=None) 
+            break
 
+        # Switch turns
+        current_turn = game.p2 if current_turn.id == game.p1.id else game.p1
+        
+        # Update the Live Embed
+        await game_msg.edit(embed=game.get_game_embed(current_turn, f"🎯 Number Called: **{num}**"), view=main_game_view)
+
+            
 # ================== OPTIMIZED FLASK BACKEND ==================
 import os
 import time
