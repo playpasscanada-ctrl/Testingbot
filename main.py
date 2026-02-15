@@ -6807,31 +6807,31 @@ class PremiumDalgonaView(discord.ui.View):
         # ⚙️ 19 SHAPES CONFIGURATION (WITH TIERS & CUSTOM POP RISKS)
         self.settings = {
             # 🟢 STANDARD TIER (No Shake | 80% Safe Pop | 20% Fail)
-            "TRIANGLE":  {"reward": 10000,  "color": 0x2ECC71, "emoji": "🔺", "tier": "STANDARD", "pop_risk": 20, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
-            "CIRCLE":    {"reward": 25000,  "color": 0x3498DB, "emoji": "⭕", "tier": "STANDARD", "pop_risk": 20, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
-            "SQUARE":    {"reward": 30000,  "color": 0x1ABC9C, "emoji": "🟦", "tier": "STANDARD", "pop_risk": 20, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
-            "STAR":      {"reward": 40000,  "color": 0xF1C40F, "emoji": "⭐", "tier": "STANDARD", "pop_risk": 20, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
+            "TRIANGLE":  {"reward": 10000,  "color": 0x2ECC71, "emoji": "🔺", "tier": "STANDARD", "pop_risk": 10, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
+            "CIRCLE":    {"reward": 25000,  "color": 0x3498DB, "emoji": "⭕", "tier": "STANDARD", "pop_risk": 10, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
+            "SQUARE":    {"reward": 30000,  "color": 0x1ABC9C, "emoji": "🟦", "tier": "STANDARD", "pop_risk": 10, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
+            "STAR":      {"reward": 40000,  "color": 0xF1C40F, "emoji": "⭐", "tier": "STANDARD", "pop_risk": 10, "shake": False, "img": "https://media.tenor.com/images/15e61291880564d2627993092787476e/tenor.gif"},
             
             # 🔴 NIGHTMARE TIER (Shake Active | 50% Safe Pop | 50% Fail)
-            "UMBRELLA":  {"reward": 75000,  "color": 0xE67E22, "emoji": "☂️", "tier": "NIGHTMARE", "pop_risk": 50, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
-            "CLOUD":     {"reward": 85000,  "color": 0xBDC3C7, "emoji": "☁️", "tier": "NIGHTMARE", "pop_risk": 50, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
-            "HEART":     {"reward": 90000,  "color": 0xFF69B4, "emoji": "❤️", "tier": "NIGHTMARE", "pop_risk": 50, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
-            "LIGHTNING": {"reward": 100000, "color": 0xF39C12, "emoji": "⚡", "tier": "NIGHTMARE", "pop_risk": 50, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
-            "SNOWFLAKE": {"reward": 110000, "color": 0x9B59B6, "emoji": "❄️", "tier": "NIGHTMARE", "pop_risk": 50, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            "UMBRELLA":  {"reward": 75000,  "color": 0xE67E22, "emoji": "☂️", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            "CLOUD":     {"reward": 85000,  "color": 0xBDC3C7, "emoji": "☁️", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            "HEART":     {"reward": 90000,  "color": 0xFF69B4, "emoji": "❤️", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            "LIGHTNING": {"reward": 100000, "color": 0xF39C12, "emoji": "⚡", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
+            "SNOWFLAKE": {"reward": 110000, "color": 0x9B59B6, "emoji": "❄️", "tier": "NIGHTMARE", "pop_risk": 30, "shake": True, "img": "https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif"},
             
             # 💀 GOD TIER (Shake Active | 20% Safe Pop | 80% Fail)
-            "CROWN":     {"reward": 200000, "color": 0xFFD700, "emoji": "👑", "tier": "GOD", "pop_risk": 80, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
-            "DRAGON":    {"reward": 250000, "color": 0xE74C3C, "emoji": "🐉", "tier": "GOD", "pop_risk": 80, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
-            "SKULL":     {"reward": 300000, "color": 0x000000, "emoji": "💀", "tier": "GOD", "pop_risk": 80, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
-            "DEMON":     {"reward": 350000, "color": 0x8B0000, "emoji": "👹", "tier": "GOD", "pop_risk": 80, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
-            "ALIEN":     {"reward": 400000, "color": 0x2ECC71, "emoji": "👽", "tier": "GOD", "pop_risk": 80, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "CROWN":     {"reward": 200000, "color": 0xFFD700, "emoji": "👑", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "DRAGON":    {"reward": 250000, "color": 0xE74C3C, "emoji": "🐉", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "SKULL":     {"reward": 300000, "color": 0x000000, "emoji": "💀", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "DEMON":     {"reward": 350000, "color": 0x8B0000, "emoji": "👹", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
+            "ALIEN":     {"reward": 400000, "color": 0x2ECC71, "emoji": "👽", "tier": "GOD", "pop_risk": 40, "shake": True, "img": "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"},
             
             # 🌌 IMPOSSIBLE TIER (Shake Active | 1% Safe Pop | 99% Fail)
             "BLACKHOLE": {"reward": 1000000, "color": 0x2C3E50, "emoji": "🕳️", "tier": "IMPOSSIBLE", "pop_risk": 99, "shake": True, "img": "https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif"},
             "UNIVERSE":  {"reward": 1500000, "color": 0x8E44AD, "emoji": "🌌", "tier": "IMPOSSIBLE", "pop_risk": 99, "shake": True, "img": "https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif"},
             "ILLUMINATI":{"reward": 2000000, "color": 0x16A085, "emoji": "👁️", "tier": "IMPOSSIBLE", "pop_risk": 99, "shake": True, "img": "https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif"},
             "LABYRINTH": {"reward": 2500000, "color": 0x7F8C8D, "emoji": "🌀", "tier": "IMPOSSIBLE", "pop_risk": 99, "shake": True, "img": "https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif"},
-            "MANDALA":   {"reward": 3000000, "color": 0xD35400, "emoji": "🏵️", "tier": "IMPOSSIBLE", "pop_risk": 99, "shake": True, "img": "https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif"}
+            "MUSKAN":   {"reward": 3000000, "color": 0xD35400, "emoji": "👧", "tier": "IMPOSSIBLE", "pop_risk": 99, "shake": True, "img": "https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif"}
         }
         self.config = self.settings[difficulty]
         self.setup_buttons()
@@ -7025,28 +7025,28 @@ class PremiumDalgonaView(discord.ui.View):
 class DalgonaSelect(discord.ui.Select):
     def __init__(self):
         options = [
-            discord.SelectOption(label="Triangle", description="Standard | 80% Safe Pop | $10k", emoji="🔺", value="TRIANGLE"),
-            discord.SelectOption(label="Circle", description="Standard | 80% Safe Pop | $25k", emoji="⭕", value="CIRCLE"),
-            discord.SelectOption(label="Square", description="Standard | 80% Safe Pop | $30k", emoji="🟦", value="SQUARE"),
-            discord.SelectOption(label="Star", description="Standard | 80% Safe Pop | $40k", emoji="⭐", value="STAR"),
+            discord.SelectOption(label="Triangle", description="Standard | 90% Safe Pop | $10k", emoji="🔺", value="TRIANGLE"),
+            discord.SelectOption(label="Circle", description="Standard | 90% Safe Pop | $25k", emoji="⭕", value="CIRCLE"),
+            discord.SelectOption(label="Square", description="Standard | 90% Safe Pop | $30k", emoji="🟦", value="SQUARE"),
+            discord.SelectOption(label="Star", description="Standard | 90% Safe Pop | $40k", emoji="⭐", value="STAR"),
             
-            discord.SelectOption(label="Umbrella", description="Nightmare | 50% Safe Pop | $75k", emoji="☂️", value="UMBRELLA"),
-            discord.SelectOption(label="Cloud", description="Nightmare | 50% Safe Pop | $85k", emoji="☁️", value="CLOUD"),
-            discord.SelectOption(label="Heart", description="Nightmare | 50% Safe Pop | $90k", emoji="❤️", value="HEART"),
-            discord.SelectOption(label="Lightning", description="Nightmare | 50% Safe Pop | $100k", emoji="⚡", value="LIGHTNING"),
-            discord.SelectOption(label="Snowflake", description="Nightmare | 50% Safe Pop | $110k", emoji="❄️", value="SNOWFLAKE"),
+            discord.SelectOption(label="Umbrella", description="Nightmare | 70% Safe Pop | $75k", emoji="☂️", value="UMBRELLA"),
+            discord.SelectOption(label="Cloud", description="Nightmare | 70% Safe Pop | $85k", emoji="☁️", value="CLOUD"),
+            discord.SelectOption(label="Heart", description="Nightmare | 70% Safe Pop | $90k", emoji="❤️", value="HEART"),
+            discord.SelectOption(label="Lightning", description="Nightmare | 70% Safe Pop | $100k", emoji="⚡", value="LIGHTNING"),
+            discord.SelectOption(label="Snowflake", description="Nightmare | 70% Safe Pop | $110k", emoji="❄️", value="SNOWFLAKE"),
             
-            discord.SelectOption(label="Crown", description="God Tier | 20% Safe Pop | $200k", emoji="👑", value="CROWN"),
-            discord.SelectOption(label="Dragon", description="God Tier | 20% Safe Pop | $250k", emoji="🐉", value="DRAGON"),
-            discord.SelectOption(label="Skull", description="God Tier | 20% Safe Pop | $300k", emoji="💀", value="SKULL"),
-            discord.SelectOption(label="Demon", description="God Tier | 20% Safe Pop | $350k", emoji="👹", value="DEMON"),
-            discord.SelectOption(label="Alien", description="God Tier | 20% Safe Pop | $400k", emoji="👽", value="ALIEN"),
+            discord.SelectOption(label="Crown", description="God Tier | 60% Safe Pop | $200k", emoji="👑", value="CROWN"),
+            discord.SelectOption(label="Dragon", description="God Tier | 60% Safe Pop | $250k", emoji="🐉", value="DRAGON"),
+            discord.SelectOption(label="Skull", description="God Tier | 60% Safe Pop | $300k", emoji="💀", value="SKULL"),
+            discord.SelectOption(label="Demon", description="God Tier | 60% Safe Pop | $350k", emoji="👹", value="DEMON"),
+            discord.SelectOption(label="Alien", description="God Tier | 60% Safe Pop | $400k", emoji="👽", value="ALIEN"),
             
             discord.SelectOption(label="Blackhole", description="IMPOSSIBLE | 1% Safe Pop | $1M", emoji="🕳️", value="BLACKHOLE"),
             discord.SelectOption(label="Universe", description="IMPOSSIBLE | 1% Safe Pop | $1.5M", emoji="🌌", value="UNIVERSE"),
             discord.SelectOption(label="Illuminati", description="IMPOSSIBLE | 1% Safe Pop | $2M", emoji="👁️", value="ILLUMINATI"),
             discord.SelectOption(label="Labyrinth", description="IMPOSSIBLE | 1% Safe Pop | $2.5M", emoji="🌀", value="LABYRINTH"),
-            discord.SelectOption(label="Mandala", description="IMPOSSIBLE | 1% Safe Pop | $3M", emoji="🏵️", value="MANDALA")
+            discord.SelectOption(label="Mandala", description="IMPOSSIBLE | 1% Safe Pop | $3M", emoji="👧", value="MUSKAN")
         ]
         super().__init__(placeholder="🔪 Select Your Shape Tier...", min_values=1, max_values=1, options=options)
 
@@ -7080,14 +7080,14 @@ async def dalgona(i: discord.Interaction):
     embed.description = (
         "# 🔪 CHOOSE YOUR FATE\n"
         "**New Rules:** Carving is easier, but breaking lowers Durability. **Repair your cookie for $10k** before it shatters! Watch out for the final POP risk!\n\n"
-        "### 🟢 STANDARD (80% Safe Pop, No Shake)\n"
+        "### 🟢 STANDARD (90% Safe Pop, No Shake)\n"
         "🔺 Triangle | ⭕ Circle | 🟦 Square | ⭐ Star\n\n"
-        "### 🔴 NIGHTMARE (50% Safe Pop, Hand Shakes)\n"
+        "### 🔴 NIGHTMARE (70% Safe Pop, Hand Shakes)\n"
         "☂️ Umbrella | ☁️ Cloud | ❤️ Heart | ⚡ Lightning | ❄️ Snowflake\n\n"
-        "### 💀 GOD TIER (20% Safe Pop)\n"
+        "### 💀 GOD TIER (60% Safe Pop)\n"
         "👑 Crown | 🐉 Dragon | 💀 Skull | 👹 Demon | 👽 Alien\n\n"
         "### 🌌 IMPOSSIBLE TIER (1% Safe Pop - 99% Death)\n"
-        "🕳️ Blackhole | 🌌 Universe | 👁️ Illuminati | 🌀 Labyrinth | 🏵️ Mandala\n\n"
+        "🕳️ Blackhole | 🌌 Universe | 👁️ Illuminati | 🌀 Labyrinth | 👧 Muskan\n\n"
         "⚠️ **WARNING:** Failing results in a **1 MINUTE MUTE!**"
     )
     
@@ -16249,7 +16249,7 @@ class WipeoutView(discord.ui.View):
 
             # 🐕 GUARD DOG
             if vic_inv.get('guard_dog', 0) > 0:
-                if random.randint(1, 100) <= 70:
+                if random.randint(1, 100) <= 90:
                     new_bal = max(0, robber['balance'] - self.risk)
 
                     await safe_db("Dog Penalty", supabase.table("economy").update({"balance": new_bal}).eq("user_id", str(user.id)))
