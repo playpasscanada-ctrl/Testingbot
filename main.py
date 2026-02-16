@@ -2598,7 +2598,8 @@ def create_premium_embed(title, description, color=None):
     return embed
 
 # 2. SECURITY CHECK (Owner + Admin + VIP)
-def has_voice_access(interaction):
+# 2. SECURITY CHECK (Owner + Admin + VIP) - 100% CRASH FREE
+async def has_voice_access(interaction):
     user_id = str(interaction.user.id)
     
     # Check 1: Main Owner (OWNER_ID global variable hona chahiye main file me)
@@ -2613,11 +2614,13 @@ def has_voice_access(interaction):
     except:
         pass
 
-    # Check 3: Supabase VIP Table
+    # Check 3: Supabase VIP Table (🛠️ THE GOD-TIER FIX)
     try:
-        data = supabase.table("voice_vip").select("user_id").eq("user_id", user_id).execute()
+        # Direct execute() ko hatakar db_call(lambda: ...) laga diya!
+        data = await db_call(lambda: supabase.table("voice_vip").select("user_id").eq("user_id", user_id).execute())
         if data.data: return True
-    except:
+    except Exception as e:
+        print(f"VIP Check Error: {e}")
         pass
         
     return False
@@ -2745,27 +2748,36 @@ import random
 # ==========================================
 # 💀 COMMAND: VC ROAST (PREMIUM + AUTO TARGET)
 # ==========================================
-@app_commands.command(name="vcroast", description="Brutal Gaali Mode 🔊💀 (Only you can see)")
+# ----------------------------------------------
+# 💀 COMMAND: VC ROAST (PREMIUM + AUTO TARGET)
+# ----------------------------------------------
+
+# 🛠️ FIX 1: @app_commands.command ki jagah @bot.tree.command lagaya!
+@bot.tree.command(name="vcroast", description="Brutal Gaali Mode 💀 (Only you can see)")
 @app_commands.describe(target_vc="[Optional] Kisi aur VC me bot bhejna hai? Ise select karo.")
 async def vcroast(interaction: discord.Interaction, target_vc: discord.VoiceChannel = None):
     
-    # 1. 🛡️ FIX: DEFER KARO (Timeout Error hatane ke liye)
+    # 1. 🛡️ FIX: DEFER KARD (Timeout Error hatane ke liye)
     await interaction.response.defer(ephemeral=True)
-    
-    # 2. Access Check (Tumhara purana function)
-    if not has_voice_access(interaction):
+
+    # 2. Access Check 
+    # 🛠️ FIX 2: Yahan 'await' lagana bahut zaroori hai (Pichle VIP fix ki wajah se)
+    if not await has_voice_access(interaction):
         return await interaction.followup.send("🚫 **Access Denied:** सिर्फ VIP लोग चला सकते हैं!", ephemeral=True)
 
     # 3. 🎯 TARGET VC LOGIC
-    # Agar target_vc select kiya hai, to wahan jayega. 
+    # Agar target_vc select kiya hai, to wahan jayega.
     # Nahi kiya, to check karega ki user kis VC me hai.
     vc_to_join = target_vc
-    
+
     if not vc_to_join:
         if interaction.user.voice and interaction.user.voice.channel:
             vc_to_join = interaction.user.voice.channel
         else:
-            return await interaction.followup.send("❌ **Error:** या तो खुद किसी VC में रहो, या `target_vc` ऑप्शन से VC सेलेक्ट करो!", ephemeral=True)
+            return await interaction.followup.send("❌ **Error:** या तो खुद किसी VC में रहो, या 'target_vc' सेलेक्ट करो!", ephemeral=True)
+            
+    # 4. 💎 PREMIUM EMBED (Iske aage ka code tumhara wahi rahega jo pehle tha)
+    # ...
 
     # 4. 💎 PREMIUM EMBED
     embed = discord.Embed(
@@ -4953,7 +4965,7 @@ import asyncio
 import datetime as dt
 
 # ==============================================================================
-# 🦑 THE SQUID DUEL V2 (CUSTOM BULLETS + REAL PUNISHMENTS)
+# 🦑 THE SQUID DUEL V2 (CUSTOM BULLETS + REAL PUNISHMENTS + UI FIXED)
 # ==============================================================================
 
 # --- PUNISHMENT ENGINE (The Front Man's Rules) ---
@@ -5004,15 +5016,39 @@ async def execute_punishment(interaction, loser, level, bet):
 # --- PHASE 3: THE RUSSIAN ROULETTE (DEATH PHASE) ---
 class RouletteView(discord.ui.View):
     def __init__(self, game):
-        super().__init__(timeout=None)
+        super().__init__(timeout=60) # ⏳ FIX: 60 Seconds Timer added!
         self.game = game
         self.loser = game.rps_loser
         self.winner = game.rps_winner
+        self.message = None # To store the message for timeout edits
+
+    async def on_timeout(self):
+        """ 🔥 THE COWARDICE EXECUTION: Agar loser dar ke bhaag jaye! """
+        try: await update_balance(self.winner.id, self.game.bet * 2) # Winner gets pot
+        except: pass
+        
+        # Auto-timeout for running away
+        try: await self.loser.timeout(dt.timedelta(hours=1), reason="Squid Duel: Fled from Roulette")
+        except: pass
+
+        embed = self.get_embed("DEAD")
+        embed.title = "🏃 COWARD ELIMINATED!"
+        embed.description = (
+            f"# 💥 EXECUTION!\n"
+            f"**{self.loser.mention} refused to pull the trigger!**\n"
+            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            f"The Front Man does not tolerate cowardice. You have been shot.\n\n"
+            f"🏆 **WINNER:** {self.winner.mention} (Won `${self.game.bet * 2:,}`)\n"
+            f"⚖️ **PUNISHMENT:** 1 Hour Mute applied."
+        )
+        
+        if self.message:
+            try: await self.message.edit(embed=embed, view=None)
+            except: pass
 
     def get_embed(self, status="WAITING"):
         embed = discord.Embed(title="🔫 THE RUSSIAN ROULETTE", color=0x0A0A0A)
         
-        # 🧠 LIVE PROBABILITY CALCULATOR
         chambers_left = 6 - self.game.current_step
         bullets_left = sum(self.game.chambers[self.game.current_step:])
         death_chance = int((bullets_left / chambers_left) * 100) if chambers_left > 0 else 100
@@ -5026,7 +5062,7 @@ class RouletteView(discord.ui.View):
                 f"> **Pull Number:** `{self.game.current_step + 1}/6`\n"
                 f"> **Bullets Remaining:** `{bullets_left}`\n"
                 f"> **Chances of Death:** `{death_chance}%`\n\n"
-                f"Pick up the gun. Pull the trigger."
+                f"Pick up the gun. Pull the trigger. You have **60 seconds**."
             )
             embed.set_thumbnail(url="https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif")
             
@@ -5053,42 +5089,40 @@ class RouletteView(discord.ui.View):
             
         return embed
 
-    @discord.ui.button(label="PULL TRIGGER", style=discord.ButtonStyle.danger, emoji="🔫")
+    # 🛠️ FIX: Added custom_id to ensure Discord ALWAYS renders the button!
+    @discord.ui.button(label="PULL TRIGGER", style=discord.ButtonStyle.danger, emoji="🔫", custom_id="trigger_pull_btn")
     async def trigger_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.loser.id:
             return await interaction.response.send_message("❌ Bouncer: It's not your turn to die!", ephemeral=True)
             
         await interaction.response.defer()
+        self.stop() # Stop the 60s timeout timer
         for child in self.children: child.disabled = True
         
-        # Suspense...
         suspense_embed = discord.Embed(title="🔫 PULLING THE TRIGGER...", color=0x2b2d31)
         suspense_embed.set_image(url="https://media.tenor.com/KxXW8KIf3SgAAAAC/squid-game-front-man.gif")
         await interaction.edit_original_response(embed=suspense_embed, view=None)
         await asyncio.sleep(4)
 
-        # 🧠 CHECK IF CURRENT CHAMBER HAS A BULLET
         is_bullet = self.game.chambers[self.game.current_step]
 
         if is_bullet:
-            # 💥 DEATH
-            try: await update_balance(self.winner.id, self.game.bet * 2) # Winner gets pot
+            try: await update_balance(self.winner.id, self.game.bet * 2) 
             except: pass
             
             penalty_msg = await execute_punishment(interaction, self.loser, self.game.penalty_lvl, self.game.bet)
             
             final_embed = self.get_embed("DEAD")
             final_embed.description += (
-                f"🏆 **WINNER:** {self.winner.mention} (Won `${self.game.bet * 2:,}`)\n"
+                f"\n🏆 **WINNER:** {self.winner.mention} (Won `${self.game.bet * 2:,}`)\n"
                 f"⚖️ **PUNISHMENT APPLIED:** `{penalty_msg}`"
             )
             await interaction.edit_original_response(embed=final_embed, view=None)
         else:
-            # 💨 SURVIVED
             await interaction.edit_original_response(embed=self.get_embed("SURVIVED"), view=None)
-            self.game.current_step += 1 # Move to the next chamber for the next time!
+            self.game.current_step += 1 
             await asyncio.sleep(4)
-            await self.game.start_rps_phase(interaction) # Loop back to RPS
+            await self.game.start_rps_phase(interaction) 
 
 
 # --- PHASE 2: ROCK PAPER SCISSORS (SKILL PHASE) ---
@@ -5171,11 +5205,9 @@ class SquidGameEngine:
         self.bet = bet
         self.penalty_lvl = penalty_lvl
         
-        # 🧠 DYNAMIC CYLINDER LOGIC
-        # True = Bullet 💥, False = Empty 💨
         self.chambers = [True] * bullets + [False] * (6 - bullets)
-        random.shuffle(self.chambers) # Spin the cylinder!
-        self.current_step = 0 # Starts at index 0, goes up to 5
+        random.shuffle(self.chambers) 
+        self.current_step = 0 
         
         self.rps_winner = None
         self.rps_loser = None
@@ -5187,7 +5219,9 @@ class SquidGameEngine:
 
     async def start_roulette_phase(self, interaction):
         view = RouletteView(self)
-        await interaction.channel.send(embed=view.get_embed("WAITING"), view=view)
+        # 🛠️ FIX: Storing message so the timeout execution can edit it!
+        msg = await interaction.channel.send(embed=view.get_embed("WAITING"), view=view)
+        view.message = msg
 
 
 # --- PHASE 1: LOBBY & CHALLENGE ---
@@ -5249,14 +5283,13 @@ class SquidDuelLobby(discord.ui.View):
 ])
 @check_seized()
 async def squid_duel_cmd(i: discord.Interaction, opponent: discord.Member, bet: int, punishment_level: app_commands.Choice[int], bullets: int = 1):
-    await i.response.defer() # Instant defer to prevent crashes
+    await i.response.defer()
     
     if opponent.bot or opponent.id == i.user.id:
         return await i.followup.send("❌ Invalid target. You can't duel yourself or a bot.", ephemeral=True)
     if bet < 5000:
         return await i.followup.send("❌ Minimum bet is `$5,000`.", ephemeral=True)
     
-    # 🧠 BULLET VALIDATION
     if bullets < 1 or bullets > 5:
         return await i.followup.send("❌ You must load between **1 and 5** bullets in the 6-chamber revolver.", ephemeral=True)
 
@@ -5268,7 +5301,6 @@ async def squid_duel_cmd(i: discord.Interaction, opponent: discord.Member, bet: 
     level_val = punishment_level.value
     lobby = SquidDuelLobby(i.user, opponent, bet, level_val, bullets)
     
-    # Custom Danger Text based on bullets
     danger_txt = "Standard Duel"
     if bullets == 3: danger_txt = "50/50 Bloodbath"
     if bullets >= 4: danger_txt = "Suicide Mission"
@@ -5300,7 +5332,8 @@ async def squid_duel_cmd(i: discord.Interaction, opponent: discord.Member, bet: 
     await i.channel.send(embed=intro)
     await asyncio.sleep(3)
     
-    await game_engine.start_rps_phase(i)                         
+    await game_engine.start_rps_phase(i)
+         
                         
 # ================== SAY COMMAND (WITH IMAGE & LOGS) ==================
 
@@ -6087,7 +6120,9 @@ async def start_hell_heist(interaction, crew):
             is_saved = False
             
             try:
-                res = supabase.table("economy").select("vip_expiry, inventory").eq("user_id", m.id).execute()
+                # 🛠️ THE FIX: Wrapped in db_call! No more Errno 11.
+                res = await db_call(lambda: supabase.table("economy").select("vip_expiry, inventory").eq("user_id", str(m.id)).execute())
+                
                 if res.data:
                     data = res.data[0]
                     inv = data.get('inventory', {}) or {}
@@ -6097,10 +6132,12 @@ async def start_hell_heist(interaction, crew):
                         is_saved = True
                     elif inv.get("life", 0) > 0 and not is_saved:
                         inv["life"] -= 1
-                        supabase.table("economy").update({"inventory": inv}).eq("user_id", m.id).execute()
+                        # 🛠️ THE FIX: Wrapped in db_call!
+                        await db_call(lambda: supabase.table("economy").update({"inventory": inv}).eq("user_id", str(m.id)).execute())
                         status = "💖 **Revived (-1 Life Item)**"
                         is_saved = True
-            except: pass
+            except Exception as e:
+                print(f"Heist Fail DB Error: {e}")
 
             if not is_saved:
                 try: await m.timeout(dt.timedelta(minutes=1), reason="Nightmare Heist Failure")
@@ -6121,7 +6158,6 @@ async def start_hell_heist(interaction, crew):
         
         try: await interaction.edit_original_response(embed=embed, view=None)
         except: pass
-
 
     # ==========================================
     # 💻 STAGE 1: HACKER 
@@ -6293,16 +6329,19 @@ async def start_hell_heist(interaction, crew):
     await view.wait()
     if not view.success: return
 
+    # ... (STAGE 1, 2, 3, 4 wahi same rahenge jo pehle the) ...
+    # Yahan sirf aakhri Victory screen ka DB call fix kar raha hu:
+
     # ==========================================
     # 🏆 LEGENDARY VICTORY SCREEN
     # ==========================================
     payout = 250000 
     for m in crew:
         try:
-            res = supabase.table("economy").select("balance").eq("user_id", m.id).execute()
-            bal = res.data[0]['balance'] if res.data else 0
-            supabase.table("economy").update({"balance": bal + payout}).eq("user_id", m.id).execute()
-        except: pass
+            # 🛠️ THE FIX: Use your awesome update_balance helper directly! It already has db_call.
+            await update_balance(m.id, payout)
+        except Exception as e:
+            print(f"Heist Win DB Error: {e}")
 
     embed = discord.Embed(title="👑 THE PERFECT HEIST", color=0xFFD700)
     embed.description = (
