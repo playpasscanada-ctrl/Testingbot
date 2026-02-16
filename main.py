@@ -446,30 +446,12 @@ async def get_evil_roast_data():
         return f"Error: {e}", f"Error: {e}"
 
 # ================== ASYNC DB WRAPPER (SPEED BOOSTER) ==================
-import asyncio
-
-# ================== ASYNC DB WRAPPER (SPEED BOOSTER & ANTI-CRASH) ==================
+# ================== ASYNC DB WRAPPER (SPEED BOOSTER) ==================
 # Is code ko imports ke neeche aur bot commands se upar rakhein
-async def db_call(func, retries=3, delay=1.5):
-    """
-    Render aur Supabase ke beech ka 'Resource temporarily unavailable' (Errno 11) fix.
-    Agar server busy hoga, toh yeh crash hone ki bajaye wait karke retry karega!
-    """
-    for attempt in range(retries):
-        try:
-            return await asyncio.to_thread(func)
-        except Exception as e:
-            error_str = str(e)
-            # Agar 'Errno 11' ya 'Resource unavailable' aaya, toh retry maro
-            if "Resource temporarily unavailable" in error_str or "Errno 11" in error_str or "Timeout" in error_str:
-                if attempt < retries - 1:
-                    print(f"⚠️ [DB Shield] Supabase is busy. Retrying in {delay}s... (Attempt {attempt+1}/{retries})")
-                    await asyncio.sleep(delay)
-                    continue
-            # Agar koi aur serious error hai, toh use aage bhejo
-            raise e
+async def db_call(func):
+    return await asyncio.to_thread(func)
 
-# ================== 🛠️ ECONOMY HELPERS (ULTRA PREMIUM FIXED) ==================
+# ================== 🛠️ MISSING ECONOMY HELPERS (PASTE AFTER db_call) ==================
 
 # 1. Update Money (Balance add/remove karne ke liye)
 async def update_balance(user_id, amount):
@@ -481,18 +463,14 @@ async def update_balance(user_id, amount):
         if not res.data:
             # Agar user nahi hai, naya banao
             await db_call(lambda: supabase.table("economy").insert({"user_id": uid, "balance": amount, "bank": 0, "inventory": {}}).execute())
-            return amount
         else:
             # Agar hai, to update karo
             current_bal = res.data[0]['balance']
             new_bal = current_bal + amount
             await db_call(lambda: supabase.table("economy").update({"balance": new_bal}).eq("user_id", uid).execute())
-            return new_bal
             
     except Exception as e:
         print(f"💰 Balance Update Error: {e}")
-        # 🛠️ GADBAD FIX: Error ko chupana nahi hai, wapas bhejna hai taaki game crash handle kar sake!
-        raise e 
 
 # 2. Get User Data (Inventory check karne ke liye)
 async def get_data(user_id):
@@ -503,10 +481,8 @@ async def get_data(user_id):
             return res.data[0]
         else:
             return {"balance": 0, "bank": 0, "inventory": {}, "vip_expiry": None}
-    except Exception as e:
-        print(f"⚠️ Get Data Error: {e}")
+    except:
         return {"balance": 0, "bank": 0, "inventory": {}, "vip_expiry": None}
-
 
 # ================== 🛡️ UNIVERSAL PUNISHMENT SYSTEM (ALL GAMES) ==================
 import datetime as dt 
