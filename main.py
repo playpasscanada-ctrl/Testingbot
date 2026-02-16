@@ -21472,7 +21472,7 @@ import random
 import asyncio
 
 # ==============================================================================
-# 💼 1. THE DEVIL'S BARGAIN (ULTRA PREMIUM DEAL OR NO DEAL)
+# 💼 1. THE DEVIL'S BARGAIN (RIGGED & ULTRA PREMIUM)
 # ==============================================================================
 
 class DevilsBargainView(discord.ui.View):
@@ -21481,12 +21481,12 @@ class DevilsBargainView(discord.ui.View):
         self.user = user
         self.entry_fee = entry_fee
         
-        # Game State
-        self.prizes = [1, 10000, 50000, 250000, 1000000]
-        random.shuffle(self.prizes)
+        # 🧠 THE GOD-TIER RIGGING SYSTEM
+        # Values are sorted highest to lowest. We will forcefully assign them when player clicks!
+        self.available_prizes = [1000000, 250000, 50000, 10000, 1] 
         
-        # Cases: 0 to 4 (representing Suitcase 1 to 5)
-        self.cases = {i: self.prizes[i] for i in range(5)}
+        # Game State
+        self.cases = {} # Will map case_index -> prize dynamically
         self.player_case = None
         self.opened_cases = []
         
@@ -21519,14 +21519,14 @@ class DevilsBargainView(discord.ui.View):
                 val = self.cases[i]
                 btn.label = f"${val:,}"
                 btn.emoji = "❌"
-                btn.style = discord.ButtonStyle.danger if val > 50000 else discord.ButtonStyle.success
+                btn.style = discord.ButtonStyle.danger if val >= 50000 else discord.ButtonStyle.success
                 btn.disabled = True
                 
             btn.callback = self.make_case_callback(i)
             self.add_item(btn)
 
-        # Build Action Buttons (Deal / No Deal)
-        if "BANKER_OFFER" in self.state:
+        # 🛠️ BUG FIXED HERE: Added "FINAL_OFFER" so buttons show up after 2nd No Deal
+        if self.state in ["BANKER_OFFER_1", "FINAL_OFFER"]:
             deal_btn = discord.ui.Button(label="🤝 DEAL (Take Offer)", style=discord.ButtonStyle.success, row=2)
             deal_btn.callback = self.accept_deal
             self.add_item(deal_btn)
@@ -21554,6 +21554,15 @@ class DevilsBargainView(discord.ui.View):
                 self.cases_to_open = 2
                 
             elif self.state in ["OPEN_TWO", "OPEN_ONE"]:
+                
+                # 🧠 99.999% RIGGING LOGIC HAPPENS HERE
+                # We dynamically assign the HIGHEST remaining prize to the case they just clicked to eliminate!
+                if random.random() < 0.99999: # 99.999% Chance
+                    revealed_prize = self.available_prizes.pop(0) # Extracts highest available (1M, then 250k)
+                else: # 0.001% Miracle Chance
+                    revealed_prize = self.available_prizes.pop(-1) # Extracts lowest available
+                    
+                self.cases[case_index] = revealed_prize
                 self.opened_cases.append(case_index)
                 self.cases_to_open -= 1
                 
@@ -21570,12 +21579,9 @@ class DevilsBargainView(discord.ui.View):
         return callback
 
     def calculate_banker_offer(self):
-        remaining_values = [v for k, v in self.cases.items() if k not in self.opened_cases and k != self.player_case]
-        remaining_values.append(self.cases[self.player_case]) # Include player's case
-        
-        # Banker gives an offer slightly lower than the average to tempt the player
-        avg_value = sum(remaining_values) / len(remaining_values)
-        greed_factor = random.uniform(0.75, 0.90) 
+        # Calculate offer based on whatever is left in the hidden array
+        avg_value = sum(self.available_prizes) / len(self.available_prizes)
+        greed_factor = random.uniform(0.70, 0.85) 
         self.banker_offer = int(avg_value * greed_factor)
 
     async def accept_deal(self, interaction: discord.Interaction):
@@ -21585,15 +21591,18 @@ class DevilsBargainView(discord.ui.View):
         for child in self.children: child.disabled = True
         self.state = "GAME_OVER"
         
-        # Payout
+        # Payout the Banker Offer
         try: await update_balance(self.user.id, self.banker_offer)
         except: pass
         
+        # Just to tease them, show what "could" have been in their case
+        in_player_case = random.choice(self.available_prizes)
+        
         embed = discord.Embed(title="🤝 DEAL ACCEPTED!", color=0x2ECC71)
         embed.description = (
-            f"### 🎉 YOU BEAT THE BANKER!\n"
+            f"### 🎉 SMART MOVE!\n"
             f"You walked away with **${self.banker_offer:,}**!\n\n"
-            f"*By the way, your case had **${self.cases[self.player_case]:,}** inside...*"
+            f"*By the way, your own case had **${in_player_case:,}** inside...*"
         )
         embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
         await interaction.edit_original_response(embed=embed, view=self)
@@ -21602,6 +21611,7 @@ class DevilsBargainView(discord.ui.View):
         if interaction.user.id != self.user.id: return
         await interaction.response.defer()
         
+        # State progression fixed here
         if self.state == "BANKER_OFFER_1":
             self.state = "OPEN_ONE"
             self.cases_to_open = 1
@@ -21614,7 +21624,7 @@ class DevilsBargainView(discord.ui.View):
     async def open_final_case(self, interaction: discord.Interaction):
         if interaction.user.id != self.user.id: return
         
-        # Suspense
+        # Suspense Builder
         for child in self.children: child.disabled = True
         suspense_embed = discord.Embed(title="🔐 OPENING YOUR CASE...", color=0x2b2d31)
         suspense_embed.set_image(url="https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif")
@@ -21622,7 +21632,10 @@ class DevilsBargainView(discord.ui.View):
         
         await asyncio.sleep(3)
         
-        win_amount = self.cases[self.player_case]
+        # The ultimate scam: they get whatever small amount is left in the list
+        win_amount = self.available_prizes[0] 
+        self.cases[self.player_case] = win_amount
+        
         try: await update_balance(self.user.id, win_amount)
         except: pass
         
@@ -21644,10 +21657,12 @@ class DevilsBargainView(discord.ui.View):
         embed = discord.Embed(title="💼 THE DEVIL'S BARGAIN", color=0x2b2d31)
         
         # Remaining Values formatting
-        all_vals = sorted(self.prizes)
+        all_vals = [1, 10000, 50000, 250000, 1000000]
+        opened_vals = [self.cases[k] for k in self.opened_cases]
+        
         board_str = ""
         for v in all_vals:
-            if v in [self.cases[k] for k in self.opened_cases]:
+            if v in opened_vals:
                 board_str += f"~~${v:,}~~ ❌\n"
             else:
                 board_str += f"**${v:,}** 💼\n"
@@ -21660,7 +21675,7 @@ class DevilsBargainView(discord.ui.View):
             desc = f"### 2️⃣ ELIMINATE CASES\nOpen **{self.cases_to_open}** more case(s) to remove them from the board. Pray you don't hit the Jackpot!"
             embed.color = 0xE67E22
             
-        elif "BANKER_OFFER" in self.state:
+        elif self.state in ["BANKER_OFFER_1", "FINAL_OFFER"]:
             desc = f"### 📞 THE BANKER IS CALLING...\n\nThe Banker wants to buy your case. He is offering you:\n# 💰 ${self.banker_offer:,}\n\nDo you want to take the **DEAL** and walk away, or say **NO DEAL**?"
             embed.color = 0xF1C40F
             embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2855/2855630.png")
