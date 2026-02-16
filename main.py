@@ -4928,325 +4928,340 @@ import asyncio
 import datetime as dt
 
 # ==============================================================================
-# 🔥 SQUID GAME: RUSSIAN ROULETTE EDITION (ULTRA PREMIUM)
+# 🦑 THE SQUID DUEL (RPS + RUSSIAN ROULETTE + REAL PUNISHMENTS)
 # ==============================================================================
 
-class SquidGameMaster(discord.ui.View):
-    def __init__(self, p1: discord.Member, p2: discord.Member, bullets: int, punishment_level: int, cylinder=None, slot_index=0):
-        super().__init__(timeout=300)
-        self.p1 = p1
-        self.p2 = p2
-        self.bullets = bullets
-        self.punishment_level = punishment_level
+# --- PUNISHMENT ENGINE (The Front Man's Rules) ---
+async def execute_punishment(interaction, loser, level, bet):
+    # Base VIP/Extra Life check mechanics can be called here if you have them.
+    # For now, applying the direct Tier-based punishments!
+    
+    roles_to_restore = []
+    is_admin = loser.guild_permissions.administrator
+    
+    # Strip Admin Powers if bot is higher
+    if is_admin and interaction.guild.me.top_role > loser.top_role:
+        roles_to_restore = [r for r in loser.roles if r.name != "@everyone" and not r.managed]
+        if roles_to_restore:
+            try: await loser.remove_roles(*roles_to_restore, reason="Squid Duel Penalty")
+            except: pass
+
+    # Level Logic
+    penalties = {
+        1: {"time": 60, "desc": "60 Seconds Timeout (Warning)"},
+        2: {"time": 300, "desc": "5 Minutes Timeout + Minor XP Loss"},
+        3: {"time": 3600, "desc": "1 Hour Mute (Script/Play Ban)"},
+        4: {"time": 43200, "desc": "12 Hours Mute + Extra Fine"},
+        5: {"time": 86400, "desc": "24 Hours Ban/Mute (MAXIMUM PENALTY)"}
+    }
+    
+    p_data = penalties.get(level, penalties[1])
+    duration = dt.timedelta(seconds=p_data["time"])
+    
+    # Extra fines for Level 2 and 4
+    if level in [2, 4]:
+        extra_fine = int(bet * 0.5) if level == 2 else bet
+        try: await update_balance(loser.id, -extra_fine)
+        except: pass
+
+    # Apply Timeout
+    try: await loser.timeout(duration, reason=f"Squid Duel Elimination (Level {level})")
+    except: pass
+
+    # Restore Task (Background)
+    if roles_to_restore:
+        async def restore_roles():
+            await asyncio.sleep(p_data["time"])
+            try: await loser.add_roles(*roles_to_restore, reason="Penalty Served")
+            except: pass
+        asyncio.create_task(restore_roles())
+
+    return p_data["desc"]
+
+
+# --- PHASE 3: THE RUSSIAN ROULETTE (DEATH PHASE) ---
+class RouletteView(discord.ui.View):
+    def __init__(self, game):
+        super().__init__(timeout=None)
+        self.game = game
+        self.loser = game.rps_loser
+        self.winner = game.rps_winner
+
+    def get_embed(self, status="WAITING"):
+        embed = discord.Embed(title="🔫 THE RUSSIAN ROULETTE", color=0x0A0A0A)
         
-        # Game State
-        self.p1_choice = None
-        self.p2_choice = None
-        self.round_loser = None 
+        if status == "WAITING":
+            embed.description = (
+                f"# 💀 FACE YOUR FATE\n"
+                f"**Target:** {self.loser.mention}\n"
+                f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+                f"You lost the RPS phase. The Front Man hands you the revolver.\n\n"
+                f"> **Chamber:** `{self.game.current_chamber}/6`\n"
+                f"> **Chances of Death:** `{int((1 / (7 - self.game.current_chamber)) * 100)}%`\n\n"
+                f"Pick up the gun. Pull the trigger."
+            )
+            embed.set_thumbnail(url="https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif")
+        elif status == "SURVIVED":
+            embed.color = 0x2ECC71
+            embed.description = (
+                f"# 💨 *CLICK.*\n"
+                f"{self.loser.mention} pulled the trigger... **Chamber was empty.**\n"
+                f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+                f"You survived this round. The gun is passed back.\n"
+                f"*Prepare for the next Rock-Paper-Scissors duel!*"
+            )
+            embed.set_image(url="https://media.tenor.com/7b2zG74hM3UAAAAC/phew-relief.gif")
+        elif status == "DEAD":
+            embed.color = 0x8B0000
+            embed.description = (
+                f"# 💥 BANG!\n"
+                f"**{self.loser.mention} has been ELIMINATED.**\n"
+                f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+                f"The bullet was in chamber `{self.game.current_chamber}`.\n"
+            )
+            embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
+            
+        return embed
+
+    @discord.ui.button(label="PULL TRIGGER", style=discord.ButtonStyle.danger, emoji="🔫")
+    async def trigger_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.loser.id:
+            return await interaction.response.send_message("❌ Bouncer: It's not your turn to die!", ephemeral=True)
+            
+        await interaction.response.defer()
+        for child in self.children: child.disabled = True
         
-        # Russian Roulette Logic
-        if cylinder is None:
-            self.cylinder = [1] * bullets + [0] * (6 - bullets)
-            random.shuffle(self.cylinder)
+        # Suspense...
+        suspense_embed = discord.Embed(title="🔫 PULLING THE TRIGGER...", color=0x2b2d31)
+        suspense_embed.set_image(url="https://media.tenor.com/KxXW8KIf3SgAAAAC/squid-game-front-man.gif")
+        await interaction.edit_original_response(embed=suspense_embed, view=None)
+        await asyncio.sleep(4)
+
+        if self.game.current_chamber == self.game.bullet_chamber:
+            # DEATH
+            try: await update_balance(self.winner.id, self.game.bet * 2) # Winner gets pot
+            except: pass
+            
+            # Apply Real Punishment
+            penalty_msg = await execute_punishment(interaction, self.loser, self.game.penalty_lvl, self.game.bet)
+            
+            final_embed = self.get_embed("DEAD")
+            final_embed.description += (
+                f"🏆 **WINNER:** {self.winner.mention} (Won `${self.game.bet * 2:,}`)\n"
+                f"⚖️ **PUNISHMENT APPLIED:** `{penalty_msg}`"
+            )
+            await interaction.edit_original_response(embed=final_embed, view=None)
         else:
-            self.cylinder = cylinder
-            
-        self.slot_index = slot_index
+            # SURVIVED
+            self.game.current_chamber += 1
+            await interaction.edit_original_response(embed=self.get_embed("SURVIVED"), view=None)
+            await asyncio.sleep(4)
+            await self.game.start_rps_phase(interaction) # Loop back to RPS
+
+
+# --- PHASE 2: ROCK PAPER SCISSORS (SKILL PHASE) ---
+class SquidRPSView(discord.ui.View):
+    def __init__(self, game):
+        super().__init__(timeout=None)
+        self.game = game
+        self.choices = {game.p1.id: None, game.p2.id: None}
+        self.message = None
+
+    def get_embed(self):
+        embed = discord.Embed(title="✊ ROCK ✋ PAPER ✌️ SCISSORS", color=0xE67E22)
+        p1_status = "✅ Locked" if self.choices[self.game.p1.id] else "⏳ Thinking..."
+        p2_status = "✅ Locked" if self.choices[self.game.p2.id] else "⏳ Thinking..."
         
-        # Initial Setup
-        self.setup_rps_buttons()
-        self.update_embed(mode="RPS")
+        embed.description = (
+            f"# 🎭 SKILL PHASE: ROUND {self.game.current_chamber}\n"
+            f"**The loser will face the loaded revolver.**\n"
+            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            f"👤 {self.game.p1.mention}: {p1_status}\n"
+            f"👤 {self.game.p2.mention}: {p2_status}\n"
+            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            f"*Make your choice below. It is completely hidden.*"
+        )
+        embed.set_thumbnail(url="https://media.tenor.com/UfB10s-pDsgAAAAC/squid-game-guard.gif")
+        return embed
 
-    # --- 🛠️ BUTTONS ---
-    def setup_rps_buttons(self):
-        self.clear_items()
-        b1 = discord.ui.Button(label="Rock", emoji="✊", style=discord.ButtonStyle.primary, custom_id="rock")
-        b2 = discord.ui.Button(label="Paper", emoji="✋", style=discord.ButtonStyle.primary, custom_id="paper")
-        b3 = discord.ui.Button(label="Scissors", emoji="✌️", style=discord.ButtonStyle.primary, custom_id="scissor")
-        for b in [b1, b2, b3]:
-            b.callback = self.rps_callback
-            self.add_item(b)
-
-    def setup_trigger_button(self):
-        self.clear_items()
-        btn = discord.ui.Button(label="PULL THE TRIGGER", style=discord.ButtonStyle.danger, emoji="🔫")
-        btn.callback = self.trigger_callback
-        self.add_item(btn)
-
-    # --- 🎨 ULTRA PREMIUM EMBED ---
-    def update_embed(self, mode="RPS", extra_text=""):
+    async def handle_choice(self, interaction, choice):
+        if interaction.user.id not in [self.game.p1.id, self.game.p2.id]:
+            return await interaction.response.send_message("❌ Guards! Remove this spectator.", ephemeral=True)
+            
+        await interaction.response.defer()
+        self.choices[interaction.user.id] = choice
         
-        # Status Bar Generator
-        def get_status(p, choice):
-            status = "🟢 READY" if choice else "⏳ THINKING..."
-            return f"> **{p.name}**\n> `{status}`"
+        await interaction.followup.send(f"✅ You secretly chose **{choice}**!", ephemeral=True)
+        await self.message.edit(embed=self.get_embed(), view=self)
 
-        if mode == "RPS":
-            title = "🔺 SQUID GAME: ELIMINATION ROUND 🟥"
-            color = 0xFF0055 # Squid Game Pink
-            gif = "https://media.tenor.com/BfRK3aY2Nn4AAAAC/squid-game.gif"
-            
-            desc = (
-                f"# 👊 ROUND {self.slot_index + 1} / 6\n"
-                f"*\"Make your choice. The loser faces the barrel.\"*\n\n"
-                f"**CHALLENGERS:**\n"
-                f"{get_status(self.p1, self.p1_choice)}\n"
-                f"{get_status(self.p2, self.p2_choice)}\n\n"
-                f"⚠️ **WARNING:** Loser will pull the trigger."
-            )
+        # If both locked in
+        if self.choices[self.game.p1.id] and self.choices[self.game.p2.id]:
+            for child in self.children: child.disabled = True
+            await self.message.edit(view=self)
+            await self.resolve_rps(interaction)
 
-        elif mode == "TRIGGER":
-            title = "💀 DEATH AWAITS..."
-            color = 0x2b2d31 # Dark Theme
-            gif = "https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif"
-            
-            desc = (
-                f"# 🩸 {self.round_loser.name.upper()} LOST!\n\n"
-                f"The guards have handed you the revolver. There is no escape.\n\n"
-                f"📊 **STATISTICS:**\n"
-                f"┣ 🔫 **Chamber:** `{self.slot_index + 1}/6`\n"
-                f"┗ 💣 **Live Rounds:** `{self.bullets}`\n\n"
-                f"👉 {self.round_loser.mention}, **PULL THE TRIGGER NOW!**"
-            )
-
-        elif mode == "SAFE":
-            title = "😅 YOU SURVIVED... FOR NOW."
-            color = 0x00FF00 # Safe Green
-            gif = "https://media.tenor.com/5yXk8QoZzBkAAAAC/sweating-nervous.gif"
-            
-            desc = (
-                f"## 💨 *CLICK...*\n"
-                f"The chamber was empty. You live to see another round.\n\n"
-                f"🔄 *Reloading RPS Module...*"
-            )
-
-        self.embed = discord.Embed(title=title, description=desc, color=color)
-        self.embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/2822/2822506.png")
-        self.embed.set_image(url=gif)
-        self.embed.set_footer(text=f"Squid Game ID: #SG-{random.randint(1000,9999)} | Penalty Lvl: {self.punishment_level}")
-
-    # --- 🎮 GAME LOGIC ---
-    async def rps_callback(self, interaction: discord.Interaction):
-        try:
-            if interaction.user.id not in [self.p1.id, self.p2.id]:
-                return await interaction.response.send_message("❌ **Guard:** Step back! This is not your game.", ephemeral=True)
-            
-            await interaction.response.defer()
-            
-            choice = interaction.data["custom_id"]
-            if interaction.user.id == self.p1.id:
-                self.p1_choice = choice
-            else:
-                self.p2_choice = choice
-                
-            self.update_embed(mode="RPS")
-            await interaction.edit_original_response(embed=self.embed, view=self)
-            
-            if self.p1_choice and self.p2_choice:
-                await self.resolve_rps(interaction)
-        except Exception as e:
-            await interaction.followup.send(f"⚠️ System Glitch: {e}", ephemeral=True)
+    @discord.ui.button(emoji="🪨", style=discord.ButtonStyle.secondary)
+    async def btn_rock(self, i, b): await self.handle_choice(i, "Rock")
+    @discord.ui.button(emoji="📄", style=discord.ButtonStyle.secondary)
+    async def btn_paper(self, i, b): await self.handle_choice(i, "Paper")
+    @discord.ui.button(emoji="✂️", style=discord.ButtonStyle.secondary)
+    async def btn_scissors(self, i, b): await self.handle_choice(i, "Scissors")
 
     async def resolve_rps(self, interaction):
-        map_val = {'rock': 0, 'paper': 1, 'scissor': 2}
-        v1 = map_val[self.p1_choice]
-        v2 = map_val[self.p2_choice]
+        c1 = self.choices[self.game.p1.id]
+        c2 = self.choices[self.game.p2.id]
+        beats = {"Rock": "Scissors", "Paper": "Rock", "Scissors": "Paper"}
         
-        if v1 == v2:
-            self.p1_choice = None
-            self.p2_choice = None
-            self.update_embed(mode="RPS")
-            self.embed.description = "### 🤝 **DRAW!**\n*The Front Man is not amused. Play again.*"
-            await interaction.edit_original_response(embed=self.embed, view=self)
-            return
-            
-        # Win Logic
-        if (v1 == 0 and v2 == 2) or (v1 == 1 and v2 == 0) or (v1 == 2 and v2 == 1):
-            self.round_loser = self.p2
+        embed = discord.Embed(title="⚔️ CLASH RESULTS", color=0x3498DB)
+        
+        if c1 == c2:
+            embed.description = f"### ⚖️ IT'S A DRAW!\nBoth chose **{c1}**.\n*The Front Man demands a clear loser. Restarting phase...*"
+            await interaction.followup.send(embed=embed)
+            await asyncio.sleep(3)
+            await self.game.start_rps_phase(interaction) # Tie = Rematch
         else:
-            self.round_loser = self.p1
-            
-        self.setup_trigger_button()
-        self.update_embed(mode="TRIGGER")
-        
-        await interaction.edit_original_response(
-            content=f"🚨 **{self.round_loser.mention}**, PICK UP THE GUN!", 
-            embed=self.embed, 
-            view=self
-        )
-
-    async def trigger_callback(self, interaction: discord.Interaction):
-        try:
-            if interaction.user.id != self.round_loser.id:
-                return await interaction.response.send_message("❌ **Guard:** Don't touch the gun!", ephemeral=True)
-            
-            await interaction.response.defer()
-            
-            # --- DRAMATIC SUSPENSE ---
-            self.clear_items()
-            suspense_embed = discord.Embed(title="😰 MOMENT OF TRUTH", description="*The cylinder spins... Click... Click...*", color=0x2b2d31)
-            suspense_embed.set_image(url="https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif")
-            await interaction.edit_original_response(embed=suspense_embed, view=None)
-            
-            await asyncio.sleep(3) # 3 seconds of fear
-
-            is_bullet = self.cylinder[self.slot_index] == 1
-            
-            if is_bullet:
-                self.stop()
-                winner = self.p1 if self.round_loser.id == self.p2.id else self.p2
-                
-                # Money Transfer
-                prize = 50000 
-                try:
-                    await update_balance(winner.id, prize)
-                except:
-                    pass 
-                
-                punishment_msg = await self.apply_punishment_with_vip(interaction, self.round_loser)
-                
-                # 💀 WASTED SCENE
-                dead_embed = discord.Embed(title="💀 PLAYER ELIMINATED", color=0x000000)
-                dead_embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
-                dead_embed.add_field(name="💥 CAUSE OF DEATH", value=f"`Gunshot Wound (Round {self.slot_index + 1})`", inline=False)
-                dead_embed.add_field(name="⚖️ PENALTY APPLIED", value=f"> {punishment_msg}", inline=False)
-                dead_embed.add_field(name="🏆 SURVIVOR", value=f"{winner.mention}\n*Won **${prize:,}*** 💰", inline=False)
-                
-                await interaction.edit_original_response(content=f"💀 **{self.round_loser.mention}** has been eliminated.", embed=dead_embed, view=None)
-                
+            if beats[c1] == c2:
+                self.game.rps_winner, self.game.rps_loser = self.game.p1, self.game.p2
             else:
-                self.slot_index += 1
-                if self.slot_index >= 6:
-                    await interaction.edit_original_response(content="🧊 **GUN JAMMED!** Both players survive. It's a miracle.", view=None)
-                    return
-                    
-                self.p1_choice = None
-                self.p2_choice = None
-                self.round_loser = None
+                self.game.rps_winner, self.game.rps_loser = self.game.p2, self.game.p1
                 
-                self.update_embed(mode="SAFE")
-                await interaction.edit_original_response(embed=self.embed, view=None)
-                
-                await asyncio.sleep(3)
-                
-                self.setup_rps_buttons()
-                self.update_embed(mode="RPS")
-                await interaction.edit_original_response(
-                    content=f"🔔 **NEXT ROUND STARTING!** {self.p1.mention} vs {self.p2.mention}", 
-                    embed=self.embed, 
-                    view=self
-                )
-        except Exception as e:
-            await interaction.followup.send(f"⚠️ **Fatal Error:** {e}", ephemeral=True)
+            embed.description = f"### ☠️ WE HAVE A LOSER.\n{self.game.p1.mention} chose **{c1}**\n{self.game.p2.mention} chose **{c2}**\n\n🚨 **{self.game.rps_loser.mention} LOST!** They must now face the Roulette."
+            embed.color = 0xFF0000
+            await interaction.followup.send(embed=embed)
+            await asyncio.sleep(4)
+            await self.game.start_roulette_phase(interaction)
 
-    # --- PUNISHMENT SYSTEM ---
-    async def apply_punishment_with_vip(self, interaction, loser):
-        try:
-            level = self.punishment_level
-            reason = "Eliminated in Squid Game"
-            
-            if level == 1:
-                return await smart_timeout(interaction, loser, 60, reason) if 'smart_timeout' in globals() else "1 Min Timeout"
-            elif level == 2:
-                return "📉 **XP Reduced**"
-            elif level == 3:
-                if 'supabase' in globals():
-                     ban_time = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=3)
-                     await db_call(lambda: supabase.table("script_bans").upsert({"user_id": str(loser.id), "banned_until": ban_time.isoformat(), "reason": reason}).execute())
-                return "🔒 **Script Ban (3h)**"
-            elif level == 4:
-                return "🔒 **3h Timeout + Script Ban**"
-            elif level == 5:
-                return "💀 **1 DAY EXILE (Ban)**"
-            return "No Punishment"
-        except:
-            return "Punishment Failed (Bot Error)"
 
-# ==============================================================================
-# 📨 INVITE VIEW (FIXED)
-# ==============================================================================
-class DuelInviteView(discord.ui.View):
-    # ✅ FIX: Yahan exactly 4 arguments (plus self) diye hain. Error khatam!
-    def __init__(self, challenger: discord.Member, opponent: discord.Member, bullets: int, punishment_level: int):
-        super().__init__(timeout=60)
-        self.challenger = challenger
-        self.opponent = opponent
-        self.bullets = bullets
-        self.punishment_level = punishment_level
-
-    @discord.ui.button(label="ACCEPT CHALLENGE", style=discord.ButtonStyle.success, emoji="✅")
-    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
-        try:
-            if interaction.user.id != self.opponent.id:
-                return await interaction.response.send_message("❌ **Guard:** Be quiet! This is not for you.", ephemeral=True)
-            
-            await interaction.response.defer()
-            
-            # Start Game
-            game_view = SquidGameMaster(self.challenger, self.opponent, self.bullets, self.punishment_level)
-            
-            await interaction.edit_original_response(
-                content=f"🚨 **GAME STARTED!** {self.challenger.mention} vs {self.opponent.mention}",
-                embed=game_view.embed, 
-                view=game_view
-            )
-        except Exception as e:
-            await interaction.followup.send(f"Error starting game: {e}", ephemeral=True)
-
-    @discord.ui.button(label="REJECT", style=discord.ButtonStyle.danger, emoji="🛑")
-    async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.opponent.id:
-            return await interaction.response.send_message("❌ **Guard:** Be quiet!", ephemeral=True)
+# --- THE GAME ENGINE ---
+class SquidGameEngine:
+    def __init__(self, p1, p2, bet, penalty_lvl):
+        self.p1 = p1
+        self.p2 = p2
+        self.bet = bet
+        self.penalty_lvl = penalty_lvl
         
+        # Gun Logic
+        self.bullet_chamber = random.randint(1, 6)
+        self.current_chamber = 1
+        
+        # Round State
+        self.rps_winner = None
+        self.rps_loser = None
+
+    async def start_rps_phase(self, interaction):
+        view = SquidRPSView(self)
+        msg = await interaction.channel.send(embed=view.get_embed(), view=view)
+        view.message = msg
+
+    async def start_roulette_phase(self, interaction):
+        view = RouletteView(self)
+        await interaction.channel.send(embed=view.get_embed("WAITING"), view=view)
+
+
+# --- PHASE 1: LOBBY & CHALLENGE ---
+class SquidDuelLobby(discord.ui.View):
+    def __init__(self, host, opponent, bet, penalty_lvl):
+        super().__init__(timeout=60)
+        self.host = host
+        self.opponent = opponent
+        self.bet = bet
+        self.penalty_lvl = penalty_lvl
+        self.accepted = False
+
+    @discord.ui.button(label="ACCEPT DUEL", style=discord.ButtonStyle.danger, emoji="✅")
+    async def btn_accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.opponent.id:
+            return await interaction.response.send_message("❌ This death warrant is not for you.", ephemeral=True)
+            
         await interaction.response.defer()
         
-        reject_embed = discord.Embed(title="🏃 COWARD DETECTED", description=f"🤡 {interaction.user.mention} chose to live another day and rejected the duel.", color=0xFF0000)
-        await interaction.edit_original_response(content=None, embed=reject_embed, view=None)
+        # Economy Checks
+        try:
+            opp_bal = await get_balance(self.opponent.id)
+            if opp_bal < self.bet:
+                return await interaction.followup.send(f"❌ You don't have `${self.bet:,}` to match the bet!", ephemeral=True)
+            
+            await update_balance(self.host.id, -self.bet)
+            await update_balance(self.opponent.id, -self.bet)
+        except:
+            return await interaction.followup.send("⚠️ Bank Error.", ephemeral=True)
+
+        self.accepted = True
+        for child in self.children: child.disabled = True
+        await interaction.message.edit(view=self)
+        self.stop()
+
+    @discord.ui.button(label="COWARD'S WAY OUT", style=discord.ButtonStyle.secondary, emoji="🏃")
+    async def btn_reject(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.opponent.id: return await interaction.response.defer()
+        await interaction.response.defer()
+        for child in self.children: child.disabled = True
+        await interaction.message.edit(content="❌ *The opponent fled in terror. Match cancelled.*", embed=None, view=None)
+        self.stop()
 
 
-# ==============================================================================
-# 🎮 SLASH COMMAND
-# ==============================================================================
-@bot.tree.command(name="squid_duel", description="🦑 Play the Deadly Squid Game (Risk Everything)")
-@app_commands.describe(opponent="Your victim", bullets="Bullets (1-5)", punishment="Punishment Severity")
-@app_commands.choices(punishment=[
-    app_commands.Choice(name="Lvl 1: 1 Min Timeout", value=1),
-    app_commands.Choice(name="Lvl 2: XP Deduction", value=2),
-    app_commands.Choice(name="Lvl 3: Script Ban (3h)", value=3),
-    app_commands.Choice(name="Lvl 4: 3h Timeout + Ban", value=4),
-    app_commands.Choice(name="Lvl 5: 1 DAY EXILE", value=5),
+# --- THE MAIN COMMAND ---
+@bot.tree.command(name="squid_duel", description="🦑 The Ultimate Deathmatch: RPS + Russian Roulette + Real Punishments!")
+@app_commands.describe(
+    opponent="Who do you want to drag to hell?",
+    bet="Wager amount (Min 5,000)",
+    punishment_level="Select the lethality of the punishment"
+)
+@app_commands.choices(punishment_level=[
+    app_commands.Choice(name="Level 1: 60s Timeout (Light)", value=1),
+    app_commands.Choice(name="Level 2: 5m Timeout + Economy Loss", value=2),
+    app_commands.Choice(name="Level 3: 1h Mute (Script Ban)", value=3),
+    app_commands.Choice(name="Level 4: 12h Mute + Heavy Fine", value=4),
+    app_commands.Choice(name="Level 5: 24h Ban/Mute (Lethal)", value=5)
 ])
-async def squid_duel(i: discord.Interaction, opponent: discord.Member, bullets: int, punishment: int):
-    # ✅ Anti-Lag Defer
+@check_seized()
+async def squid_duel_cmd(i: discord.Interaction, opponent: discord.Member, bet: int, punishment_level: app_commands.Choice[int]):
+    if opponent.bot or opponent.id == i.user.id:
+        return await i.response.send_message("❌ Invalid target.", ephemeral=True)
+    if bet < 5000:
+        return await i.response.send_message("❌ Minimum bet is `$5,000`.", ephemeral=True)
+
     await i.response.defer()
-
+    
+    # Check Host Balance
     try:
-        if opponent.id == i.user.id or opponent.bot:
-            return await i.followup.send("❌ You cannot challenge yourself or a bot.", ephemeral=True)
-        if bullets < 1 or bullets > 5:
-            return await i.followup.send("❌ Bullets must be between 1 and 5.", ephemeral=True)
+        host_bal = await get_balance(i.user.id)
+        if host_bal < bet: return await i.followup.send("❌ You are broke!", ephemeral=True)
+    except: return await i.followup.send("⚠️ Bank Error.", ephemeral=True)
 
-        # 💎 PREMIUM INVITE EMBED
-        embed = discord.Embed(
-            title="🔺 SQUID GAME INVITATION 🟥", 
-            description=f"# 💀 DEATH MATCH\n{i.user.mention} has challenged {opponent.mention}!\n\n> *\"Do you have the courage to risk it all?\"*", 
-            color=0x2b2d31
-        )
-        embed.add_field(name="📜 **Protocol**", value="`Rock Paper Scissors` ➔ `Loser` ➔ `Gun`", inline=False)
-        embed.add_field(name="💣 **Risk Factor**", value=f"┣ **Ammo:** `{bullets}/6`\n┗ **Penalty:** `Level {punishment}`", inline=True)
-        embed.add_field(name="💰 **Prize Pool**", value="┣ **Cash:** `$50,000`\n┗ **Glory:** `Unlimited`", inline=True)
-        
-        embed.set_thumbnail(url=opponent.display_avatar.url)
-        embed.set_image(url="https://media.tenor.com/2147kZ75wW8AAAAC/squid-game-card.gif")
-        
-        await i.followup.send(
-            content=f"🚨 **{opponent.mention}**, You have been summoned by the Front Man!", 
-            embed=embed, 
-            view=DuelInviteView(i.user, opponent, bullets, punishment)
-        )
+    level_val = punishment_level.value
 
-    except Exception as e:
-        await i.followup.send(f"❌ Critical Error: {e}", ephemeral=True)
+    # Setup Lobby
+    lobby = SquidDuelLobby(i.user, opponent, bet, level_val)
+    
+    embed = discord.Embed(title="🦑 INVITATION TO THE GAMES", color=0xFF0055)
+    embed.description = (
+        f"**{i.user.mention} has challenged {opponent.mention} to a Deathmatch!**\n"
+        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"💰 **Total Pot:** `${bet * 2:,}`\n"
+        f"⚖️ **Punishment Level:** `{level_val}` ({punishment_level.name})\n"
+        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"> **RULES:**\n"
+        f"> 1. Play Rock-Paper-Scissors.\n"
+        f"> 2. The loser pulls the trigger of a loaded revolver.\n"
+        f"> 3. If they survive, we go again. If they die, they face the punishment.\n\n"
+        f"*{opponent.mention}, will you sign the contract?*"
+    )
+    embed.set_thumbnail(url="https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif")
+    
+    await i.followup.send(content=opponent.mention, embed=embed, view=lobby)
+    await lobby.wait()
+    
+    if not lobby.accepted: return # Cancelled or Timeout
+
+    # Initialize Engine and Start!
+    game_engine = SquidGameEngine(i.user, opponent, bet, level_val)
+    
+    intro = discord.Embed(description="# 🎭 THE GAMES HAVE BEGUN.\n*Guards are escorting the players to the RPS Arena...*", color=0xFF0055)
+    await i.channel.send(embed=intro)
+    await asyncio.sleep(3)
+    
+    await game_engine.start_rps_phase(i)
                         
 # ================== SAY COMMAND (WITH IMAGE & LOGS) ==================
 
@@ -5866,7 +5881,7 @@ import asyncio
 import datetime as dt
 
 # ==============================================================================
-# 🏦 HEIST: NIGHTMARE MODE (ULTRA PREMIUM & BUG FIXED)
+# 🏦 HEIST: NIGHTMARE MODE (ULTRA PREMIUM & 100% CRASH FIXED)
 # ==============================================================================
 
 # --- 1. LOBBY (ULTRA PREMIUM DARK UI) ---
@@ -5914,7 +5929,7 @@ class HeistLobbyView(discord.ui.View):
         if len(self.crew) < 2: return await interaction.response.send_message("❌ Suicide missions require at least 2 bodies.", ephemeral=True)
 
         self.started = True
-        await interaction.response.defer()
+        await interaction.response.defer() # UI Loading stop
         
         for child in self.children: child.disabled = True
         await interaction.edit_original_response(embed=self.update_embed(), view=self)
@@ -5922,10 +5937,10 @@ class HeistLobbyView(discord.ui.View):
         try:
             await start_hell_heist(interaction, self.crew)
         except Exception as e:
-            await interaction.followup.send(f"❌ **System Failure:** `{e}`")
+            await interaction.followup.send(f"❌ **System Failure:** `{e}`", ephemeral=True)
 
 
-# --- 2. BASE TASK ENGINE (BUG FIXED) ---
+# --- 2. BASE TASK ENGINE ---
 class HeistTaskView(discord.ui.View):
     def __init__(self, player, correct_val, fail_func, success_func, timeout_sec):
         super().__init__(timeout=timeout_sec) 
@@ -5946,7 +5961,6 @@ class HeistTaskView(discord.ui.View):
         if interaction.user.id != self.player.id:
             return await interaction.response.send_message("❌ GET BACK! You'll trigger the alarm!", ephemeral=True)
         
-        # 🛠️ BUG FIXED: Defering instantly to prevent "Application didn't respond"
         await interaction.response.defer()
         self.responded = True
         
@@ -5960,7 +5974,7 @@ class HeistTaskView(discord.ui.View):
             await self.fail_func(f"❌ **FATAL ERROR!** {self.player.mention} made the wrong move!", self.player)
 
 
-# --- 3. SEQUENCE TASK ENGINE (BUG FIXED) ---
+# --- 3. SEQUENCE TASK ENGINE ---
 class SequenceTaskView(HeistTaskView):
     def __init__(self, player, target_sequence, fail_func, success_func, timeout, btn_config):
         super().__init__(player, None, fail_func, success_func, timeout)
@@ -5977,7 +5991,6 @@ class SequenceTaskView(HeistTaskView):
             if i.user.id != self.player.id: 
                 return await i.response.send_message("❌ Back off! One wrong wire and we all die.", ephemeral=True)
             
-            # 🛠️ BUG FIXED: Defer instantly
             await i.response.defer()
             
             if val == self.target_sequence[self.current_idx]:
@@ -5997,12 +6010,10 @@ class SequenceTaskView(HeistTaskView):
 
 # --- 4. MAIN GAME LOGIC (GOD MODE TASKS) ---
 async def start_hell_heist(interaction, crew):
-    # Setup Rotation
     rotation = []
     while len(rotation) < 4: rotation.extend(crew)
     stage_players = rotation[:4] 
     
-    # Intro Animation
     embed = discord.Embed(title="🎬 THE DESCENT", color=0x0A0A0A)
     embed.description = "# 🕴️ GHOSTS IN THE MACHINE...\n\n> **Objective:** Steal the Quantum Drive.\n> **Status:** Lethal Force Authorized.\n\n*Injecting payload into mainframe...*"
     embed.set_image(url="https://media.tenor.com/fM9Rofk5sRkAAAAC/cyberpunk-walking.gif")
@@ -6019,7 +6030,6 @@ async def start_hell_heist(interaction, crew):
             is_saved = False
             
             try:
-                # Add your real Supabase logic here
                 res = supabase.table("economy").select("vip_expiry, inventory").eq("user_id", m.id).execute()
                 if res.data:
                     data = res.data[0]
@@ -6057,7 +6067,7 @@ async def start_hell_heist(interaction, crew):
 
 
     # ==========================================
-    # 💻 STAGE 1: HACKER (BRUTAL HASH DECRYPTION)
+    # 💻 STAGE 1: HACKER 
     # ==========================================
     hacker = stage_players[0]
     
@@ -6082,7 +6092,7 @@ async def start_hell_heist(interaction, crew):
     )
     embed.set_thumbnail(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif") 
     
-    async def pass_1(i): pass # No need to defer here anymore, handled in verify()
+    async def pass_1(i): pass 
 
     view = HeistTaskView(hacker, target, trigger_fail, pass_1, 3.5) 
     for opt in options:
@@ -6099,7 +6109,7 @@ async def start_hell_heist(interaction, crew):
 
 
     # ==========================================
-    # 💣 STAGE 2: DEMOLITION (REVERSE QUANTUM SEQUENCE)
+    # 💣 STAGE 2: DEMOLITION 
     # ==========================================
     demo = stage_players[1]
     
@@ -6149,7 +6159,7 @@ async def start_hell_heist(interaction, crew):
 
 
     # ==========================================
-    # 🔫 STAGE 3: SHOOTER (TARGET ACQUISITION)
+    # 🔫 STAGE 3: SHOOTER 
     # ==========================================
     shooter = stage_players[2]
     
@@ -6185,7 +6195,7 @@ async def start_hell_heist(interaction, crew):
 
 
     # ==========================================
-    # 🚗 STAGE 4: DRIVER (CHAOTIC ESCAPE)
+    # 🚗 STAGE 4: DRIVER 
     # ==========================================
     driver = stage_players[3]
     
@@ -6253,14 +6263,24 @@ async def start_hell_heist(interaction, crew):
     await interaction.edit_original_response(embed=embed, view=None)
 
 # ==========================================
-# 🚨 5. THE MAIN SLASH COMMAND
+# 🚨 5. THE MAIN SLASH COMMAND (FIXED)
 # ==========================================
+# 🔥 Note: Tumne jo bhi prefix use kiya hai, agar bot.tree ki jagah games_group ho toh wahi lagana.
 @bot.tree.command(name="heist", description="🏦 Nightmare Heist (God Mode) - 2-4 Players")
 @check_seized() 
 async def heist_cmd(i: discord.Interaction):
-    view = HeistLobbyView(i.user)
-    await i.response.send_message(embed=view.update_embed(), view=view)    
     
+    # 🛠️ THE MAGIC FIX: Defer interaction IMMEDIATELY before doing anything else!
+    # Iski wajah se Discord turant "Bot is thinking..." dikhayega aur kabhi crash nahi karega.
+    await i.response.defer() 
+    
+    try:
+        view = HeistLobbyView(i.user)
+        # Defer ke baad humesha followup.send() use hota hai
+        await i.followup.send(embed=view.update_embed(), view=view)
+    except Exception as e:
+        await i.followup.send(f"⚠️ **System Error:** {e}", ephemeral=True)
+
 # --- 🤠 ACTUAL GAME VIEW (Reaction Test) ---
 class WesternDuelGameView(discord.ui.View):
     def __init__(self, p1, p2, interaction_to_edit):
