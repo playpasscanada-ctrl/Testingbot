@@ -5865,6 +5865,10 @@ import random
 import asyncio
 import datetime as dt
 
+# ==============================================================================
+# 🏦 HEIST: NIGHTMARE MODE (ULTRA PREMIUM & BUG FIXED)
+# ==============================================================================
+
 # --- 1. LOBBY (ULTRA PREMIUM DARK UI) ---
 class HeistLobbyView(discord.ui.View):
     def __init__(self, leader):
@@ -5878,20 +5882,20 @@ class HeistLobbyView(discord.ui.View):
         
         embed = discord.Embed(title="☠️ PROJECT: NIGHTMARE PROTOCOL", color=0x0A0A0A)
         embed.description = (
-            "# ▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
             "### 🗄️ TOP SECRET DOSSIER\n"
             "```yaml\n"
             "[SECURITY]: OMNICRON-LEVEL\n"
             "[SURVIVAL]: < 0.01%\n"
-            "[PENALTY]:  SQUAD WIPE & MUTE\n"
+            "[PENALTY]:  SQUAD WIPE & FULL MUTE\n"
             "```\n"
-            "▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-            "💎 **PAYOUT:** `$1,000,000` (Split)\n"
-            "🛡️ **VIP PERKS:** Active (Life Saver)\n"
-            "▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+            "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            "💎 **PAYOUT:** `$1,000,000` (Split among survivors)\n"
+            "🛡️ **VIP PERKS:** Active (Life Saver bypass enabled)\n"
+            "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
         )
-        embed.add_field(name=f"👥 DEATH SQUAD ({len(self.crew)}/4)", value=crew_list if self.crew else "Waiting for ghosts...", inline=False)
-        embed.set_image(url="https://media.tenor.com/2jK3Y1s3CqAAAAAC/payday-dallas.gif") 
+        embed.add_field(name=f"👥 DEATH SQUAD ({len(self.crew)}/4)", value=crew_list if self.crew else "> Waiting for ghosts...", inline=False)
+        embed.set_thumbnail(url="https://media.tenor.com/2jK3Y1s3CqAAAAAC/payday-dallas.gif") 
         embed.set_footer(text="⚠️ SYNDICATE WARNING: DO NOT PROCEED IF YOU VALUE YOUR LIFE.")
         return embed
 
@@ -5918,10 +5922,10 @@ class HeistLobbyView(discord.ui.View):
         try:
             await start_hell_heist(interaction, self.crew)
         except Exception as e:
-            await interaction.followup.send(f"❌ System Failure: {e}")
+            await interaction.followup.send(f"❌ **System Failure:** `{e}`")
 
 
-# --- 2. BASE TASK ENGINE ---
+# --- 2. BASE TASK ENGINE (BUG FIXED) ---
 class HeistTaskView(discord.ui.View):
     def __init__(self, player, correct_val, fail_func, success_func, timeout_sec):
         super().__init__(timeout=timeout_sec) 
@@ -5942,6 +5946,8 @@ class HeistTaskView(discord.ui.View):
         if interaction.user.id != self.player.id:
             return await interaction.response.send_message("❌ GET BACK! You'll trigger the alarm!", ephemeral=True)
         
+        # 🛠️ BUG FIXED: Defering instantly to prevent "Application didn't respond"
+        await interaction.response.defer()
         self.responded = True
         
         if answer == self.correct_val:
@@ -5954,7 +5960,7 @@ class HeistTaskView(discord.ui.View):
             await self.fail_func(f"❌ **FATAL ERROR!** {self.player.mention} made the wrong move!", self.player)
 
 
-# --- 3. SEQUENCE TASK ENGINE ---
+# --- 3. SEQUENCE TASK ENGINE (BUG FIXED) ---
 class SequenceTaskView(HeistTaskView):
     def __init__(self, player, target_sequence, fail_func, success_func, timeout, btn_config):
         super().__init__(player, None, fail_func, success_func, timeout)
@@ -5968,7 +5974,11 @@ class SequenceTaskView(HeistTaskView):
 
     def make_callback(self, val):
         async def cb(i):
-            if i.user.id != self.player.id: return await i.response.send_message("❌ Back off! One wrong wire and we all die.", ephemeral=True)
+            if i.user.id != self.player.id: 
+                return await i.response.send_message("❌ Back off! One wrong wire and we all die.", ephemeral=True)
+            
+            # 🛠️ BUG FIXED: Defer instantly
+            await i.response.defer()
             
             if val == self.target_sequence[self.current_idx]:
                 self.current_idx += 1
@@ -5977,8 +5987,6 @@ class SequenceTaskView(HeistTaskView):
                     self.success = True
                     self.stop()
                     await self.success_func(i)
-                else:
-                    await i.response.defer()
             else:
                 self.responded = True
                 self.success = False
@@ -5996,7 +6004,7 @@ async def start_hell_heist(interaction, crew):
     
     # Intro Animation
     embed = discord.Embed(title="🎬 THE DESCENT", color=0x0A0A0A)
-    embed.description = "# 🕴️ GHOSTS IN THE MACHINE...\n\n**Objective:** Steal the Quantum Drive.\n**Status:** Lethal Force Authorized."
+    embed.description = "# 🕴️ GHOSTS IN THE MACHINE...\n\n> **Objective:** Steal the Quantum Drive.\n> **Status:** Lethal Force Authorized.\n\n*Injecting payload into mainframe...*"
     embed.set_image(url="https://media.tenor.com/fM9Rofk5sRkAAAAC/cyberpunk-walking.gif")
     
     try: await interaction.edit_original_response(embed=embed, view=None)
@@ -6007,22 +6015,23 @@ async def start_hell_heist(interaction, crew):
     async def trigger_fail(reason, culprit):
         report = []
         for m in crew:
-            status = "💀 **Arrested / Muted**"
+            status = "💀 **Arrested & Muted**"
             is_saved = False
             
             try:
+                # Add your real Supabase logic here
                 res = supabase.table("economy").select("vip_expiry, inventory").eq("user_id", m.id).execute()
                 if res.data:
                     data = res.data[0]
                     inv = data.get('inventory', {}) or {}
                     
                     if data.get('vip_expiry'):
-                        status = "🛡️ **Ghost Protocol (VIP)**"
+                        status = "🛡️ **Ghost Protocol (VIP Bypassed)**"
                         is_saved = True
                     elif inv.get("life", 0) > 0 and not is_saved:
                         inv["life"] -= 1
                         supabase.table("economy").update({"inventory": inv}).eq("user_id", m.id).execute()
-                        status = "💖 **Revived (-1 Life)**"
+                        status = "💖 **Revived (-1 Life Item)**"
                         is_saved = True
             except: pass
 
@@ -6030,21 +6039,21 @@ async def start_hell_heist(interaction, crew):
                 try: await m.timeout(dt.timedelta(minutes=1), reason="Nightmare Heist Failure")
                 except: status = "🤡 **Arrested (Bot Missing Perms)**"
             
-            report.append(f"> {m.mention}: {status}")
+            report.append(f"> 👤 {m.mention} ➔ {status}")
 
         embed = discord.Embed(title="🩸 OPERATION FAILED", color=0x8B0000)
         embed.description = (
             f"# ❌ SQUAD WIPED!\n"
-            f"**CAUSE:** {reason}\n"
-            f"**LIABILITY:** {culprit.mention}\n"
-            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-            f"**AFTERMATH REPORT:**\n"
+            f"> **CAUSE:** {reason}\n"
+            f"> **LIABILITY:** {culprit.mention}\n"
+            f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            f"### 📋 AFTERMATH REPORT:\n"
             f"{chr(10).join(report)}"
         )
         embed.set_image(url="https://media.tenor.com/1-11Yd6_QpYAAAAC/explosion-blast.gif")
         
         try: await interaction.edit_original_response(embed=embed, view=None)
-        except: await interaction.followup.send(embed=embed)
+        except: pass
 
 
     # ==========================================
@@ -6052,7 +6061,6 @@ async def start_hell_heist(interaction, crew):
     # ==========================================
     hacker = stage_players[0]
     
-    # Generate confusing identical strings
     chars = "Il1O08B"
     target = "".join(random.choices(chars, k=7))
     options = [target]
@@ -6064,19 +6072,19 @@ async def start_hell_heist(interaction, crew):
     embed = discord.Embed(title="💻 STAGE 1: MAINFRAME HACK", color=0x00FF00)
     embed.description = (
         f"# 🔐 DECRYPT THE HASH\n"
-        f"👤 **Hacker:** {hacker.mention}\n"
-        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-        f"Select the exact matching security key:\n\n"
+        f"**Hacker Assigned:** {hacker.mention}\n"
+        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"Select the exact matching security key from the terminal:\n\n"
         f"```yaml\n"
-        f"TARGET: [ {target} ]\n"
+        f"TARGET HASH: [ {target} ]\n"
         f"```\n"
-        f"*(Self-Destruct in 3.5 seconds...)*"
+        f"⏳ *(Self-Destruct in 3.5 seconds...)*"
     )
-    embed.set_image(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif") 
+    embed.set_thumbnail(url="https://media.tenor.com/GfSX-u7_NSAAAAAC/coding-hacker.gif") 
     
-    async def pass_1(i): await i.response.defer()
+    async def pass_1(i): pass # No need to defer here anymore, handled in verify()
 
-    view = HeistTaskView(hacker, target, trigger_fail, pass_1, 3.5) # INSANE 3.5 Seconds
+    view = HeistTaskView(hacker, target, trigger_fail, pass_1, 3.5) 
     for opt in options:
         btn = discord.ui.Button(label=opt, style=discord.ButtonStyle.secondary)
         btn.callback = lambda i, o=opt: view.verify(i, o)
@@ -6086,7 +6094,7 @@ async def start_hell_heist(interaction, crew):
     await view.wait()
     if not view.success: return 
 
-    await interaction.edit_original_response(embed=discord.Embed(description="# ✅ FIREWALL SHATTERED.\n*Moving to the Vault...*", color=0x00FF00), view=None)
+    await interaction.edit_original_response(embed=discord.Embed(description="# ✅ FIREWALL SHATTERED.\n> *Moving to the Vault...*", color=0x00FF00), view=None)
     await asyncio.sleep(2)
 
 
@@ -6096,30 +6104,30 @@ async def start_hell_heist(interaction, crew):
     demo = stage_players[1]
     
     wires = ["🔴", "🔵", "🟢", "🟡"]
-    seq = random.choices(wires, k=6) # 6 Wires with repeats
+    seq = random.choices(wires, k=6) 
     
     embed = discord.Embed(title="💣 STAGE 2: QUANTUM THERMITE", color=0xFFA500)
     embed.description = (
         f"# 🧠 MEMORY OVERLOAD\n"
-        f"👤 **Demolition:** {demo.mention}\n"
-        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"**Demolition Expert:** {demo.mention}\n"
+        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
         f"**MEMORIZE THIS SEQUENCE:**\n\n"
-        f"# {' '.join(seq)}\n\n"
-        f"*(Detonator arms in 3.5s...)*"
+        f"> {' '.join(seq)}\n\n"
+        f"⏳ *(Detonator arms in 3.5s...)*"
     )
-    embed.set_image(url="https://media.tenor.com/fJqL8Yg9qQoAAAAC/bomb-timer.gif") 
+    embed.set_thumbnail(url="https://media.tenor.com/fJqL8Yg9qQoAAAAC/bomb-timer.gif") 
     
     await interaction.edit_original_response(embed=embed, view=None)
-    await asyncio.sleep(3.5) # Brutal memorize time
+    await asyncio.sleep(3.5) 
 
     embed.description = (
         f"# ✂️ CUT THE WIRES!\n"
-        f"**{demo.mention}, CUT THEM IN __REVERSE__ ORDER!**\n"
-        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-        f"*(Hurry! You have 6 seconds!)*"
+        f"🚨 **{demo.mention}, CUT THEM IN __REVERSE__ ORDER!** 🚨\n"
+        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"⏳ *(Hurry! You have 6 seconds!)*"
     )
     
-    async def pass_2(i): await i.response.defer()
+    async def pass_2(i): pass
 
     btn_conf = [
         ("RED", discord.ButtonStyle.danger, "🔴"),
@@ -6129,7 +6137,6 @@ async def start_hell_heist(interaction, crew):
     ]
     
     color_map = {"🔴":"RED", "🔵":"BLUE", "🟢":"GREEN", "🟡":"YELLOW"}
-    # REVERSE THE SEQUENCE!
     target_labels = [color_map[s] for s in seq[::-1]]
 
     view = SequenceTaskView(demo, target_labels, trigger_fail, pass_2, 6.0, btn_conf)
@@ -6137,7 +6144,7 @@ async def start_hell_heist(interaction, crew):
     await view.wait()
     if not view.success: return
 
-    await interaction.edit_original_response(embed=discord.Embed(description="# ✅ VAULT BREACHED.\n*Grab the loot! Swat is here!*", color=0xFFA500), view=None)
+    await interaction.edit_original_response(embed=discord.Embed(description="# ✅ VAULT BREACHED.\n> *Grab the loot! Swat is here!*", color=0xFFA500), view=None)
     await asyncio.sleep(2)
 
 
@@ -6149,21 +6156,21 @@ async def start_hell_heist(interaction, crew):
     embed = discord.Embed(title="🔫 STAGE 3: LETHAL FORCE", color=0xFF0000)
     embed.description = (
         f"# 👁️ SNIPER OVERWATCH\n"
-        f"👤 **Shooter:** {shooter.mention}\n"
-        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"**Shooter:** {shooter.mention}\n"
+        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
         f"**HOSTAGES INTERMIXED WITH GUARDS.**\n"
-        f"Shoot the **VIP GUARD** (`🕴️`). DO NOT hit civilians (`🧍‍♂️`)!\n\n"
-        f"*(Target moving in 2.5 seconds!)*"
+        f"> Shoot the **VIP GUARD** (`🕴️`).\n"
+        f"> DO NOT hit civilians (`🧍‍♂️`)!\n\n"
+        f"⏳ *(Target moving in 2.5 seconds!)*"
     )
-    embed.set_image(url="https://media.tenor.com/AMnQd8r8ZtAAAAAC/sniper-scope.gif") 
+    embed.set_thumbnail(url="https://media.tenor.com/AMnQd8r8ZtAAAAAC/sniper-scope.gif") 
     
-    async def pass_3(i): await i.response.defer()
-    view = HeistTaskView(shooter, "VIP", trigger_fail, pass_3, 2.5) # INSANE 2.5 SECONDS
+    async def pass_3(i): pass
+    view = HeistTaskView(shooter, "VIP", trigger_fail, pass_3, 2.5) 
     
-    # Traps
     btns = [("🧍‍♂️", "CIV", discord.ButtonStyle.secondary)] * 3 + [("🕴️", "VIP", discord.ButtonStyle.danger)]
     random.shuffle(btns)
-    
+
     for lbl, val, sty in btns:
         b = discord.ui.Button(label=lbl, style=sty)
         b.callback = lambda i, v=val: view.verify(i, v)
@@ -6173,7 +6180,7 @@ async def start_hell_heist(interaction, crew):
     await view.wait()
     if not view.success: return
 
-    await interaction.edit_original_response(embed=discord.Embed(description="# ✅ TARGET ELIMINATED.\n*Get to the extraction point!*", color=0xFF0000), view=None)
+    await interaction.edit_original_response(embed=discord.Embed(description="# ✅ TARGET ELIMINATED.\n> *Get to the extraction point!*", color=0xFF0000), view=None)
     await asyncio.sleep(2)
 
 
@@ -6192,17 +6199,16 @@ async def start_hell_heist(interaction, crew):
     embed = discord.Embed(title="🚗 STAGE 4: HIGHWAY TO HELL", color=0x3498DB)
     embed.description = (
         f"# 🚨 EVASIVE MANEUVER\n"
-        f"👤 **Driver:** {driver.mention}\n"
-        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-        f"**SWAT RADIO:** *\"{scene['desc']}\"*\n\n"
-        f"**REACT IMMEDIATELY!** (2.0s)"
+        f"**Getaway Driver:** {driver.mention}\n"
+        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"📻 **SWAT RADIO:** *\"{scene['desc']}\"*\n\n"
+        f"**REACT IMMEDIATELY!** ⏳ (2.0s)"
     )
-    embed.set_image(url="https://media.tenor.com/8QG3y-h0kFMAAAAC/need-for-speed-car-chase.gif")
+    embed.set_thumbnail(url="https://media.tenor.com/8QG3y-h0kFMAAAAC/need-for-speed-car-chase.gif")
     
-    async def pass_4(i): await i.response.defer()
-    view = HeistTaskView(driver, scene["correct"], trigger_fail, pass_4, 2.0) # 2.0 SECONDS!
+    async def pass_4(i): pass
+    view = HeistTaskView(driver, scene["correct"], trigger_fail, pass_4, 2.0) 
     
-    # Fake Buttons & Real Button mixed
     options = ["LEFT", "RIGHT", "CENTER", "BRAKE", "TUNNEL", "RAMP"]
     options.remove(scene["correct"])
     fake_options = random.sample(options, 3)
@@ -6223,7 +6229,7 @@ async def start_hell_heist(interaction, crew):
     # ==========================================
     # 🏆 LEGENDARY VICTORY SCREEN
     # ==========================================
-    payout = 250000 # 250k per player for surviving Nightmare
+    payout = 250000 
     for m in crew:
         try:
             res = supabase.table("economy").select("balance").eq("user_id", m.id).execute()
@@ -6235,13 +6241,13 @@ async def start_hell_heist(interaction, crew):
     embed.description = (
         f"# 💎 GHOSTS OF THE CITY\n"
         f"**You pulled off the impossible.**\n"
-        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-        f"💰 **PAYOUT SECURED:** `${payout:,}` (Each)\n\n"
-        f"**LEGENDS:**\n"
-        f"{', '.join([m.name for m in crew])}\n\n"
-        f"**STATUS:** UNTOUCHABLE"
+        f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+        f"💰 **PAYOUT SECURED:** `${payout:,}` *(Per Player)*\n\n"
+        f"**LEGENDS OF THE UNDERGROUND:**\n"
+        f"> {', '.join([m.mention for m in crew])}\n\n"
+        f"**STATUS:** UNTOUCHABLE 🍷"
     )
-    embed.set_image(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
+    embed.set_thumbnail(url="https://media.tenor.com/p7a8o1r5c8cAAAAC/money-rain.gif")
     embed.set_footer(text="FUNDS HAVE BEEN LAUNDERED AND DEPOSITED.")
     
     await interaction.edit_original_response(embed=embed, view=None)
@@ -6250,11 +6256,10 @@ async def start_hell_heist(interaction, crew):
 # 🚨 5. THE MAIN SLASH COMMAND
 # ==========================================
 @bot.tree.command(name="heist", description="🏦 Nightmare Heist (God Mode) - 2-4 Players")
-@check_seized()  # Tumhara security check
+@check_seized() 
 async def heist_cmd(i: discord.Interaction):
-    # Initiate the Lobby
     view = HeistLobbyView(i.user)
-    await i.response.send_message(embed=view.update_embed(), view=view)
+    await i.response.send_message(embed=view.update_embed(), view=view)    
     
 # --- 🤠 ACTUAL GAME VIEW (Reaction Test) ---
 class WesternDuelGameView(discord.ui.View):
