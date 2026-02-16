@@ -4928,14 +4928,11 @@ import asyncio
 import datetime as dt
 
 # ==============================================================================
-# 🦑 THE SQUID DUEL (RPS + RUSSIAN ROULETTE + REAL PUNISHMENTS)
+# 🦑 THE SQUID DUEL V2 (CUSTOM BULLETS + REAL PUNISHMENTS)
 # ==============================================================================
 
 # --- PUNISHMENT ENGINE (The Front Man's Rules) ---
 async def execute_punishment(interaction, loser, level, bet):
-    # Base VIP/Extra Life check mechanics can be called here if you have them.
-    # For now, applying the direct Tier-based punishments!
-    
     roles_to_restore = []
     is_admin = loser.guild_permissions.administrator
     
@@ -4950,7 +4947,7 @@ async def execute_punishment(interaction, loser, level, bet):
     penalties = {
         1: {"time": 60, "desc": "60 Seconds Timeout (Warning)"},
         2: {"time": 300, "desc": "5 Minutes Timeout + Minor XP Loss"},
-        3: {"time": 3600, "desc": "1 Hour Mute (Script/Play Ban)"},
+        3: {"time": 3600, "desc": "1 Hour Mute (Script Ban)"},
         4: {"time": 43200, "desc": "12 Hours Mute + Extra Fine"},
         5: {"time": 86400, "desc": "24 Hours Ban/Mute (MAXIMUM PENALTY)"}
     }
@@ -4990,17 +4987,24 @@ class RouletteView(discord.ui.View):
     def get_embed(self, status="WAITING"):
         embed = discord.Embed(title="🔫 THE RUSSIAN ROULETTE", color=0x0A0A0A)
         
+        # 🧠 LIVE PROBABILITY CALCULATOR
+        chambers_left = 6 - self.game.current_step
+        bullets_left = sum(self.game.chambers[self.game.current_step:])
+        death_chance = int((bullets_left / chambers_left) * 100) if chambers_left > 0 else 100
+        
         if status == "WAITING":
             embed.description = (
                 f"# 💀 FACE YOUR FATE\n"
                 f"**Target:** {self.loser.mention}\n"
                 f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
                 f"You lost the RPS phase. The Front Man hands you the revolver.\n\n"
-                f"> **Chamber:** `{self.game.current_chamber}/6`\n"
-                f"> **Chances of Death:** `{int((1 / (7 - self.game.current_chamber)) * 100)}%`\n\n"
+                f"> **Pull Number:** `{self.game.current_step + 1}/6`\n"
+                f"> **Bullets Remaining:** `{bullets_left}`\n"
+                f"> **Chances of Death:** `{death_chance}%`\n\n"
                 f"Pick up the gun. Pull the trigger."
             )
             embed.set_thumbnail(url="https://media.tenor.com/y1_B0m0k_mUAAAAd/revolver-spin.gif")
+            
         elif status == "SURVIVED":
             embed.color = 0x2ECC71
             embed.description = (
@@ -5011,13 +5015,14 @@ class RouletteView(discord.ui.View):
                 f"*Prepare for the next Rock-Paper-Scissors duel!*"
             )
             embed.set_image(url="https://media.tenor.com/7b2zG74hM3UAAAAC/phew-relief.gif")
+            
         elif status == "DEAD":
             embed.color = 0x8B0000
             embed.description = (
                 f"# 💥 BANG!\n"
                 f"**{self.loser.mention} has been ELIMINATED.**\n"
                 f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
-                f"The bullet was in chamber `{self.game.current_chamber}`.\n"
+                f"The bullet was in chamber `{self.game.current_step + 1}`.\n"
             )
             embed.set_image(url="https://media.tenor.com/d6-SreC3_p8AAAAC/wasted-gta5.gif")
             
@@ -5037,12 +5042,14 @@ class RouletteView(discord.ui.View):
         await interaction.edit_original_response(embed=suspense_embed, view=None)
         await asyncio.sleep(4)
 
-        if self.game.current_chamber == self.game.bullet_chamber:
-            # DEATH
+        # 🧠 CHECK IF CURRENT CHAMBER HAS A BULLET
+        is_bullet = self.game.chambers[self.game.current_step]
+
+        if is_bullet:
+            # 💥 DEATH
             try: await update_balance(self.winner.id, self.game.bet * 2) # Winner gets pot
             except: pass
             
-            # Apply Real Punishment
             penalty_msg = await execute_punishment(interaction, self.loser, self.game.penalty_lvl, self.game.bet)
             
             final_embed = self.get_embed("DEAD")
@@ -5052,9 +5059,9 @@ class RouletteView(discord.ui.View):
             )
             await interaction.edit_original_response(embed=final_embed, view=None)
         else:
-            # SURVIVED
-            self.game.current_chamber += 1
+            # 💨 SURVIVED
             await interaction.edit_original_response(embed=self.get_embed("SURVIVED"), view=None)
+            self.game.current_step += 1 # Move to the next chamber for the next time!
             await asyncio.sleep(4)
             await self.game.start_rps_phase(interaction) # Loop back to RPS
 
@@ -5073,7 +5080,7 @@ class SquidRPSView(discord.ui.View):
         p2_status = "✅ Locked" if self.choices[self.game.p2.id] else "⏳ Thinking..."
         
         embed.description = (
-            f"# 🎭 SKILL PHASE: ROUND {self.game.current_chamber}\n"
+            f"# 🎭 SKILL PHASE: ROUND {self.game.current_step + 1}\n"
             f"**The loser will face the loaded revolver.**\n"
             f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
             f"👤 {self.game.p1.mention}: {p1_status}\n"
@@ -5094,7 +5101,6 @@ class SquidRPSView(discord.ui.View):
         await interaction.followup.send(f"✅ You secretly chose **{choice}**!", ephemeral=True)
         await self.message.edit(embed=self.get_embed(), view=self)
 
-        # If both locked in
         if self.choices[self.game.p1.id] and self.choices[self.game.p2.id]:
             for child in self.children: child.disabled = True
             await self.message.edit(view=self)
@@ -5118,7 +5124,7 @@ class SquidRPSView(discord.ui.View):
             embed.description = f"### ⚖️ IT'S A DRAW!\nBoth chose **{c1}**.\n*The Front Man demands a clear loser. Restarting phase...*"
             await interaction.followup.send(embed=embed)
             await asyncio.sleep(3)
-            await self.game.start_rps_phase(interaction) # Tie = Rematch
+            await self.game.start_rps_phase(interaction)
         else:
             if beats[c1] == c2:
                 self.game.rps_winner, self.game.rps_loser = self.game.p1, self.game.p2
@@ -5134,17 +5140,18 @@ class SquidRPSView(discord.ui.View):
 
 # --- THE GAME ENGINE ---
 class SquidGameEngine:
-    def __init__(self, p1, p2, bet, penalty_lvl):
+    def __init__(self, p1, p2, bet, penalty_lvl, bullets):
         self.p1 = p1
         self.p2 = p2
         self.bet = bet
         self.penalty_lvl = penalty_lvl
         
-        # Gun Logic
-        self.bullet_chamber = random.randint(1, 6)
-        self.current_chamber = 1
+        # 🧠 DYNAMIC CYLINDER LOGIC
+        # True = Bullet 💥, False = Empty 💨
+        self.chambers = [True] * bullets + [False] * (6 - bullets)
+        random.shuffle(self.chambers) # Spin the cylinder!
+        self.current_step = 0 # Starts at index 0, goes up to 5
         
-        # Round State
         self.rps_winner = None
         self.rps_loser = None
 
@@ -5160,12 +5167,13 @@ class SquidGameEngine:
 
 # --- PHASE 1: LOBBY & CHALLENGE ---
 class SquidDuelLobby(discord.ui.View):
-    def __init__(self, host, opponent, bet, penalty_lvl):
+    def __init__(self, host, opponent, bet, penalty_lvl, bullets):
         super().__init__(timeout=60)
         self.host = host
         self.opponent = opponent
         self.bet = bet
         self.penalty_lvl = penalty_lvl
+        self.bullets = bullets
         self.accepted = False
 
     @discord.ui.button(label="ACCEPT DUEL", style=discord.ButtonStyle.danger, emoji="✅")
@@ -5175,7 +5183,6 @@ class SquidDuelLobby(discord.ui.View):
             
         await interaction.response.defer()
         
-        # Economy Checks
         try:
             opp_bal = await get_balance(self.opponent.id)
             if opp_bal < self.bet:
@@ -5201,11 +5208,12 @@ class SquidDuelLobby(discord.ui.View):
 
 
 # --- THE MAIN COMMAND ---
-@bot.tree.command(name="squid_duel", description="🦑 The Ultimate Deathmatch: RPS + Russian Roulette + Real Punishments!")
+@bot.tree.command(name="squid_duel", description="🦑 The Ultimate Deathmatch: RPS + Russian Roulette!")
 @app_commands.describe(
     opponent="Who do you want to drag to hell?",
     bet="Wager amount (Min 5,000)",
-    punishment_level="Select the lethality of the punishment"
+    punishment_level="Select the lethality of the punishment",
+    bullets="How many bullets in the 6-chamber cylinder? (1 to 5)"
 )
 @app_commands.choices(punishment_level=[
     app_commands.Choice(name="Level 1: 60s Timeout (Light)", value=1),
@@ -5215,24 +5223,30 @@ class SquidDuelLobby(discord.ui.View):
     app_commands.Choice(name="Level 5: 24h Ban/Mute (Lethal)", value=5)
 ])
 @check_seized()
-async def squid_duel_cmd(i: discord.Interaction, opponent: discord.Member, bet: int, punishment_level: app_commands.Choice[int]):
-    if opponent.bot or opponent.id == i.user.id:
-        return await i.response.send_message("❌ Invalid target.", ephemeral=True)
-    if bet < 5000:
-        return await i.response.send_message("❌ Minimum bet is `$5,000`.", ephemeral=True)
-
-    await i.response.defer()
+async def squid_duel_cmd(i: discord.Interaction, opponent: discord.Member, bet: int, punishment_level: app_commands.Choice[int], bullets: int = 1):
+    await i.response.defer() # Instant defer to prevent crashes
     
-    # Check Host Balance
+    if opponent.bot or opponent.id == i.user.id:
+        return await i.followup.send("❌ Invalid target. You can't duel yourself or a bot.", ephemeral=True)
+    if bet < 5000:
+        return await i.followup.send("❌ Minimum bet is `$5,000`.", ephemeral=True)
+    
+    # 🧠 BULLET VALIDATION
+    if bullets < 1 or bullets > 5:
+        return await i.followup.send("❌ You must load between **1 and 5** bullets in the 6-chamber revolver.", ephemeral=True)
+
     try:
         host_bal = await get_balance(i.user.id)
         if host_bal < bet: return await i.followup.send("❌ You are broke!", ephemeral=True)
     except: return await i.followup.send("⚠️ Bank Error.", ephemeral=True)
 
     level_val = punishment_level.value
-
-    # Setup Lobby
-    lobby = SquidDuelLobby(i.user, opponent, bet, level_val)
+    lobby = SquidDuelLobby(i.user, opponent, bet, level_val, bullets)
+    
+    # Custom Danger Text based on bullets
+    danger_txt = "Standard Duel"
+    if bullets == 3: danger_txt = "50/50 Bloodbath"
+    if bullets >= 4: danger_txt = "Suicide Mission"
     
     embed = discord.Embed(title="🦑 INVITATION TO THE GAMES", color=0xFF0055)
     embed.description = (
@@ -5240,11 +5254,12 @@ async def squid_duel_cmd(i: discord.Interaction, opponent: discord.Member, bet: 
         f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
         f"💰 **Total Pot:** `${bet * 2:,}`\n"
         f"⚖️ **Punishment Level:** `{level_val}` ({punishment_level.name})\n"
+        f"🔫 **Bullets Loaded:** `{bullets}/6` *( {danger_txt} )*\n"
         f"▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
         f"> **RULES:**\n"
         f"> 1. Play Rock-Paper-Scissors.\n"
-        f"> 2. The loser pulls the trigger of a loaded revolver.\n"
-        f"> 3. If they survive, we go again. If they die, they face the punishment.\n\n"
+        f"> 2. The loser pulls the trigger.\n"
+        f"> 3. Empty chamber? We go again. Bullet? You face the punishment.\n\n"
         f"*{opponent.mention}, will you sign the contract?*"
     )
     embed.set_thumbnail(url="https://media.tenor.com/Psh5n4-XlYQAAAAC/squid-game-dalgona.gif")
@@ -5252,16 +5267,15 @@ async def squid_duel_cmd(i: discord.Interaction, opponent: discord.Member, bet: 
     await i.followup.send(content=opponent.mention, embed=embed, view=lobby)
     await lobby.wait()
     
-    if not lobby.accepted: return # Cancelled or Timeout
+    if not lobby.accepted: return 
 
-    # Initialize Engine and Start!
-    game_engine = SquidGameEngine(i.user, opponent, bet, level_val)
+    game_engine = SquidGameEngine(i.user, opponent, bet, level_val, bullets)
     
     intro = discord.Embed(description="# 🎭 THE GAMES HAVE BEGUN.\n*Guards are escorting the players to the RPS Arena...*", color=0xFF0055)
     await i.channel.send(embed=intro)
     await asyncio.sleep(3)
     
-    await game_engine.start_rps_phase(i)
+    await game_engine.start_rps_phase(i)                         
                         
 # ================== SAY COMMAND (WITH IMAGE & LOGS) ==================
 
@@ -5881,14 +5895,16 @@ import asyncio
 import datetime as dt
 
 # ==============================================================================
-# 🏦 HEIST: NIGHTMARE MODE (ULTRA PREMIUM & 100% CRASH FIXED)
+# 🏦 HEIST: NIGHTMARE MODE V2 (ULTRA PREMIUM + ENTRY FEE + 100% STABLE)
 # ==============================================================================
 
 # --- 1. LOBBY (ULTRA PREMIUM DARK UI) ---
 class HeistLobbyView(discord.ui.View):
-    def __init__(self, leader):
+    # 🛠️ FIX 1: Added entry_fee here to match the requirement!
+    def __init__(self, leader, entry_fee):
         super().__init__(timeout=300)
         self.leader = leader
+        self.entry_fee = entry_fee
         self.crew = [leader] 
         self.started = False
 
@@ -5905,6 +5921,7 @@ class HeistLobbyView(discord.ui.View):
             "[PENALTY]:  SQUAD WIPE & FULL MUTE\n"
             "```\n"
             "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n"
+            f"💸 **BUY-IN COST:** `${self.entry_fee:,}` per ghost\n"
             "💎 **PAYOUT:** `$1,000,000` (Split among survivors)\n"
             "🛡️ **VIP PERKS:** Active (Life Saver bypass enabled)\n"
             "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
@@ -5916,20 +5933,33 @@ class HeistLobbyView(discord.ui.View):
 
     @discord.ui.button(label="🩸 SIGN IN BLOOD", style=discord.ButtonStyle.danger)
     async def join_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.started: return await interaction.response.send_message("❌ The breach has already begun.", ephemeral=True)
-        if interaction.user in self.crew: return await interaction.response.send_message("⚠️ Your signature is already in blood!", ephemeral=True)
-        if len(self.crew) >= 4: return await interaction.response.send_message("🚫 The getaway car is full!", ephemeral=True)
+        # 🛠️ FIX 2: Defer INSTANTLY to prevent "did not respond" error
+        await interaction.response.defer()
         
+        if self.started: return await interaction.followup.send("❌ The breach has already begun.", ephemeral=True)
+        if interaction.user in self.crew: return await interaction.followup.send("⚠️ Your signature is already in blood!", ephemeral=True)
+        if len(self.crew) >= 4: return await interaction.followup.send("🚫 The getaway car is full!", ephemeral=True)
+        
+        # 💰 Deduct Entry Fee for joining crew members
+        try:
+            bal = await get_balance(interaction.user.id)
+            if bal < self.entry_fee:
+                return await interaction.followup.send(f"❌ You are too broke. You need `${self.entry_fee:,}` to join!", ephemeral=True)
+            await update_balance(interaction.user.id, -self.entry_fee)
+        except Exception:
+            return await interaction.followup.send("⚠️ Bank Error. Try again.", ephemeral=True)
+
         self.crew.append(interaction.user)
-        await interaction.response.edit_message(embed=self.update_embed(), view=self)
+        await interaction.edit_original_response(embed=self.update_embed(), view=self)
 
     @discord.ui.button(label="💀 INITIATE BREACH", style=discord.ButtonStyle.secondary)
     async def start_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.leader.id: return await interaction.response.send_message("❌ Only the Mastermind can start.", ephemeral=True)
-        if len(self.crew) < 2: return await interaction.response.send_message("❌ Suicide missions require at least 2 bodies.", ephemeral=True)
+        await interaction.response.defer() # Instant Defer
+        
+        if interaction.user.id != self.leader.id: return await interaction.followup.send("❌ Only the Mastermind can start.", ephemeral=True)
+        if len(self.crew) < 2: return await interaction.followup.send("❌ Suicide missions require at least 2 bodies.", ephemeral=True)
 
         self.started = True
-        await interaction.response.defer() # UI Loading stop
         
         for child in self.children: child.disabled = True
         await interaction.edit_original_response(embed=self.update_embed(), view=self)
@@ -5937,10 +5967,10 @@ class HeistLobbyView(discord.ui.View):
         try:
             await start_hell_heist(interaction, self.crew)
         except Exception as e:
-            await interaction.followup.send(f"❌ **System Failure:** `{e}`", ephemeral=True)
+            await interaction.followup.send(f"❌ **System Failure:** `{e}`")
 
 
-# --- 2. BASE TASK ENGINE ---
+# --- 2. BASE TASK ENGINE (100% RESPONSIVE) ---
 class HeistTaskView(discord.ui.View):
     def __init__(self, player, correct_val, fail_func, success_func, timeout_sec):
         super().__init__(timeout=timeout_sec) 
@@ -5958,10 +5988,12 @@ class HeistTaskView(discord.ui.View):
             await self.fail_func(f"⏳ **TOO SLOW!** {self.player.mention} hesitated and got caught!", self.player)
 
     async def verify(self, interaction, answer):
-        if interaction.user.id != self.player.id:
-            return await interaction.response.send_message("❌ GET BACK! You'll trigger the alarm!", ephemeral=True)
-        
+        # 🛠️ Defer on line 1 so Discord never crashes
         await interaction.response.defer()
+        
+        if interaction.user.id != self.player.id:
+            return await interaction.followup.send("❌ GET BACK! You'll trigger the alarm!", ephemeral=True)
+        
         self.responded = True
         
         if answer == self.correct_val:
@@ -5988,10 +6020,10 @@ class SequenceTaskView(HeistTaskView):
 
     def make_callback(self, val):
         async def cb(i):
-            if i.user.id != self.player.id: 
-                return await i.response.send_message("❌ Back off! One wrong wire and we all die.", ephemeral=True)
+            await i.response.defer() # Instant Defer
             
-            await i.response.defer()
+            if i.user.id != self.player.id: 
+                return await i.followup.send("❌ Back off! One wrong wire and we all die.", ephemeral=True)
             
             if val == self.target_sequence[self.current_idx]:
                 self.current_idx += 1
@@ -6263,24 +6295,29 @@ async def start_hell_heist(interaction, crew):
     await interaction.edit_original_response(embed=embed, view=None)
 
 # ==========================================
-# 🚨 5. THE MAIN SLASH COMMAND (FIXED)
+# 🚨 5. THE MAIN SLASH COMMAND (100% BUG FREE)
 # ==========================================
-# 🔥 Note: Tumne jo bhi prefix use kiya hai, agar bot.tree ki jagah games_group ho toh wahi lagana.
 @bot.tree.command(name="heist", description="🏦 Nightmare Heist (God Mode) - 2-4 Players")
 @check_seized() 
 async def heist_cmd(i: discord.Interaction):
-    
-    # 🛠️ THE MAGIC FIX: Defer interaction IMMEDIATELY before doing anything else!
-    # Iski wajah se Discord turant "Bot is thinking..." dikhayega aur kabhi crash nahi karega.
+    # 🛠️ INSTANT DEFER - No more "Application did not respond"
     await i.response.defer() 
     
+    entry_fee = 50000 # 50k ENTRY FEE SET HERE!
+    
+    # Host Money Check & Deduction
     try:
-        view = HeistLobbyView(i.user)
-        # Defer ke baad humesha followup.send() use hota hai
-        await i.followup.send(embed=view.update_embed(), view=view)
+        bal = await get_balance(i.user.id)
+        if bal < entry_fee:
+            return await i.followup.send(f"❌ You need `${entry_fee:,}` to fund this operation.", ephemeral=True)
+        await update_balance(i.user.id, -entry_fee)
     except Exception as e:
-        await i.followup.send(f"⚠️ **System Error:** {e}", ephemeral=True)
+        return await i.followup.send(f"⚠️ **Bank Error:** {e}", ephemeral=True)
 
+    # 🛠️ Passing entry_fee safely to the View
+    view = HeistLobbyView(i.user, entry_fee)
+    await i.followup.send(embed=view.update_embed(), view=view)
+    
 # --- 🤠 ACTUAL GAME VIEW (Reaction Test) ---
 class WesternDuelGameView(discord.ui.View):
     def __init__(self, p1, p2, interaction_to_edit):
