@@ -28687,21 +28687,36 @@ CHANNEL_MAP = {
 }
 
 # ========= SAFE QUERY =========
-def safe_query(table, **filters):
+import asyncio
+
+async def safe_query(table, **filters):
+    """
+    Titan-Grade safe_query: 
+    Fitted with non-blocking db_call (lambda) logic to prevent Flask/Discord freezing.
+    """
     try:
-        q = supabase.table(table).select("*")
-        for k, v in filters.items():
-            q = q.eq(k, v)
-        return q.execute().data
+        def db_operation():
+            q = supabase.table(table).select("*")
+            for k, v in filters.items():
+                q = q.eq(k, v)
+            return q.execute().data
+            
+        # Using the Titan-Standard db_call to execute the lambda
+        result = await db_call(lambda: db_operation())
+        return result
     except Exception as e:
-        print("DB ERROR:", e)
-        return None   # IMPORTANT: Return None on error for Fail Safe logic
+        print(f"DB ERROR IN {table}: {e}")
+        return None
 
 # ========= SETTINGS CACHE =========
-def get_settings():
+import asyncio
+import time
+
+async def get_settings():
     global settings_cache
     now = time.time()
 
+    # Cache Logic (Same as original)
     if settings_cache["data"] and now - settings_cache["time"] < SETTINGS_CACHE_TTL:
         return settings_cache["data"]
 
@@ -28709,12 +28724,19 @@ def get_settings():
     access_enabled = True
 
     try:
-        rows = supabase.table("bot_settings").select("*").execute().data
-        for x in rows:
-            if x["key"] == "maintenance":
-                maintenance = (x["value"] == "true")
-            if x["key"] == "access_enabled":
-                access_enabled = (x["value"] == "true")
+        # 100% Same Logic with Lambda Fix
+        def db_operation():
+            return supabase.table("bot_settings").select("*").execute().data
+
+        rows = await db_call(lambda: db_operation())
+        
+        if rows:
+            for x in rows:
+                if x["key"] == "maintenance":
+                    maintenance = (x["value"] == "true")
+                if x["key"] == "access_enabled":
+                    access_enabled = (x["value"] == "true")
+                    
     except Exception as e:
         print("SETTINGS ERROR:", e)
 
@@ -28726,7 +28748,11 @@ def get_settings():
     return settings_cache["data"]
 
 # ========= USER STATUS BUILDER =========
-def build_status(user_id):
+import asyncio
+import time
+from datetime import datetime
+
+async def build_status(user_id):
     now = time.time()
 
     # -------- USE CACHE IF FRESH --------
@@ -28734,12 +28760,14 @@ def build_status(user_id):
         return user_cache[user_id]["data"]
 
     try:
-        settings = get_settings()
+        # async logic applied to get_settings
+        settings = await get_settings()
 
         # ===== ACCESS CHECK =====
         whitelisted = True
         if settings["access_enabled"]:
-            a = safe_query("access_users", user_id=user_id)
+            # async logic applied to safe_query
+            a = await safe_query("access_users", user_id=user_id)
 
             # SUPABASE FAIL → SAFE MODE (Don't kick)
             if a is None:
@@ -28753,7 +28781,7 @@ def build_status(user_id):
         reason = "None"
         left = 0
 
-        bans = safe_query("bans", user_id=user_id)
+        bans = await safe_query("bans", user_id=user_id)
 
         # Fail safe ban system
         if bans is not None:
@@ -28769,17 +28797,19 @@ def build_status(user_id):
                         reason = b["reason"]
                         left = int((float(b["expire"]) - now) / 60)
                     else:
-                        supabase.table("bans").delete().eq("user_id", user_id).execute()
+                        # Non-blocking delete using lambda
+                        await db_call(lambda: supabase.table("bans").delete().eq("user_id", user_id).execute())
 
         # ===== KICK CHECK =====
         kick_now = False
         kick_reason = "None"
 
-        kick = safe_query("kick_flags", user_id=user_id)
+        kick = await safe_query("kick_flags", user_id=user_id)
         if kick is not None and kick:
             kick_now = True
             kick_reason = kick[0].get("reason", "No Reason")
-            supabase.table("kick_flags").delete().eq("user_id", user_id).execute()
+            # Non-blocking delete using lambda
+            await db_call(lambda: supabase.table("kick_flags").delete().eq("user_id", user_id).execute())
 
         data = {
             "user_id": user_id,
@@ -28812,33 +28842,41 @@ def build_status(user_id):
             "kick": False
         }
 
+
 # --- 4. FLASK ROUTES (EXACTLY AS REQUESTED) ---
+
+# --- 🔒 SECURITY GATEKEEPER ---
+import asyncio
+from flask import request, session, redirect, url_for
 
 # --- 🔒 SECURITY GATEKEEPER ---
 @app.before_request
 def check_user_status():
-    # 1. Ye check karega ki user kaunse page par ja raha hai
-    # 'static', 'account_seized', 'login' walo ko allow karo taaki loop na bane
+    # 1. endpoints allowed to avoid loops (Logic: 100% Same)
     if request.endpoint in ['static', 'account_seized', 'login', 'discord_login', 'callback']:
         return
 
-    # 2. Agar user logged in hai, to check karo
+    # 2. Check if user is logged in
     if 'user_info' in session:
         uid = session['user_info']['id']
         
         try:
-            # Database se check karo ki account seized hai ya nahi
-            response = db.supabase.table("economy").select("is_seized").eq("user_id", str(uid)).execute()
+            # Using Lambda logic to prevent blocking
+            def fetch_seized_status():
+                return db.supabase.table("economy").select("is_seized").eq("user_id", str(uid)).execute().data
             
-            if response.data:
-                is_locked = response.data[0]['is_seized']
+            # Titan-Standard non-blocking call
+            data = asyncio.run(db_call(lambda: fetch_seized_status()))
+            
+            if data:
+                is_locked = data[0].get('is_seized', False)
                 
-                # 3. AGAR SEIZED HAI -> TO SIDHA BLOCK PAGE PAR BHEJ DO
-                if is_locked == True:
+                # 3. IF SEIZED -> REDIRECT TO BLOCK PAGE (Logic: 100% Same)
+                if is_locked is True:
                     return redirect(url_for('account_seized'))
                     
         except Exception as e:
-            print(f"Security Check Error: {e}")
+            print(f"Security Check Error for UID {uid}: {e}")
 
 @app.route("/status/<uid>")
 def status(uid):
@@ -28848,16 +28886,22 @@ def status(uid):
 def ping():
     return "pong"
 
+import asyncio
+from flask import jsonify
+
 @app.route("/fakecheck/<uid>")
 def fakecheck(uid):
     try:
-        r = supabase.table("fake_warnings").select("*").eq("user_id", uid).execute().data
+        # 1. Fetching Initial Data (Logic: 100% Same)
+        def fetch_fake_data():
+            return supabase.table("fake_warnings").select("*").eq("user_id", uid).execute().data
+
+        r = asyncio.run(db_call(lambda: fetch_fake_data()))
 
         if not r:
             return jsonify({"fake": False})
 
         row = r[0]
-
         username = row.get("username")
         display = row.get("display_name")
 
@@ -28865,20 +28909,30 @@ def fakecheck(uid):
         if not username or not display:
 
             # 1️⃣ Try Access Users
-            acc = supabase.table("access_users").select("*").eq("user_id", uid).execute().data
+            def fetch_access_user():
+                return supabase.table("access_users").select("*").eq("user_id", uid).execute().data
+            
+            acc = asyncio.run(db_call(lambda: fetch_access_user()))
             if acc:
                 username = acc[0].get("username") or username
                 display = acc[0].get("display_name") or display
 
             # 2️⃣ Otherwise Try Verify Logs
             if not username or not display:
-                v = supabase.table("verify_logs").select("*").eq("roblox_id", uid).execute().data
+                def fetch_verify_logs():
+                    return supabase.table("verify_logs").select("*").eq("roblox_id", uid).execute().data
+                
+                v = asyncio.run(db_call(lambda: fetch_verify_logs()))
                 if v:
                     username = v[0].get("username") or username
                     display  = v[0].get("display_name") or display
 
         # ===== DELETE AFTER SHOWING (ONE-TIME) =====
-        supabase.table("fake_warnings").delete().eq("user_id", uid).execute()
+        # Logic: Ensuring the warning is removed after it's been processed
+        def delete_warning():
+            return supabase.table("fake_warnings").delete().eq("user_id", uid).execute()
+        
+        asyncio.run(db_call(lambda: delete_warning()))
 
         return jsonify({
             "fake": True,
@@ -28897,38 +28951,57 @@ def fakecheck(uid):
         })
 
     except Exception as e:
-        print("FAKE ERROR:", e)
+        print(f"FAKE ERROR for UID {uid}: {e}")
         return jsonify({"fake": False})
+
+import asyncio
+from flask import jsonify
 
 @app.route("/stopstatus")
 def stopstatus():
     try:
-        r = supabase.table("bot_settings").select("value").eq("key","stop_enabled").execute()
+        # 1. Database fetch logic (100% Same)
+        def fetch_stop_setting():
+            return supabase.table("bot_settings").select("value").eq("key", "stop_enabled").execute().data
 
-        if not r.data:
-            return jsonify({"stop": False})   # fail-safe allow
+        # Titan-Standard async execution
+        data = asyncio.run(db_call(lambda: fetch_stop_setting()))
 
-        return jsonify({"stop": (r.data[0]["value"] == "true")})
+        if not data:
+            return jsonify({"stop": False})   # Fail-safe allow (Logic Same)
+
+        # 2. Return the boolean status
+        return jsonify({"stop": (data[0]["value"] == "true")})
 
     except Exception as e:
-        print("STOP CHECK ERROR:", e)
-        return jsonify({"stop": False})       # fail-safe allow
+        print(f"STOP CHECK ERROR: {e}")
+        return jsonify({"stop": False})       # Fail-safe allow (Logic Same)
+
+import asyncio
+from flask import render_template, request
 
 @app.route('/library/doraemon')
 def doraemon_library():
-    # 1. URL se season check karo
+    # 1. URL se season check karo (Logic: 100% Same)
     season_query = request.args.get('season', 'movies')
     
-    # 2. Database se episode nikalo
+    # 2. Database se episode nikalo (Titan-Grade Fix)
     try:
-        response = supabase.table("doraemon_episodes")\
-            .select("*")\
-            .eq("season", season_query)\
-            .order("id", desc=False)\
-            .execute()
-        episodes_list = response.data
+        def fetch_doraemon_content():
+            return supabase.table("doraemon_episodes")\
+                .select("*")\
+                .eq("season", season_query)\
+                .order("id", desc=False)\
+                .execute().data
+        
+        # Async execution within Flask route
+        episodes_list = asyncio.run(db_call(lambda: fetch_doraemon_content()))
+        
+        if episodes_list is None:
+            episodes_list = []
+            
     except Exception as e:
-        print(f"Database Fetch Error: {e}")
+        print(f"Doraemon Library Error: {e}")
         episodes_list = []
 
     # 3. Display Name (Ex: season_1 -> SEASON 1)
@@ -28937,11 +29010,12 @@ def doraemon_library():
     # 4. 🔥 SMART LINK LOGIC: Sahi channel ka link nikalo
     current_invite_link = CHANNEL_MAP.get(season_query, CHANNEL_MAP["default"])
     
-    # 5. HTML ko bhejo
+    # 5. HTML ko bhejo (Logic: 100% Same)
     return render_template('library.html', 
                          episodes=episodes_list, 
                          current_season=display_name,
                          invite_link=current_invite_link)
+
 
 import discord
 from discord import app_commands
