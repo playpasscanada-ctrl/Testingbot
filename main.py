@@ -21320,6 +21320,8 @@ async def work_error(interaction: discord.Interaction, error: app_commands.AppCo
         # Pass other errors up the chain or print them
         print(f"Work Command Error: {error}")
 
+games_group = app_commands.Group(name="games", description="🎰 All Casino and Arcade Games")
+
 
 # ==========================================
 # 🪙 SYSTEM: COIN FLIP (ANIMATED)
