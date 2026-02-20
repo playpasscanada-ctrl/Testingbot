@@ -11479,7 +11479,7 @@ async def red_light(i: discord.Interaction):
     view.message = msg
 
 # ================== 🦑 SQUID PENTATHLON (TEAM RELAY MODE) ==================
- import discord
+import discord
 from discord import app_commands
 import random
 import asyncio
