@@ -11479,7 +11479,7 @@ async def red_light(i: discord.Interaction):
     view.message = msg
 
 # ================== 🦑 SQUID PENTATHLON (TEAM RELAY MODE) ==================
-import discord
+ import discord
 from discord import app_commands
 import random
 import asyncio
@@ -11765,7 +11765,33 @@ class PentaLobby(discord.ui.View):
         await interaction.response.defer()
         
         if interaction.user != self.host: return await interaction.followup.send("❌ Only the Host can start the relay.", ephemeral=True)
-        if len(self
+        if len(self.players) < 2: return await interaction.followup.send("❌ You need at least 2 players to form a relay squad!", ephemeral=True)
+        
+        self.started = True
+        self.stop()
+        for child in self.children: child.disabled = True
+        
+        game_view = PentathlonGameView(self.players, 100000, self.message)
+        
+        loading_embed = discord.Embed(title="⚙️ INITIALIZING RELAY...", description="> *Loading Minigames...*\n> *Testing Traps...*\n> *Preparing Body Bags...*", color=0x2b2d31)
+        await interaction.edit_original_response(embed=loading_embed, view=game_view)
+
+
+# ==============================================================================
+# 💻 MAIN COMMAND
+# ==============================================================================
+@bot.tree.command(name="pentathlon", description="🦑 5-Game Relay Challenge (If ONE fails, the ENTIRE team dies!)")
+@check_seized()
+async def pentathlon(i: discord.Interaction):
+    await i.response.defer()
+
+    if not i.guild.me.guild_permissions.moderate_members:
+        return await i.followup.send("❌ **System Error:** Bot lacks `Timeout` permissions to punish the squad!", ephemeral=True)
+        
+    view = PentaLobby(i.user)
+    msg = await i.followup.send(embed=view.get_embed(), view=view)
+    view.message = msg # Save for stable edits
+
 
 
 # ================== 📟 MATRIX CYBER TERMINAL (LEVEL SELECTOR) ==================
