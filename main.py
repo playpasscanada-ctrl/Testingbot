@@ -16977,7 +16977,7 @@ async def tictactoe(interaction: discord.Interaction, opponent: discord.Member, 
         
 
 # ================== MINE FIELD ================
- import discord
+import discord
 from discord import app_commands
 import random
 import asyncio
@@ -18466,7 +18466,7 @@ async def staff_stats(interaction: discord.Interaction):
         await interaction.followup.send(f"❌ **Mainframe Error:** Database failed to sync. `{e}`")
     
  # ====================== DALGONA DUEL =======================
- import discord
+import discord
 from discord import app_commands
 import asyncio
 import random
@@ -18764,7 +18764,7 @@ class DuelInviteView(discord.ui.View):
 # ==============================================================================
 # 💻 MAIN COMMAND
 # ==============================================================================
-@bot.tree.command(name="dalgona", description="🍪 Squid Game: 1v1 Dalgona Tracing Battle (Max 50k)")
+@bot.tree.command(name="dalgona_duel", description="🍪 Squid Game: 1v1 Dalgona Tracing Battle (Max 50k)")
 @app_commands.describe(opponent="The player you wish to challenge", amount="Bet Amount (Min: $100 | Max: $50,000)")
 @check_seized()
 async def dalgona_duel(interaction: discord.Interaction, opponent: discord.Member, amount: int):
@@ -23793,7 +23793,7 @@ PREMIUM_TRUTHS = [
     "Have you ever faked being AFK to avoid someone?",
     "What is your biggest real-life regret?",
     "Have you ever snooped through someone else's phone or DMs?",
-    "What is the most illegal thing you've ever done?",
+    "Have you ever masturbated? If yes, when was the last time you did it?",
     "If you had to kick one admin from the server, who would it be?",
     # 🔥 SPICY / NAUGHTY EXPANSION 🌚
     "Who in this server would you date if you had absolutely no other choice?",
