@@ -1415,7 +1415,8 @@ async def on_ready():
         print("✅ Staff Salary System Started")
     
     # 5. LOADERS
-    await load_banned_words()        
+    await load_banned_words()     
+    await load_all_cogs()
     await load_bypass_users()
     await load_crush_users()
     await sync_troll_data()
